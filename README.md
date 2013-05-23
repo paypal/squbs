@@ -34,6 +34,16 @@ Why do we need squbs?
 Akka itself is a great system that enforces loose coupling. squbs is an attempt to add a modularity layer to Akka allowing actor libraries to be deployed as contained and isolated services. In addition, it also tries to provide implementations of common actor usage patterns allowing the developer to focus on the business logic instead of scopes and lifecycle management. It also provides for operationalization of the actor system for mission critical, fullyt monitored deployments.
 
 
+Advanced topics
+---------------
+
+Hot upgrades of cubes while taking traffic
+
+Capability-based dependencies (I need cubes that can do "something" for me - not I need cube "somebody")
+
+Cube deployment database (I need to recall/upgrade all my cubes version x.y.z. Tell me where they are all deployed.)
+
+
 Projects
 --------
 [squbs](https://github.scm.corp.ebay.com/Raptor/squbs): The core infrastructure for squbs without the eBay operationalization (intended for open source)
