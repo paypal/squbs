@@ -11,11 +11,11 @@ Definitions
 
 *Unicomplex*: The core of squbs managing the actor system, bootstrapping, and possible actor capability directories and hot upgrading of the cubes.
 
-*Cube*: A self container module consisting of its own supervisory actor that gets bootstrapped. The cube's supervisory actor is looked up by name (actorFor) or by actorSelection and receives asynchronous messages through its actor interface.
+*Cube*: A self contained module consisting of its own supervisory actor that gets bootstrapped. The cube's supervisory actor is looked up by name (actorFor) or by actorSelection and receives asynchronous messages through its actor interface.
 
 *Service*: A cube that exposes itself as a REST service allowing access to functionality provided by the squbs ecosystem.
 
-*Message*: Typed, asynchronous messages sent between actors.
+*Message*: Typed, asynchronous messages sent between actors and cubes.
 
 *Drone*: Actors in a cube are also called drones.
 
