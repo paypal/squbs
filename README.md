@@ -37,5 +37,7 @@ Akka itself is a great system that enforces loose coupling. squbs is an attempt 
 Projects
 --------
 [squbs](https://github.scm.corp.ebay.com/Raptor/squbs): The core infrastructure for squbs without the eBay operationalization (intended for open source)
+
 [rocksqubs](https://github.scm.corp.ebay.com/Raptor/rocksqubs): The eBay operationalization layer, hardening squbs for handling billions of service requests a day
+
 [squbsamples](https://github.scm.corp.ebay.com/Raptor/squbsamples): Service and application sample cubes, messages, and services
