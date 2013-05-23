@@ -31,4 +31,11 @@ In addition to systematically breaking down code complexity, squbs' fully asynch
 Why do we need squbs?
 ---------------------
 
-Akka itself is a great system that enforces loose coupling. squbs is an attempt to add a modularity layer to Akka allowing actor libraries to be deployed as contained and isolated services. In addition, it also tries to provide implementations of common actor usage patterns allowing the developer to focus on the business logic instead of scopes and lifecycle management. It also provides for operationalization of the actor system.
+Akka itself is a great system that enforces loose coupling. squbs is an attempt to add a modularity layer to Akka allowing actor libraries to be deployed as contained and isolated services. In addition, it also tries to provide implementations of common actor usage patterns allowing the developer to focus on the business logic instead of scopes and lifecycle management. It also provides for operationalization of the actor system for mission critical, fullyt monitored deployments.
+
+
+Projects
+--------
+[squbs](https://github.scm.corp.ebay.com/Raptor/squbs): The core infrastructure for squbs without the eBay operationalization (intended for open source)
+[rocksqubs](https://github.scm.corp.ebay.com/Raptor/rocksqubs): The eBay operationalization layer, hardening squbs for handling billions of service requests a day
+[squbsamples](https://github.scm.corp.ebay.com/Raptor/squbsamples): Service and application sample cubes, messages, and services
