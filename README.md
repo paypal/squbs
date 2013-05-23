@@ -37,11 +37,11 @@ Akka itself is a great system that enforces loose coupling. squbs is an attempt 
 Advanced topics
 ---------------
 
-Hot upgrades of cubes while taking traffic
+* Hot upgrades of cubes while taking traffic
 
-Capability-based dependencies (I need cubes that can do "something" for me - not I need cube "somebody")
+* Capability-based dependencies (I need cubes that can do "something" for me - not I need cube "somebody")
 
-Cube deployment database (I need to recall/upgrade all my cubes version x.y.z. Tell me where they are all deployed.)
+* Cube deployment database (I need to recall/upgrade all my cubes version x.y.z. Tell me where they are all deployed.)
 
 
 Projects
