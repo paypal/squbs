@@ -3,7 +3,8 @@ package org.squbs.unicomplex
 import concurrent.duration._
 
 import akka.io.IO
-import akka.actor.{Actor, ActorContext, ActorRef, Props}
+import akka.event.Logging
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
 import akka.agent.Agent
 import spray.can.Http
 import spray.http.MediaTypes
@@ -27,7 +28,7 @@ object ServiceRegistry {
   /**
    * The Registrar receives Register and Unregister messages.
    */
-  private[unicomplex] class Registrar extends Actor {
+  private[unicomplex] class Registrar extends Actor with ActorLogging {
 
     private var registry = Map.empty[String, RouteDefinition]
     
@@ -39,20 +40,20 @@ object ServiceRegistry {
     def receive = {
       case Register(routeDef) =>
         if (registry contains routeDef.webContext)
-          println(s"""Web context "${routeDef.webContext}" already registered. Overriding!""")
+          log.warning(s"""Web context "${routeDef.webContext}" already registered. Overriding!""")
         val tmpRegistry = registry + (routeDef.webContext -> routeDef)
         
         // This line is the problem. Don't pre-calculate.
         route send calculateRoute(tmpRegistry)
         updateDue send true
         registry = tmpRegistry
-        println(s"""Web context "${routeDef.webContext}" (${routeDef.getClass().getName()}) registered.""")
+        log.info(s"""Web context "${routeDef.webContext}" (${routeDef.getClass().getName()}) registered.""")
       case Unregister(webContext) =>
         val tmpRegistry = registry - webContext
         route send calculateRoute(tmpRegistry)
         updateDue send true
         registry = tmpRegistry 
-        println(s"Web service route ${webContext} unregistered.")
+        log.info(s"Web service route ${webContext} unregistered.")
     }
   }
   
@@ -72,6 +73,10 @@ object ServiceRegistry {
     // other things here, like request stream processing
     // or timeout handling    
     def receive = runRoute(dynamic {route()})
+//    def receive = { case _ =>
+//      val reload = updateDue()
+//      dynamicIf(reload) { runRoute(route()) }
+//    }
   }
 
   /**
@@ -85,13 +90,15 @@ object ServiceRegistry {
       val serviceRef = context.actorOf(Props[WebSvcActor], "web-service")
       // create a new HttpServer using our handler tell it where to bind to
       IO(Http) ! Http.Bind(serviceRef, interface = "localhost", port = 8080)
+      context.watch(registrarRef)
+      context.watch(serviceRef)
   }
 }
 
 trait RouteDefinition {
   protected implicit final def context: ActorContext = ServiceRegistry.serviceActorContext()
   val webContext: String
-  def route: RequestContext => Unit
+  def route: Route
 }
 
 /**
