@@ -13,7 +13,9 @@ object Unicomplex {
   
 }
 
-case object StartWebService
+private[unicomplex] case object StartWebService
+private[unicomplex] case class StartCubeActor(props: Props, name: String = "")
+
 case object Ack
 
 /**
@@ -32,9 +34,27 @@ class Unicomplex extends Actor with ActorLogging {
   def receive = {
     case StartWebService =>
       ServiceRegistry.startWebService      
-      sender ! Ack 
+      sender ! Ack
     case msg: Any =>
       log.info("Received: {}", msg.toString)
       
   }  
+}
+
+class CubeSupervisor extends Actor with ActorLogging {
+  override val supervisorStrategy =
+    OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
+      case e: Exception => 
+        log.warning(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender.path}")
+        Restart
+    }
+
+  def receive = {
+    case StartCubeActor(props, name) => 
+      val cubeActor = context.actorOf(props, name)
+      log.info("Started actor {}", cubeActor.path)
+    case msg: Any =>
+      log.info("Received: {}", msg.toString)
+  }
+  
 }
