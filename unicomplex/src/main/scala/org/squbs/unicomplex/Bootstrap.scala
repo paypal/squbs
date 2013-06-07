@@ -126,11 +126,10 @@ object Bootstrap extends App {
     		        s"Path: ${manifestInfo._1}\n" +
     		        s"${t.getClass.getName}: ${t.getMessage}")        
             null          
-        }          
+        }                
       
-      
-      routeDefs.split(',').map(startRoute)
-    }
+        routeDefs.split(',').map(startRoute)
+      }
     
     actorInfo ++ routeInfo
   }
