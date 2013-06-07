@@ -74,7 +74,7 @@ object Bootstrap extends App {
           try {
             val clazz = Class.forName(className, true, getClass.getClassLoader)
             val actorClass = clazz.asSubclass(classOf[Actor])
-            cubeActor ! StartCubeActor(Props(actorClass.newInstance), 
+            cubeActor ! StartCubeActor(Props(actorClass), 
                 props.getOrElse("name", className.substring(className.lastIndexOf('.') + 1)))
             (symName, version, clazz)
           } catch {
