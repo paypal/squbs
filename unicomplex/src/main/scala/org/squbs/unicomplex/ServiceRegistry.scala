@@ -22,7 +22,6 @@ object ServiceRegistry {
 
   private[unicomplex] val route = Agent[Route](null)
   private[unicomplex] val registrar = Agent[ActorRef](null)
-  private[unicomplex] val updateDue = Agent[Boolean](true)
   private[unicomplex] val serviceActorContext = Agent[ActorContext](null)
   
   /**
@@ -45,13 +44,11 @@ object ServiceRegistry {
         
         // This line is the problem. Don't pre-calculate.
         route send calculateRoute(tmpRegistry)
-        updateDue send true
         registry = tmpRegistry
         log.info(s"""Web context "${routeDef.webContext}" (${routeDef.getClass().getName()}) registered.""")
       case Unregister(webContext) =>
         val tmpRegistry = registry - webContext
         route send calculateRoute(tmpRegistry)
-        updateDue send true
         registry = tmpRegistry 
         log.info(s"Web service route ${webContext} unregistered.")
     }
@@ -72,11 +69,7 @@ object ServiceRegistry {
     // this actor only runs our route, but you could add
     // other things here, like request stream processing
     // or timeout handling    
-    def receive = runRoute(dynamic {route()})
-//    def receive = { case _ =>
-//      val reload = updateDue()
-//      dynamicIf(reload) { runRoute(route()) }
-//    }
+    def receive = runRoute(route().apply(_))
   }
 
   /**
