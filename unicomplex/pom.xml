@@ -9,7 +9,7 @@
 	<parent>
 		<groupId>com.ebay.raptor</groupId>
 		<artifactId>RaptorParent</artifactId>
-		<version>1.6.0-RELEASE</version>		
+		<version>1.6.4-RELEASE</version>		
 	</parent>
 
 	<!-- POM Information about the Project -->
@@ -91,7 +91,7 @@
 					<manifestLocation>src/main/resources/META-INF</manifestLocation>
 					<!-- Manifest Headers which need to customized during manifest generation -->
 					<instructions>
-						<Bundle-SymbolicName>com.ebay.app.raptor.unicomplex</Bundle-SymbolicName>
+						<Bundle-SymbolicName>org.squbs.unicomplex</Bundle-SymbolicName>
 						<!-- <Export-Package></Export-Package>-->
 						<Import-Package>*, 
 						 	 org.springframework.beans.factory;version="[3.0.5.RELEASE,4.0.0)",

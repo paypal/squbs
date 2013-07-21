@@ -1,9 +1,7 @@
 package org.squbs.unicomplex
 
-import concurrent.duration._
 
 import akka.io.IO
-import akka.event.Logging
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
 import akka.agent.Agent
 import spray.can.Http
@@ -11,7 +9,7 @@ import spray.http.MediaTypes
 import spray.routing._
 import Directives._
 import MediaTypes._
-import spray.routing.{HttpService, RequestContext}
+import spray.routing.HttpService
 
 import Unicomplex._
 
@@ -45,12 +43,12 @@ object ServiceRegistry {
         // This line is the problem. Don't pre-calculate.
         route send calculateRoute(tmpRegistry)
         registry = tmpRegistry
-        log.info(s"""Web context "${routeDef.webContext}" (${routeDef.getClass().getName()}) registered.""")
+        log.info(s"""Web context "${routeDef.webContext}" (${routeDef.getClass.getName}) registered.""")
       case Unregister(webContext) =>
         val tmpRegistry = registry - webContext
         route send calculateRoute(tmpRegistry)
         registry = tmpRegistry 
-        log.info(s"Web service route ${webContext} unregistered.")
+        log.info(s"Web service route $webContext unregistered.")
     }
   }
   

@@ -10,6 +10,8 @@ object Unicomplex {
   implicit val actorSystem = ActorSystem("squbs")
   
   implicit val uniActor = actorSystem.actorOf(Props[Unicomplex], "unicomplex")
+
+  val externalConfigDir = "squbsconfig"
   
 }
 
