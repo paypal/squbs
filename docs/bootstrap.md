@@ -20,11 +20,15 @@ Cube jars are assumed to be fully qualified OSGi bundles without any export pack
 *X-squbs-services*: Web service RouteDefinitions to be registered as part of bringing up the cube. Each service is a class that implements the RouteDefition trait defined by squbs. On undeployment of the cube, the service is automatically unregistered. The service manifest entry for the bottlesvc sample is as follows:
     X-squbs-services: X-squbs-services: org.squbs.bottlesvc.BottleSvc
 
+Extensions
+----------
+Extensions for squbs are arbitrary facilities that need to be started for the environment. The startup logic is defined in a scala object and the object is registered using the custom manifest header:
+
+*X-squbs-extensions*: The X-squbs-extensions manifest headers for jars containing extensions lists the scala objects to be loaded and started in the runtime environment. The list is comma separated.
 
 Bootstrapping in non-OSGi mode
 ------------------------------
-Bootstrapping squbs is done by starting the org.squbs.unicomplex.Bootstrap object from the Java command line, IDE, or maven plugin. Bootstrap scans the classpath and finds META-INF/MANIFEST.MF in each classpath entry. If available and has the X-squbs manifest headers, the entry is treated as a squbs cube and initialized according to the header.
-
+Bootstrapping squbs is done by starting the org.squbs.unicomplex.Bootstrap object from the Java command line, IDE, or maven plugin. Bootstrap scans the classpath and finds META-INF/MANIFEST.MF in each classpath entry. If available and has the X-squbs manifest headers, the entry is treated as squbs cube or extension (or both) and initialized according to the header. The bootstrap scans for these headers and first initializes extensions, cubes, then service routes last regardless of their sequence in the classpath.
 
 Shutting Down squbs
 -------------------
