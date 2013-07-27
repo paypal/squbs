@@ -50,7 +50,11 @@
             <artifactId>akka-agent_2.10</artifactId>
             <version>2.1.4</version>
         </dependency>
-        
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-testkit_2.10</artifactId>
+            <version>2.1.4</version>
+        </dependency>
         <dependency>
   			<groupId>io.spray</groupId>
   			<artifactId>spray-can</artifactId>
