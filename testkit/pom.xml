@@ -15,7 +15,7 @@
 	<!-- POM Information about the Project -->
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.squbs</groupId>
-	<artifactId>unicomplex</artifactId>
+	<artifactId>testkit</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<!-- Packing Type is bundle for OSGI Library Bundle -->
 	<packaging>bundle</packaging>
@@ -32,13 +32,6 @@
             <artifactId>scalatest_2.10</artifactId> 
             <version>1.9.1</version> 
         </dependency>
-        <!-- For Specs2 Testing -->
-        <dependency>
-            <groupId>org.specs2</groupId> 
-            <artifactId>specs2_2.10</artifactId> 
-            <version>1.14</version>
-            <scope>test</scope> 
-        </dependency>
         <!-- For Akka support -->
         <dependency>
             <groupId>com.typesafe.akka</groupId>
@@ -47,35 +40,20 @@
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-agent_2.10</artifactId>
+            <artifactId>akka-testkit_2.10</artifactId>
             <version>2.1.4</version>
         </dependency>
-        <dependency>
-  			<groupId>io.spray</groupId>
-  			<artifactId>spray-can</artifactId>
-  			<version>1.1-20130523</version>
-  		</dependency>
-        <dependency>
-  			<groupId>io.spray</groupId>
-  			<artifactId>spray-http</artifactId>
-  			<version>1.1-20130523</version>
-  		</dependency>
-  		<dependency>
-  			<groupId>io.spray</groupId>
-  			<artifactId>spray-routing</artifactId>
-  			<version>1.1-20130523</version>
-  		</dependency>
-  		<dependency>
-  			<groupId>io.spray</groupId>
-  			<artifactId>spray-testkit</artifactId>
-  			<version>1.1-20130523</version>
-  		</dependency>  		
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<scope>test</scope>
-		</dependency>		
-	</dependencies>
+		</dependency>
+        <dependency>
+            <groupId>org.squbs</groupId>
+            <artifactId>unicomplex</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
 	
 	<!-- Build Configration -->
 	<build>
@@ -90,7 +68,7 @@
 					<manifestLocation>src/main/resources/META-INF</manifestLocation>
 					<!-- Manifest Headers which need to customized during manifest generation -->
 					<instructions>
-						<Bundle-SymbolicName>org.squbs.unicomplex</Bundle-SymbolicName>
+						<Bundle-SymbolicName>org.squbs.testkit</Bundle-SymbolicName>
 						<!-- <Export-Package></Export-Package>-->
 						<Import-Package>*, 
 						 	 org.springframework.beans.factory;version="[3.0.5.RELEASE,4.0.0)",

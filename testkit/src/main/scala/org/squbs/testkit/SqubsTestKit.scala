@@ -1,8 +1,8 @@
-package org.squbs.testing
+package org.squbs.testkit
 
 import akka.testkit.{ImplicitSender, TestKit}
-import org.squbs.unicomplex.{Bootstrap, Unicomplex}
 import org.scalatest.{Suite, BeforeAndAfterAll}
+import org.squbs.unicomplex.{Bootstrap, Unicomplex}
 
 /**
  * Copyright (c) 2013 eBay, Inc.
