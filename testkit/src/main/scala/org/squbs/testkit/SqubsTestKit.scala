@@ -13,8 +13,6 @@ import org.squbs.unicomplex.{Bootstrap, Unicomplex}
  */
 abstract class SqubsTestKit extends TestKit(Unicomplex.actorSystem) with ImplicitSender with Suite with BeforeAndAfterAll {
 
-  // TODO: Move squbs.testing to its own project
-
   override protected def beforeAll() {
     Bootstrap.main(Array.empty[String])
   }
