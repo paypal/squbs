@@ -11,13 +11,21 @@ import org.squbs.unicomplex.{Bootstrap, Unicomplex}
  * Contributors:
  * asucharitakul
  */
-abstract class SqubsTestKit extends TestKit(Unicomplex.actorSystem) with ImplicitSender with Suite with BeforeAndAfterAll {
+object SqubsTestKit {
+  sys.addShutdownHook {
+    Unicomplex.actorSystem.shutdown()
+  }
+  Bootstrap.main(Array.empty[String])
+
+  private def checkInit(instance: SqubsTestKit) {
+    // No op. Just need to ensure SqubsTestKit object is initialized.
+  }
+}
+
+abstract class SqubsTestKit extends TestKit(Unicomplex.actorSystem)
+with ImplicitSender with Suite with BeforeAndAfterAll {
 
   override protected def beforeAll() {
-    Bootstrap.main(Array.empty[String])
-  }
-
-  override protected def afterAll() {
-    Unicomplex.actorSystem.shutdown()
+    SqubsTestKit.checkInit(this)
   }
 }
