@@ -124,6 +124,10 @@
                     </jvmArgs>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.codehous.mojo</groupId>
+                <artifactId>cobertura-maven-plugin</artifactId>
+            </plugin>
 		</plugins>
 	</build>
 
