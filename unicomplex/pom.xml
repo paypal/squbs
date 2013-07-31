@@ -128,10 +128,37 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>cobertura-maven-plugin</artifactId>
             </plugin>
-		</plugins>
-	</build>
+            <!-- disable surefire -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+            <!-- enable scalatest -->
+            <plugin>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest-maven-plugin</artifactId>
+                <version>1.0-M4-SNAP1</version>
+                <configuration>
+                    <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+                    <junitxml>.</junitxml>
+                    <filereports>WDF TestSuite.txt</filereports>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>test</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
-	<!-- Configuration of repositories for dependency resolution -->
+        <!-- Configuration of repositories for dependency resolution -->
 	<repositories>
 		<!-- Raptor Bundles Repository -->
 		<!-- This is needed to locate the Raptor Parent project. Other repositories come from the parent. -->
@@ -169,11 +196,11 @@
 			<url>http://nightlies.spray.io</url>
 		</repository>	-->
 	</repositories>
-<!--   <pluginRepositories>
+   <pluginRepositories>
 		<pluginRepository>
 			<id>scala-tools.org</id>
 			<name>Scala-tools Maven2 Repository</name>
 			<url>https://oss.sonatype.org/content/groups/scala-tools</url>
 		</pluginRepository>
-	</pluginRepositories> -->
+	</pluginRepositories>
 </project>

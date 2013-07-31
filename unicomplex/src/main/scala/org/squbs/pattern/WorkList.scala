@@ -60,6 +60,20 @@ class WorkList[T] {
    * @return true if an entry has been processed, false if no entries are processed successfully.
    */
   def processAndRemove(processFn: T => Boolean): Boolean = {
+
+    @tailrec
+    def processAndRemove(parent: Entry[T], entry: Entry[T]): Boolean = {
+      val processed = processFn(entry.ref)
+      if (processed) {
+        parent.next = entry.next // Remove entry
+        if (tail == entry) tail = parent
+        true // Handled
+      }
+      else if (entry.next != null) processAndRemove(entry, entry.next)
+      else false
+    }
+
+    // Outer function body...
     val entry = head
     if (entry == null) false
     else {
@@ -69,20 +83,8 @@ class WorkList[T] {
         if (tail == entry) tail = head
         true // Handled
       }
-      else if (entry.next != null) processAndRemove(entry, entry.next, processFn)
+      else if (entry.next != null) processAndRemove(entry, entry.next)
       else false
     }
-  }
-
-  @tailrec
-  private def processAndRemove(parent: Entry[T], entry: Entry[T], processFn: T => Boolean): Boolean = {
-    val processed = processFn(entry.ref)
-    if (processed) {
-      parent.next = entry.next // Remove entry
-      if (tail == entry) tail = parent
-      true // Handled
-    }
-    else if (entry.next != null) processAndRemove(entry, entry.next, processFn)
-    else false
   }
 }
