@@ -196,11 +196,11 @@
 			<url>http://nightlies.spray.io</url>
 		</repository>	-->
 	</repositories>
-   <pluginRepositories>
+<!--   <pluginRepositories>
 		<pluginRepository>
 			<id>scala-tools.org</id>
 			<name>Scala-tools Maven2 Repository</name>
 			<url>https://oss.sonatype.org/content/groups/scala-tools</url>
 		</pluginRepository>
-	</pluginRepositories>
+	</pluginRepositories>-->
 </project>
