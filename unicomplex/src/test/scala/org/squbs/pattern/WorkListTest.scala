@@ -11,8 +11,6 @@ import org.scalatest.FunSuite
 
 case class TestEntry(id: Int)
 
-
-// TODO: Add tests for permanent entries and removals
 class WorkListTest extends FunSuite {
 
   val workList = WorkList.empty[TestEntry]
