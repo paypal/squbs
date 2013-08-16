@@ -12,7 +12,6 @@ object Unicomplex {
   implicit val uniActor = actorSystem.actorOf(Props[Unicomplex], "unicomplex")
 
   val externalConfigDir = "squbsconfig"
-  
 }
 
 private[unicomplex] case object StartWebService

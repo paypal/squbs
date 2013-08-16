@@ -1,7 +1,8 @@
 package org.squbs.unicomplex
 
 import java.io.{File, FileInputStream}
-import java.util.jar.{JarFile, Manifest}
+import java.util.jar.JarFile
+import java.util.jar.{Manifest => JarManifest}
 
 import concurrent.Await
 import concurrent.duration._
@@ -9,6 +10,7 @@ import akka.actor.{Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import scala.collection.mutable.ArrayBuffer
+import org.squbs.lifecycle.ExtensionInit
 
 object Bootstrap extends App {
     
@@ -16,12 +18,35 @@ object Bootstrap extends App {
   
   val startTime = System.nanoTime
 
-  val cubes = System.getProperty("java.class.path")
+  val manifests = System.getProperty("java.class.path")
 		  		.split(File.pathSeparator)
 		  		.map(getManifestInfo).filter(_ != null)
-          .map(getInitInfo).flatten.sortWith(_.startupType.id < _.startupType.id)
-		  		.map(startComponents).flatten.filter(_ != null)
-		  		
+
+  val initInfo = manifests.map(getInitInfo).flatten.groupBy(_.startupType)
+
+  // preInit extensions
+  val extensions = initInfo.getOrElse(StartupType.EXTENSIONS, Array.empty[InitInfo]).map(preInitExtensions)
+    .flatten.filter(_ != null)
+
+  // Init extensions
+  extensions foreach {
+    case (symName, version, extensionInit) =>
+      extensionInit.init(manifests)
+      println(s"Started extension ${extensionInit.getClass.getName} in $symName $version")
+  }
+
+  // Start all actors
+  val actors     = initInfo.getOrElse(StartupType.ACTORS, Array.empty[InitInfo]).map(startActors)
+    .flatten.filter(_ != null)
+
+  // Start all service routes
+  val services   = initInfo.getOrElse(StartupType.SERVICES, Array.empty[InitInfo]).map(startRoutes)
+    .flatten.filter(_ != null)
+
+  // postInit extensions
+  extensions foreach { case (jarName, jarVersion, extensionInit) => extensionInit.postInit(manifests)}
+
+
   val elapsed = (System.nanoTime - startTime) / 1000000
   println(s"squbs started in $elapsed milliseconds")
 
@@ -36,15 +61,13 @@ object Bootstrap extends App {
 
       // Identifies service as startup type
       SERVICES = Value
-
-
   }
 
   case class InitInfo(jarPath: String, symName: String, version: String,
                       entries: String, startupType: StartupType.Value)
 
 
-  private[this] def getManifestInfo(jarName: String): (String, Manifest) = {
+  private[this] def getManifestInfo(jarName: String): (String, JarManifest) = {
     val jarFile = new File(jarName)
     var stream: FileInputStream = null
     try {
@@ -52,7 +75,7 @@ object Bootstrap extends App {
         val manifestFile = new File(jarName, "META-INF/MANIFEST.MF")
         if (manifestFile.isFile) {
           stream = new FileInputStream(manifestFile)
-          (jarName, new Manifest(stream))
+          (jarName, new JarManifest(stream))
         } else null
       } else if (jarFile.isFile) {
         val manifest = new JarFile(jarFile).getManifest
@@ -65,7 +88,7 @@ object Bootstrap extends App {
     } finally if (stream != null) stream.close()
   }
 
-  private[this] def getInitInfo(manifestInfo: (String, Manifest)) = {
+  private[this] def getInitInfo(manifestInfo: (String, JarManifest)) = {
     val jarPath = manifestInfo._1
     val attrs = manifestInfo._2.getMainAttributes
     val symName = attrs.getValue("Bundle-SymbolicName")
@@ -80,18 +103,6 @@ object Bootstrap extends App {
       if (extensions != null) initList += InitInfo(jarPath, symName, version, extensions, StartupType.EXTENSIONS)
     }
     initList.toList
-  }
-
-
-  private[this] def startComponents(initInfo : InitInfo) = {
-    initInfo.startupType match {
-      case StartupType.ACTORS =>
-        startActors(initInfo)
-      case StartupType.SERVICES =>
-        startRoutes(initInfo)
-      case StartupType.EXTENSIONS =>
-        startExtensions(initInfo)
-    }
   }
 
   def startActors(initInfo: InitInfo) = {
@@ -166,13 +177,14 @@ object Bootstrap extends App {
     routeInfo
   }
 
-  def startExtensions(initInfo: InitInfo) = {
+  def preInitExtensions(initInfo: InitInfo) = {
     import initInfo.{jarPath, symName, version, entries}
-    def startExtension(extension: String): (String, String, Class[_]) = {
+    def preInitExtension(extension: String): (String, String, ExtensionInit) = {
       try {
-        val clazz = Class.forName(extension + '$', true, getClass.getClassLoader)
-        println(s"Started extension $extension in $symName $version")
-        (symName, version, clazz)
+        val clazz = Class.forName(extension, true, getClass.getClassLoader)
+        val extensionInit = clazz.asSubclass(classOf[ExtensionInit]).newInstance
+        extensionInit.preInit(manifests)
+        (symName, version, extensionInit)
       } catch {
         case e: Exception =>
           val t = getRootCause(e)
@@ -183,7 +195,7 @@ object Bootstrap extends App {
         null
       }
     }
-    entries.split(',').map(startExtension)
+    entries.split(',').map(preInitExtension)
   }
 
   private[this] def parseOptions(options: String) = 
