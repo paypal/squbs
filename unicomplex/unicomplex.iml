@@ -35,6 +35,7 @@
     <orderEntry type="library" name="Maven: com.typesafe:config:1.0.0" level="project" />
     <orderEntry type="library" name="Maven: com.typesafe.akka:akka-agent_2.10:2.1.4" level="project" />
     <orderEntry type="library" name="Maven: org.scala-stm:scala-stm_2.10:0.7" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: com.typesafe.akka:akka-testkit_2.10:2.1.4" level="project" />
     <orderEntry type="library" name="Maven: io.spray:spray-can:1.1-20130523" level="project" />
     <orderEntry type="library" name="Maven: io.spray:spray-io:1.1-20130523" level="project" />
     <orderEntry type="library" name="Maven: io.spray:spray-util:1.1-20130523" level="project" />

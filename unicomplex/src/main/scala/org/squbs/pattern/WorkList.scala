@@ -28,7 +28,7 @@ object WorkList {
 }
 
 /**
- * Fast, small, and dirty implementation of a linked list that removes work entries once they are processed.
+ * Fast, small, and dirty implementation of a linked list that removes transient work entries once they are processed.
  * @tparam T The type of the item
  */
 class WorkList[T] {
