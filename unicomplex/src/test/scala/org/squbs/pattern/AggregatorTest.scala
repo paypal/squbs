@@ -114,7 +114,7 @@ class AccountBalanceRetriever extends Actor with Aggregator {
     }
 
     def collectBalances(force: Boolean = false) {
-      if (results.size == types || force) {
+      if (results.size == types.length || force) {
         originalSender ! results.toArray // Make sure it becomes immutable
         context.stop(self)
       }
@@ -129,7 +129,7 @@ class AggregatorTest extends TestKit(ActorSystem("test")) with ImplicitSender wi
   test ("Test request 1 account type") {
     system.actorOf(Props[AccountBalanceRetriever]) ! GetCustomerAccountBalances(1, Array(SAVINGS))
     receiveOne(10 seconds) match {
-      case result: Array[(AccountType.Value, Option[_])] =>
+      case result: Array[_] =>
         result should have size 1
       case result =>
         assert(condition = false, s"Expect array, got ${result.getClass}")
@@ -140,7 +140,7 @@ class AggregatorTest extends TestKit(ActorSystem("test")) with ImplicitSender wi
     system.actorOf(Props[AccountBalanceRetriever]) !
       GetCustomerAccountBalances(1, Array(CHECKING, SAVINGS, MONEY_MARKET))
     receiveOne(10 seconds) match {
-      case result: Array[(AccountType.Value, Option[_])] =>
+      case result: Array[_] =>
         result should have size 3
       case result =>
         assert(condition = false, s"Expect array, got ${result.getClass}")
