@@ -120,4 +120,42 @@ class WorkListTest extends FunSuite {
     assert(!processed2)
 
   }
+
+  val workList2 = WorkList.empty[PartialFunction[Any, Unit]]
+
+  val fn1: PartialFunction[Any, Unit] = {
+    case s: String =>
+      implicit val permanent = true
+      workList2 += fn2
+  }
+
+  val fn2: PartialFunction[Any, Unit] = {
+    case s: String =>
+      val result1 = workList2 -= fn2
+      assert(result1 === true, "First remove must return true")
+      val result2 = workList2 -= fn2
+      assert(result2 === false, "Second remove must return false")
+  }
+
+  test ("Reentrant insert") {
+    workList2 += fn1
+    assert(workList2.head != null)
+    assert(workList2.tail == workList2.head)
+
+    // Processing inserted fn1, reentrant adding fn2
+    workList2 process { fn =>
+      var processed = true
+      fn.applyOrElse("Foo", (_: Any) => processed = false)
+      processed
+    }
+  }
+
+  test ("Reentrant delete") {
+    // Processing inserted fn2, should delete itself
+    workList2 process { fn =>
+      var processed = true
+      fn.applyOrElse("Foo", (_: Any) => processed = false)
+      processed
+    }
+  }
 }

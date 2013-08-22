@@ -24,11 +24,15 @@ object WorkList {
    */
   class Entry[T](val ref: T, val permanent: Boolean) {
     var next: Entry[T] = null
+    var isDeleted = false
   }
 }
 
 /**
  * Fast, small, and dirty implementation of a linked list that removes transient work entries once they are processed.
+ * The list is not thread safe! However it is expected to be reentrant. This means a processing function can add/remove
+ * entries from the list while processing. Most important, a processing function can remove its own entry from the list.
+ * The first remove must return true and any subsequent removes must return false.
  * @tparam T The type of the item
  */
 class WorkList[T] {
@@ -54,6 +58,11 @@ class WorkList[T] {
     this
   }
 
+  /**
+   * Removes an entry from the work list
+   * @param ref The entry.
+   * @return True if the entry is removed, false if the entry is not found.
+   */
   def -=(ref: T): Boolean = {
 
     @tailrec
@@ -61,6 +70,7 @@ class WorkList[T] {
       if (entry.ref == ref) {
         parent.next = entry.next // Remove entry
         if (tail == entry) tail = parent
+        entry.isDeleted = true
         true
       }
       else if (entry.next != null) remove(entry, entry.next)
@@ -73,6 +83,7 @@ class WorkList[T] {
     else if (entry.ref == ref) {
       head = entry.next // Remove entry at head
       if (tail == entry) tail = head
+      entry.isDeleted = true
       true
     }
     else if (entry.next != null) remove(entry, entry.next)
@@ -91,9 +102,10 @@ class WorkList[T] {
     def process(parent: Entry[T], entry: Entry[T]): Boolean = {
       val processed = processFn(entry.ref)
       if (processed) {
-        if (!entry.permanent) {
+        if (!entry.permanent && !entry.isDeleted) {
           parent.next = entry.next // Remove entry
           if (tail == entry) tail = parent
+          entry.isDeleted = true
         }
         true // Handled
       }
@@ -107,9 +119,10 @@ class WorkList[T] {
     else {
       val processed = processFn(entry.ref)
       if (processed) {
-        if (!entry.permanent) {
+        if (!entry.permanent && !entry.isDeleted) {
           head = entry.next // Remove entry at head
           if (tail == entry) tail = head
+          entry.isDeleted = true
         }
         true // Handled
       }

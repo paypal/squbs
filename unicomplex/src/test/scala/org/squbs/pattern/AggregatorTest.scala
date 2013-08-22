@@ -7,7 +7,7 @@
  */
 package org.squbs.pattern
 
-import scala.collection.mutable
+import scala.collection._
 import scala.concurrent.duration._
 import scala.math.BigDecimal.int2bigDecimal
 
@@ -28,7 +28,7 @@ object AccountType extends Enumeration {
   val CHECKING, SAVINGS, MONEY_MARKET = Value
 }
 
-case class GetCustomerAccountBalances(id: Long, accountTypes: Array[AccountType.Value])
+case class GetCustomerAccountBalances(id: Long, accountTypes: Set[AccountType.Value])
 case class GetAccountBalances(id: Long)
 
 case class AccountBalances(accountType: AccountType.Value, balance: Option[List[(Long, BigDecimal)]])
@@ -38,6 +38,7 @@ case class SavingsAccountBalances(balances: Option[List[(Long, BigDecimal)]])
 case class MoneyMarketAccountBalances(balances: Option[List[(Long, BigDecimal)]])
 
 case object TimedOut
+case object CantUnderstand
 
 class SavingsAccountProxy extends Actor {
   def receive = {
@@ -64,19 +65,24 @@ class AccountBalanceRetriever extends Actor with Aggregator {
   import context._
 
   expectOnce {
-    case GetCustomerAccountBalances(id, types) => {
+    case GetCustomerAccountBalances(id, types) =>
       new AccountAggregator(sender, id, types)
-    }
+    case _ =>
+      sender ! CantUnderstand
+      context.stop(self)
   }
 
-  class AccountAggregator(originalSender: ActorRef, id: Long, types: Array[AccountType.Value]) {
+  class AccountAggregator(originalSender: ActorRef, id: Long, types: Set[AccountType.Value]) {
 
     val results = mutable.ArrayBuffer.empty[(AccountType.Value, Option[List[(Long, BigDecimal)]])]
-    types foreach {
-      case CHECKING => fetchCheckingAccountsBalance()
-      case SAVINGS => fetchSavingsAccountsBalance()
-      case MONEY_MARKET => fetchMoneyMarketAccountsBalance()
-    }
+
+    if (types.size > 0)
+      types foreach {
+        case CHECKING => fetchCheckingAccountsBalance()
+        case SAVINGS => fetchSavingsAccountsBalance()
+        case MONEY_MARKET => fetchMoneyMarketAccountsBalance()
+      }
+    else collectBalances() // Empty type list yields empty response
 
     context.system.scheduler.scheduleOnce(250 milliseconds) {
       self ! TimedOut
@@ -114,8 +120,8 @@ class AccountBalanceRetriever extends Actor with Aggregator {
     }
 
     def collectBalances(force: Boolean = false) {
-      if (results.size == types.length || force) {
-        originalSender ! results.toArray // Make sure it becomes immutable
+      if (results.size == types.size || force) {
+        originalSender ! results.toList // Make sure it becomes immutable
         context.stop(self)
       }
     }
@@ -127,23 +133,23 @@ class AggregatorTest extends TestKit(ActorSystem("test")) with ImplicitSender wi
   import AccountType._
 
   test ("Test request 1 account type") {
-    system.actorOf(Props[AccountBalanceRetriever]) ! GetCustomerAccountBalances(1, Array(SAVINGS))
+    system.actorOf(Props[AccountBalanceRetriever]) ! GetCustomerAccountBalances(1, Set(SAVINGS))
     receiveOne(10 seconds) match {
-      case result: Array[_] =>
+      case result: List[_] =>
         result should have size 1
       case result =>
-        assert(condition = false, s"Expect array, got ${result.getClass}")
+        assert(condition = false, s"Expect List, got ${result.getClass}")
     }
   }
 
   test ("Test request 3 account types") {
     system.actorOf(Props[AccountBalanceRetriever]) !
-      GetCustomerAccountBalances(1, Array(CHECKING, SAVINGS, MONEY_MARKET))
+      GetCustomerAccountBalances(1, Set(CHECKING, SAVINGS, MONEY_MARKET))
     receiveOne(10 seconds) match {
-      case result: Array[_] =>
+      case result: List[_] =>
         result should have size 3
       case result =>
-        assert(condition = false, s"Expect array, got ${result.getClass}")
+        assert(condition = false, s"Expect List, got ${result.getClass}")
     }
   }
 }
