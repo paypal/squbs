@@ -172,6 +172,20 @@ trait Future[+T] {
     p.future
   }
 
+  /** Returns the successful projection of this future.
+    *
+    * If the future has not been completed, a NoSuchElementException is thrown.
+    * If the future failed, the exception causing the failure is thrown.
+    * @return The value of this future, provided it is completed.
+    */
+  def apply(): T = {
+    value match {
+      case Some(Failure(t)) => throw t
+      case Some(Success(v)) => v
+      case None => throw new NoSuchElementException("Future not completed.")
+    }
+  }
+
 
   /* Monadic operations */
 
