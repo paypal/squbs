@@ -25,8 +25,9 @@ object Bootstrap extends App {
   val initInfo = manifests.map(getInitInfo).flatten.groupBy(_.startupType)
 
   // preInit extensions
-  val extensions = initInfo.getOrElse(StartupType.EXTENSIONS, Array.empty[InitInfo]).map(preInitExtensions)
-    .flatten.filter(_ != null)
+  val initSeq = initInfo.getOrElse(StartupType.EXTENSIONS, Array.empty[InitInfo]).map(getInitList).flatten.sortBy(_._3)
+
+  val extensions = initSeq map (init => preInitExtension(init._1, init._2, init._3)) filter (_ != null)
 
   // Init extensions
   extensions foreach {
@@ -177,9 +178,20 @@ object Bootstrap extends App {
     routeInfo
   }
 
-  def preInitExtensions(initInfo: InitInfo) = {
-    import initInfo.{jarPath, symName, version, entries}
-    def preInitExtension(extension: String): (String, String, ExtensionInit) = {
+  def getInitList(initInfo: InitInfo): Array[(InitInfo, String, Int)] = {
+    initInfo.entries split ',' map { entry =>
+      val nameEnd = entry.indexOf(';')
+      val className = if (nameEnd == -1) entry else entry.substring(0, nameEnd)
+      val props =
+        if (nameEnd < 0) Map.empty[String, String]
+        else parseOptions(entry.substring(nameEnd + 1)).toMap
+      val seqNo = props.get("sequence") map (_.toInt) getOrElse Int.MaxValue
+      (initInfo, className, seqNo)
+    }
+  }
+
+    def preInitExtension(initInfo: InitInfo, extension: String, seq: Int): (String, String, ExtensionInit) = {
+      import initInfo.{symName, version, jarPath}
       try {
         val clazz = Class.forName(extension, true, getClass.getClassLoader)
         val extensionInit = clazz.asSubclass(classOf[ExtensionInit]).newInstance
@@ -195,10 +207,9 @@ object Bootstrap extends App {
         null
       }
     }
-    entries.split(',').map(preInitExtension)
-  }
 
-  private[this] def parseOptions(options: String) = 
+
+  private[this] def parseOptions(options: String): Array[(String, String)] =
     options.split(';').map { nv =>
       val eqIdx = nv.indexOf('=')
       val name = nv.substring(0, eqIdx)
