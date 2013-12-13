@@ -13,10 +13,21 @@ import org.squbs.unicomplex.{Bootstrap, Unicomplex}
  * asucharitakul
  */
 object SqubsTestKit {
+
+  val debugMode = java.lang.management.ManagementFactory.getRuntimeMXBean.
+    getInputArguments.toString.indexOf("jdwp") >= 0
+
+  val debugTimeout = 10000.seconds
+
   sys.addShutdownHook {
     Unicomplex.actorSystem.shutdown()
   }
   Bootstrap.main(Array.empty[String])
+
+  if (debugMode) println(
+    "\n##################\n" +
+      s"IMPORTANT: Detected system running in debug mode. Test timeouts overridden to $debugTimeout.\n" +
+      "##################\n\n")
 
   private def checkInit(instance: SqubsTestKit) {
     // No op. Just need to ensure SqubsTestKit object is initialized.
@@ -26,17 +37,7 @@ object SqubsTestKit {
 abstract class SqubsTestKit extends TestKit(Unicomplex.actorSystem)
 with ImplicitSender with Suite with BeforeAndAfterAll {
 
-  val debugTimeout = 10000.seconds
-
-  val debugMode = java.lang.management.ManagementFactory.getRuntimeMXBean.
-    getInputArguments.toString.indexOf("jdwp") >= 0
-
-  if (debugMode) println(
-    "\n##################\n" +
-    s"IMPORTANT: Detected system running in debug mode. All timeouts overridden to $debugTimeout.\n" +
-    "##################\n\n")
-
-
+  import SqubsTestKit._
 
   override protected def beforeAll() {
     SqubsTestKit.checkInit(this)
