@@ -1,0 +1,14 @@
+<component name="libraryTable">
+  <library name="SBT: org.scala-lang:scala-library:2.10.3:provided">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.10.3.jar!/" />
+      <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/lib/scala-library.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/docs/scala-library-2.10.3-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.3-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

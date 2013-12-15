@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="SBT: org.apache.ivy:ivy:2.3.0-rc1:provided">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.apache.ivy/ivy/jars/ivy-2.3.0-rc1.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.apache.ivy/ivy/docs/ivy-2.3.0-rc1-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.apache.ivy/ivy/srcs/ivy-2.3.0-rc1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

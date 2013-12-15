@@ -1,0 +1,71 @@
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <output url="file://$MODULE_DIR$/../project/target/idea-classes"/>
+    <output-test url="file://$MODULE_DIR$/../project/target/idea-test-classes"/>
+    <exclude-output/>
+    <content url="file://$MODULE_DIR$/../project">
+      <sourceFolder url="file://$MODULE_DIR$/../project" isTestSource="false"/>
+      <sourceFolder url="file://$MODULE_DIR$/../project/project" isTestSource="false"/>
+      <excludeFolder url="file://$MODULE_DIR$/../project/boot"/>
+      <excludeFolder url="file://$MODULE_DIR$/../project/target"/>
+      <excludeFolder url="file://$MODULE_DIR$/../project/project/target"/>
+      <excludeFolder url="file://$MODULE_DIR$/../project/project/project/target"/>
+    </content>
+    <orderEntry type="inheritedJdk"/>
+    <orderEntry type="sourceFolder" forTests="false"/>
+    <orderEntry type="module-library">
+      <library name="sbt-and-plugins">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.ivy2/cache/commons-io/commons-io/jars/commons-io-2.0.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/actions-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/scala-reflect-2.10.3.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/cross-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/test-interface-1.0.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/tracking-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/main-settings-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/lib/scala-reflect.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/incremental-compiler-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/api-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/command-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/logging-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/sbinary_2.10-0.4.2.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/tasks-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.ivy2/cache/scala_2.10/sbt_0.13/com.github.mpeltonen/sbt-idea/jars/sbt-idea-1.5.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/cache-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/ivy-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/compiler-integration-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/persist-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/lib/jansi.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/lib/scala-compiler.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/process-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/relation-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/testing-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/jsch-0.1.46.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/launcher-interface-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/compiler-ivy-integration-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/apply-macro-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/classpath-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/xsbti/interface-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/compile-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/test-agent-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/main-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/lib/scala-library.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/collections-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/sbt-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/jline-2.11.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/ivy-2.3.0-rc1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/classfile-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/lib/jline.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/io-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/completion-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/task-system-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/control-0.13.1.jar!/"/>
+          <root url="jar://$USER_HOME$/.sbt/boot/scala-2.10.3/org.scala-sbt/sbt/0.13.1/run-0.13.1.jar!/"/>
+        </CLASSES>
+        <JAVADOC> </JAVADOC>
+        <SOURCES> </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="library" name="SBT: scala:2.10.3" level="project"/>
+  </component>
+</module>

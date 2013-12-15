@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="SBT: org.scala-tools.sbinary:sbinary_2.10:0.4.2:provided">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.scala-tools.sbinary/sbinary_2.10/jars/sbinary_2.10-0.4.2.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.scala-tools.sbinary/sbinary_2.10/docs/sbinary_2.10-0.4.2-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.scala-tools.sbinary/sbinary_2.10/srcs/sbinary_2.10-0.4.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
