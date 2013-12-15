@@ -1,4 +1,3 @@
-package org.squbs.plugin
 /*
  * Copyright (c) 2013 eBay, Inc.
  * All rights reserved.
@@ -6,10 +5,18 @@ package org.squbs.plugin
  * Contributors:
  * asucharitakul
  */
+package org.squbs.plugin
+
 import sbt._
+import Keys._
 
+object SqubsPlugin extends Plugin {
 
+  override lazy val settings = Seq(commands += myCommand)
 
-class SqubsPlugin extends Plugin {
-
+  lazy val myCommand =
+    Command.command("hello") { (state: State) =>
+      println("Hi!")
+      state
+    }
 }
