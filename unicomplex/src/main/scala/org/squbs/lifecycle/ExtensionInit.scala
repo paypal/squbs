@@ -7,13 +7,13 @@
  */
 package org.squbs.lifecycle
 
-import java.util.jar.{Manifest => JarManifest}
+import com.typesafe.config.Config
 
 trait ExtensionInit {
 
-  def preInit(allJars: Array[(String, JarManifest)]) {}
+  def preInit(jarConfig: Seq[(String, Config)]) {}
 
-  def init(allJars: Array[(String, JarManifest)]) {}
+  def init(jarConfig: Seq[(String, Config)]) {}
 
-  def postInit(allJars: Array[(String, JarManifest)]) {}
+  def postInit(jarConfig: Seq[(String, Config)]) {}
 }
