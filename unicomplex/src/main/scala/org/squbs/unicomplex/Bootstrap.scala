@@ -2,7 +2,6 @@ package org.squbs.unicomplex
 
 import java.io._
 import java.util.jar.JarFile
-import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -11,6 +10,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import org.squbs.lifecycle.ExtensionInit
 import com.typesafe.config.{ConfigException, ConfigFactory, Config}
+import ConfigUtil._
 
 object Bootstrap extends App {
 
@@ -29,7 +29,11 @@ object Bootstrap extends App {
 
   case class InitInfo(jarPath: String, symName: String, version: String,
                       entries: Seq[_ <: Config], startupType: StartupType.Value)
-    
+
+  // Make it extra lazy, so that we do not create the next File if the previous one succeeds.
+  val configExtensions = Stream("conf", "json", "properties")
+
+
   println("Booting unicomplex")
   
   val startTime = System.nanoTime
@@ -75,13 +79,9 @@ object Bootstrap extends App {
   val elapsed = (System.nanoTime - startTime) / 1000000
   println(s"squbs started in $elapsed milliseconds")
 
-
   private[this] def readConfigs(jarName: String): Option[Config] = {
     val jarFile = new File(jarName)
 
-    // Make it extra lazy, so that we do not create the next File if the previous one succeeds.
-    val configExtensions = Stream("conf", "json", "properties")
-    
     var fileName: String = "" // Contains the evaluated config file name, used for reporting errors.
     var configReader: Option[Reader] = None
 
@@ -113,17 +113,10 @@ object Bootstrap extends App {
 
       configReader map ConfigFactory.parseReader
 
-//      configReader match {
-//        case Some(reader) =>
-//          val config = ConfigFactory.parseReader(reader)
-//          getInitInfo(jarName, config)
-//
-//        case None => Seq.empty[InitInfo]
-//      }
     } catch {
       case e: Exception =>
         println(s"${e.getClass.getName} reading configuration from $jarName : $fileName.\n ${e.getMessage}")
-        null
+        None
     } finally {
       configReader match {
         case Some(reader) => reader.close()
@@ -149,14 +142,20 @@ object Bootstrap extends App {
 
     val initList = ArrayBuffer.empty[InitInfo]
 
-    val actors = config.getConfigList("squbs-actors").toSeq
-    if (!actors.isEmpty) initList += InitInfo(jarPath, cubeName, cubeVersion, actors, StartupType.ACTORS)
+    val actors = config.getOptionalConfigList("squbs-actors")
+    actors foreach { a =>
+      if (!a.isEmpty) initList += InitInfo(jarPath, cubeName, cubeVersion, a, StartupType.ACTORS)
+    }
 
-    val routeDefs = config.getConfigList("squbs-services").toSeq
-    if (!routeDefs.isEmpty) initList += InitInfo(jarPath, cubeName, cubeVersion, routeDefs, StartupType.SERVICES)
+    val routeDefs = config.getOptionalConfigList("squbs-services")
+    routeDefs foreach { d =>
+      if (!d.isEmpty) initList += InitInfo(jarPath, cubeName, cubeVersion, d, StartupType.SERVICES)
+    }
     
-    val extensions = config.getConfigList("squbs-extensions").toSeq
-    if (!extensions.isEmpty) initList += InitInfo(jarPath, cubeName, cubeVersion, extensions, StartupType.EXTENSIONS)
+    val extensions = config.getOptionalConfigList("squbs-extensions")
+    extensions foreach { e =>
+      if (!e.isEmpty) initList += InitInfo(jarPath, cubeName, cubeVersion, e, StartupType.EXTENSIONS)
+    }
     
     initList.toSeq
   }
@@ -169,12 +168,7 @@ object Bootstrap extends App {
 
     def startActor(actorConfig: Config): (String, String, Class[_]) = {
       val className = actorConfig.getString("class-name")
-      val name =
-      try {
-        actorConfig.getString("name")
-      } catch {
-        case e: ConfigException.Missing => className.substring(className.lastIndexOf('.') + 1)
-      }
+      val name = actorConfig.getOptionalString("name").getOrElse(className.substring(className.lastIndexOf('.') + 1))
 
       try {
         val clazz = Class.forName(className, true, getClass.getClassLoader)
@@ -237,11 +231,7 @@ object Bootstrap extends App {
   def getExtensionList(initInfo: InitInfo): Seq[(InitInfo, String, Int)] = {
     initInfo.entries map { config =>
       val className = config.getString("class-name")
-      val seqNo = try {
-        config.getInt("sequence")
-      } catch {
-        case e: ConfigException.Missing => Int.MaxValue
-      }
+      val seqNo = config.getOptionalInt("sequence").getOrElse(Int.MaxValue)
       (initInfo, className, seqNo)
     }
   }
