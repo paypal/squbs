@@ -16,7 +16,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.squbs</groupId>
 	<artifactId>testkit</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2-SNAPSHOT</version>
 	<!-- Packing Type is bundle for OSGI Library Bundle -->
 	<packaging>bundle</packaging>
 
@@ -51,7 +51,7 @@
         <dependency>
             <groupId>org.squbs</groupId>
             <artifactId>unicomplex</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <version>0.0.2-SNAPSHOT</version>
         </dependency>
     </dependencies>
 	
