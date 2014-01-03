@@ -31,6 +31,7 @@
             <groupId>org.scalatest</groupId> 
             <artifactId>scalatest_2.10</artifactId> 
             <version>1.9.1</version>
+            <scope>test</scope>
         </dependency>
         <!-- For Specs2 Testing -->
         <dependency>
@@ -59,22 +60,22 @@
         <dependency>
   			<groupId>io.spray</groupId>
   			<artifactId>spray-can</artifactId>
-  			<version>1.2-RC4</version>
+  			<version>1.2.0</version>
   		</dependency>
         <dependency>
   			<groupId>io.spray</groupId>
   			<artifactId>spray-http</artifactId>
-  			<version>1.2-RC4</version>
+  			<version>1.2.0</version>
   		</dependency>
   		<dependency>
   			<groupId>io.spray</groupId>
   			<artifactId>spray-routing</artifactId>
-  			<version>1.2-RC4</version>
+  			<version>1.2.0</version>
   		</dependency>
   		<dependency>
   			<groupId>io.spray</groupId>
   			<artifactId>spray-testkit</artifactId>
-  			<version>1.2-RC4</version>
+  			<version>1.2.0</version>
   		</dependency>
 		<dependency>
 			<groupId>junit</groupId>

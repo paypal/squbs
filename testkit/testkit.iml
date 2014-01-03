@@ -33,17 +33,17 @@
     <orderEntry type="module" module-name="unicomplex" />
     <orderEntry type="library" name="Maven: com.typesafe.akka:akka-agent_2.10:2.2.3" level="project" />
     <orderEntry type="library" name="Maven: org.scala-stm:scala-stm_2.10:0.7" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-can:1.2-RC4" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-io:1.2-RC4" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-util:1.2-RC4" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-http:1.2-RC4" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-can:1.2.0" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-io:1.2.0" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-util:1.2.0" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-http:1.2.0" level="project" />
     <orderEntry type="library" name="Maven: org.parboiled:parboiled-scala_2.10:1.1.6" level="project" />
     <orderEntry type="library" name="Maven: org.parboiled:parboiled-core:1.1.6" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-routing:1.2-RC4" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-httpx:1.2-RC4" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-routing:1.2.0" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-httpx:1.2.0" level="project" />
     <orderEntry type="library" name="Maven: org.jvnet.mimepull:mimepull:1.9.3" level="project" />
     <orderEntry type="library" name="Maven: com.chuusai:shapeless_2.10:1.2.4" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-testkit:1.2-RC4" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-testkit:1.2.0" level="project" />
   </component>
 </module>
 
