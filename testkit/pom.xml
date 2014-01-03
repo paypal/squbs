@@ -24,24 +24,24 @@
 		<dependency>
 			<groupId>org.scala-lang</groupId>
 			<artifactId>scala-library</artifactId>
-			<version>2.10.1</version>
+			<version>2.10.3</version>
 		</dependency>				
 		<!-- For ScalaTesting -->
         <dependency>
             <groupId>org.scalatest</groupId> 
             <artifactId>scalatest_2.10</artifactId> 
-            <version>1.9.1</version> 
+            <version>1.9.1</version>
         </dependency>
         <!-- For Akka support -->
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-actor_2.10</artifactId>
-            <version>2.1.4</version>
+            <version>2.2.3</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-testkit_2.10</artifactId>
-            <version>2.1.4</version>
+            <version>2.2.3</version>
         </dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -162,13 +162,13 @@
 			<id>scala-tools.org</id>
 			<name>Scala-tools Maven2 Repository</name>
 			<url>https://oss.sonatype.org/content/groups/scala-tools</url>
-		</repository>
-				<repository>
+		</repository> -->
+	   <repository>
 			<id>spray.io</id>
 			<name>Spray repo</name>
 			<url>http://repo.spray.io</url>
 		</repository>
-		<repository>
+<!--		<repository>
 			<id>spray.io.nightly</id>
 			<name>Spray repo</name>
 			<url>http://nightlies.spray.io</url>

@@ -4,7 +4,7 @@
     <facet type="scala" name="Scala">
       <configuration>
         <option name="compilerLibraryLevel" value="Project" />
-        <option name="compilerLibraryName" value="Maven: org.scala-lang:scala-compiler-bundle:2.10.1" />
+        <option name="compilerLibraryName" value="Maven: org.scala-lang:scala-compiler-bundle:2.10.3" />
         <option name="maximumHeapSize" value="1024" />
         <option name="vmOptions" value="-Xms64m" />
       </configuration>
@@ -22,7 +22,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Maven: org.scala-lang:scala-library:2.10.1" level="project" />
+    <orderEntry type="library" name="Maven: org.scala-lang:scala-library:2.10.3" level="project" />
     <orderEntry type="library" name="Maven: org.scalatest:scalatest_2.10:1.9.1" level="project" />
     <orderEntry type="library" name="Maven: org.scala-lang:scala-actors:2.10.0" level="project" />
     <orderEntry type="library" name="Maven: org.scala-lang:scala-reflect:2.10.0" level="project" />
@@ -31,22 +31,22 @@
     <orderEntry type="library" scope="TEST" name="Maven: org.specs2:specs2-scalaz-concurrent_2.10:7.0.0" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.specs2:scalaz-effect_2.10:7.0.0" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.specs2:scalaz-core_2.10:7.0.0" level="project" />
-    <orderEntry type="library" name="Maven: com.typesafe.akka:akka-actor_2.10:2.1.4" level="project" />
-    <orderEntry type="library" name="Maven: com.typesafe:config:1.0.0" level="project" />
-    <orderEntry type="library" name="Maven: com.typesafe.akka:akka-agent_2.10:2.1.4" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe.akka:akka-actor_2.10:2.2.3" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe:config:1.0.2" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe.akka:akka-agent_2.10:2.2.3" level="project" />
     <orderEntry type="library" name="Maven: org.scala-stm:scala-stm_2.10:0.7" level="project" />
-    <orderEntry type="library" scope="TEST" name="Maven: com.typesafe.akka:akka-testkit_2.10:2.1.4" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-can:1.1-20130523" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-io:1.1-20130523" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-util:1.1-20130523" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-http:1.1-20130523" level="project" />
-    <orderEntry type="library" name="Maven: org.parboiled:parboiled-scala_2.10:1.1.5" level="project" />
-    <orderEntry type="library" name="Maven: org.parboiled:parboiled-core:1.1.5" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-routing:1.1-20130523" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-httpx:1.1-20130523" level="project" />
-    <orderEntry type="library" name="Maven: org.jvnet.mimepull:mimepull:1.9.2" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: com.typesafe.akka:akka-testkit_2.10:2.2.3" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-can:1.2-RC4" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-io:1.2-RC4" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-util:1.2-RC4" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-http:1.2-RC4" level="project" />
+    <orderEntry type="library" name="Maven: org.parboiled:parboiled-scala_2.10:1.1.6" level="project" />
+    <orderEntry type="library" name="Maven: org.parboiled:parboiled-core:1.1.6" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-routing:1.2-RC4" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-httpx:1.2-RC4" level="project" />
+    <orderEntry type="library" name="Maven: org.jvnet.mimepull:mimepull:1.9.3" level="project" />
     <orderEntry type="library" name="Maven: com.chuusai:shapeless_2.10:1.2.4" level="project" />
-    <orderEntry type="library" name="Maven: io.spray:spray-testkit:1.1-20130523" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-testkit:1.2-RC4" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: junit:junit:4.8.1" level="project" />
   </component>
 </module>

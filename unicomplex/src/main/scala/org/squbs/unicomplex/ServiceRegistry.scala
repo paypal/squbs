@@ -5,10 +5,9 @@ import akka.io.IO
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
 import akka.agent.Agent
 import spray.can.Http
-import spray.http.MediaTypes
+import spray.http.{MediaType, MediaTypes}
 import spray.routing._
 import Directives._
-import MediaTypes._
 import spray.routing.HttpService
 
 import Unicomplex._
@@ -17,6 +16,8 @@ case class Register(routeDef: RouteDefinition)
 case class Unregister(key: String)
 
 object ServiceRegistry {
+
+  implicit val executionContext = actorSystem.dispatcher
 
   private[unicomplex] val route = Agent[Route](null)
   private[unicomplex] val registrar = Agent[ActorRef](null)
@@ -98,6 +99,6 @@ trait RouteDefinition {
 object MediaTypeExt {
   
   val `text/event-stream` = MediaTypes.register(
-      new CustomMediaType("text", "event-stream", compressible = true))
+      MediaType.custom("text", "event-stream", compressible = true))
 
 }

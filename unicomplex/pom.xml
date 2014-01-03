@@ -24,13 +24,13 @@
 		<dependency>
 			<groupId>org.scala-lang</groupId>
 			<artifactId>scala-library</artifactId>
-			<version>2.10.1</version>
+			<version>2.10.3</version>
 		</dependency>				
 		<!-- For ScalaTesting -->
         <dependency>
             <groupId>org.scalatest</groupId> 
             <artifactId>scalatest_2.10</artifactId> 
-            <version>1.9.1</version> 
+            <version>1.9.1</version>
         </dependency>
         <!-- For Specs2 Testing -->
         <dependency>
@@ -43,38 +43,38 @@
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-actor_2.10</artifactId>
-            <version>2.1.4</version>
+            <version>2.2.3</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-agent_2.10</artifactId>
-            <version>2.1.4</version>
+            <version>2.2.3</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-testkit_2.10</artifactId>
-            <version>2.1.4</version>
+            <version>2.2.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
   			<groupId>io.spray</groupId>
   			<artifactId>spray-can</artifactId>
-  			<version>1.1-20130523</version>
+  			<version>1.2-RC4</version>
   		</dependency>
         <dependency>
   			<groupId>io.spray</groupId>
   			<artifactId>spray-http</artifactId>
-  			<version>1.1-20130523</version>
+  			<version>1.2-RC4</version>
   		</dependency>
   		<dependency>
   			<groupId>io.spray</groupId>
   			<artifactId>spray-routing</artifactId>
-  			<version>1.1-20130523</version>
+  			<version>1.2-RC4</version>
   		</dependency>
   		<dependency>
   			<groupId>io.spray</groupId>
   			<artifactId>spray-testkit</artifactId>
-  			<version>1.1-20130523</version>
+  			<version>1.2-RC4</version>
   		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -146,7 +146,7 @@
             <plugin>
                 <groupId>org.scalatest</groupId>
                 <artifactId>scalatest-maven-plugin</artifactId>
-                <version>1.0-M4-SNAP1</version>
+                <version>1.0-RC2</version>
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
@@ -190,17 +190,17 @@
 			<id>scala-tools.org</id>
 			<name>Scala-tools Maven2 Repository</name>
 			<url>https://oss.sonatype.org/content/groups/scala-tools</url>
-		</repository>
-				<repository>
+		</repository>  -->
+	    <repository>
 			<id>spray.io</id>
 			<name>Spray repo</name>
 			<url>http://repo.spray.io</url>
 		</repository>
-		<repository>
+<!--		<repository>
 			<id>spray.io.nightly</id>
 			<name>Spray repo</name>
 			<url>http://nightlies.spray.io</url>
-		</repository>	-->
+		</repository> -->
 	</repositories>
 <!--   <pluginRepositories>
 		<pluginRepository>
@@ -208,5 +208,5 @@
 			<name>Scala-tools Maven2 Repository</name>
 			<url>https://oss.sonatype.org/content/groups/scala-tools</url>
 		</pluginRepository>
-	</pluginRepositories>-->
+	</pluginRepositories>  -->
 </project>

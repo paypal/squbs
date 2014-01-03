@@ -206,7 +206,7 @@ object Bootstrap extends App {
           Await.ready(ackFuture, timeout.duration)
           // Tight loop making sure the registrar is in place
           while (registrar() == null) {
-            registrar.await
+            Await.result(registrar.future(), timeout.duration)
           }
           val elapsed = (System.nanoTime - startTime) / 1000000
           println(s"Web Service started in $elapsed milliseconds")
