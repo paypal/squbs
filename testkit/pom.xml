@@ -162,13 +162,13 @@
 			<id>scala-tools.org</id>
 			<name>Scala-tools Maven2 Repository</name>
 			<url>https://oss.sonatype.org/content/groups/scala-tools</url>
-		</repository> -->
+		</repository>
 	   <repository>
 			<id>spray.io</id>
 			<name>Spray repo</name>
 			<url>http://repo.spray.io</url>
 		</repository>
-<!--		<repository>
+		<repository>
 			<id>spray.io.nightly</id>
 			<name>Spray repo</name>
 			<url>http://nightlies.spray.io</url>
