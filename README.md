@@ -51,3 +51,5 @@ Projects
 [rocksqubs](https://github.scm.corp.ebay.com/Raptor/rocksqubs): The eBay operationalization layer, hardening squbs for handling billions of service requests a day
 
 [squbsamples](https://github.scm.corp.ebay.com/Raptor/squbsamples): Service and application sample cubes, messages, and services
+
+[sbt-ebay](https://https://github.scm.corp.ebay.com/Raptor/sbt-ebay): SBT plugin for ebay PaaS integration and operationalization.
