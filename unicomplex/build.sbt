@@ -11,7 +11,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.2.3",
   "com.typesafe.akka" %% "akka-agent" % "2.2.3",
   "com.typesafe.akka" %% "akka-testkit" % "2.2.3" % "test",
-  "com.typesafe" % "config" % "1.0.2" % "compile",
   "io.spray" % "spray-can" % "1.2.0",
   "io.spray" % "spray-http" % "1.2.0",
   "io.spray" % "spray-routing" % "1.2.0",
