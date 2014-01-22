@@ -3,6 +3,8 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/sbt-squbs.iml" filepath="$PROJECT_DIR$/sbt-squbs.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/squbs.iml" filepath="$PROJECT_DIR$/.idea/modules/squbs.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/squbs-build.iml" filepath="$PROJECT_DIR$/.idea/modules/squbs-build.iml" />
     </modules>
   </component>
 </project>
