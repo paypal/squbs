@@ -81,7 +81,7 @@ object ServiceRegistry {
       registrar send registrarRef
       val serviceRef = context.actorOf(Props[WebSvcActor], "web-service")
       // create a new HttpServer using our handler tell it where to bind to
-      IO(Http) ! Http.Bind(serviceRef, interface = "localhost", port = 8080)
+      IO(Http) ! Http.Bind(serviceRef, interface = "0.0.0.0", port = 8080)
       context.watch(registrarRef)
       context.watch(serviceRef)
   }
