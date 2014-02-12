@@ -76,14 +76,17 @@ object ServiceRegistry {
    * upon seeing the first service registration.
    */
   private[unicomplex] def startWebService(implicit context: ActorContext) = {
-          
-      val registrarRef = context.actorOf(Props[Registrar], "service-registrar")
-      registrar send registrarRef
-      val serviceRef = context.actorOf(Props[WebSvcActor], "web-service")
-      // create a new HttpServer using our handler tell it where to bind to
-      IO(Http) ! Http.Bind(serviceRef, interface = "0.0.0.0", port = 8080)
-      context.watch(registrarRef)
-      context.watch(serviceRef)
+
+    val registrarRef = context.actorOf(Props[Registrar], "service-registrar")
+    registrar send registrarRef
+    val serviceRef = context.actorOf(Props[WebSvcActor], "web-service")
+
+    // create a new HttpServer using our handler tell it where to bind to
+    val interface = Unicomplex.config getString "bind-address"
+    val port = Unicomplex.config getInt "bind-port"
+    IO(Http) ! Http.Bind(serviceRef, interface, port)
+    context.watch(registrarRef)
+    context.watch(serviceRef)
   }
 }
 

@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="SBT: io.spray:spray-routing:1.2.0">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/io.spray/spray-routing/jars/spray-routing-1.2.0.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.ivy2/cache/io.spray/spray-routing/docs/spray-routing-1.2.0-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/io.spray/spray-routing/srcs/spray-routing-1.2.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

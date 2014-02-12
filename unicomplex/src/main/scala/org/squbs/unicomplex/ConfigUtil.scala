@@ -41,6 +41,22 @@ object ConfigUtil {
       }
     }
 
+    def getOptionalBoolean(path: String): Option[Boolean] = {
+      try {
+        Option(underlying.getBoolean(path))
+      } catch {
+        case e: ConfigException.Missing => None
+      }
+    }
+
+    def getOptionalConfig(path: String): Option[Config] = {
+      try {
+        Some(underlying.getConfig(path))
+      } catch {
+        case e: ConfigException.Missing => None
+      }
+    }
+
 
     def getOptionalConfigList(path: String): Option[Seq[Config]] = {
       val list =

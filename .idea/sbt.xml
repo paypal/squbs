@@ -8,6 +8,12 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/project" />
+            <option value="$PROJECT_DIR$/sbt-squbs" />
+            <option value="$PROJECT_DIR$/sbt-squbs/project" />
+            <option value="$PROJECT_DIR$/testkit" />
+            <option value="$PROJECT_DIR$/testkit/project" />
+            <option value="$PROJECT_DIR$/unicomplex" />
+            <option value="$PROJECT_DIR$/unicomplex/project" />
           </set>
         </option>
       </SbtProjectSettings>

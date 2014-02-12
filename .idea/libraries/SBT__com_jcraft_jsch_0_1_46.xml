@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="SBT: com.jcraft:jsch:0.1.46">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/com.jcraft/jsch/jars/jsch-0.1.46.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.ivy2/cache/com.jcraft/jsch/docs/jsch-0.1.46-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/com.jcraft/jsch/srcs/jsch-0.1.46-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="SBT: org.scala-sbt:main:0.13.1">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.scala-sbt/main/jars/main-0.13.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/org.scala-sbt/main/srcs/main-0.13.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

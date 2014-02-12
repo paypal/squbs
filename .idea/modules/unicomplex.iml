@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module external.linked.project.path="$MODULE_DIR$/../../unicomplex" external.root.project.path="$MODULE_DIR$/../.." external.system.id="SBT" type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="scala" name="Scala">
+      <configuration>
+        <option name="compilerLibraryLevel" value="Project" />
+        <option name="compilerLibraryName" value="SBT:: scala-compiler:2.10.3" />
+      </configuration>
+    </facet>
+  </component>
+  <component name="NewModuleRootManager" inherit-compiler-output="false">
+    <output url="file://$MODULE_DIR$/../../unicomplex/target/scala-2.10/classes" />
+    <output-test url="file://$MODULE_DIR$/../../unicomplex/target/scala-2.10/test-classes" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../../unicomplex">
+      <sourceFolder url="file://$MODULE_DIR$/../../unicomplex/src/main/scala" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../unicomplex/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../unicomplex/target/scala-2.10/src_managed/main" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../unicomplex/src/test/java" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/../../unicomplex/src/test/scala" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/../../unicomplex/target/scala-2.10/src_managed/test" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/../../unicomplex/src/main/resources" type="java-resource" />
+      <sourceFolder url="file://$MODULE_DIR$/../../unicomplex/target/scala-2.10/resource_managed/main" type="java-resource" />
+      <sourceFolder url="file://$MODULE_DIR$/../../unicomplex/target/scala-2.10/resource_managed/test" type="java-test-resource" />
+      <sourceFolder url="file://$MODULE_DIR$/../../unicomplex/src/test/resources" type="java-test-resource" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="SBT: com.chuusai:shapeless_2.10:1.2.4" level="project" />
+    <orderEntry type="library" name="SBT: com.typesafe:config:1.0.2" level="project" />
+    <orderEntry type="library" name="SBT: com.typesafe.akka:akka-actor_2.10:2.2.3" level="project" />
+    <orderEntry type="library" name="SBT: com.typesafe.akka:akka-agent_2.10:2.2.3" level="project" />
+    <orderEntry type="library" scope="TEST" name="SBT: com.typesafe.akka:akka-testkit_2.10:2.2.3" level="project" />
+    <orderEntry type="library" name="SBT: io.spray:spray-can:1.2.0" level="project" />
+    <orderEntry type="library" name="SBT: io.spray:spray-http:1.2.0" level="project" />
+    <orderEntry type="library" name="SBT: io.spray:spray-httpx:1.2.0" level="project" />
+    <orderEntry type="library" name="SBT: io.spray:spray-io:1.2.0" level="project" />
+    <orderEntry type="library" name="SBT: io.spray:spray-routing:1.2.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="SBT: io.spray:spray-testkit:1.2.0" level="project" />
+    <orderEntry type="library" name="SBT: io.spray:spray-util:1.2.0" level="project" />
+    <orderEntry type="library" name="SBT: org.jvnet.mimepull:mimepull:1.9.3" level="project" />
+    <orderEntry type="library" name="SBT: org.parboiled:parboiled-core:1.1.6" level="project" />
+    <orderEntry type="library" name="SBT: org.parboiled:parboiled-scala_2.10:1.1.6" level="project" />
+    <orderEntry type="library" scope="TEST" name="SBT: org.scala-lang:scala-actors:2.10.0" level="project" />
+    <orderEntry type="library" name="SBT: org.scala-lang:scala-library:2.10.3" level="project" />
+    <orderEntry type="library" scope="TEST" name="SBT: org.scala-lang:scala-reflect:2.10.0" level="project" />
+    <orderEntry type="library" name="SBT: org.scala-stm:scala-stm_2.10:0.7" level="project" />
+    <orderEntry type="library" scope="TEST" name="SBT: org.scalatest:scalatest_2.10:1.9.1" level="project" />
+  </component>
+</module>
+

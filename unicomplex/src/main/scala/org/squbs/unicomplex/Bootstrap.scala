@@ -11,6 +11,7 @@ import akka.util.Timeout
 import org.squbs.lifecycle.ExtensionInit
 import com.typesafe.config.{ConfigException, ConfigFactory, Config}
 import ConfigUtil._
+import akka.routing.FromConfig
 
 object Bootstrap extends App {
 
@@ -69,8 +70,11 @@ object Bootstrap extends App {
     .flatten.filter(_ != null)
 
   // Start all service routes
-  val services   = initInfoMap.getOrElse(StartupType.SERVICES, Seq.empty[InitInfo]).map(startRoutes)
-    .flatten.filter(_ != null)
+  private val startService = Unicomplex.config getBoolean "start-service"
+  val services =
+    if (startService)
+      initInfoMap.getOrElse(StartupType.SERVICES, Seq.empty[InitInfo]).map(startRoutes).flatten.filter(_ != null)
+    else Seq.empty
 
   // postInit extensions
   extensions foreach { case (jarName, jarVersion, extensionInit) => extensionInit.postInit(jarConfigs)}
@@ -173,7 +177,16 @@ object Bootstrap extends App {
       try {
         val clazz = Class.forName(className, true, getClass.getClassLoader)
         val actorClass = clazz.asSubclass(classOf[Actor])
-        cubeActor ! StartCubeActor(Props(actorClass), name)
+
+        // Create and configure the props for this actor to be started.
+        var props = Props(actorClass)
+        actorConfig getOptionalString "dispatcher" foreach (d => props = props withDispatcher d)
+        actorConfig getOptionalString "mailbox" foreach (m => props = props withMailbox m)
+        val withRouter = actorConfig getOptionalBoolean "with-router" getOrElse false
+        if (withRouter) props = props withRouter FromConfig()
+
+        // Send the props to be started by the cube.
+        cubeActor ! StartCubeActor(props, name)
         (symName, version, clazz)
       } catch {
         case e: Exception =>

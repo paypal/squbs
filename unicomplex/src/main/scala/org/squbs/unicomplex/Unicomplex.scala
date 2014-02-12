@@ -3,6 +3,7 @@ package org.squbs.unicomplex
 import akka.actor.{Actor, ActorSystem, ActorLogging, OneForOneStrategy, Props}
 import akka.actor.SupervisorStrategy._
 import concurrent.duration._
+import com.typesafe.config.ConfigFactory
 
 object Unicomplex {
   
@@ -12,6 +13,9 @@ object Unicomplex {
   implicit val uniActor = actorSystem.actorOf(Props[Unicomplex], "unicomplex")
 
   val externalConfigDir = "squbsconfig"
+
+  val config = ConfigFactory.load.getConfig("squbs")
+
 }
 
 private[unicomplex] case object StartWebService
