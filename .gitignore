@@ -1,1 +1,9 @@
-target/
+.cache
+ebay.log
+temp_*.xml
+/.idea
+/.idea_modules
+/bin
+/target
+/project/project
+/project/target
