@@ -34,7 +34,7 @@ is created for each cube. The supervisor carries the name of the cube. Therefore
 
 A well known actor can be started as a singleton actor or with a router. To declare a well known actor as a router,
 add:
-    withRouter = true
+    with-router = true
 in the actor declaration. Router, dispatcher, and mailbox configuration for well known actors are done in
 reference.conf or application.conf following the Akka documentation.
 
@@ -47,7 +47,7 @@ squbs-actors = [
   {
     class-name = org.squbs.bottlecube.LyricsDispatcher
     name = lyrics
-    withRouter = false  # Optional, defaults to false
+    with-router = false  # Optional, defaults to false
   }
 ]
 ```
