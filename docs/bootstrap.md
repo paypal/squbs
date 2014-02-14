@@ -75,7 +75,6 @@ akka.actor.deployment {
     # Configure the dispatcher on the routee.
     dispatcher = blocking-dispatcher
   }
-
 ```
 
 Router concepts, examples, and configuration, are documented in the
