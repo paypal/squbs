@@ -171,19 +171,16 @@ object Bootstrap extends App {
       symName.substring(symName.lastIndexOf('.') + 1))
 
     def startActor(actorConfig: Config): (String, String, Class[_]) = {
-      val className = actorConfig.getString("class-name")
-      val name = actorConfig.getOptionalString("name").getOrElse(className.substring(className.lastIndexOf('.') + 1))
+      val className = actorConfig getString "class-name"
+      val name = actorConfig getOptionalString "name" getOrElse (className substring (className.lastIndexOf('.') + 1))
+      val withRouter = actorConfig getOptionalBoolean "with-router" getOrElse false
 
       try {
         val clazz = Class.forName(className, true, getClass.getClassLoader)
-        val actorClass = clazz.asSubclass(classOf[Actor])
+        val actorClass = clazz asSubclass classOf[Actor]
 
-        // Create and configure the props for this actor to be started.
-        var props = Props(actorClass)
-        actorConfig getOptionalString "dispatcher" foreach (d => props = props withDispatcher d)
-        actorConfig getOptionalString "mailbox" foreach (m => props = props withMailbox m)
-        val withRouter = actorConfig getOptionalBoolean "with-router" getOrElse false
-        if (withRouter) props = props withRouter FromConfig()
+        // Create and the props for this actor to be started, optionally enabling the router.
+        val props = if (withRouter) Props(actorClass) withRouter FromConfig() else Props(actorClass)
 
         // Send the props to be started by the cube.
         cubeActor ! StartCubeActor(props, name)
