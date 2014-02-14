@@ -52,6 +52,35 @@ squbs-actors = [
 ]
 ```
 
+If an actor is configured with-router (with-router = true) and a non-default dispatcher, the intention is usually to
+schedule the actor (routee) on the non-default dispatcher. The router will assume the well known actor name, not the
+routee (your actor implementation). A dispatcher set on the router will only affect the router, not the routee. To
+affect the routee, you need to create a separate configuration for the routees (by appending "/*" to the name) and
+configure the dispatcher in the routee section as the following example.
+
+```
+akka.actor.deployment {
+
+  # Router configuration
+  /bottlecube/lyrics {
+    router = round-robin
+    resizer {
+      lower-bound = 1
+      upper-bound = 10
+    }
+  }
+
+  # Routee configuration. Since it has a '*', the name has to be quoted.
+  "/UserCube/User/*" {
+    # Configure the dispatcher on the routee.
+    dispatcher = blocking-dispatcher
+  }
+
+```
+
+Router concepts, examples, and configuration, are documented in the
+[Akka documentation](http://doc.akka.io/docs/akka/2.2.3/scala/routing.html).
+
 Services
 --------
 
