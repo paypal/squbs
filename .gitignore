@@ -1,6 +1,7 @@
 *.class
 *.log
 .cache
+bin
 
 # sbt specific
 dist/*
@@ -16,3 +17,5 @@ project/plugins/project/
 # IntelliJ specific
 .idea/
 .metadata/
+temp_*.xml
+.idea_modules/
