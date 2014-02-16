@@ -11,7 +11,7 @@ Cube Jars
 ---------
 
 All cubes are represented by a top-level jar file with the cube logic itself. All cubes must have the cube metadata
-residing in META-INF/squbs_meta.<ext>. Supported extensions are .conf, .json, and .properties. The format follows the
+residing in META-INF/squbs-meta.&lt;ext&gt;. Supported extensions are .conf, .json, and .properties. The format follows the
 [Typesafe config](https://github.com/typesafehub/config) format.
 
 At the minimum, the cube metadata uniquely identifies the cube and version and declares and configures one or more of
@@ -30,7 +30,7 @@ Well Known Actors
 Well known actors are just [Akka actors](http://doc.akka.io/docs/akka/2.2.3/scala/actors.html) as defined by the
 [Akka documentation](http://doc.akka.io/docs/akka/2.2.3/scala/actors.html). They are started by a supervisor actor that
 is created for each cube. The supervisor carries the name of the cube. Therefore any well known actor has a path of
-/<CubeName>/<ActorName> and can be looked up using the ActorSelection call under /user/<CubeName>/<ActorName>.
+/&lt;CubeName&gt;/&lt;ActorName&gt; and can be looked up using the ActorSelection call under /user/&lt;CubeName&gt;/&lt;ActorName&gt;.
 
 A well known actor can be started as a singleton actor or with a router. To declare a well known actor as a router,
 add:
@@ -38,7 +38,7 @@ add:
 in the actor declaration. Router, dispatcher, and mailbox configuration for well known actors are done in
 reference.conf or application.conf following the Akka documentation.
 
-Following is a sample cube declaration declaring a well known actor:
+Following is a sample cube declaration META-INF/squbs-meta.conf declaring a well known actor:
 
 ```
 cube-name = org.squbs.bottlecube
@@ -71,7 +71,7 @@ akka.actor.deployment {
   }
 
   # Routee configuration. Since it has a '*', the name has to be quoted.
-  "/UserCube/User/*" {
+  "/bottlecube/lyrics/*" {
     # Configure the dispatcher on the routee.
     dispatcher = blocking-dispatcher
   }
@@ -111,7 +111,7 @@ Bootstrapping
 -------------
 
 Bootstrapping squbs is done by starting the org.squbs.unicomplex.Bootstrap object from the Java command line, IDE, sbt,
-or even maven. Bootstrap scans the classpath and finds META-INF/squbs_meta.<ext> in each classpath entry.
+or even maven. Bootstrap scans the classpath and finds META-INF/squbs-meta.&lt;ext&gt; in each classpath entry.
 If squbs metadata is available, the jar is treated as squbs cube or extension and initialized according to the
 metadata declarations. The bootstrap then first initializes extensions, cubes, then service routes last regardless of
 their sequence in the classpath.
