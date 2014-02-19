@@ -55,5 +55,11 @@ these messages with proper constructors from the mutable data objects. It is imp
 abstract implementation provides no functionality and should not declare additional fields except private ones
 to support the construction. In essence, it only implements the constructors to create the object extending the trait.
 
+If fields defined in the trait or any extending trait derives its value from other fields that are set in the
+constructor implementation, these fields need to be marked as lazy to avoid NullPointerExceptions during initialization.
+This is because the trait will try to initialize all the fields at construction. The derived fields would reference
+not-yet set fields to be set in the constructor. Lazy initialization causes these fields to reference the other fields
+on first use, which is normally far after the construction of the object.
+
 By following this pattern, messages stay immutable and the message project would not add any dependencies on database
 or other infrastructure that can be propagated to the message consumer's dependency chain.
