@@ -1,15 +1,15 @@
 package org.squbs.unicomplex
 
 import akka.actor._
+import akka.pattern.pipe
 import akka.actor.SupervisorStrategy._
 import concurrent.duration._
 import com.typesafe.config.ConfigFactory
 import akka.actor.OneForOneStrategy
-import org.squbs.lifecycle.{GracefulStopHelper, GracefulStop}
+import org.squbs.lifecycle.GracefulStop
 import scala.collection.mutable
 import akka.pattern.GracefulStopSupport
-import org.squbs.util.threadless.Future
-import scala.util.{Failure, Success}
+import scala.concurrent.Future
 
 object Unicomplex {
   
@@ -57,42 +57,44 @@ class Unicomplex extends Actor with ActorLogging {
 private[squbs] case class StopRegistry(timeout: FiniteDuration)
 
 private[unicomplex] class Reaper extends Actor with ActorLogging with GracefulStopSupport {
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   private val registeredActors = mutable.HashMap[ActorRef, FiniteDuration]()
 
-  private def gracefulShutdown: Unit = {
+  private def stopRegisteredActors(msg: Any) = {
+    Future.sequence(registeredActors.map({case (target, timeout) =>
+      gracefulStop(target, timeout, msg)
+    }))
+  }
 
-    def stopRegisteredActors(msg: Any) = {
-      Future.sequence(registeredActors.map({case (target, timeout) =>
-        gracefulStop(target, timeout, msg).asInstanceOf[Future[Boolean]]
-      }))
-    }
+  private def shutdownState: Receive = {
+    case Terminated(target) => log.debug(s"$target is terminated")
+      registeredActors.remove(target)
+      if (registeredActors.isEmpty) {
+        log.info("All registered were terminated. Shutting down the system")
+        Unicomplex.actorSystem.shutdown()
+      }
 
-    stopRegisteredActors(GracefulStop).onComplete({
-      case Success(_) => Unicomplex.actorSystem.shutdown()
+    case Status.Failure(f) => registeredActors.foreach(_._1 ! PoisonPill)
 
-      case Failure(e) => log.warning(s"[squbs][reaper] graceful shutdown failed with $e")
-        stopRegisteredActors(PoisonPill).onComplete(_ => Unicomplex.actorSystem.shutdown())
-    })
+    case _ => //don't care
   }
 
   def receive = {
-    case GracefulStop => gracefulShutdown
+    case GracefulStop => log.debug("reaper got graceful shutdown")
+      stopRegisteredActors(GracefulStop) pipeTo self
+      context.become(shutdownState)
 
-    case StopRegistry(timeout) =>
+    case StopRegistry(timeout) => log.debug(s"registered $sender")
       registeredActors.put(sender, timeout)
       context.watch(sender)
 
-    case Terminated(target) => registeredActors.remove(target)
-
     case msg =>
-      log.info("[squbs][Reaper] received {}", msg.toString)
+      log.info("received {}", msg.toString)
   }
 }
 
-class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper{
-
-  override def stopTimeout = 8 second
+class CubeSupervisor extends Actor with ActorLogging {
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
@@ -102,10 +104,11 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper{
     }
 
   def receive = {
-    case GracefulStop => defaultStopStrategy
+
     case StartCubeActor(props, name) => 
       val cubeActor = context.actorOf(props, name)
       log.info("Started actor {}", cubeActor.path)
+
     case msg: Any =>
       log.info("Received: {}", msg.toString)
   }
