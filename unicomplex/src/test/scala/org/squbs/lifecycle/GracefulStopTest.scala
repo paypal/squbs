@@ -19,7 +19,9 @@ object LifecycleSpec {
 
   class CubeAggregateActor extends Actor with Aggregator with TaskDispatcherGracefulStop {
 
-    import scala.concurrent.ExecutionContext.Implicits.global
+    import Unicomplex._
+
+    implicit val executionContext = actorSystem.dispatcher
 
     val handler = expect {
       case GracefulStop => new StopAggregator(GracefulStop)
@@ -154,7 +156,6 @@ class LifecycleSpec(_system: ActorSystem) extends  TestKit(_system) with Implici
   "The Reaper" must {
 
     "shutdown the system gracefully" in {
-      //import scala.concurrent.ExecutionContext.Implicits.global
       val cubeAggregator = system.actorSelection("/user/cubeAggregatorSupervisor/cubeAggregator")
       (1 to 10).foreach(_ => {
         cubeAggregator ! "hello"

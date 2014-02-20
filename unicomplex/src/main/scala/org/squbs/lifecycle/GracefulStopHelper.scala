@@ -23,11 +23,11 @@ case object GracefulStop
  */
 trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Actor =>
 
+  import Unicomplex._
   /**
    * Register the actor to the global reaper
    */
   private[lifecycle] def registerToReaper: Unit = {
-    val reaperActor = Unicomplex.reaperActor
     reaperActor ! StopRegistry(stopTimeout * 2)
   }
 
@@ -37,7 +37,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * @return Duration
    */
   def stopTimeout: FiniteDuration =
-    FiniteDuration(Unicomplex.config.getMilliseconds("stop-timeout"), TimeUnit.MILLISECONDS)
+    FiniteDuration(config.getMilliseconds("stop-timeout"), TimeUnit.MILLISECONDS)
 
   /**
    * Default gracefully stop behavior for leaf level actors
@@ -58,7 +58,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * After all the actors get terminated it stops itself
    */
   protected def defaultMidActorStop(dependencies: Iterable[ActorRef]): Unit = {
-    import scala.concurrent.ExecutionContext.Implicits.global
+    implicit val executionContext = actorSystem.dispatcher
 
     def stopDependencies(msg: Any) = {
       Future.sequence(dependencies.map(gracefulStop(_, stopTimeout, msg)))
