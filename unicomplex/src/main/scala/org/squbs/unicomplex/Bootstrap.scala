@@ -206,7 +206,7 @@ object Bootstrap extends App {
 
   def startRoutes(initInfo: InitInfo) = {
     import initInfo.{jarPath, symName, version, entries}
-    def startRoute(routeConfig: Config): (String, String, Class[_]) =
+    def startRoute(routeConfig: Config): (String, String, RouteDefinition) =
       try {
         import ServiceRegistry.registrar
         val clazz = Class.forName(routeConfig.getString("class-name"), true, getClass.getClassLoader)
@@ -224,8 +224,9 @@ object Bootstrap extends App {
           val elapsed = (System.nanoTime - startTime) / 1000000
           println(s"Web Service started in $elapsed milliseconds")
         }
-        registrar() ! Register(routeClass.newInstance)
-        (symName, version, clazz)
+        val routeInstance = routeClass.newInstance
+        registrar() ! Register(routeInstance)
+        (symName, version, routeInstance)
       } catch {
         case e: Exception =>
           val t = getRootCause(e)

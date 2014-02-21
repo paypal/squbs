@@ -1,15 +1,16 @@
 package org.squbs.unicomplex
 
 import akka.actor._
-import akka.pattern.pipe
 import akka.actor.SupervisorStrategy._
-import concurrent.duration._
+import scala.concurrent.duration._
 import com.typesafe.config.ConfigFactory
-import akka.actor.OneForOneStrategy
 import org.squbs.lifecycle.{GracefulStopHelper, GracefulStop}
+import org.squbs.util.conversion.CubeUtil.CubeNameConversion
 import scala.collection.mutable
-import akka.pattern.GracefulStopSupport
-import scala.concurrent.Future
+import org.squbs.util.conversion.CubeName
+import akka.actor.OneForOneStrategy
+import akka.actor.Terminated
+import java.util.concurrent.TimeUnit
 
 object Unicomplex {
   
@@ -27,25 +28,25 @@ object Unicomplex {
 private[unicomplex] case object StartWebService
 private[unicomplex] case class StartCubeActor(props: Props, name: String = "")
 
+case class StopCube(cubeName: String)
+
 case object Ack
+
+case object ShutdownTimeout
 
 /**
  * The Unicomplex actor is the supervisor of the Unicomplex.
  * It starts actors that are part of the Unicomplex.
  */
-class Unicomplex extends Actor with ActorLogging with GracefulStopSupport{
+class Unicomplex extends Actor with ActorLogging {
 
   import Unicomplex._
 
+  private val cubeSupervisors = mutable.Set.empty[ActorRef]
+
   implicit val executionContext = actorSystem.dispatcher
 
-  private val cubeSupervisors = mutable.HashMap[ActorRef, FiniteDuration]()
-
-  private def stopCubeSupervisors(msg: Any) = {
-    Future.sequence(cubeSupervisors.map({case (target, timeout) =>
-      gracefulStop(target, timeout, msg)
-    }))
-  }
+  val shutdownTimeout = FiniteDuration(config.getMilliseconds("shutdown-timeout"), TimeUnit.MILLISECONDS)
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
@@ -53,6 +54,19 @@ class Unicomplex extends Actor with ActorLogging with GracefulStopSupport{
         log.warning(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender.path}")
         Restart
     }
+
+  private def stopCube(cubeName: String) = {
+    // Stop the extensions of this cube if there are any
+    Bootstrap.extensions.filter(_._1 == cubeName).map(_._3).foreach(extension => {/* stop the extension */})
+
+    // Unregister the routes of this cube if there are any
+    Bootstrap.services.filter(_._1 == cubeName).map(_._3).foreach(routeDef => {
+      ServiceRegistry.registrar() ! Unregister(routeDef.webContext)
+    })
+
+    // Stop the CubeSupervisor if there is one
+    CubeName(cubeName).cubeSupervisor().resolveOne(10 millis).foreach(_ ! GracefulStop)
+  }
 
   private def shutdownState: Receive = {
     case Terminated(target) => log.debug(s"$target is terminated")
@@ -62,19 +76,24 @@ class Unicomplex extends Actor with ActorLogging with GracefulStopSupport{
         actorSystem.shutdown()
       }
 
-    case Status.Failure(f) => cubeSupervisors.foreach(_._1 ! PoisonPill)
-
-    case _ => //don't care
+    case ShutdownTimeout => log.warning("Graceful shutdown timed out.")
+      actorSystem.shutdown()
   }
 
   def receive = {
+    case StopCube(cubeName) =>
+      log.info(s"got StopCube($cubeName) from $sender")
+      stopCube(cubeName)
+
     case GracefulStop =>
       log.info(s"got GracefulStop from $sender")
-      stopCubeSupervisors(GracefulStop) pipeTo self
+      cubeSupervisors.foreach(_ ! GracefulStop)
+      actorSystem.scheduler.scheduleOnce(shutdownTimeout, self, ShutdownTimeout)
       context.become(shutdownState)
 
-    case StopRegistry(timeout) =>
-      cubeSupervisors += (sender -> timeout)
+    case CubeSupervisorRegistry =>
+      cubeSupervisors += sender
+      context.watch(sender)
 
     case StartWebService =>
       ServiceRegistry.startWebService      
@@ -87,12 +106,14 @@ class Unicomplex extends Actor with ActorLogging with GracefulStopSupport{
 
 private[squbs] case class StopRegistry(timeout: FiniteDuration)
 
+private[unicomplex] case object CubeSupervisorRegistry
+
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
   import Unicomplex._
-  uniActor ! StopRegistry(stopTimeout)
+  uniActor ! CubeSupervisorRegistry
 
-  private var maxTimeout: FiniteDuration = stopTimeout
+  private var maxTimeout: FiniteDuration = 1 millis
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
@@ -103,12 +124,12 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
   def receive = {
     case GracefulStop => // The stop message should only come from the uniActor
-      if (sender != Unicomplex.uniActor)
+      if (sender != uniActor)
         log.error(s"got GracefulStop from $sender instead of ${Unicomplex.uniActor}")
       else
         defaultMidActorStop(context.children, maxTimeout)
 
-    case StopRegistry(timeout) if (timeout > maxTimeout) => maxTimeout = timeout
+    case StopRegistry(timeout) =>if (timeout > maxTimeout) maxTimeout = timeout
 
     case StartCubeActor(props, name) => 
       val cubeActor = context.actorOf(props, name)
@@ -118,23 +139,4 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       log.info("Received: {}", msg.toString)
   }
   
-}
-
-/**
- * get the cube supervisor for a given ActorRef
- * @return ActorSelection of the CubeSupervisor
- */
-object Supervisor {
-
-  def apply(targetPath: ActorPath)(implicit system: ActorSystem): Option[ActorSelection] = {
-    val pathElements = targetPath.elements.toSeq
-
-    if (pathElements.size <= 2) {
-      None
-    }else {
-      val supervisorPath = targetPath.root / pathElements(0) / pathElements(1)
-      Some(system.actorSelection(supervisorPath))
-    }
-  }
-
 }

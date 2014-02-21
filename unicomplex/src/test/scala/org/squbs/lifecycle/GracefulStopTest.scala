@@ -5,7 +5,7 @@ import akka.pattern.pipe
 import akka.testkit.{ImplicitSender, TestKit}
 import org.scalatest.{WordSpec, BeforeAndAfterAll}
 import org.scalatest.matchers.ClassicMatchers
-import org.squbs.lifecycle.{TaskDispatcherGracefulStop, GracefulStop, GracefulStopHelper}
+import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
 import scala.concurrent.duration._
 import scala.concurrent.Future
 import org.squbs.pattern.Aggregator
@@ -20,7 +20,7 @@ object LifecycleSpec {
 
   implicit val executionContext = actorSystem.dispatcher
 
-  class CubeAggregateActor extends Actor with Aggregator with TaskDispatcherGracefulStop {
+  class CubeAggregateActor extends Actor with Aggregator with GracefulStopHelper {
 
     val handler = expect {
       case GracefulStop => new StopAggregator(GracefulStop)
@@ -153,14 +153,14 @@ class LifecycleSpec(_system: ActorSystem) extends  TestKit(_system) with Implici
     }
   }
 
-  "The Reaper" must {
+  "The uniActor" must {
 
     "shutdown the system gracefully" in {
       val cubeAggregator = system.actorSelection("/user/cubeAggregatorSupervisor/cubeAggregator")
       (1 to 10).foreach(_ => {
         cubeAggregator ! "hello"
       })
-      system.actorSelection("/user/reaper") ! GracefulStop
+      Unicomplex.uniActor ! GracefulStop
 
       Thread.sleep(500)
       cubeAggregator ! "hello"

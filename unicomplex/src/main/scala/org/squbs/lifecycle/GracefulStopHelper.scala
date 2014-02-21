@@ -3,7 +3,8 @@ package org.squbs.lifecycle
 import akka.pattern.GracefulStopSupport
 import scala.concurrent.duration.FiniteDuration
 import akka.actor._
-import org.squbs.unicomplex.{Supervisor, Unicomplex, StopRegistry}
+import org.squbs.unicomplex.{Unicomplex, StopRegistry}
+import org.squbs.util.conversion.CubeUtil.ActorRefConversion
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Future
 import scala.util.Success
@@ -27,7 +28,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
   /**
    * Tell the CubeSupervisor a reasonable timeout
    */
-  Supervisor(self.path).foreach(_ ! StopRegistry(stopTimeout))
+  self.cubeSupervisor().foreach(_ ! StopRegistry(stopTimeout))
 
   /**
    * Duration that the actor needs to finish the graceful stop.
@@ -36,7 +37,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * @return Duration
    */
   def stopTimeout: FiniteDuration =
-    FiniteDuration(config.getMilliseconds("stop-timeout"), TimeUnit.MILLISECONDS)
+    FiniteDuration(config.getMilliseconds("shutdown-timeout"), TimeUnit.MILLISECONDS)
 
   /**
    * Default gracefully stop behavior for leaf level actors
