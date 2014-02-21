@@ -3,10 +3,9 @@ package org.squbs.lifecycle
 import akka.pattern.GracefulStopSupport
 import scala.concurrent.duration.FiniteDuration
 import akka.actor._
-import org.squbs.unicomplex.Unicomplex
+import org.squbs.unicomplex.{Supervisor, Unicomplex, StopRegistry}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Future
-import org.squbs.unicomplex.StopRegistry
 import scala.util.Success
 import scala.util.Failure
 
@@ -24,16 +23,16 @@ case object GracefulStop
 trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Actor =>
 
   import Unicomplex._
+
   /**
-   * Register the actor to the global reaper
+   * Tell the CubeSupervisor a reasonable timeout
    */
-  private[lifecycle] def registerToReaper: Unit = {
-    reaperActor ! StopRegistry(stopTimeout * 2)
-  }
+  Supervisor(self.path).foreach(_ ! StopRegistry(stopTimeout))
 
   /**
    * Duration that the actor needs to finish the graceful stop.
    * Override it for customized timeout and it will be registered to the reaper
+   * Default to 5 seconds
    * @return Duration
    */
   def stopTimeout: FiniteDuration =
@@ -46,7 +45,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    *
    * Simply stop itself
    */
-  protected def defaultLeafActorStop: Unit = context.stop(self)
+  protected final def defaultLeafActorStop: Unit = context.stop(self)
 
   /**
    * Default gracefully stop behavior for middle level actors
@@ -55,13 +54,18 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    *
    * Simply propagate the `GracefulStop` message to all actors
    * that should be stop ahead of this actor
+   *
+   * If some actors failed to respond to the `GracefulStop` message,
+   * It will send `PoisonPill` again
+   *
    * After all the actors get terminated it stops itself
    */
-  protected def defaultMidActorStop(dependencies: Iterable[ActorRef]): Unit = {
+  protected final def defaultMidActorStop(dependencies: Iterable[ActorRef],
+                                          timeout: FiniteDuration = stopTimeout): Unit = {
     implicit val executionContext = actorSystem.dispatcher
 
     def stopDependencies(msg: Any) = {
-      Future.sequence(dependencies.map(gracefulStop(_, stopTimeout, msg)))
+      Future.sequence(dependencies.map(gracefulStop(_, timeout, msg)))
     }
 
     stopDependencies(GracefulStop).onComplete({
@@ -78,22 +82,4 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
         })
     })
   }
-}
-
-/**
- * This trait is for the top level actors
- * who dispatch the tasks to other actors
- *
- * The trait will register the actor to the reaper automatically.
- * Once the system is about to shutdown, the reaper will send a `GracefulStop`
- * message to all registered actors. The actors should implement the behavior in
- * its `receive` method.
- *
- * If the actor failed to stop after the `stopTimeout`, the reaper will send a
- * `PoisonPill`
- */
-trait TaskDispatcherGracefulStop extends GracefulStopHelper {this: Actor =>
-
-  registerToReaper
-
 }
