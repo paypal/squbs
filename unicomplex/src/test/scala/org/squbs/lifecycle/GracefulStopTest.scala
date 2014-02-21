@@ -16,12 +16,11 @@ import scala.collection.mutable
  */
 
 object LifecycleSpec {
+  import Unicomplex._
+
+  implicit val executionContext = actorSystem.dispatcher
 
   class CubeAggregateActor extends Actor with Aggregator with TaskDispatcherGracefulStop {
-
-    import Unicomplex._
-
-    implicit val executionContext = actorSystem.dispatcher
 
     val handler = expect {
       case GracefulStop => new StopAggregator(GracefulStop)
@@ -106,6 +105,7 @@ object LifecycleSpec {
   }
 
   class DummyExecuteActor extends Actor with GracefulStopHelper{
+
     def receive = {
       case GracefulStop => defaultLeafActorStop
 
