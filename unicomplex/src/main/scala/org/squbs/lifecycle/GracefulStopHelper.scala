@@ -3,8 +3,7 @@ package org.squbs.lifecycle
 import akka.pattern.GracefulStopSupport
 import scala.concurrent.duration.FiniteDuration
 import akka.actor._
-import org.squbs.unicomplex.{Unicomplex, StopRegistry}
-import org.squbs.util.conversion.CubeUtil.ActorRefConversion
+import org.squbs.unicomplex.Unicomplex
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Future
 import scala.util.Success
@@ -25,10 +24,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
 
   import Unicomplex._
 
-  /**
-   * Tell the CubeSupervisor a reasonable timeout
-   */
-  self.cubeSupervisor().foreach(_ ! StopRegistry(stopTimeout))
+  implicit val executionContext = actorSystem.dispatcher
 
   /**
    * Duration that the actor needs to finish the graceful stop.
@@ -37,7 +33,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * @return Duration
    */
   def stopTimeout: FiniteDuration =
-    FiniteDuration(config.getMilliseconds("shutdown-timeout"), TimeUnit.MILLISECONDS)
+    FiniteDuration(config.getMilliseconds("default-stop-timeout"), TimeUnit.MILLISECONDS)
 
   /**
    * Default gracefully stop behavior for leaf level actors
@@ -63,18 +59,18 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    */
   protected final def defaultMidActorStop(dependencies: Iterable[ActorRef],
                                           timeout: FiniteDuration = stopTimeout): Unit = {
-    implicit val executionContext = actorSystem.dispatcher
 
     def stopDependencies(msg: Any) = {
       Future.sequence(dependencies.map(gracefulStop(_, timeout, msg)))
     }
 
     stopDependencies(GracefulStop).onComplete({
-      // all children has been terminated successfully
+      // all dependencies has been terminated successfully
       // stop self
-      case Success(result) => context.stop(self)
+      case Success(result) => log.info(s"All dependencies was stopped. Stopping self")
+        context.stop(self)
 
-      // some children are not terminated in the timeout
+      // some dependencies are not terminated in the timeout
       // send them PoisonPill again
       case Failure(e) => log.warning(s"Graceful stop failed with $e")
         stopDependencies(PoisonPill).onComplete(_ => {

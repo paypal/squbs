@@ -166,7 +166,7 @@ object Bootstrap extends App {
 
   def startActors(initInfo: InitInfo) = {
     import initInfo.{jarPath, symName, version, entries}
-    import Unicomplex.{actorSystem, uniActor}
+    import Unicomplex.actorSystem
     val cubeActor = actorSystem.actorOf(Props[CubeSupervisor],
       symName.substring(symName.lastIndexOf('.') + 1))
 

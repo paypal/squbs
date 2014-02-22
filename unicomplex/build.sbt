@@ -17,3 +17,4 @@ libraryDependencies ++= Seq(
   "io.spray" % "spray-testkit" % "1.2.0" % "test"
 )
 
+jacoco.settings

@@ -36,7 +36,7 @@ object CubeUtil {
 
     def cubeSupervisor()(implicit system: ActorSystem): ActorSelection = {
 
-      system.actorSelection(system / "user" / cubeName.name.substring(cubeName.name.lastIndexOf(".") + 1))
+      system.actorSelection(system / cubeName.name.substring(cubeName.name.lastIndexOf(".") + 1))
     }
   }
 
