@@ -13,6 +13,8 @@ import akka.actor.Terminated
 import java.util.concurrent.TimeUnit
 import scala.util.{Failure, Success}
 import akka.util.Timeout
+import akka.pattern.pipe
+import scala.concurrent.Future
 
 object Unicomplex {
   
@@ -41,7 +43,7 @@ case object ShutdownTimeout
  * The Unicomplex actor is the supervisor of the Unicomplex.
  * It starts actors that are part of the Unicomplex.
  */
-class Unicomplex extends Actor with ActorLogging {
+class Unicomplex extends Actor with ActorLogging with Stash {
 
   import Unicomplex._
 
@@ -60,7 +62,7 @@ class Unicomplex extends Actor with ActorLogging {
         Restart
     }
 
-  private def stopCube(cubeName: String) = {
+  private def stopCube(cubeName: String): Future[ActorRef] = {
     // Stop the extensions of this cube if there are any
     Bootstrap.extensions.filter(_._1 == cubeName).map(_._3).foreach(extension => {/* stop the extension */})
 
@@ -70,7 +72,7 @@ class Unicomplex extends Actor with ActorLogging {
     })
 
     // Stop the CubeSupervisor if there is one
-    CubeName(cubeName).cubeSupervisor() ! GracefulStop
+    CubeName(cubeName).cubeSupervisor().resolveOne()
   }
 
   private def startCube(cubeName: String) = {
@@ -111,20 +113,41 @@ class Unicomplex extends Actor with ActorLogging {
       actorSystem.shutdown()
   }
 
+  private def waitCubeStop(originalSender: ActorRef): Receive = {
+    case cubeSupervisor: ActorRef =>
+      cubeSupervisor ! GracefulStop
+      context.become({
+        case Terminated(`cubeSupervisor`) => originalSender ! Ack
+          cubeSupervisors -= cubeSupervisor
+          context.unbecome()
+          unstashAll()
+
+        case other => stash()
+      }, true)
+
+    // This cube doesn't contain any cube actors or cube already stopped
+    case Status.Failure(e) =>
+      originalSender ! Ack
+      context.unbecome()
+      unstashAll()
+
+    case other => stash()
+  }
+
   def receive = {
     case StopCube(cubeName) =>
       log.info(s"got StopCube($cubeName) from $sender")
-      stopCube(cubeName)
+      stopCube(cubeName) pipeTo self
+      context.become(waitCubeStop(sender))
 
     case StartCube(cubeName) =>
       log.info(s"got StartCube($cubeName) from $sender")
       startCube(cubeName)
-
-    case Terminated(target) => log.info(s"$target is terminated")
-      cubeSupervisors.remove(target)
+      sender ! Ack
 
     case GracefulStop =>
       log.info(s"got GracefulStop from $sender")
+      println(cubeSupervisors)
       cubeSupervisors.foreach(_ ! GracefulStop)
       context.become(shutdownState)
       actorSystem.scheduler.scheduleOnce(shutdownTimeout, self, ShutdownTimeout)

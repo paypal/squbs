@@ -8,7 +8,8 @@ import scala.concurrent.duration._
 import org.scalatest.concurrent.AsyncAssertions
 import scala.io.Source
 import org.squbs.lifecycle.GracefulStop
-import scala.concurrent.future
+import scala.concurrent._
+import akka.pattern.ask
 
 /**
  * Created by zhuwang on 2/21/14.
@@ -91,16 +92,22 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       val w = new Waiter
 
-      Unicomplex.uniActor ! StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
+      val stopCubeFuture = Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
 
-      Thread.sleep(1000)
-
-      system.actorSelection("/user/DummyCubeSvc").resolveOne().onComplete(result => {
-        w {result.isFailure}
+      stopCubeFuture.onComplete(result => {
+        w {
+          assert(result.isSuccess)
+          assert(result.get == Ack)
+        }
         w.dismiss()
       })
 
       w.await()
+
+      system.actorSelection("/user/DummyCubeSvc").resolveOne().onComplete(result => {
+        w {assert(result.isFailure)}
+        w.dismiss()
+      })
 
       assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
 
@@ -112,6 +119,51 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
         Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString
       }
 
+      w.await()
+
+    }
+
+    "not mess up if stop a stopped cube" in {
+      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+
+      intercept[FileNotFoundException]{
+        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString
+      }
+
+      intercept[FileNotFoundException]{
+        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString
+      }
+
+      val w = new Waiter
+
+      val stopCubeFuture = Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
+
+      stopCubeFuture.onComplete(result => {
+        w {
+          assert(result.isSuccess)
+          assert(result.get == Ack)
+        }
+        w.dismiss()
+      })
+
+      w.await()
+
+      system.actorSelection("/user/DummyCubeSvc").resolveOne().onComplete(result => {
+        w {assert(result.isFailure)}
+        w.dismiss()
+      })
+
+      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+
+      intercept[FileNotFoundException]{
+        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString
+      }
+
+      intercept[FileNotFoundException]{
+        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString
+      }
+
+      w.await()
     }
 
     "start a single cube correctly" in {
@@ -125,9 +177,17 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
         Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString
       }
 
-      Unicomplex.uniActor ! StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
+      val startCubeFuture = Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
 
-      Thread.sleep(1000)
+      startCubeFuture.onComplete(result => {
+        w {
+          assert(result.isSuccess)
+          assert(result.get == Ack)
+        }
+        w.dismiss()
+      })
+
+      w.await()
 
       system.actorSelection("/user/DummyCubeSvc").resolveOne().onComplete(result => {
         w {assert(result.isSuccess)}
@@ -142,9 +202,149 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
       assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
     }
 
+    "not mess up if start a running cube" in {
+      val w = new Waiter
+
+      val startCubeFuture = Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
+
+      startCubeFuture.onComplete(result => {
+        w {
+          assert(result.isSuccess)
+          assert(result.get == Ack)
+        }
+        w.dismiss()
+      })
+
+      w.await()
+
+      system.actorSelection("/user/DummyCubeSvc").resolveOne().onComplete(result => {
+        w {assert(result.isSuccess)}
+        w.dismiss()
+      })
+
+      w.await()
+
+      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+
+      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+    }
+
+    "not mess up if stop and start a cube contains actors and services simultaneously" in {
+      val stopCubeFuture = Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
+      val startCubeFuture = Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
+
+      val w = new Waiter
+      Future.sequence(Seq(stopCubeFuture, startCubeFuture)).onComplete(result => {
+        w {
+          assert(result.isSuccess)
+          assert(result.get.forall(_ == Ack))
+        }
+        w.dismiss()
+      })
+
+      w.await()
+
+      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+
+      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+    }
+
+    "not mess up if stop and start a cube contains actors only simultaneously" in {
+      val stopCubeFuture = Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCube")
+      val startCubeFuture = Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCube")
+
+      val w = new Waiter
+      Future.sequence(Seq(stopCubeFuture, startCubeFuture)).onComplete(result => {
+        w {
+          assert(result.isSuccess)
+          assert(result.get.forall(_ == Ack))
+        }
+        w.dismiss()
+      })
+
+      w.await()
+
+      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+
+      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+    }
+
+    "not mess up if stop and start a cube contains services only simultaneously" in {
+      val stopCubeFuture = Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummySvc")
+      val startCubeFuture = Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummySvc")
+
+      val w = new Waiter
+      Future.sequence(Seq(stopCubeFuture, startCubeFuture)).onComplete(result => {
+        w {
+          assert(result.isSuccess)
+          assert(result.get.forall(_ == Ack))
+        }
+        w.dismiss()
+      })
+
+      w.await()
+
+      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+
+      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+    }
+
+    "not mess up if stop all cubes simultaneously" in {
+      val w = new Waiter
+
+      Future.sequence(Seq(
+        Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummySvc"),
+        Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCube"),
+        Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
+      )).onComplete(result => {
+        w {
+          assert(result.isSuccess)
+          assert(result.get.forall(_ == Ack))
+        }
+        w.dismiss()
+      })
+
+      intercept[FileNotFoundException]{
+        Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString
+      }
+
+      intercept[FileNotFoundException]{
+        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString
+      }
+
+      intercept[FileNotFoundException]{
+        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString
+      }
+    }
+
+    "not mess up if start all cubes simultaneously" in {
+      val w = new Waiter
+
+      Future.sequence(Seq(
+        Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummySvc"),
+        Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCube"),
+        Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
+      )).onComplete(result => {
+        w {
+          assert(result.isSuccess)
+          assert(result.get.forall(_ == Ack))
+        }
+        w.dismiss()
+      })
+
+      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+
+      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+    }
+
     "shutdown the system gracefully" in {
 
-      (1 to 10) foreach {_ => future {Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello")}}
+      future {(1 to 100) foreach {_ => Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello")}}
 
       Unicomplex.uniActor ! GracefulStop
 

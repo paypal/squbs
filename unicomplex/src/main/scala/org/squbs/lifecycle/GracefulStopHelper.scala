@@ -42,7 +42,10 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    *
    * Simply stop itself
    */
-  protected final def defaultLeafActorStop: Unit = context.stop(self)
+  protected final def defaultLeafActorStop: Unit = {
+    log.debug(s"Stopping self")
+    context.stop(self)
+  }
 
   /**
    * Default gracefully stop behavior for middle level actors
@@ -67,7 +70,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
     stopDependencies(GracefulStop).onComplete({
       // all dependencies has been terminated successfully
       // stop self
-      case Success(result) => log.info(s"All dependencies was stopped. Stopping self")
+      case Success(result) => log.debug(s"All dependencies was stopped. Stopping self")
         context.stop(self)
 
       // some dependencies are not terminated in the timeout
