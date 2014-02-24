@@ -50,7 +50,7 @@ case class ObtainLifecycleEvents(states: LifecycleState*)
  * The Unicomplex actor is the supervisor of the Unicomplex.
  * It starts actors that are part of the Unicomplex.
  */
-class Unicomplex extends Actor with ActorLogging {
+class Unicomplex extends Actor with Stash with ActorLogging {
   
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
@@ -101,12 +101,15 @@ class Unicomplex extends Actor with ActorLogging {
         pendingCubes foreach (_ ! CheckInitStatus)
 
         val expected: Actor.Receive = {
+          case ReportStatus => stash() // Stash concurrent ReportStatus requests, handle everything else.
+
           case (ir: InitReports, true) =>
             updateCubes(ir)
             pendingCubes = pendingCubes.filter(_ != sender)
             if (pendingCubes.isEmpty) {
-              context.unbecome()
               requester ! (systemState, cubes)
+              unstashAll()
+              context.unbecome()
             }
         }
 
