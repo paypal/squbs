@@ -187,7 +187,7 @@ class CubeSupervisor extends Actor with ActorLogging {
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
 
-    case Started => // Signals all cube actors are being started.
+    case Started => // Signals end of StartCubeActor messages. No more allowed after this.
       if (initMap.isEmpty) {
         cubeState = Active
         Unicomplex() ! InitReports(cubeState, initMap.toMap)
