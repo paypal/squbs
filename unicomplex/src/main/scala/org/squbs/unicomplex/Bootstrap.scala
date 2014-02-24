@@ -12,6 +12,7 @@ import org.squbs.lifecycle.ExtensionInit
 import com.typesafe.config.{ConfigException, ConfigFactory, Config}
 import ConfigUtil._
 import akka.routing.FromConfig
+import scala.annotation.tailrec
 
 object Bootstrap extends App {
 
@@ -28,7 +29,7 @@ object Bootstrap extends App {
     SERVICES = Value
   }
 
-  case class InitInfo(jarPath: String, symName: String, version: String,
+  case class InitInfo(jarPath: String, symName: String, alias: String, version: String,
                       entries: Seq[_ <: Config], startupType: StartupType.Value)
 
   // Make it extra lazy, so that we do not create the next File if the previous one succeeds.
@@ -37,7 +38,9 @@ object Bootstrap extends App {
 
   println("Booting unicomplex")
   
-  val startTime = System.nanoTime
+  val startTime = StartTime(System.nanoTime, System.currentTimeMillis)
+
+  val startTimeMillis = System.currentTimeMillis
 
   val cpEntries = System.getProperty("java.class.path").split(File.pathSeparator).toSeq
 
@@ -47,9 +50,11 @@ object Bootstrap extends App {
     case (jar, cfgOption) => (jar, cfgOption.get)
   }
 
-  val initInfoMap = jarConfigs flatMap {
+  val initInfoList = jarConfigs flatMap {
     case (jar, config) => getInitInfo(jar, config)
-  } groupBy (_.startupType)
+  }
+
+  val initInfoMap = resolveAliasConflicts(initInfoList) groupBy (_.startupType)
 
   // preInit extensions
   val initSeq = initInfoMap.getOrElse(StartupType.EXTENSIONS, Seq.empty[InitInfo]).
@@ -65,6 +70,12 @@ object Bootstrap extends App {
       println(s"Started extension ${extensionInit.getClass.getName} in $symName $version")
   }
 
+  // Send start time to Unicomplex
+  Unicomplex() ! startTime
+
+  // Signal started to Unicomplex.
+  Unicomplex() ! Started
+
   // Start all actors
   val actors     = initInfoMap.getOrElse(StartupType.ACTORS, Seq.empty[InitInfo]).map(startActors)
     .flatten.filter(_ != null)
@@ -78,10 +89,6 @@ object Bootstrap extends App {
 
   // postInit extensions
   extensions foreach { case (jarName, jarVersion, extensionInit) => extensionInit.postInit(jarConfigs)}
-
-
-  val elapsed = (System.nanoTime - startTime) / 1000000
-  println(s"squbs started in $elapsed milliseconds")
 
   private[this] def readConfigs(jarName: String): Option[Config] = {
     val jarFile = new File(jarName)
@@ -144,36 +151,77 @@ object Bootstrap extends App {
       case e: ConfigException => return Seq.empty[InitInfo]
     }
 
+    val cubeAlias = cubeName.substring(cubeName.lastIndexOf('.') + 1)
+
     val initList = ArrayBuffer.empty[InitInfo]
 
     val actors = config.getOptionalConfigList("squbs-actors")
     actors foreach { a =>
-      if (!a.isEmpty) initList += InitInfo(jarPath, cubeName, cubeVersion, a, StartupType.ACTORS)
+      if (!a.isEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, a, StartupType.ACTORS)
     }
 
     val routeDefs = config.getOptionalConfigList("squbs-services")
     routeDefs foreach { d =>
-      if (!d.isEmpty) initList += InitInfo(jarPath, cubeName, cubeVersion, d, StartupType.SERVICES)
+      if (!d.isEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, d, StartupType.SERVICES)
     }
     
     val extensions = config.getOptionalConfigList("squbs-extensions")
     extensions foreach { e =>
-      if (!e.isEmpty) initList += InitInfo(jarPath, cubeName, cubeVersion, e, StartupType.EXTENSIONS)
+      if (!e.isEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, e, StartupType.EXTENSIONS)
     }
     
     initList.toSeq
   }
 
+  // Resolve cube alias conflict by making it longer on demand.
+  @tailrec
+  def resolveAliasConflicts(initInfoList: Seq[InitInfo]): Seq[InitInfo] = {
+
+    val aliasConflicts = initInfoList map { initInfo =>
+      (initInfo.alias, initInfo.symName)
+    } groupBy (_._1) mapValues { seq =>
+      (seq map (_._2)).toSet
+    } filter { _._2.size > 1 }
+
+    if (aliasConflicts.isEmpty) initInfoList
+    else {
+
+      var updated = false
+
+      val newAliases = (aliasConflicts map { case (alias, conflicts) =>
+        conflicts.toSeq map { symName =>
+          val idx = symName.lastIndexOf('.', symName.length - alias.length - 2)
+          if (idx > 0) {
+            updated = true
+            (symName, symName.substring(idx + 1))
+          }
+          else (symName, symName)
+        }
+      }).flatten.toSeq
+
+      if (updated) {
+        val updatedList = initInfoList map { initInfo =>
+          newAliases find { case (symName, alias) => symName == initInfo.symName } match {
+            case Some((symName, alias)) => initInfo.copy(alias = alias)
+            case None => initInfo
+          }
+        }
+        resolveAliasConflicts(updatedList)
+      }
+      else sys.error("Duplicate cube names: " + (aliasConflicts flatMap (_._2) mkString ", "))
+    }
+  }
+
   def startActors(initInfo: InitInfo) = {
-    import initInfo.{jarPath, symName, version, entries}
-    import Unicomplex.actorSystem
-    val cubeActor = actorSystem.actorOf(Props[CubeSupervisor],
-      symName.substring(symName.lastIndexOf('.') + 1))
+    import initInfo.{jarPath, symName, alias, version, entries}
+    val cubeActor = Unicomplex.actorSystem.actorOf(Props[CubeSupervisor], alias)
+    Unicomplex() ! CubeRegistration(alias, symName, version, cubeActor)
 
     def startActor(actorConfig: Config): (String, String, Class[_]) = {
       val className = actorConfig getString "class-name"
       val name = actorConfig getOptionalString "name" getOrElse (className substring (className.lastIndexOf('.') + 1))
       val withRouter = actorConfig getOptionalBoolean "with-router" getOrElse false
+      val initRequired = actorConfig getOptionalBoolean "init-required" getOrElse false
 
       try {
         val clazz = Class.forName(className, true, getClass.getClassLoader)
@@ -183,7 +231,7 @@ object Bootstrap extends App {
         val props = if (withRouter) Props(actorClass) withRouter FromConfig() else Props(actorClass)
 
         // Send the props to be started by the cube.
-        cubeActor ! StartCubeActor(props, name)
+        cubeActor ! StartCubeActor(props, name, initRequired)
         (symName, version, clazz)
       } catch {
         case e: Exception =>
@@ -197,6 +245,7 @@ object Bootstrap extends App {
     }
 
     val actorInfo = entries map startActor
+    cubeActor ! Started // Tell the cube all actors to be started are started.
     println(s"Started cube $symName $version")
     actorInfo
   }
@@ -211,7 +260,7 @@ object Bootstrap extends App {
         if (registrar() == null) {
           val startTime = System.nanoTime
           implicit val timeout = Timeout(1000 milliseconds)
-          val ackFuture = Unicomplex.uniActor ? StartWebService
+          val ackFuture = Unicomplex() ? StartWebService
           // Block for the web service to be started.
           Await.ready(ackFuture, timeout.duration)
           // Tight loop making sure the registrar is in place
