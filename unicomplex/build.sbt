@@ -4,7 +4,7 @@ name := "unicomplex"
 
 organization := "org.squbs"
 
-version := "0.0.2-SNAPSHOT"
+version := "0.0.3-SNAPSHOT"
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "1.9.1" % "test",
@@ -16,4 +16,3 @@ libraryDependencies ++= Seq(
   "io.spray" % "spray-routing" % "1.2.0",
   "io.spray" % "spray-testkit" % "1.2.0" % "test"
 )
-

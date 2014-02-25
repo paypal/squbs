@@ -3,16 +3,18 @@ package org.squbs.unicomplex
 import java.io._
 import java.util.jar.JarFile
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.Await
+import scala.concurrent.{Future, Await}
 import scala.concurrent.duration._
-import akka.actor.{Actor, Props}
+import akka.actor.{ActorSystem, ActorRef, Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import org.squbs.lifecycle.ExtensionInit
+import org.squbs.lifecycle.{GracefulStop, ExtensionInit}
 import com.typesafe.config.{ConfigException, ConfigFactory, Config}
 import ConfigUtil._
 import akka.routing.FromConfig
 import scala.annotation.tailrec
+import org.squbs.util.conversion.CubeUtil._
+import scala.util.{Failure, Success}
 
 object Bootstrap extends App {
 
@@ -214,8 +216,8 @@ object Bootstrap extends App {
 
   def startActors(initInfo: InitInfo) = {
     import initInfo.{jarPath, symName, alias, version, entries}
-    val cubeActor = Unicomplex.actorSystem.actorOf(Props[CubeSupervisor], alias)
-    Unicomplex() ! CubeRegistration(alias, symName, version, cubeActor)
+    val cubeSupervisor = Unicomplex.actorSystem.actorOf(Props[CubeSupervisor], alias)
+    Unicomplex() ! CubeRegistration(alias, symName, version, cubeSupervisor)
 
     def startActor(actorConfig: Config): (String, String, Class[_]) = {
       val className = actorConfig getString "class-name"
@@ -231,7 +233,7 @@ object Bootstrap extends App {
         val props = if (withRouter) Props(actorClass) withRouter FromConfig() else Props(actorClass)
 
         // Send the props to be started by the cube.
-        cubeActor ! StartCubeActor(props, name, initRequired)
+        cubeSupervisor ! StartCubeActor(props, name, initRequired)
         (symName, version, clazz)
       } catch {
         case e: Exception =>
@@ -245,14 +247,14 @@ object Bootstrap extends App {
     }
 
     val actorInfo = entries map startActor
-    cubeActor ! Started // Tell the cube all actors to be started are started.
+    cubeSupervisor ! Started // Tell the cube all actors to be started are started.
     println(s"Started cube $symName $version")
     actorInfo
   }
 
   def startRoutes(initInfo: InitInfo) = {
     import initInfo.{jarPath, symName, version, entries}
-    def startRoute(routeConfig: Config): (String, String, Class[_]) =
+    def startRoute(routeConfig: Config): (String, String, RouteDefinition) =
       try {
         import ServiceRegistry.registrar
         val clazz = Class.forName(routeConfig.getString("class-name"), true, getClass.getClassLoader)
@@ -270,8 +272,9 @@ object Bootstrap extends App {
           val elapsed = (System.nanoTime - startTime) / 1000000
           println(s"Web Service started in $elapsed milliseconds")
         }
-        registrar() ! Register(routeClass.newInstance)
-        (symName, version, clazz)
+        val routeInstance = routeClass.newInstance
+        registrar() ! Register(routeInstance)
+        (symName, version, routeInstance)
       } catch {
         case e: Exception =>
           val t = getRootCause(e)
@@ -295,24 +298,27 @@ object Bootstrap extends App {
     }
   }
 
-    def preInitExtension(initInfo: InitInfo, extension: String, seq: Int): (String, String, ExtensionInit) = {
-      import initInfo.{symName, version, jarPath}
-      try {
-        val clazz = Class.forName(extension, true, getClass.getClassLoader)
-        val extensionInit = clazz.asSubclass(classOf[ExtensionInit]).newInstance
-        extensionInit.preInit(jarConfigs)
-        (symName, version, extensionInit)
-      } catch {
-        case e: Exception =>
-          val t = getRootCause(e)
-          println(s"Can't load extension $extension.\n" +
+  def preInitExtension(initInfo: InitInfo, extension: String, seq: Int): (String, String, ExtensionInit) = {
+    import initInfo.{symName, version, jarPath}
+    try {
+      val clazz = Class.forName(extension, true, getClass.getClassLoader)
+      val extensionInit = clazz.asSubclass(classOf[ExtensionInit]).newInstance
+      extensionInit.preInit(jarConfigs)
+      (symName, version, extensionInit)
+    } catch {
+      case e: Exception =>
+        val t = getRootCause(e)
+        println(s"Can't load extension $extension.\n" +
           s"Cube: $symName $version\n" +
           s"Path: $jarPath\n" +
           s"${t.getClass.getName}: ${t.getMessage}")
         null
-      }
     }
+  }
 
+  def shutdownSystem: Unit = {
+    Unicomplex() ! GracefulStop
+  }
 
   private[this] def parseOptions(options: String): Array[(String, String)] =
     options.split(';').map { nv =>
@@ -331,5 +337,58 @@ object Bootstrap extends App {
       cause = t.getCause
     }
     t
+  }
+
+  // TODO use the following in hot deployment
+  private[unicomplex] def stopCube(cubeName: String)(implicit system: ActorSystem): Future[ActorRef] = {
+    implicit val executionContext = system.dispatcher
+
+    // Stop the extensions of this cube if there are any
+    extensions.filter(_._1 == cubeName).map(_._3).foreach(extension => {/* stop the extension */})
+
+    // Unregister the routes of this cube if there are any
+    services.filter(_._1 == cubeName).map(_._3).foreach(routeDef => {
+      ServiceRegistry.registrar() ! Unregister(routeDef.webContext)
+    })
+
+    // Stop the CubeSupervisor if there is one
+    nameToAlias(cubeName).cubeSupervisor()
+  }
+
+  private[unicomplex] def startCube(cubeName: String)(implicit system: ActorSystem): Unit = {
+    implicit val executionContext = system.dispatcher
+
+    // TODO prevent starting an active Cube
+    // PreInit extentions if there are any
+    val extensionsInCube = extensions.filter(_._1 == cubeName).map(_._3)
+    extensionsInCube.foreach(_.preInit(jarConfigs))
+    // Init extentions
+    extensionsInCube.foreach(_.init(jarConfigs))
+
+    // Start actors if there are any
+    nameToAlias(cubeName).cubeSupervisor().onComplete({
+      case Success(supervisor) => println(s"[warn][Bootstrap] actors in $cubeName are already activated")
+
+      case Failure(_) =>
+        initInfoMap.getOrElse(StartupType.ACTORS, Seq.empty[Bootstrap.InitInfo])
+          .filter(_.symName == cubeName).foreach(startActors)
+    })
+
+    // Start services if there are any
+    services.filter(_._1 == cubeName).map(_._3).foreach(routeDef => {
+      ServiceRegistry.registrar() ! Register(routeDef)
+    })
+
+    // PostInit
+    extensionsInCube.foreach(_.postInit(jarConfigs))
+  }
+
+  // lookup the cube alias according to the cube name
+  private def nameToAlias(cubeName: String): String = {
+    initInfoMap.getOrElse(StartupType.ACTORS, Seq.empty[InitInfo]).find(_.symName == cubeName) match {
+      case Some(info) => info.alias
+
+      case None => ""
+    }
   }
 }
