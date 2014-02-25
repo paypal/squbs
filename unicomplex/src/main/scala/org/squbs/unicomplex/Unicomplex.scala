@@ -20,7 +20,7 @@ object Unicomplex {
 
   implicit val actorSystem = ActorSystem(config.getString("actorsystem-name"))
 
-  implicit val uniActor = actorSystem.actorOf(Props[Unicomplex], "unicomplex")
+  val uniActor = actorSystem.actorOf(Props[Unicomplex], "unicomplex")
 
   val externalConfigDir = "squbsconfig"
 
@@ -155,7 +155,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     case ir: InitReports => // Cubes initialized
       updateCubes(ir)
-      updateSystemState(Active)
 
     case ReportStatus => // Status report request from admin tooling
       if (systemState == Active) // Stable state.
@@ -288,7 +287,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         initMap += sender -> Some(report)
         if (!(initMap exists (_._2 == None))) {
           val finalMap = (initMap mapValues (_.get)).toMap
-          if (finalMap.exists(_._2 == Failed)) cubeState = Failed else cubeState = Active
+          if (finalMap.exists(_._2.isFailure)) cubeState = Failed else cubeState = Active
           Unicomplex() ! InitReports(cubeState, initMap.toMap)
         }
       }
