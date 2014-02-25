@@ -244,8 +244,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   }
 }
 
-private[unicomplex] case object CubeSupervisorRegistry
-
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
   override val supervisorStrategy =
