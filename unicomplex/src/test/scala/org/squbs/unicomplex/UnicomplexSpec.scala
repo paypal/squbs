@@ -23,6 +23,8 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
   implicit val timeout: akka.util.Timeout = 2 seconds
   val dummyJarsDir = new File("unicomplex/src/test/resources/classpaths")
 
+  val port = Unicomplex.config getInt "bind-port"
+
   override def beforeAll() = {
     if (dummyJarsDir.exists && dummyJarsDir.isDirectory) {
       val classpaths = dummyJarsDir.listFiles().map(_.getAbsolutePath).mkString(File.pathSeparator)
@@ -76,10 +78,10 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       Thread.sleep(1000)
 
-      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
     }
   }
 
@@ -87,8 +89,8 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
     "stop a single cube without affect other cubes" in {
 
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
 
       val w = new Waiter
 
@@ -109,14 +111,14 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
         w.dismiss()
       })
 
-      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
       intercept[FileNotFoundException]{
-        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString
+        Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString
       }
 
       intercept[FileNotFoundException]{
-        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString
+        Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString
       }
 
       w.await()
@@ -124,14 +126,14 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
     }
 
     "not mess up if stop a stopped cube" in {
-      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
       intercept[FileNotFoundException]{
-        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString
+        Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString
       }
 
       intercept[FileNotFoundException]{
-        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString
+        Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString
       }
 
       val w = new Waiter
@@ -153,14 +155,14 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
         w.dismiss()
       })
 
-      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
       intercept[FileNotFoundException]{
-        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString
+        Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString
       }
 
       intercept[FileNotFoundException]{
-        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString
+        Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString
       }
 
       w.await()
@@ -170,11 +172,11 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
       val w = new Waiter
 
       intercept[FileNotFoundException]{
-        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString
+        Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString
       }
 
       intercept[FileNotFoundException]{
-        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString
+        Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString
       }
 
       val startCubeFuture = Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
@@ -196,10 +198,10 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       w.await()
 
-      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
     }
 
     "not mess up if start a running cube" in {
@@ -224,10 +226,10 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       w.await()
 
-      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
     }
 
     "not mess up if stop and start a cube contains actors and services simultaneously" in {
@@ -245,10 +247,10 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       w.await()
 
-      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
     }
 
     "not mess up if stop and start a cube contains actors only simultaneously" in {
@@ -266,10 +268,10 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       w.await()
 
-      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
     }
 
     "not mess up if stop and start a cube contains services only simultaneously" in {
@@ -287,10 +289,10 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       w.await()
 
-      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
     }
 
     "not mess up if stop all cubes simultaneously" in {
@@ -309,15 +311,15 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
       })
 
       intercept[FileNotFoundException]{
-        Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString
+        Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString
       }
 
       intercept[FileNotFoundException]{
-        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString
+        Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString
       }
 
       intercept[FileNotFoundException]{
-        Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString
+        Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString
       }
     }
 
@@ -336,10 +338,10 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
         w.dismiss()
       })
 
-      assert(Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello").mkString equals "^hello$")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL("http://127.0.0.1:9090/pingpongsvc/pong").mkString equals "Ping")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
     }
 
     "shutdown the system gracefully" in {

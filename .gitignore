@@ -1,2 +1,21 @@
+*.class
+*.log
+.cache
+bin
+
+# sbt specific
+dist/*
 target/
-.idea
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+
+# IntelliJ specific
+.idea/
+.metadata/
+temp_*.xml
+.idea_modules/

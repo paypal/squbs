@@ -5,5 +5,3 @@ publishArtifact := false
 lazy val unicomplex = project
 
 lazy val testkit = project dependsOn unicomplex
-
-lazy val `sbt-squbs` = project
