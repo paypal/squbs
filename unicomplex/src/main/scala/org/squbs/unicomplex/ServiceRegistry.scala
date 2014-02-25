@@ -11,6 +11,7 @@ import Directives._
 import spray.routing.HttpService
 
 import Unicomplex._
+import scala.util.Try
 
 case class Register(routeDef: RouteDefinition)
 case class Unregister(key: String)
@@ -31,9 +32,9 @@ object ServiceRegistry {
     private var registry = Map.empty[String, RouteDefinition]
     
     // CalculateRoute MUST return a function and not a value
-    private def calculateRoute(tmpRegistry: Map[String, RouteDefinition]) = tmpRegistry
-       .map{ case (webContext, routeDef) => pathPrefix(webContext) { routeDef.route } }
-       .reduceLeft(_ ~ _)
+    private def calculateRoute(tmpRegistry: Map[String, RouteDefinition]) =
+      Try(tmpRegistry.map{ case (webContext, routeDef) => pathPrefix(webContext) { routeDef.route } }
+       .reduceLeft(_ ~ _)).getOrElse(path(Slash) {get {complete {"Default Route"}}})
     
     def receive = {
       case Register(routeDef) =>
