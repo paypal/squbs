@@ -20,8 +20,10 @@ private[pattern] case object ZSocketActive extends ZSocketState
 
 //TODO complete the full list of configurations allowed by ZMQ
 //TODO support REQ/REP socket types, which doesn't support NONE-BLOCKING receives as current!
-//TODO support PUB/SUB socket types
+//TODO support PUSH/PULL socket types
+//TODO support PAIR/PAIR socket types
 //ROUTER/DEALER is happy
+//PUB/SUB is happy
 case class SocketType(val `type`:Int)
 case class Identity(val identity:String)
 case class ReceiveHWM(val hwm:Int)
@@ -64,14 +66,14 @@ case class ZEnvelop(val identity:ZFrame, val payload:Seq[ZFrame]) {
 
   def send(zSocket:Socket) = {
 
-    if(zSocket.getType == ZMQ.SUB){
-
-      zSocket.subscribe(identity.getData)
-    }
-    else{
-
-      identity.send(zSocket, ZMQ.SNDMORE)
-      payload.foreach(f => f.send(zSocket, if(f == payload.last) 0 else ZMQ.SNDMORE))
+    zSocket.getType match {
+      case ZMQ.SUB =>
+        zSocket.subscribe(identity.getData)
+      case ZMQ.PULL =>
+        //don't do anything, or raise exception
+      case _ =>
+        identity.send(zSocket, ZMQ.SNDMORE)
+        payload.foreach(f => f.send(zSocket, if(f == payload.last) 0 else ZMQ.SNDMORE))
     }
   }
 }
@@ -183,7 +185,9 @@ trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
 
 private[pattern] case object ZPublisherActive extends ZSocketState
 
-trait ZPublisherOnAkka extends ZSocketOnAkka {
+//Producer only knows about sending frames out through ZSocket
+//PUSH/PUB are typical examples
+trait ZProducerOnAkka extends ZSocketOnAkka {
 
   override def activate(zSocket:Socket, settings:Settings) = {
 

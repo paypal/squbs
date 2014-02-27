@@ -43,7 +43,7 @@ class ZDealerSocketActor extends ZSocketOnAkka {
   }
 }
 
-class ZPubSocketActor extends ZPublisherOnAkka {
+class ZPubSocketActor extends ZProducerOnAkka {
 
   override def consume(zEnvelop: ZEnvelop, context:ActorContext): Unit = {
     printf("[pub] consume\n")
