@@ -63,8 +63,16 @@ private[pattern] case class ReceiveAsync(val delay:Long) {
 case class ZEnvelop(val identity:ZFrame, val payload:Seq[ZFrame]) {
 
   def send(zSocket:Socket) = {
-    identity.send(zSocket, ZMQ.SNDMORE)
-    payload.foreach(f => f.send(zSocket, if(f == payload.last) 0 else ZMQ.SNDMORE))
+
+    if(zSocket.getType == ZMQ.SUB){
+
+      zSocket.subscribe(identity.getData)
+    }
+    else{
+
+      identity.send(zSocket, ZMQ.SNDMORE)
+      payload.foreach(f => f.send(zSocket, if(f == payload.last) 0 else ZMQ.SNDMORE))
+    }
   }
 }
 
@@ -140,6 +148,7 @@ trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
 
     //inbound
     case Event(msg @ ReceiveAsync(delay), Runnings(socket, maxDelay)) =>
+//      printf("[recv]\n")
       val zMessage = ZMsg.recvMsg(socket, ZMQ.DONTWAIT)
       val identity = zMessage.pop
       if(identity.hasData){
@@ -168,6 +177,28 @@ trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
   whenUnhandled {
     case Event(msg, Runnings(socket, maxDelay)) =>
       unknown(msg, socket)
+      stay
+  }
+}
+
+private[pattern] case object ZPublisherActive extends ZSocketState
+
+trait ZPublisherOnAkka extends ZSocketOnAkka {
+
+  override def activate(zSocket:Socket, settings:Settings) = {
+
+    printf("[pub] activate\n")
+    val maxDelay = settings.maxDelay.getOrElse(ZSocketOnAkka.defaultMaxDelay)
+    goto(ZPublisherActive) using Runnings(zSocket, maxDelay)
+  }
+
+  startWith(ZSocketUninitialized, Settings(-1, None, None, None, None, None))
+
+  //runtime
+  when(ZPublisherActive){
+    //outbound
+    case Event(msg:ZEnvelop, Runnings(socket, maxDelay)) =>
+      reply(msg, socket)
       stay
   }
 }
