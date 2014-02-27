@@ -93,6 +93,8 @@ object ServiceRegistry {
 
 trait RouteDefinition {
   protected implicit final def context: ActorContext = ServiceRegistry.serviceActorContext()
+  implicit final val self = context.self
+
   val webContext: String
   def route: Route
 }

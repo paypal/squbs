@@ -40,7 +40,7 @@ object Bootstrap extends App {
 
   println("Booting unicomplex")
   
-  val startTime = StartTime(System.nanoTime, System.currentTimeMillis)
+  val startTime = Timestamp(System.nanoTime, System.currentTimeMillis)
 
   val startTimeMillis = System.currentTimeMillis
 
