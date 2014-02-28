@@ -18,7 +18,13 @@ object Unicomplex {
 
   val config = ConfigFactory.load.getConfig("squbs")
 
-  implicit val actorSystem = ActorSystem(config.getString("actorsystem-name"))
+  val actorSystemName = config.getString("actorsystem-name")
+
+  implicit val actorSystem = ActorSystem(actorSystemName)
+
+  actorSystem.registerOnTermination{
+    println(s"ActorSystem $actorSystemName shutdown complete")
+  }
 
   val uniActor = actorSystem.actorOf(Props[Unicomplex], "unicomplex")
 
@@ -35,7 +41,6 @@ private[unicomplex] case object CheckInitStatus
 private[unicomplex] case class  InitReports(state: LifecycleState, reports: Map[ActorRef, Option[InitReport]])
 private[unicomplex] case object Started
 private[unicomplex] case class  CubeRegistration(name: String, fullName: String, version: String, cubeSupervisor: ActorRef)
-private[unicomplex] case class  StartTime(nanos: Long, millis: Long)
 private[unicomplex] case object ShutdownTimeout
 
 
@@ -50,6 +55,11 @@ case object Stopped extends LifecycleState
 case class Initialized(report: InitReport)
 case object Ack
 case object ReportStatus
+case class Timestamp(nanos: Long, millis: Long)
+case object SystemState
+case object LifecycleTimesRequest
+case class LifecycleTimes(start: Option[Timestamp], started: Option[Timestamp],
+                          active: Option[Timestamp], stop: Option[Timestamp])
 case class ObtainLifecycleEvents(states: LifecycleState*)
 
 case class StopCube(cubeName: String)
@@ -72,13 +82,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         Restart
     }
 
-  private var systemStart: Option[StartTime] = None
+  private var systemStart: Option[Timestamp] = None
 
-  private var systemStarted: Option[StartTime] = None
+  private var systemStarted: Option[Timestamp] = None
 
-  private var systemActive: Option[StartTime] = None
+  private var systemActive: Option[Timestamp] = None
 
-  private var systemStop: Option[StartTime] = None
+  private var systemStop: Option[Timestamp] = None
 
   private var systemState: LifecycleState = Starting
 
@@ -133,13 +143,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   def receive = hotDeployReceive orElse {
     case GracefulStop =>
-      log.info(s"got GracefulStop from $sender")
+      log.info(s"got GracefulStop from ${sender.path}.")
       updateSystemState(Stopping)
       cubes.foreach(_._1 ! GracefulStop)
       context.become(shutdownState)
       actorSystem.scheduler.scheduleOnce(shutdownTimeout, self, ShutdownTimeout)
 
-    case t: StartTime => // Setting the real start time from bootstrap
+    case t: Timestamp => // Setting the real start time from bootstrap
       systemStart = Some(t)
 
     case r: CubeRegistration => // Cube registration requests, normally from bootstrap
@@ -184,8 +194,16 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         context.become(expected orElse receive, discardOld = false)
       }
 
+    case SystemState =>
+      sender ! systemState
+
     case r: ObtainLifecycleEvents => // Registration of lifecycle listeners
+      log.info(sender + " registering for lifecycle events.")
       lifecycleListeners = lifecycleListeners :+ (sender -> r.states)
+
+    case LifecycleTimesRequest => // Obtain all timestamps.
+      log.info(sender + " requested LifecycleTimes")
+      sender ! LifecycleTimes(systemStart, systemStarted, systemActive, systemStop)
   }
 
   def updateCubes(reports: InitReports) {
@@ -215,22 +233,22 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
       state match { // Record and log the times.
         case Initializing =>
-          systemStarted = Some(StartTime(System.nanoTime, System.currentTimeMillis))
+          systemStarted = Some(Timestamp(System.nanoTime, System.currentTimeMillis))
           val elapsed = (systemStarted.get.nanos - systemStart.get.nanos) / 1000000
           log.info(s"squbs started in $elapsed milliseconds")
 
         case Active =>
-          systemActive = Some(StartTime(System.nanoTime, System.currentTimeMillis))
+          systemActive = Some(Timestamp(System.nanoTime, System.currentTimeMillis))
           val elapsed = (systemActive.get.nanos - systemStarted.get.nanos) / 1000000
           log.info(s"squbs active in $elapsed milliseconds")
 
         case Stopping =>
-          systemStop = Some(StartTime(System.nanoTime, System.currentTimeMillis))
+          systemStop = Some(Timestamp(System.nanoTime, System.currentTimeMillis))
           val elapsed = (systemStop.get.nanos - systemActive.getOrElse(systemStarted.get).nanos) / 1000000
-          log.info(s"squbs has been running in ${elapsed} milliseconds")
+          log.info(s"squbs has been running for $elapsed milliseconds")
 
         case Stopped =>
-          val current = StartTime(System.nanoTime, System.currentTimeMillis)
+          val current = Timestamp(System.nanoTime, System.currentTimeMillis)
           val elapsed = (current.nanos - systemStop.get.nanos) / 1000000
           log.info(s"squbs stopped in $elapsed milliseconds")
 
@@ -238,6 +256,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       }
 
       lifecycleListeners foreach {case (actorRef, states) => // Send state to all listeners.
+        log.info("Sending lifecycle events to " + actorRef.path)
         if (states.isEmpty || states.contains(state)) actorRef ! state
       }
     }
@@ -275,7 +294,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
   def receive = {
     case GracefulStop => // The stop message should only come from the uniActor
-      if (sender != uniActor)
+      if (sender != Unicomplex())
         log.error(s"got GracefulStop from $sender instead of ${Unicomplex()}")
       else
         defaultMidActorStop(context.children)
