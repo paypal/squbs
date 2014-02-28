@@ -9,7 +9,6 @@ import org.squbs.lifecycle.{GracefulStopHelper, GracefulStop}
 import scala.collection.mutable
 import akka.actor.OneForOneStrategy
 import akka.actor.Terminated
-import java.util.concurrent.TimeUnit
 import akka.pattern.pipe
 
 object Unicomplex {
@@ -41,7 +40,7 @@ private[unicomplex] case object CheckInitStatus
 private[unicomplex] case class  InitReports(state: LifecycleState, reports: Map[ActorRef, Option[InitReport]])
 private[unicomplex] case object Started
 private[unicomplex] case class  CubeRegistration(name: String, fullName: String, version: String, cubeSupervisor: ActorRef)
-private[unicomplex] case object ShutdownTimeout
+private[unicomplex] case object ShutdownTimedout
 
 
 sealed trait LifecycleState
@@ -64,6 +63,7 @@ case class ObtainLifecycleEvents(states: LifecycleState*)
 
 case class StopCube(cubeName: String)
 case class StartCube(cubeName: String)
+case class StopTimeout(timeout: FiniteDuration)
 
 /**
  * The Unicomplex actor is the supervisor of the Unicomplex.
@@ -73,7 +73,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   implicit val executionContext = actorSystem.dispatcher
 
-  val shutdownTimeout = FiniteDuration(config.getMilliseconds("shutdown-timeout"), TimeUnit.MILLISECONDS)
+  private var shutdownTimeout = 1 second
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
@@ -105,7 +105,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         actorSystem.shutdown()
       }
 
-    case ShutdownTimeout => log.warning("Graceful shutdown timed out.")
+    case ShutdownTimedout => log.warning("Graceful shutdown timed out.")
       updateSystemState(Stopped)
       actorSystem.shutdown()
   }
@@ -141,14 +141,19 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     case other => stash()
   }
 
-  def receive = hotDeployReceive orElse {
+  def shutdownBehavior: Receive = {
+    case StopTimeout(timeout) => if (shutdownTimeout < timeout) shutdownTimeout = timeout
+
     case GracefulStop =>
       log.info(s"got GracefulStop from ${sender.path}.")
       updateSystemState(Stopping)
       cubes.foreach(_._1 ! GracefulStop)
       context.become(shutdownState)
-      actorSystem.scheduler.scheduleOnce(shutdownTimeout, self, ShutdownTimeout)
+      log.info(s"Set shutdown timeout $shutdownTimeout")
+      actorSystem.scheduler.scheduleOnce(shutdownTimeout, self, ShutdownTimedout)
+  }
 
+  def receive = hotDeployReceive orElse shutdownBehavior orElse {
     case t: Timestamp => // Setting the real start time from bootstrap
       systemStart = Some(t)
 
@@ -255,10 +260,11 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         case _ =>
       }
 
-      lifecycleListeners foreach {case (actorRef, states) => // Send state to all listeners.
-        log.info("Sending lifecycle events to " + actorRef.path)
-        if (states.isEmpty || states.contains(state)) actorRef ! state
-      }
+      if (state != Stopped) // don't care about Stopped
+        lifecycleListeners foreach {case (actorRef, states) => // Send state to all listeners.
+          log.info("Sending lifecycle events to " + actorRef.path)
+          if (states.isEmpty || states.contains(state)) actorRef ! state
+        }
     }
   }
 }
@@ -272,8 +278,13 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         Restart
     }
 
-  var cubeState: LifecycleState = Initializing
-  val initMap = mutable.HashMap.empty[ActorRef, Option[InitReport]]
+  private var cubeState: LifecycleState = Initializing
+  private val initMap = mutable.HashMap.empty[ActorRef, Option[InitReport]]
+
+  private var maxChildTimeout = stopTimeout
+  Unicomplex() ! StopTimeout(maxChildTimeout * 2)
+
+  private val stopSet = mutable.Set.empty[ActorRef]
 
   context.become(startupReceive orElse receive, discardOld = false)
 
@@ -293,11 +304,18 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   }
 
   def receive = {
+    case StopTimeout(timeout) =>
+      if (maxChildTimeout < timeout) {
+        maxChildTimeout = timeout
+        Unicomplex() ! StopTimeout(maxChildTimeout * 2)
+      }
+      stopSet += sender
+
     case GracefulStop => // The stop message should only come from the uniActor
       if (sender != Unicomplex())
         log.error(s"got GracefulStop from $sender instead of ${Unicomplex()}")
       else
-        defaultMidActorStop(context.children)
+        defaultMidActorStop(stopSet, maxChildTimeout)
 
     case Initialized(report) =>
       if (initMap contains sender) {
