@@ -46,11 +46,15 @@ object ServiceRegistry {
         route send calculateRoute(tmpRegistry)
         registry = tmpRegistry
         log.info(s"""Web context "${routeDef.webContext}" (${routeDef.getClass.getName}) registered.""")
+
       case Unregister(webContext) =>
         val tmpRegistry = registry - webContext
         route send calculateRoute(tmpRegistry)
         registry = tmpRegistry 
         log.info(s"Web service route $webContext unregistered.")
+
+      case WebServicesStarted => // Got all the service registrations for now.
+        Unicomplex() ! WebServicesStarted // Just send the message onto Unicomplex after processing all registrations.
     }
   }
   

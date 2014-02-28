@@ -36,6 +36,7 @@ object Unicomplex {
 import Unicomplex._
 
 private[unicomplex] case object StartWebService
+private[unicomplex] case object WebServicesStarted
 private[unicomplex] case class  StartCubeActor(props: Props, name: String = "", initRequired: Boolean = false)
 private[unicomplex] case object CheckInitStatus
 private[unicomplex] case class  InitReports(state: LifecycleState, reports: Map[ActorRef, Option[InitReport]])
@@ -96,6 +97,10 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   private var lifecycleListeners = Seq.empty[(ActorRef, Seq[LifecycleState])]
 
+  private var servicesStarted: Option[Boolean] = None
+
+  private var serviceRef: Option[ActorRef] = None
+
   private def shutdownState: Receive = {
     case Terminated(target) => log.debug(s"$target is terminated")
       cubes -= target
@@ -145,6 +150,12 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     case GracefulStop =>
       log.info(s"got GracefulStop from ${sender.path}.")
       updateSystemState(Stopping)
+      serviceRef match {
+        case Some(ref) =>
+          ServiceRegistry.registrar() ! PoisonPill
+          ref ! PoisonPill
+        case _ =>
+      }
       cubes.foreach(_._1 ! GracefulStop)
       context.become(shutdownState)
       actorSystem.scheduler.scheduleOnce(shutdownTimeout, self, ShutdownTimeout)
@@ -157,8 +168,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       context.watch(r.cubeSupervisor)
 
     case StartWebService =>
-      ServiceRegistry.startWebService
+      serviceRef = Option(ServiceRegistry.startWebService)
+      servicesStarted = Some(false)
       sender ! Ack
+
+    case WebServicesStarted =>
+      servicesStarted = Some(true)
+      updateSystemState(checkInitState(cubes.values map (_._2)))
 
     case Started => // Bootstrap startup and extension init done
       updateSystemState(Initializing)
@@ -224,7 +240,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     }
     if (states exists (_ == Failed)) Failed
     else if (states exists (_ == Initializing)) Initializing
+    else if (pendingServiceStarts) Initializing
     else Active
+  }
+
+  def pendingServiceStarts = servicesStarted match {
+    case Some(false) => true
+    case _ => false
   }
 
   def updateSystemState(state: LifecycleState) {

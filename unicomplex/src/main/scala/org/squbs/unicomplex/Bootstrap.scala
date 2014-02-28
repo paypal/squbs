@@ -14,8 +14,10 @@ import ConfigUtil._
 import akka.routing.FromConfig
 import scala.annotation.tailrec
 import org.squbs.util.conversion.CubeUtil._
-import scala.util.{Failure, Success}
 import java.util.{TimerTask, Timer}
+import scala.util.Failure
+import scala.Some
+import scala.util.Success
 
 object Bootstrap extends App {
 
@@ -95,19 +97,30 @@ object Bootstrap extends App {
     } (scala.concurrent.ExecutionContext.global)
   }
 
+  // Get the actors to start
+  private val actorsToStart = initInfoMap.getOrElse(StartupType.ACTORS, Seq.empty[InitInfo])
+
+  // Get the services to start
+  private val startService = Unicomplex.config getBoolean "start-service"
+  private val servicesToStart =
+    if (startService) initInfoMap.getOrElse(StartupType.SERVICES, Seq.empty)
+    else Seq.empty
+
+  // Start the service infrastructure if services are enabled and registered.
+  if (!servicesToStart.isEmpty) startServiceInfra()
+
   // Signal started to Unicomplex.
   Unicomplex() ! Started
 
   // Start all actors
-  val actors     = initInfoMap.getOrElse(StartupType.ACTORS, Seq.empty[InitInfo]).map(startActors)
-    .flatten.filter(_ != null)
+  val actors = actorsToStart.map(startActors).flatten.filter(_ != null)
 
   // Start all service routes
-  private val startService = Unicomplex.config getBoolean "start-service"
-  val services =
-    if (startService)
-      initInfoMap.getOrElse(StartupType.SERVICES, Seq.empty[InitInfo]).map(startRoutes).flatten.filter(_ != null)
-    else Seq.empty
+  val services = servicesToStart.map(startRoutes).flatten.filter(_ != null)
+
+  // Queue message on registrar which will then forwarded to Unicomplex when all services are processed.
+  // Prevents out of band notification.
+  ServiceRegistry.registrar() ! WebServicesStarted
 
   // postInit extensions
   extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs)}
@@ -272,6 +285,21 @@ object Bootstrap extends App {
     actorInfo
   }
 
+  def startServiceInfra() {
+    val startTime = System.nanoTime
+    implicit val timeout = Timeout(1000 milliseconds)
+    val ackFuture = Unicomplex() ? StartWebService
+    // Block for the web service to be started.
+    Await.ready(ackFuture, timeout.duration)
+    // Tight loop making sure the registrar is in place
+    import ServiceRegistry.registrar
+    while (registrar() == null) {
+      Await.result(registrar.future(), timeout.duration)
+    }
+    val elapsed = (System.nanoTime - startTime) / 1000000
+    println(s"Web Service started in $elapsed milliseconds")
+  }
+
   def startRoutes(initInfo: InitInfo) = {
     import initInfo.{jarPath, symName, version, entries}
     def startRoute(routeConfig: Config): (String, String, RouteDefinition) =
@@ -279,19 +307,6 @@ object Bootstrap extends App {
         import ServiceRegistry.registrar
         val clazz = Class.forName(routeConfig.getString("class-name"), true, getClass.getClassLoader)
         val routeClass = clazz.asSubclass(classOf[RouteDefinition])
-        if (registrar() == null) {
-          val startTime = System.nanoTime
-          implicit val timeout = Timeout(1000 milliseconds)
-          val ackFuture = Unicomplex() ? StartWebService
-          // Block for the web service to be started.
-          Await.ready(ackFuture, timeout.duration)
-          // Tight loop making sure the registrar is in place
-          while (registrar() == null) {
-            Await.result(registrar.future(), timeout.duration)
-          }
-          val elapsed = (System.nanoTime - startTime) / 1000000
-          println(s"Web Service started in $elapsed milliseconds")
-        }
         val routeInstance = routeClass.newInstance
         registrar() ! Register(routeInstance)
         (symName, version, routeInstance)
