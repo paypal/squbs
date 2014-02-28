@@ -85,8 +85,7 @@ object Bootstrap extends App {
 
     // Kill the JVM if the shutdown takes longer than the timeout.
     val shutdownTimer = new Timer(true)
-    shutdownTimer.schedule(new TimerTask { def run() { System.exit(0) }},
-      Unicomplex.config.getMilliseconds("shutdown-timeout"))
+    shutdownTimer.schedule(new TimerTask { def run() { System.exit(0) }}, 3)
 
     // Then run the shutdown in the global execution context.
     Future {

@@ -9,7 +9,6 @@ import org.squbs.lifecycle.{GracefulStopHelper, GracefulStop}
 import scala.collection.mutable
 import akka.actor.OneForOneStrategy
 import akka.actor.Terminated
-import java.util.concurrent.TimeUnit
 import akka.pattern.pipe
 import spray.can.Http.Bound
 
@@ -77,7 +76,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   implicit val executionContext = actorSystem.dispatcher
 
-  private var shutdownTimeout = 1 second
+  private var shutdownTimeout = 1.second
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
@@ -261,7 +260,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   def pendingServiceStarts = servicesStarted match {
     case Some(false) => true
-    case Some(true) if serviceBound => true
+    case Some(true) if !serviceBound => true
     case _ => false
   }
 
