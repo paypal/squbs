@@ -75,6 +75,38 @@ class ZSubSocketActor extends ZSocketOnAkka {
   }
 }
 
+class ZPushSocketActor extends ZProducerOnAkka {
+
+  override def consume(zEnvelop: ZEnvelop, context:ActorContext): Unit = {
+    printf("[push] consume\n")
+  }
+
+  override def reply(zEnvelop: ZEnvelop, zSocket: Socket) = {
+    printf("[push] reply\n")
+    zEnvelop.send(zSocket)
+  }
+
+  override def unknown(msg: Any, zSocket: Socket): Unit = {
+    printf("[push] [unknown:%s] %s\n", new String(zSocket.getIdentity, ZSocketOnAkka.utf8), msg)
+  }
+}
+
+class ZPullSocketActor extends ZSocketOnAkka {
+
+  override def consume(zEnvelop: ZEnvelop, context:ActorContext): Unit = {
+    printf("[pull] consume\n")
+  }
+
+  override def reply(zEnvelop: ZEnvelop, zSocket: Socket) = {
+    printf("[pull] reply\n")
+    zEnvelop.send(zSocket)
+  }
+
+  override def unknown(msg: Any, zSocket: Socket): Unit = {
+    printf("[pull] [unknown:%s] %s\n", new String(zSocket.getIdentity, ZSocketOnAkka.utf8), msg)
+  }
+}
+
 class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with FunSuite {
 
   test("test router/dealer socket"){
@@ -112,6 +144,27 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with FunSuite
 
     for(i <- 1 to 1000){
       pubActor ! ZEnvelop(new ZFrame("zmq-topic"), Seq(new ZFrame("some content")))
+    }
+
+    receiveOne(1000 millis)
+  }
+
+  test("test push/pull socket"){
+
+    val pushActor = system.actorOf(Props[ZPushSocketActor])
+
+    pushActor ! SocketType(ZMQ.PUSH)
+    pushActor ! Identity("zmq-push")
+    pushActor ! Bind("tcp://127.0.0.1:5557")
+
+    val pullActor = system.actorOf(Props[ZPullSocketActor])
+
+    pullActor ! SocketType(ZMQ.PULL)
+    pullActor ! Identity("zmq-pull")
+    pullActor ! Connect("tcp://127.0.0.1:5557")
+
+    for(i <- 1 to 1000){
+      pushActor ! ZEnvelop(new ZFrame("zmq-downstream"), Seq(new ZFrame("some content")))
     }
 
     receiveOne(1000 millis)
