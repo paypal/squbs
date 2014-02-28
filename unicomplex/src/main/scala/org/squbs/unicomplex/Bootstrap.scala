@@ -8,13 +8,14 @@ import scala.concurrent.duration._
 import akka.actor.{ActorSystem, ActorRef, Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import org.squbs.lifecycle.{GracefulStop, ExtensionInit}
+import org.squbs.lifecycle.{GracefulStop, ExtensionLifecycle}
 import com.typesafe.config.{ConfigException, ConfigFactory, Config}
 import ConfigUtil._
 import akka.routing.FromConfig
 import scala.annotation.tailrec
 import org.squbs.util.conversion.CubeUtil._
 import scala.util.{Failure, Success}
+import java.util.{TimerTask, Timer}
 
 object Bootstrap extends App {
 
@@ -67,13 +68,32 @@ object Bootstrap extends App {
 
   // Init extensions
   extensions foreach {
-    case (symName, version, extensionInit) =>
-      extensionInit.init(jarConfigs)
-      println(s"Started extension ${extensionInit.getClass.getName} in $symName $version")
+    case (symName, version, extLifecycle) =>
+      extLifecycle.init(jarConfigs)
+      println(s"Started extension ${extLifecycle.getClass.getName} in $symName $version")
   }
 
   // Send start time to Unicomplex
   Unicomplex() ! startTime
+
+  // Register for stopping the extensions
+  Unicomplex.actorSystem.registerOnTermination {
+    // Run the shutdown in a different thread, not in the ActorSystem's onTermination thread.
+    import scala.concurrent.Future
+
+    // Kill the JVM if the shutdown takes longer than the timeout.
+    val shutdownTimer = new Timer(true)
+    shutdownTimer.schedule(new TimerTask { def run() { System.exit(0) }},
+      Unicomplex.config.getMilliseconds("shutdown-timeout"))
+
+    // Then run the shutdown in the global execution context.
+    Future {
+      extensions.reverse foreach { case (symName, version, extLifecycle) =>
+        extLifecycle.shutdown(jarConfigs)
+        println(s"Shutting down extension ${extLifecycle.getClass.getName} in $symName $version")
+      }
+    } (scala.concurrent.ExecutionContext.global)
+  }
 
   // Signal started to Unicomplex.
   Unicomplex() ! Started
@@ -90,7 +110,7 @@ object Bootstrap extends App {
     else Seq.empty
 
   // postInit extensions
-  extensions foreach { case (jarName, jarVersion, extensionInit) => extensionInit.postInit(jarConfigs)}
+  extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs)}
 
   private[this] def readConfigs(jarName: String): Option[Config] = {
     val jarFile = new File(jarName)
@@ -298,13 +318,13 @@ object Bootstrap extends App {
     }
   }
 
-  def preInitExtension(initInfo: InitInfo, extension: String, seq: Int): (String, String, ExtensionInit) = {
+  def preInitExtension(initInfo: InitInfo, extension: String, seq: Int): (String, String, ExtensionLifecycle) = {
     import initInfo.{symName, version, jarPath}
     try {
       val clazz = Class.forName(extension, true, getClass.getClassLoader)
-      val extensionInit = clazz.asSubclass(classOf[ExtensionInit]).newInstance
-      extensionInit.preInit(jarConfigs)
-      (symName, version, extensionInit)
+      val extLifecycle = clazz.asSubclass(classOf[ExtensionLifecycle]).newInstance
+      extLifecycle.preInit(jarConfigs)
+      (symName, version, extLifecycle)
     } catch {
       case e: Exception =>
         val t = getRootCause(e)
