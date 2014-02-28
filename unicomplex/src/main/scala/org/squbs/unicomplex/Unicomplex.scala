@@ -11,6 +11,7 @@ import akka.actor.OneForOneStrategy
 import akka.actor.Terminated
 import java.util.concurrent.TimeUnit
 import akka.pattern.pipe
+import spray.can.Http.Bound
 
 object Unicomplex {
 
@@ -35,6 +36,7 @@ object Unicomplex {
 
 import Unicomplex._
 
+private[unicomplex] case object PreStartWebService
 private[unicomplex] case object StartWebService
 private[unicomplex] case object WebServicesStarted
 private[unicomplex] case class  StartCubeActor(props: Props, name: String = "", initRequired: Boolean = false)
@@ -97,9 +99,11 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   private var lifecycleListeners = Seq.empty[(ActorRef, Seq[LifecycleState])]
 
-  private var servicesStarted: Option[Boolean] = None
+  private var servicesStarted: Option[Boolean] = None // None means no svc infra, Some(false) = not yet initialized.
 
   private var serviceRef: Option[ActorRef] = None
+
+  private var serviceBound = false
 
   private def shutdownState: Receive = {
     case Terminated(target) => log.debug(s"$target is terminated")
@@ -167,14 +171,21 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       cubes = cubes + (r.cubeSupervisor -> (r, None))
       context.watch(r.cubeSupervisor)
 
-    case StartWebService =>
+    case PreStartWebService => // Sent from Bootstrap before Started signal to tell we have web services to start.
+      if (servicesStarted == None) servicesStarted = Some(false)
+
+    case StartWebService => // Sent from Bootstrap to start the web service infrastructure.
       serviceRef = Option(ServiceRegistry.startWebService)
-      servicesStarted = Some(false)
       sender ! Ack
 
-    case WebServicesStarted =>
+    case WebServicesStarted => // From Bootstrap -> ServiceRegistrar -> Unicomplex to signal all know WS started.
       servicesStarted = Some(true)
       updateSystemState(checkInitState(cubes.values map (_._2)))
+
+    case b: Bound =>
+      serviceBound = true
+      updateSystemState(checkInitState(cubes.values map (_._2)))
+
 
     case Started => // Bootstrap startup and extension init done
       updateSystemState(Initializing)
@@ -214,11 +225,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       sender ! systemState
 
     case r: ObtainLifecycleEvents => // Registration of lifecycle listeners
-      log.info(sender + " registering for lifecycle events.")
       lifecycleListeners = lifecycleListeners :+ (sender -> r.states)
 
     case LifecycleTimesRequest => // Obtain all timestamps.
-      log.info(sender + " requested LifecycleTimes")
       sender ! LifecycleTimes(systemStart, systemStarted, systemActive, systemStop)
   }
 
@@ -246,6 +255,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   def pendingServiceStarts = servicesStarted match {
     case Some(false) => true
+    case Some(true) if serviceBound => true
     case _ => false
   }
 
@@ -261,7 +271,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
         case Active =>
           systemActive = Some(Timestamp(System.nanoTime, System.currentTimeMillis))
-          val elapsed = (systemActive.get.nanos - systemStarted.get.nanos) / 1000000
+          val elapsed = (systemActive.get.nanos - systemStart.get.nanos) / 1000000
           log.info(s"squbs active in $elapsed milliseconds")
 
         case Stopping =>
@@ -278,7 +288,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       }
 
       lifecycleListeners foreach {case (actorRef, states) => // Send state to all listeners.
-        log.info("Sending lifecycle events to " + actorRef.path)
         if (states.isEmpty || states.contains(state)) actorRef ! state
       }
     }

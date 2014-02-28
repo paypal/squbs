@@ -106,8 +106,8 @@ object Bootstrap extends App {
     if (startService) initInfoMap.getOrElse(StartupType.SERVICES, Seq.empty)
     else Seq.empty
 
-  // Start the service infrastructure if services are enabled and registered.
-  if (!servicesToStart.isEmpty) startServiceInfra()
+  // Notify Unicomplex that services will be started.
+  if (!servicesToStart.isEmpty) Unicomplex() ! PreStartWebService
 
   // Signal started to Unicomplex.
   Unicomplex() ! Started
@@ -115,8 +115,12 @@ object Bootstrap extends App {
   // Start all actors
   val actors = actorsToStart.map(startActors).flatten.filter(_ != null)
 
+  // Start the service infrastructure if services are enabled and registered.
+  if (!servicesToStart.isEmpty) startServiceInfra()
+
   // Start all service routes
   val services = servicesToStart.map(startRoutes).flatten.filter(_ != null)
+
 
   // Queue message on registrar which will then forwarded to Unicomplex when all services are processed.
   // Prevents out of band notification.
