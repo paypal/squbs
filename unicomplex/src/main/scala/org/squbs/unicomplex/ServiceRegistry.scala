@@ -46,11 +46,15 @@ object ServiceRegistry {
         route send calculateRoute(tmpRegistry)
         registry = tmpRegistry
         log.info(s"""Web context "${routeDef.webContext}" (${routeDef.getClass.getName}) registered.""")
+
       case Unregister(webContext) =>
         val tmpRegistry = registry - webContext
         route send calculateRoute(tmpRegistry)
         registry = tmpRegistry 
         log.info(s"Web service route $webContext unregistered.")
+
+      case WebServicesStarted => // Got all the service registrations for now.
+        Unicomplex() ! WebServicesStarted // Just send the message onto Unicomplex after processing all registrations.
     }
   }
   
@@ -85,6 +89,7 @@ object ServiceRegistry {
     // create a new HttpServer using our handler tell it where to bind to
     val interface = Unicomplex.config getString "bind-address"
     val port = Unicomplex.config getInt "bind-port"
+    implicit val self = context.self
     IO(Http) ! Http.Bind(serviceRef, interface, port)
     context.watch(registrarRef)
     context.watch(serviceRef)
@@ -92,8 +97,8 @@ object ServiceRegistry {
 }
 
 trait RouteDefinition {
-  protected implicit final def context: ActorContext = ServiceRegistry.serviceActorContext()
-  implicit final val self = context.self
+  protected implicit final lazy val context: ActorContext = ServiceRegistry.serviceActorContext()
+  implicit final lazy val self = context.self
 
   val webContext: String
   def route: Route
