@@ -33,14 +33,10 @@ private class PingPongClient extends Actor with ActorLogging {
 
   def ping(sender: ActorRef): Receive = {
     case Pong => sender ! HttpResponse(entity = HttpEntity(`text/plain`, Pong.toString))
-
-    case other => log.warning(s"received $other")
   }
 
   def pong(sender: ActorRef): Receive = {
     case Ping => sender ! HttpResponse(entity = HttpEntity(`text/plain`, Ping.toString))
-
-    case other => log.warning(s"received $other")
   }
 
   def receive = {
@@ -49,8 +45,6 @@ private class PingPongClient extends Actor with ActorLogging {
 
     case "pong" => pingPongActor ! Pong
       context.become(pong(sender))
-
-    case other => log.warning(s"received $other")
   }
 
 }
@@ -63,7 +57,5 @@ class PingPongActor extends Actor with ActorLogging with GracefulStopHelper{
     case Ping => sender ! Pong
 
     case Pong => sender ! Ping
-
-    case other => log.warning(s"received $other")
   }
 }

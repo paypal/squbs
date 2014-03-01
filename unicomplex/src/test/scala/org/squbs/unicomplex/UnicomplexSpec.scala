@@ -39,7 +39,7 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
   override def afterAll() = {
     if (!system.isTerminated) {
-      system.shutdown()
+      Bootstrap.shutdownSystem
     }
   }
 
@@ -210,7 +210,7 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       val w = new Waiter
 
-      val stopCubeFuture = Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
+      val stopCubeFuture = Unicomplex() ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
 
       stopCubeFuture.onComplete(result => {
         w {
@@ -254,7 +254,7 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       val w = new Waiter
 
-      val stopCubeFuture = Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
+      val stopCubeFuture = Unicomplex() ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
 
       stopCubeFuture.onComplete(result => {
         w {
@@ -295,7 +295,7 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
         Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString
       }
 
-      val startCubeFuture = Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
+      val startCubeFuture = Unicomplex() ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
 
       startCubeFuture.onComplete(result => {
         w {
@@ -323,7 +323,7 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
     "not mess up if start a running cube" in {
       val w = new Waiter
 
-      val startCubeFuture = Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
+      val startCubeFuture = Unicomplex() ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
 
       startCubeFuture.onComplete(result => {
         w {
@@ -349,8 +349,8 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
     }
 
     "not mess up if stop and start a cube contains actors and services simultaneously" in {
-      val stopCubeFuture = Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
-      val startCubeFuture = Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
+      val stopCubeFuture = Unicomplex() ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
+      val startCubeFuture = Unicomplex() ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
 
       val w = new Waiter
       Future.sequence(Seq(stopCubeFuture, startCubeFuture)).onComplete(result => {
@@ -370,8 +370,8 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
     }
 
     "not mess up if stop and start a cube contains actors only simultaneously" in {
-      val stopCubeFuture = Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCube")
-      val startCubeFuture = Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCube")
+      val stopCubeFuture = Unicomplex() ? StopCube("org.squbs.unicomplex.test.DummyCube")
+      val startCubeFuture = Unicomplex() ? StartCube("org.squbs.unicomplex.test.DummyCube")
 
       val w = new Waiter
       Future.sequence(Seq(stopCubeFuture, startCubeFuture)).onComplete(result => {
@@ -391,8 +391,8 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
     }
 
     "not mess up if stop and start a cube contains services only simultaneously" in {
-      val stopCubeFuture = Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummySvc")
-      val startCubeFuture = Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummySvc")
+      val stopCubeFuture = Unicomplex() ? StopCube("org.squbs.unicomplex.test.DummySvc")
+      val startCubeFuture = Unicomplex() ? StartCube("org.squbs.unicomplex.test.DummySvc")
 
       val w = new Waiter
       Future.sequence(Seq(stopCubeFuture, startCubeFuture)).onComplete(result => {
@@ -415,9 +415,9 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
       val w = new Waiter
 
       Future.sequence(Seq(
-        Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummySvc"),
-        Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCube"),
-        Unicomplex.uniActor ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
+        Unicomplex() ? StopCube("org.squbs.unicomplex.test.DummySvc"),
+        Unicomplex() ? StopCube("org.squbs.unicomplex.test.DummyCube"),
+        Unicomplex() ? StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
       )).onComplete(result => {
         w {
           assert(result.isSuccess)
@@ -443,9 +443,9 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
       val w = new Waiter
 
       Future.sequence(Seq(
-        Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummySvc"),
-        Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCube"),
-        Unicomplex.uniActor ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
+        Unicomplex() ? StartCube("org.squbs.unicomplex.test.DummySvc"),
+        Unicomplex() ? StartCube("org.squbs.unicomplex.test.DummyCube"),
+        Unicomplex() ? StartCube("org.squbs.unicomplex.test.DummyCubeSvc")
       )).onComplete(result => {
         w {
           assert(result.isSuccess)
@@ -458,15 +458,6 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
-    }
-
-    "shutdown the system gracefully" in {
-
-      future {(1 to 100) foreach {_ => Source.fromURL("http://127.0.0.1:9090/dummysvc/msg/hello")}}
-
-      Unicomplex.uniActor ! GracefulStop
-
-      awaitCond(system.isTerminated, 10 seconds, 2 seconds)
     }
   }
 }

@@ -9,7 +9,6 @@ import spray.http.{MediaType, MediaTypes}
 import spray.routing._
 import Directives._
 import spray.routing.HttpService
-
 import Unicomplex._
 import scala.util.Try
 

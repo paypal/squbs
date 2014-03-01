@@ -85,15 +85,24 @@ object Bootstrap extends App {
 
     // Kill the JVM if the shutdown takes longer than the timeout.
     val shutdownTimer = new Timer(true)
-    shutdownTimer.schedule(new TimerTask { def run() { System.exit(0) }}, 3)
+    shutdownTimer.schedule(new TimerTask { def run() { System.exit(0) }}, 5000)
 
     // Then run the shutdown in the global execution context.
+    import scala.concurrent.ExecutionContext.Implicits.global
     Future {
       extensions.reverse foreach { case (symName, version, extLifecycle) =>
         extLifecycle.shutdown(jarConfigs)
         println(s"Shutting down extension ${extLifecycle.getClass.getName} in $symName $version")
       }
-    } (scala.concurrent.ExecutionContext.global)
+    } onComplete {
+      case Success(result) =>
+        println(s"ActorSystem ${Unicomplex.actorSystemName} shutdown complete")
+        System.exit(0)
+
+      case Failure(e) =>
+        println(s"Error occurred during shutdown extensions: $e")
+        System.exit(-1)
+    }
   }
 
   // Get the actors to start
