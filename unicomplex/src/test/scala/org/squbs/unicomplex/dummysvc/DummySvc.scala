@@ -36,7 +36,5 @@ private class DummyClient extends Actor with ActorLogging {
   def receive = {
     case msg: EchoMsg => context.actorSelection("/user/DummyCube/Appender") ! msg
       context.become(receiveMsg(sender))
-
-    case other => log.warning(s"received $other")
   }
 }

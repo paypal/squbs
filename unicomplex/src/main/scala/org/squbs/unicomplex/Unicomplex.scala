@@ -22,10 +22,6 @@ object Unicomplex {
 
   implicit val actorSystem = ActorSystem(actorSystemName)
 
-  actorSystem.registerOnTermination{
-    println(s"ActorSystem $actorSystemName shutdown complete")
-  }
-
   val uniActor = actorSystem.actorOf(Props[Unicomplex], "unicomplex")
 
   val externalConfigDir = "squbsconfig"
@@ -107,9 +103,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   private def shutdownState: Receive = {
     case Terminated(target) => log.debug(s"$target is terminated")
-      cubes -= target
-      if (cubes.isEmpty) {
-        log.info("All CubeSupervisors were terminated. Shutting down the system")
+      if (cubes contains target) {
+        cubes -= target
+      }else if (serviceRef.find(_ == target) != None) {
+        serviceRef = None
+      }
+      if (cubes.isEmpty && serviceRef == None) {
+        log.info("All CubeSupervisors and services were terminated. Shutting down the system")
         updateSystemState(Stopped)
         actorSystem.shutdown()
       }
