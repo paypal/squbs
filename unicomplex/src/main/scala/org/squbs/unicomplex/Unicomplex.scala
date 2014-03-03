@@ -107,7 +107,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     case Http.ClosedAll | Http.Unbound =>
       serviceRef foreach { ref =>
         ref ! PoisonPill
-        self ! Terminated(ref)
       }
 
     case Terminated(target) => log.debug(s"$target is terminated")
