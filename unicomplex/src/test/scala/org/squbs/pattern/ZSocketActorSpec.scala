@@ -123,6 +123,41 @@ class ZPairSocketActor extends ZSocketOnAkka {
   }
 }
 
+
+class ZReqSocketActor extends ZBlockingOnAkka {
+
+  override def consume(zEnvelop: ZEnvelop, context:ActorContext): Unit = {
+    printf("[req] consume\n")
+  }
+
+  override def reply(zEnvelop: ZEnvelop, zSocket: Socket) = {
+    printf("[req] reply\n")
+    zEnvelop.send(zSocket)
+  }
+
+  override def unknown(msg: Any, zSocket: Socket): Unit = {
+    printf("[req] [unknown:%s] %s\n", new String(zSocket.getIdentity, ZSocketOnAkka.utf8), msg)
+  }
+}
+
+
+class ZRepSocketActor extends ZSocketOnAkka {
+
+  override def consume(zEnvelop: ZEnvelop, context:ActorContext): Unit = {
+    printf("[rep] consume\n")
+    context.self ! zEnvelop
+  }
+
+  override def reply(zEnvelop: ZEnvelop, zSocket: Socket) = {
+    printf("[rep] reply\n")
+    zEnvelop.send(zSocket)
+  }
+
+  override def unknown(msg: Any, zSocket: Socket): Unit = {
+    printf("[rep] [unknown:%s] %s\n", new String(zSocket.getIdentity, ZSocketOnAkka.utf8), msg)
+  }
+}
+
 class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with FunSuite {
 
   test("test router/dealer socket"){
@@ -203,6 +238,25 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with FunSuite
     oneActor ! ZEnvelop(new ZFrame("zmq-one"), Seq(new ZFrame("some content")))
 
     pairActor ! ZEnvelop(new ZFrame("zmq-two"), Seq(new ZFrame("some content")))
+
+    receiveOne(1000 millis)
+  }
+
+  test("test req/rep socket"){
+
+    val reqActor = system.actorOf(Props[ZReqSocketActor])
+
+    reqActor ! SocketType(ZMQ.REQ)
+    reqActor ! Identity("zmq-req")
+    reqActor ! Bind("tcp://127.0.0.1:5559")
+
+    val repActor = system.actorOf(Props[ZRepSocketActor])
+
+    repActor ! SocketType(ZMQ.REP)
+    repActor ! Identity("zmq-rep")
+    repActor ! Connect("tcp://127.0.0.1:5559")
+
+    reqActor ! ZEnvelop(new ZFrame("zmq-req"), Seq(new ZFrame("some content")))
 
     receiveOne(1000 millis)
   }

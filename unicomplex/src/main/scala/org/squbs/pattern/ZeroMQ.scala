@@ -20,10 +20,10 @@ private[pattern] case object ZSocketActive extends ZSocketState
 
 //TODO complete the full list of configurations allowed by ZMQ
 //TODO support REQ/REP socket types, which doesn't support NONE-BLOCKING receives as current!
-//TODO support PUSH/PULL socket types
-//TODO support PAIR/PAIR socket types
 //ROUTER/DEALER is happy
 //PUB/SUB is happy
+//PAIR/PAIR
+//PUSH/PULL
 case class SocketType(val `type`:Int)
 case class Identity(val identity:String)
 case class ReceiveHWM(val hwm:Int)
@@ -62,6 +62,8 @@ private[pattern] case class ReceiveAsync(val delay:Long) {
   def doubleDelay(cap:Long) = ReceiveAsync(if(delay == 0L) 1L else math.min(delay * 2L, cap))
 }
 
+private[pattern] case object ReceiveBlock
+
 case class ZEnvelop(val identity:ZFrame, val payload:Seq[ZFrame]) {
 
   def send(zSocket:Socket) = {
@@ -89,8 +91,6 @@ trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
   def unknown(msg:Any, zSocket:Socket):Unit
 
   def create(settings:Settings) = {
-
-    printf("[create] settings:%s\n", settings)
 
     val zSocket = zContext.createSocket(settings.socketType)
 
@@ -150,7 +150,6 @@ trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
 
     //inbound
     case Event(msg @ ReceiveAsync(delay), Runnings(socket, maxDelay)) =>
-//      printf("[recv]\n")
       val zMessage = ZMsg.recvMsg(socket, ZMQ.DONTWAIT)
       val identity = zMessage.pop
       if(identity.hasData){
@@ -204,6 +203,42 @@ trait ZProducerOnAkka extends ZSocketOnAkka {
     case Event(msg:ZEnvelop, Runnings(socket, maxDelay)) =>
       reply(msg, socket)
       stay
+  }
+}
+
+private[pattern] case object ZBlockingWritable extends ZSocketState
+private[pattern] case object ZBlockingReadable extends ZSocketState
+
+trait ZBlockingOnAkka extends ZSocketOnAkka {
+
+  override def activate(zSocket:Socket, settings:Settings) = {
+
+    printf("[req] activate\n")
+    goto(ZBlockingWritable) using Runnings(zSocket, -1L);
+  }
+
+  startWith(ZSocketUninitialized, Settings(-1, None, None, None, None, None))
+
+  //runtime
+  when(ZBlockingWritable){
+    //outbound
+    case Event(msg:ZEnvelop, r @ Runnings(socket, maxDelay)) =>
+      reply(msg, socket)
+      self ! ReceiveBlock
+      goto(ZBlockingReadable) using r
+  }
+
+  when(ZBlockingReadable){
+    case Event(ReceiveBlock, r @ Runnings(socket, maxDelay)) =>
+      val zMessage = ZMsg.recvMsg(socket, 0)//blocking
+      val identity = zMessage.pop
+      //got real message, consume all frames, and resume by sending ReceiveAsync to self again
+      var zFrames = Seq[ZFrame]()
+      while(!zMessage.isEmpty){
+        zFrames = zFrames :+ zMessage.pop
+      }
+      consume(ZEnvelop(identity, zFrames), context)
+      goto(ZBlockingWritable) using r
   }
 }
 
