@@ -19,12 +19,6 @@ private[pattern] case object ZSocketUninitialized extends ZSocketState
 private[pattern] case object ZSocketActive extends ZSocketState
 
 //TODO complete the full list of configurations allowed by ZMQ
-//TODO support REQ/REP socket types, which doesn't support NONE-BLOCKING receives as current!
-//ROUTER/DEALER is happy
-//PUB/SUB is happy
-//PAIR/PAIR
-//PUSH/PULL
-case class SocketType(val `type`:Int)
 case class Identity(val identity:String)
 case class ReceiveHWM(val hwm:Int)
 case class SendHWM(val hwm:Int)
@@ -38,13 +32,11 @@ private[pattern] sealed trait ZSocketData
 /**
  * CONFIGURATIONS DATA
  * @param identity
- * @param socketType
  * @param receiveHWM
  * @param sendHWM
  * @param maxDelay
  */
-private[pattern] case class Settings(val socketType:Int,
-                                     val identity:Option[String],
+private[pattern] case class Settings(val identity:Option[String],
                                      val receiveHWM:Option[Int],
                                      val sendHWM:Option[Int],
                                      val maxMessageSize:Option[Long],
@@ -82,6 +74,8 @@ case class ZEnvelop(val identity:ZFrame, val payload:Seq[ZFrame]) {
 
 trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
 
+  val socketType:Int
+
   def zContext:ZContext = new ZContext
 
   def consume(zEnvelop:ZEnvelop, context:ActorContext):Unit
@@ -92,7 +86,7 @@ trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
 
   def create(settings:Settings) = {
 
-    val zSocket = zContext.createSocket(settings.socketType)
+    val zSocket = zContext.createSocket(socketType)
 
     settings.identity.foreach(identity => zSocket.setIdentity(identity.getBytes(ZSocketOnAkka.utf8)))
     settings.receiveHWM.foreach(hwm => zSocket.setRcvHWM(hwm))
@@ -110,13 +104,10 @@ trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
   }
 
   //init state
-  startWith(ZSocketUninitialized, Settings(-1, None, None, None, None, None))
+  startWith(ZSocketUninitialized, Settings(None, None, None, None, None))
 
   //configuration
   when(ZSocketUninitialized){
-
-    case Event(SocketType(socketType), origin:Settings) =>
-      stay using(origin.copy(socketType = socketType))
 
     case Event(Identity(identity), origin:Settings) =>
       stay using(origin.copy(identity = Some(identity)))
@@ -195,7 +186,7 @@ trait ZProducerOnAkka extends ZSocketOnAkka {
     goto(ZPublisherActive) using Runnings(zSocket, maxDelay)
   }
 
-  startWith(ZSocketUninitialized, Settings(-1, None, None, None, None, None))
+  startWith(ZSocketUninitialized, Settings(None, None, None, None, None))
 
   //runtime
   when(ZPublisherActive){
@@ -217,7 +208,7 @@ trait ZBlockingOnAkka extends ZSocketOnAkka {
     goto(ZBlockingWritable) using Runnings(zSocket, -1L);
   }
 
-  startWith(ZSocketUninitialized, Settings(-1, None, None, None, None, None))
+  startWith(ZSocketUninitialized, Settings(None, None, None, None, None))
 
   //runtime
   when(ZBlockingWritable){
@@ -248,7 +239,64 @@ object ZSocketOnAkka {
 
   final val defaultMaxDelay = 128L//128 millis
 
+  final val noConsumption = (zEnvelop:ZEnvelop, context:ActorContext) => ()
+
+  final val noReply = (zEnvelop:ZEnvelop, zSocket:Socket) => ()
+
+  final val noUnknown = (msg:Any, zSocket:Socket) => ()
+
   //pinned dispatcher to avoid thread switchings
   def Props[A <: Actor: ClassTag] = akka.actor.Props[A].withDispatcher("pinned-dispatcher")
 
+    def apply(`type`:Int, consumeOption:Option[(ZEnvelop, ActorContext) => Unit], replyOption:Option[(ZEnvelop, Socket) => Unit], unknownOption:Option[(Any, Socket) => Unit]) = {
+
+      `type` match {
+        case ZMQ.REQ =>
+          new ZBlockingOnAkka {
+
+            override val socketType: Int = `type`
+
+            override def consume(zEnvelop: ZEnvelop, context: ActorContext): Unit = consumeOption.getOrElse(noConsumption)(zEnvelop, context)
+
+            override def reply(zEnvelop: ZEnvelop, zSocket: Socket): Unit = replyOption.getOrElse((zEnvelop:ZEnvelop, zSocket:Socket) => {
+              zEnvelop.send(zSocket)
+            })(zEnvelop, zSocket)
+
+            override def unknown(msg: Any, zSocket: Socket): Unit = unknownOption.getOrElse(noUnknown)(msg, zSocket)
+          }
+        case ZMQ.PUB =>
+          new ZProducerOnAkka {
+
+            override val socketType: Int = `type`
+
+            override def consume(zEnvelop: ZEnvelop, context: ActorContext): Unit = consumeOption.getOrElse(noConsumption)(zEnvelop, context)
+
+            override def reply(zEnvelop: ZEnvelop, zSocket: Socket): Unit = replyOption.getOrElse((zEnvelop:ZEnvelop, zSocket:Socket) => {
+              zEnvelop.send(zSocket)
+            })(zEnvelop, zSocket)
+
+            override def unknown(msg: Any, zSocket: Socket): Unit = unknownOption.getOrElse(noUnknown)(msg, zSocket)
+          }
+        case _ =>
+          new ZSocketOnAkka {
+
+            override val socketType: Int = `type`
+
+            override def consume(zEnvelop: ZEnvelop, context: ActorContext): Unit = consumeOption.getOrElse(
+              if(socketType == ZMQ.ROUTER || socketType == ZMQ.REP)
+                (zEnvelop:ZEnvelop, context:ActorContext) => {
+                  context.self ! zEnvelop
+                }
+              else
+                noConsumption)(zEnvelop, context)
+
+            override def reply(zEnvelop: ZEnvelop, zSocket: Socket): Unit = replyOption.getOrElse((zEnvelop:ZEnvelop, zSocket:Socket) => {
+              zEnvelop.send(zSocket)
+            })(zEnvelop, zSocket)
+
+            override def unknown(msg: Any, zSocket: Socket): Unit = unknownOption.getOrElse(noUnknown)(msg, zSocket)
+          }
+
+      }
+  }
 }
