@@ -94,7 +94,7 @@ object ServiceRegistry {
   }
 
   // In very rare cases, we block. Shutdown is one where we want to make it is stopped.
-  private[unicomplex] def stopWebService(serviceRef: ActorRef)(implicit context: ActorContext) = {
+  private[unicomplex] def stopWebService (implicit context: ActorContext) = {
     implicit val self = context.self
     context.unwatch(registrar())
     registrar() ! PoisonPill

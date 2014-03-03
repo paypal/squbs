@@ -105,9 +105,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   private def shutdownState: Receive = {
 
     case Http.ClosedAll | Http.Unbound =>
-      serviceRef foreach { ref =>
-        ref ! PoisonPill
-      }
+      serviceRef foreach (_ ! PoisonPill)
 
     case Terminated(target) => log.debug(s"$target is terminated")
       if (cubes contains target) {
@@ -164,9 +162,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       log.info(s"got GracefulStop from ${sender.path}.")
       updateSystemState(Stopping)
       serviceRef match {
-        case Some(ref) =>
-          ServiceRegistry.stopWebService(ref)
-//          ref ! PoisonPill
+        case Some(_) =>
+          ServiceRegistry.stopWebService
         case _ =>
       }
       cubes.foreach(_._1 ! GracefulStop)
