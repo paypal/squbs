@@ -1,15 +1,14 @@
 package org.squbs.unicomplex
 
 
+import scala.util.Try
 import akka.io.IO
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
+import akka.actor._
 import akka.agent.Agent
 import spray.can.Http
 import spray.http.{MediaType, MediaTypes}
 import spray.routing._
 import Directives._
-import spray.routing.HttpService
-
 import Unicomplex._
 
 case class Register(routeDef: RouteDefinition)
@@ -31,9 +30,9 @@ object ServiceRegistry {
     private var registry = Map.empty[String, RouteDefinition]
     
     // CalculateRoute MUST return a function and not a value
-    private def calculateRoute(tmpRegistry: Map[String, RouteDefinition]) = tmpRegistry
-       .map{ case (webContext, routeDef) => pathPrefix(webContext) { routeDef.route } }
-       .reduceLeft(_ ~ _)
+    private def calculateRoute(tmpRegistry: Map[String, RouteDefinition]) =
+      Try(tmpRegistry.map{ case (webContext, routeDef) => pathPrefix(webContext) { routeDef.route } }
+       .reduceLeft(_ ~ _)).getOrElse(path(Slash) {get {complete {"Default Route"}}})
     
     def receive = {
       case Register(routeDef) =>
@@ -45,11 +44,15 @@ object ServiceRegistry {
         route send calculateRoute(tmpRegistry)
         registry = tmpRegistry
         log.info(s"""Web context "${routeDef.webContext}" (${routeDef.getClass.getName}) registered.""")
+
       case Unregister(webContext) =>
         val tmpRegistry = registry - webContext
         route send calculateRoute(tmpRegistry)
         registry = tmpRegistry 
         log.info(s"Web service route $webContext unregistered.")
+
+      case WebServicesStarted => // Got all the service registrations for now.
+        Unicomplex() ! WebServicesStarted // Just send the message onto Unicomplex after processing all registrations.
     }
   }
   
@@ -84,14 +87,26 @@ object ServiceRegistry {
     // create a new HttpServer using our handler tell it where to bind to
     val interface = Unicomplex.config getString "bind-address"
     val port = Unicomplex.config getInt "bind-port"
+    implicit val self = context.self
     IO(Http) ! Http.Bind(serviceRef, interface, port)
     context.watch(registrarRef)
     context.watch(serviceRef)
   }
+
+  // In very rare cases, we block. Shutdown is one where we want to make it is stopped.
+  private[unicomplex] def stopWebService(serviceRef: ActorRef)(implicit context: ActorContext) = {
+    implicit val self = context.self
+    context.unwatch(serviceRef)
+    context.unwatch(registrar())
+    registrar() ! PoisonPill
+    IO(Http) ! Http.CloseAll
+  }
 }
 
 trait RouteDefinition {
-  protected implicit final def context: ActorContext = ServiceRegistry.serviceActorContext()
+  protected implicit final lazy val context: ActorContext = ServiceRegistry.serviceActorContext()
+  implicit final lazy val self = context.self
+
   val webContext: String
   def route: Route
 }

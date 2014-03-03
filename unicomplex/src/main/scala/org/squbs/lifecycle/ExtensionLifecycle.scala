@@ -9,11 +9,13 @@ package org.squbs.lifecycle
 
 import com.typesafe.config.Config
 
-trait ExtensionInit {
+trait ExtensionLifecycle {
 
   def preInit(jarConfig: Seq[(String, Config)]) {}
 
   def init(jarConfig: Seq[(String, Config)]) {}
 
   def postInit(jarConfig: Seq[(String, Config)]) {}
+
+  def shutdown(jarConfig: Seq[(String, Config)]) {}
 }

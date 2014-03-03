@@ -3,16 +3,21 @@ package org.squbs.unicomplex
 import java.io._
 import java.util.jar.JarFile
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.Await
+import scala.concurrent.{Future, Await}
 import scala.concurrent.duration._
-import akka.actor.{Actor, Props}
+import akka.actor.{ActorSystem, ActorRef, Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import org.squbs.lifecycle.ExtensionInit
+import org.squbs.lifecycle.{GracefulStop, ExtensionLifecycle}
 import com.typesafe.config.{ConfigException, ConfigFactory, Config}
 import ConfigUtil._
 import akka.routing.FromConfig
 import scala.annotation.tailrec
+import org.squbs.util.conversion.CubeUtil._
+import java.util.{TimerTask, Timer}
+import scala.util.Failure
+import scala.Some
+import scala.util.Success
 
 object Bootstrap extends App {
 
@@ -38,7 +43,7 @@ object Bootstrap extends App {
 
   println("Booting unicomplex")
   
-  val startTime = StartTime(System.nanoTime, System.currentTimeMillis)
+  val startTime = Timestamp(System.nanoTime, System.currentTimeMillis)
 
   val startTimeMillis = System.currentTimeMillis
 
@@ -65,30 +70,72 @@ object Bootstrap extends App {
 
   // Init extensions
   extensions foreach {
-    case (symName, version, extensionInit) =>
-      extensionInit.init(jarConfigs)
-      println(s"Started extension ${extensionInit.getClass.getName} in $symName $version")
+    case (symName, version, extLifecycle) =>
+      extLifecycle.init(jarConfigs)
+      println(s"Started extension ${extLifecycle.getClass.getName} in $symName $version")
   }
 
   // Send start time to Unicomplex
   Unicomplex() ! startTime
 
+  // Register for stopping the extensions
+  Unicomplex.actorSystem.registerOnTermination {
+    // Run the shutdown in a different thread, not in the ActorSystem's onTermination thread.
+    import scala.concurrent.Future
+
+    // Kill the JVM if the shutdown takes longer than the timeout.
+    val shutdownTimer = new Timer(true)
+    shutdownTimer.schedule(new TimerTask { def run() { System.exit(0) }}, 5000)
+
+    // Then run the shutdown in the global execution context.
+    import scala.concurrent.ExecutionContext.Implicits.global
+    Future {
+      extensions.reverse foreach { case (symName, version, extLifecycle) =>
+        extLifecycle.shutdown(jarConfigs)
+        println(s"Shutting down extension ${extLifecycle.getClass.getName} in $symName $version")
+      }
+    } onComplete {
+      case Success(result) =>
+        println(s"ActorSystem ${Unicomplex.actorSystemName} shutdown complete")
+        System.exit(0)
+
+      case Failure(e) =>
+        println(s"Error occurred during shutdown extensions: $e")
+        System.exit(-1)
+    }
+  }
+
+  // Get the actors to start
+  private val actorsToStart = initInfoMap.getOrElse(StartupType.ACTORS, Seq.empty[InitInfo])
+
+  // Get the services to start
+  private val startService = Unicomplex.config getBoolean "start-service"
+  private val servicesToStart =
+    if (startService) initInfoMap.getOrElse(StartupType.SERVICES, Seq.empty)
+    else Seq.empty
+
+  // Notify Unicomplex that services will be started.
+  if (!servicesToStart.isEmpty) Unicomplex() ! PreStartWebService
+
   // Signal started to Unicomplex.
   Unicomplex() ! Started
 
   // Start all actors
-  val actors     = initInfoMap.getOrElse(StartupType.ACTORS, Seq.empty[InitInfo]).map(startActors)
-    .flatten.filter(_ != null)
+  val actors = actorsToStart.map(startActors).flatten.filter(_ != null)
+
+  // Start the service infrastructure if services are enabled and registered.
+  if (!servicesToStart.isEmpty) startServiceInfra()
 
   // Start all service routes
-  private val startService = Unicomplex.config getBoolean "start-service"
-  val services =
-    if (startService)
-      initInfoMap.getOrElse(StartupType.SERVICES, Seq.empty[InitInfo]).map(startRoutes).flatten.filter(_ != null)
-    else Seq.empty
+  val services = servicesToStart.map(startRoutes).flatten.filter(_ != null)
+
+
+  // Queue message on registrar which will then forwarded to Unicomplex when all services are processed.
+  // Prevents out of band notification.
+  ServiceRegistry.registrar() ! WebServicesStarted
 
   // postInit extensions
-  extensions foreach { case (jarName, jarVersion, extensionInit) => extensionInit.postInit(jarConfigs)}
+  extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs)}
 
   private[this] def readConfigs(jarName: String): Option[Config] = {
     val jarFile = new File(jarName)
@@ -214,8 +261,8 @@ object Bootstrap extends App {
 
   def startActors(initInfo: InitInfo) = {
     import initInfo.{jarPath, symName, alias, version, entries}
-    val cubeActor = Unicomplex.actorSystem.actorOf(Props[CubeSupervisor], alias)
-    Unicomplex() ! CubeRegistration(alias, symName, version, cubeActor)
+    val cubeSupervisor = Unicomplex.actorSystem.actorOf(Props[CubeSupervisor], alias)
+    Unicomplex() ! CubeRegistration(alias, symName, version, cubeSupervisor)
 
     def startActor(actorConfig: Config): (String, String, Class[_]) = {
       val className = actorConfig getString "class-name"
@@ -231,7 +278,7 @@ object Bootstrap extends App {
         val props = if (withRouter) Props(actorClass) withRouter FromConfig() else Props(actorClass)
 
         // Send the props to be started by the cube.
-        cubeActor ! StartCubeActor(props, name, initRequired)
+        cubeSupervisor ! StartCubeActor(props, name, initRequired)
         (symName, version, clazz)
       } catch {
         case e: Exception =>
@@ -245,33 +292,36 @@ object Bootstrap extends App {
     }
 
     val actorInfo = entries map startActor
-    cubeActor ! Started // Tell the cube all actors to be started are started.
+    cubeSupervisor ! Started // Tell the cube all actors to be started are started.
     println(s"Started cube $symName $version")
     actorInfo
   }
 
+  def startServiceInfra() {
+    val startTime = System.nanoTime
+    implicit val timeout = Timeout(1000 milliseconds)
+    val ackFuture = Unicomplex() ? StartWebService
+    // Block for the web service to be started.
+    Await.ready(ackFuture, timeout.duration)
+    // Tight loop making sure the registrar is in place
+    import ServiceRegistry.registrar
+    while (registrar() == null) {
+      Await.result(registrar.future(), timeout.duration)
+    }
+    val elapsed = (System.nanoTime - startTime) / 1000000
+    println(s"Web Service started in $elapsed milliseconds")
+  }
+
   def startRoutes(initInfo: InitInfo) = {
     import initInfo.{jarPath, symName, version, entries}
-    def startRoute(routeConfig: Config): (String, String, Class[_]) =
+    def startRoute(routeConfig: Config): (String, String, RouteDefinition) =
       try {
         import ServiceRegistry.registrar
         val clazz = Class.forName(routeConfig.getString("class-name"), true, getClass.getClassLoader)
         val routeClass = clazz.asSubclass(classOf[RouteDefinition])
-        if (registrar() == null) {
-          val startTime = System.nanoTime
-          implicit val timeout = Timeout(1000 milliseconds)
-          val ackFuture = Unicomplex() ? StartWebService
-          // Block for the web service to be started.
-          Await.ready(ackFuture, timeout.duration)
-          // Tight loop making sure the registrar is in place
-          while (registrar() == null) {
-            Await.result(registrar.future(), timeout.duration)
-          }
-          val elapsed = (System.nanoTime - startTime) / 1000000
-          println(s"Web Service started in $elapsed milliseconds")
-        }
-        registrar() ! Register(routeClass.newInstance)
-        (symName, version, clazz)
+        val routeInstance = routeClass.newInstance
+        registrar() ! Register(routeInstance)
+        (symName, version, routeInstance)
       } catch {
         case e: Exception =>
           val t = getRootCause(e)
@@ -295,24 +345,27 @@ object Bootstrap extends App {
     }
   }
 
-    def preInitExtension(initInfo: InitInfo, extension: String, seq: Int): (String, String, ExtensionInit) = {
-      import initInfo.{symName, version, jarPath}
-      try {
-        val clazz = Class.forName(extension, true, getClass.getClassLoader)
-        val extensionInit = clazz.asSubclass(classOf[ExtensionInit]).newInstance
-        extensionInit.preInit(jarConfigs)
-        (symName, version, extensionInit)
-      } catch {
-        case e: Exception =>
-          val t = getRootCause(e)
-          println(s"Can't load extension $extension.\n" +
+  def preInitExtension(initInfo: InitInfo, extension: String, seq: Int): (String, String, ExtensionLifecycle) = {
+    import initInfo.{symName, version, jarPath}
+    try {
+      val clazz = Class.forName(extension, true, getClass.getClassLoader)
+      val extLifecycle = clazz.asSubclass(classOf[ExtensionLifecycle]).newInstance
+      extLifecycle.preInit(jarConfigs)
+      (symName, version, extLifecycle)
+    } catch {
+      case e: Exception =>
+        val t = getRootCause(e)
+        println(s"Can't load extension $extension.\n" +
           s"Cube: $symName $version\n" +
           s"Path: $jarPath\n" +
           s"${t.getClass.getName}: ${t.getMessage}")
         null
-      }
     }
+  }
 
+  def shutdownSystem() {
+    Unicomplex() ! GracefulStop
+  }
 
   private[this] def parseOptions(options: String): Array[(String, String)] =
     options.split(';').map { nv =>
@@ -331,5 +384,58 @@ object Bootstrap extends App {
       cause = t.getCause
     }
     t
+  }
+
+  // TODO use the following in hot deployment
+  private[unicomplex] def stopCube(cubeName: String)(implicit system: ActorSystem): Future[ActorRef] = {
+    implicit val executionContext = system.dispatcher
+
+    // Stop the extensions of this cube if there are any
+    extensions.filter(_._1 == cubeName).map(_._3).foreach(extension => {/* stop the extension */})
+
+    // Unregister the routes of this cube if there are any
+    services.filter(_._1 == cubeName).map(_._3).foreach(routeDef => {
+      ServiceRegistry.registrar() ! Unregister(routeDef.webContext)
+    })
+
+    // Stop the CubeSupervisor if there is one
+    nameToAlias(cubeName).cubeSupervisor()
+  }
+
+  private[unicomplex] def startCube(cubeName: String)(implicit system: ActorSystem): Unit = {
+    implicit val executionContext = system.dispatcher
+
+    // TODO prevent starting an active Cube
+    // PreInit extensions if there are any
+    val extensionsInCube = extensions.filter(_._1 == cubeName).map(_._3)
+    extensionsInCube.foreach(_.preInit(jarConfigs))
+    // Init extensions
+    extensionsInCube.foreach(_.init(jarConfigs))
+
+    // Start actors if there are any
+    nameToAlias(cubeName).cubeSupervisor().onComplete({
+      case Success(supervisor) => println(s"[warn][Bootstrap] actors in $cubeName are already activated")
+
+      case Failure(_) =>
+        initInfoMap.getOrElse(StartupType.ACTORS, Seq.empty[Bootstrap.InitInfo])
+          .filter(_.symName == cubeName).foreach(startActors)
+    })
+
+    // Start services if there are any
+    services.filter(_._1 == cubeName).map(_._3).foreach(routeDef => {
+      ServiceRegistry.registrar() ! Register(routeDef)
+    })
+
+    // PostInit
+    extensionsInCube.foreach(_.postInit(jarConfigs))
+  }
+
+  // lookup the cube alias according to the cube name
+  private def nameToAlias(cubeName: String): String = {
+    initInfoMap.getOrElse(StartupType.ACTORS, Seq.empty[InitInfo]).find(_.symName == cubeName) match {
+      case Some(info) => info.alias
+
+      case None => ""
+    }
   }
 }
