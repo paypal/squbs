@@ -181,7 +181,6 @@ trait ZProducerOnAkka extends ZSocketOnAkka {
 
   override def activate(zSocket:Socket, settings:Settings) = {
 
-    printf("[pub] activate\n")
     val maxDelay = settings.maxDelay.getOrElse(ZSocketOnAkka.defaultMaxDelay)
     goto(ZPublisherActive) using Runnings(zSocket, maxDelay)
   }
@@ -204,7 +203,6 @@ trait ZBlockingOnAkka extends ZSocketOnAkka {
 
   override def activate(zSocket:Socket, settings:Settings) = {
 
-    printf("[req] activate\n")
     goto(ZBlockingWritable) using Runnings(zSocket, -1L);
   }
 
@@ -212,7 +210,6 @@ trait ZBlockingOnAkka extends ZSocketOnAkka {
 
   //runtime
   when(ZBlockingWritable){
-    //outbound
     case Event(msg:ZEnvelop, r @ Runnings(socket, maxDelay)) =>
       reply(msg, socket)
       self ! ReceiveBlock
@@ -256,45 +253,54 @@ object ZSocketOnAkka {
 
             override val socketType: Int = `type`
 
-            override def consume(zEnvelop: ZEnvelop, context: ActorContext): Unit = consumeOption.getOrElse(noConsumption)(zEnvelop, context)
+            override def consume(zEnvelop: ZEnvelop, context: ActorContext): Unit =
+              consumeOption.getOrElse(noConsumption).apply(zEnvelop, context)
 
-            override def reply(zEnvelop: ZEnvelop, zSocket: Socket): Unit = replyOption.getOrElse((zEnvelop:ZEnvelop, zSocket:Socket) => {
-              zEnvelop.send(zSocket)
-            })(zEnvelop, zSocket)
+            override def reply(zEnvelop: ZEnvelop, zSocket: Socket): Unit =
+              replyOption.getOrElse((zEnvelop:ZEnvelop, zSocket:Socket) => {
+                zEnvelop.send(zSocket)
+              }).apply(zEnvelop, zSocket)
 
-            override def unknown(msg: Any, zSocket: Socket): Unit = unknownOption.getOrElse(noUnknown)(msg, zSocket)
+            override def unknown(msg: Any, zSocket: Socket): Unit =
+              unknownOption.getOrElse(noUnknown).apply(msg, zSocket)
           }
-        case ZMQ.PUB =>
+        case ZMQ.PUB | ZMQ.PUSH =>
           new ZProducerOnAkka {
 
             override val socketType: Int = `type`
 
-            override def consume(zEnvelop: ZEnvelop, context: ActorContext): Unit = consumeOption.getOrElse(noConsumption)(zEnvelop, context)
+            override def consume(zEnvelop: ZEnvelop, context: ActorContext): Unit =
+              consumeOption.getOrElse(noConsumption).apply(zEnvelop, context)
 
-            override def reply(zEnvelop: ZEnvelop, zSocket: Socket): Unit = replyOption.getOrElse((zEnvelop:ZEnvelop, zSocket:Socket) => {
-              zEnvelop.send(zSocket)
-            })(zEnvelop, zSocket)
+            override def reply(zEnvelop: ZEnvelop, zSocket: Socket): Unit =
+              replyOption.getOrElse((zEnvelop:ZEnvelop, zSocket:Socket) => {
+                zEnvelop.send(zSocket)
+              }).apply(zEnvelop, zSocket)
 
-            override def unknown(msg: Any, zSocket: Socket): Unit = unknownOption.getOrElse(noUnknown)(msg, zSocket)
+            override def unknown(msg: Any, zSocket: Socket): Unit =
+              unknownOption.getOrElse(noUnknown).apply(msg, zSocket)
           }
         case _ =>
           new ZSocketOnAkka {
 
             override val socketType: Int = `type`
 
-            override def consume(zEnvelop: ZEnvelop, context: ActorContext): Unit = consumeOption.getOrElse(
-              if(socketType == ZMQ.ROUTER || socketType == ZMQ.REP)
-                (zEnvelop:ZEnvelop, context:ActorContext) => {
-                  context.self ! zEnvelop
-                }
-              else
-                noConsumption)(zEnvelop, context)
+            override def consume(zEnvelop: ZEnvelop, context: ActorContext): Unit =
+              consumeOption.getOrElse(
+                if(socketType == ZMQ.ROUTER || socketType == ZMQ.REP)
+                  (zEnvelop:ZEnvelop, context:ActorContext) => {
+                    context.self ! zEnvelop
+                  }
+                else
+                  noConsumption).apply(zEnvelop, context)
 
-            override def reply(zEnvelop: ZEnvelop, zSocket: Socket): Unit = replyOption.getOrElse((zEnvelop:ZEnvelop, zSocket:Socket) => {
-              zEnvelop.send(zSocket)
-            })(zEnvelop, zSocket)
+            override def reply(zEnvelop: ZEnvelop, zSocket: Socket): Unit =
+              replyOption.getOrElse((zEnvelop:ZEnvelop, zSocket:Socket) => {
+                zEnvelop.send(zSocket)
+              }).apply(zEnvelop, zSocket)
 
-            override def unknown(msg: Any, zSocket: Socket): Unit = unknownOption.getOrElse(noUnknown)(msg, zSocket)
+            override def unknown(msg: Any, zSocket: Socket): Unit =
+              unknownOption.getOrElse(noUnknown).apply(msg, zSocket)
           }
 
       }

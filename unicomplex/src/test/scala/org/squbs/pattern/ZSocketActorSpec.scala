@@ -1,6 +1,6 @@
 package org.squbs.pattern
 
-import akka.testkit.TestKit
+import akka.testkit.{ImplicitSender, TestKit}
 import akka.actor.{ActorContext, Props, ActorSystem}
 import org.scalatest.FunSuite
 import org.zeromq.{ZFrame, ZMQ}
@@ -159,7 +159,7 @@ import scala.concurrent.duration._
 //  }
 //}
 
-class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with FunSuite {
+class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with ImplicitSender with FunSuite {
 
   test("test router/dealer socket"){
 
@@ -169,7 +169,7 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with FunSuite
     routerActor ! Bind("tcp://127.0.0.1:5555")
 
     val dealerActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.DEALER, Some((zEnvelop:ZEnvelop, context:ActorContext) => {
-      printf("[dealer] got response!")
+      self ! "got it"
     }), None, None)))
 
     dealerActor ! Identity("zmq-dealer")
@@ -179,86 +179,87 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with FunSuite
     receiveOne(1000 millis)
   }
 
-//  test("test pub/sub socket"){
-//
-//    val pubActor = system.actorOf(Props[ZPubSocketActor])
-//
-//    pubActor ! SocketType(ZMQ.PUB)
-//    pubActor ! Identity("zmq-pub")
-//    pubActor ! Bind("tcp://127.0.0.1:5556")
-//
-//    val subActor = system.actorOf(Props[ZSubSocketActor])
-//
-//    subActor ! SocketType(ZMQ.SUB)
-//    subActor ! Identity("zmq-sub")
-//    subActor ! Connect("tcp://127.0.0.1:5556")
-//    subActor ! ZEnvelop(new ZFrame("zmq-topic"), Seq())
-//
-//    for(i <- 1 to 1000){
-//      pubActor ! ZEnvelop(new ZFrame("zmq-topic"), Seq(new ZFrame("some content")))
-//    }
-//
-//    receiveOne(1000 millis)
-//  }
-//
-//  test("test push/pull socket"){
-//
-//    val pushActor = system.actorOf(Props[ZPushSocketActor])
-//
-//    pushActor ! SocketType(ZMQ.PUSH)
-//    pushActor ! Identity("zmq-push")
-//    pushActor ! Bind("tcp://127.0.0.1:5557")
-//
-//    val pullActor = system.actorOf(Props[ZPullSocketActor])
-//
-//    pullActor ! SocketType(ZMQ.PULL)
-//    pullActor ! Identity("zmq-pull")
-//    pullActor ! Connect("tcp://127.0.0.1:5557")
-//
-//    for(i <- 1 to 1000){
-//      pushActor ! ZEnvelop(new ZFrame("zmq-downstream"), Seq(new ZFrame("some content")))
-//    }
-//
-//    receiveOne(1000 millis)
-//  }
-//
-//  test("test pair/pair socket"){
-//
-//    val oneActor = system.actorOf(Props[ZPairSocketActor])
-//
-//    oneActor ! SocketType(ZMQ.PAIR)
-//    oneActor ! Identity("zmq-one")
-//    oneActor ! Bind("tcp://127.0.0.1:5558")
-//
-//    val pairActor = system.actorOf(Props[ZPairSocketActor])
-//
-//    pairActor ! SocketType(ZMQ.PAIR)
-//    pairActor ! Identity("zmq-two")
-//    pairActor ! Connect("tcp://127.0.0.1:5558")
-//
-//    oneActor ! ZEnvelop(new ZFrame("zmq-one"), Seq(new ZFrame("some content")))
-//
-//    pairActor ! ZEnvelop(new ZFrame("zmq-two"), Seq(new ZFrame("some content")))
-//
-//    receiveOne(1000 millis)
-//  }
-//
-//  test("test req/rep socket"){
-//
-//    val reqActor = system.actorOf(Props[ZReqSocketActor])
-//
-//    reqActor ! SocketType(ZMQ.REQ)
-//    reqActor ! Identity("zmq-req")
-//    reqActor ! Bind("tcp://127.0.0.1:5559")
-//
-//    val repActor = system.actorOf(Props[ZRepSocketActor])
-//
-//    repActor ! SocketType(ZMQ.REP)
-//    repActor ! Identity("zmq-rep")
-//    repActor ! Connect("tcp://127.0.0.1:5559")
-//
-//    reqActor ! ZEnvelop(new ZFrame("zmq-req"), Seq(new ZFrame("some content")))
-//
-//    receiveOne(1000 millis)
-//  }
+  test("test pub/sub socket"){
+
+    val pubActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.PUB, None, None, None)))
+
+    pubActor ! Identity("zmq-pub")
+    pubActor ! Bind("tcp://127.0.0.1:5556")
+
+    val subActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.SUB, Some((zEnvelop:ZEnvelop, context:ActorContext) => {
+      self ! "got it"
+    }), None, None)))
+
+    subActor ! Identity("zmq-sub")
+    subActor ! Connect("tcp://127.0.0.1:5556")
+    subActor ! ZEnvelop(new ZFrame("zmq-topic"), Seq())
+
+    for(i <- 1 to 1000){
+      pubActor ! ZEnvelop(new ZFrame("zmq-topic"), Seq(new ZFrame("some content")))
+    }
+
+    receiveOne(1000 millis)
+  }
+
+  test("test push/pull socket"){
+
+    val pushActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.PUSH, None, None, None)))
+
+    pushActor ! Identity("zmq-push")
+    pushActor ! Bind("tcp://127.0.0.1:5557")
+
+    val pullActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.PULL, Some((zEnvelop:ZEnvelop, context:ActorContext) => {
+      self ! "got it"
+    }), None, None)))
+
+    pullActor ! Identity("zmq-pull")
+    pullActor ! Connect("tcp://127.0.0.1:5557")
+
+    for(i <- 1 to 1000){
+      pushActor ! ZEnvelop(new ZFrame("zmq-downstream"), Seq(new ZFrame("some content")))
+    }
+
+    receiveOne(1000 millis)
+  }
+
+  test("test pair/pair socket"){
+
+    val oneActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.PAIR, Some((zEnvelop:ZEnvelop, context:ActorContext) => {
+      self ! "got it"
+    }), None, None)))
+
+    oneActor ! Identity("zmq-one")
+    oneActor ! Bind("tcp://127.0.0.1:5558")
+
+    val pairActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.PAIR, Some((zEnvelop:ZEnvelop, context:ActorContext) => {
+      self ! "got it"
+    }), None, None)))
+
+    pairActor ! Identity("zmq-two")
+    pairActor ! Connect("tcp://127.0.0.1:5558")
+
+    oneActor ! ZEnvelop(new ZFrame("zmq-one"), Seq(new ZFrame("some content")))
+    pairActor ! ZEnvelop(new ZFrame("zmq-two"), Seq(new ZFrame("some content")))
+
+    receiveN(2, 1000 millis)
+  }
+
+  test("test req/rep socket"){
+
+    val reqActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.REQ, Some((zEnvelop:ZEnvelop, context:ActorContext) => {
+      self ! "got it"
+    }), None, None)))
+
+    reqActor ! Identity("zmq-req")
+    reqActor ! Bind("tcp://127.0.0.1:5559")
+
+    val repActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.REP, None, None, None)))
+
+    repActor ! Identity("zmq-rep")
+    repActor ! Connect("tcp://127.0.0.1:5559")
+
+    reqActor ! ZEnvelop(new ZFrame("zmq-req"), Seq(new ZFrame("some content")))
+
+    receiveOne(1000 millis)
+  }
 }
