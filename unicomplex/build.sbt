@@ -17,3 +17,7 @@ libraryDependencies ++= Seq(
   "io.spray" % "spray-testkit" % "1.2.0" % "test",
   "org.zeromq" % "jeromq" % "0.3.3"
 )
+
+fork in Test := true
+
+parallelExecution in Test := false
