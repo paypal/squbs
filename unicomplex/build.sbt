@@ -14,5 +14,6 @@ libraryDependencies ++= Seq(
   "io.spray" % "spray-can" % "1.2.0",
   "io.spray" % "spray-http" % "1.2.0",
   "io.spray" % "spray-routing" % "1.2.0",
-  "io.spray" % "spray-testkit" % "1.2.0" % "test"
+  "io.spray" % "spray-testkit" % "1.2.0" % "test",
+  "org.zeromq" % "jeromq" % "0.3.3"
 )

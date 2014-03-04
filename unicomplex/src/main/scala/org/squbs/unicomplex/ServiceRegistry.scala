@@ -1,16 +1,15 @@
 package org.squbs.unicomplex
 
 
+import scala.util.Try
 import akka.io.IO
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
+import akka.actor._
 import akka.agent.Agent
 import spray.can.Http
 import spray.http.{MediaType, MediaTypes}
 import spray.routing._
 import Directives._
-import spray.routing.HttpService
 import Unicomplex._
-import scala.util.Try
 
 case class Register(routeDef: RouteDefinition)
 case class Unregister(key: String)
@@ -92,6 +91,14 @@ object ServiceRegistry {
     IO(Http) ! Http.Bind(serviceRef, interface, port)
     context.watch(registrarRef)
     context.watch(serviceRef)
+  }
+
+  // In very rare cases, we block. Shutdown is one where we want to make it is stopped.
+  private[unicomplex] def stopWebService (implicit context: ActorContext) = {
+    implicit val self = context.self
+    context.unwatch(registrar())
+    registrar() ! PoisonPill
+    IO(Http) ! Http.CloseAll
   }
 }
 

@@ -363,7 +363,7 @@ object Bootstrap extends App {
     }
   }
 
-  def shutdownSystem: Unit = {
+  def shutdownSystem() {
     Unicomplex() ! GracefulStop
   }
 
@@ -406,10 +406,10 @@ object Bootstrap extends App {
     implicit val executionContext = system.dispatcher
 
     // TODO prevent starting an active Cube
-    // PreInit extentions if there are any
+    // PreInit extensions if there are any
     val extensionsInCube = extensions.filter(_._1 == cubeName).map(_._3)
     extensionsInCube.foreach(_.preInit(jarConfigs))
-    // Init extentions
+    // Init extensions
     extensionsInCube.foreach(_.init(jarConfigs))
 
     // Start actors if there are any

@@ -11,6 +11,7 @@ import akka.actor.OneForOneStrategy
 import akka.actor.Terminated
 import akka.pattern.pipe
 import spray.can.Http.Bound
+import spray.can.Http
 
 object Unicomplex {
 
@@ -102,10 +103,14 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   private var serviceBound = false
 
   private def shutdownState: Receive = {
+
+    case Http.ClosedAll | Http.Unbound =>
+      serviceRef foreach (_ ! PoisonPill)
+
     case Terminated(target) => log.debug(s"$target is terminated")
       if (cubes contains target) {
         cubes -= target
-      }else if (serviceRef.find(_ == target) != None) {
+      } else if (serviceRef.exists(_ == target)) {
         serviceRef = None
       }
       if (cubes.isEmpty && serviceRef == None) {
@@ -157,9 +162,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       log.info(s"got GracefulStop from ${sender.path}.")
       updateSystemState(Stopping)
       serviceRef match {
-        case Some(ref) =>
-          ServiceRegistry.registrar() ! PoisonPill
-          ref ! PoisonPill
+        case Some(_) =>
+          ServiceRegistry.stopWebService
         case _ =>
       }
       cubes.foreach(_._1 ! GracefulStop)
