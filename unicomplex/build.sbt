@@ -1,3 +1,8 @@
+import de.johoop.jacoco4sbt._
+import JacocoPlugin._
+import org.scalastyle.sbt.ScalastylePlugin._
+import de.johoop.findbugs4sbt.FindBugs._
+
 scalaVersion := "2.10.3"
 
 name := "unicomplex"
@@ -21,3 +26,9 @@ libraryDependencies ++= Seq(
 fork in Test := true
 
 parallelExecution in Test := false
+
+jacoco.settings
+
+findbugsSettings
+
+org.scalastyle.sbt.ScalastylePlugin.Settings
