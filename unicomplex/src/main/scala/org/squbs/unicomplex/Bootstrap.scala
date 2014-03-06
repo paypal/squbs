@@ -132,7 +132,7 @@ object Bootstrap extends App {
 
   // Queue message on registrar which will then forwarded to Unicomplex when all services are processed.
   // Prevents out of band notification.
-  ServiceRegistry.registrar() ! WebServicesStarted
+  if (!servicesToStart.isEmpty) ServiceRegistry.registrar() ! WebServicesStarted
 
   // postInit extensions
   extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs)}
