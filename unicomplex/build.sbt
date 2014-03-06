@@ -1,3 +1,8 @@
+import de.johoop.jacoco4sbt._
+import JacocoPlugin._
+import org.scalastyle.sbt.ScalastylePlugin._
+import de.johoop.findbugs4sbt.FindBugs._
+
 name := "unicomplex"
 
 libraryDependencies ++= Seq(
@@ -11,3 +16,13 @@ libraryDependencies ++= Seq(
   "io.spray" % "spray-testkit" % "1.2.0" % "test",
   "org.zeromq" % "jeromq" % "0.3.3"
 )
+
+fork in Test := true
+
+parallelExecution in Test := false
+
+jacoco.settings
+
+findbugsSettings
+
+org.scalastyle.sbt.ScalastylePlugin.Settings

@@ -7,7 +7,6 @@ import org.scalatest.matchers.ClassicMatchers
 import scala.concurrent.duration._
 import org.scalatest.concurrent.AsyncAssertions
 import scala.io.Source
-import org.squbs.lifecycle.GracefulStop
 import scala.concurrent._
 import akka.pattern.ask
 import akka.actor.ActorRef
@@ -22,7 +21,7 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
   implicit val executionContext = system.dispatcher
 
   implicit val timeout: akka.util.Timeout = 2 seconds
-  val dummyJarsDir = new File("unicomplex/src/test/resources/classpaths")
+  val dummyJarsDir = new File("src/test/resources/classpaths")
 
   val port = Unicomplex.config getInt "bind-port"
 
