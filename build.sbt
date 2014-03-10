@@ -1,10 +1,8 @@
 scalaVersion in ThisBuild := "2.10.3"
 
-version in ThisBuild := "0.0.3-SNAPSHOT"
+version in ThisBuild := "0.0.4-SNAPSHOT"
 
 organization in ThisBuild := "org.squbs"
-
-version in ThisBuild := "0.0.3-SNAPSHOT"
 
 publishArtifact := false
 
