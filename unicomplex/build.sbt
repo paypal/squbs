@@ -1,8 +1,9 @@
-scalaVersion := "2.10.3"
+import de.johoop.jacoco4sbt._
+import JacocoPlugin._
+import org.scalastyle.sbt.ScalastylePlugin._
+import de.johoop.findbugs4sbt.FindBugs._
 
 name := "unicomplex"
-
-organization := "org.squbs"
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "1.9.1" % "test",
@@ -19,3 +20,9 @@ libraryDependencies ++= Seq(
 fork in Test := true
 
 parallelExecution in Test := false
+
+jacoco.settings
+
+findbugsSettings
+
+org.scalastyle.sbt.ScalastylePlugin.Settings
