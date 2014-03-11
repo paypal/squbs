@@ -19,6 +19,12 @@ import scala.util.Failure
 import scala.Some
 import scala.util.Success
 
+object Shutdown extends App {
+
+  Unicomplex() ! GracefulStop
+
+}
+
 object Bootstrap extends App {
 
   object StartupType extends Enumeration {
@@ -40,9 +46,8 @@ object Bootstrap extends App {
   // Make it extra lazy, so that we do not create the next File if the previous one succeeds.
   val configExtensions = Stream("conf", "json", "properties")
 
-
   println("Booting unicomplex")
-  
+
   val startTime = Timestamp(System.nanoTime, System.currentTimeMillis)
 
   val startTimeMillis = System.currentTimeMillis
@@ -361,10 +366,6 @@ object Bootstrap extends App {
           s"${t.getClass.getName}: ${t.getMessage}")
         null
     }
-  }
-
-  def shutdownSystem() {
-    Unicomplex() ! GracefulStop
   }
 
   private[this] def parseOptions(options: String): Array[(String, String)] =
