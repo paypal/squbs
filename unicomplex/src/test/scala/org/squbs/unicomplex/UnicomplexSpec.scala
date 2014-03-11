@@ -21,7 +21,7 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
   implicit val executionContext = system.dispatcher
 
   implicit val timeout: akka.util.Timeout = 2 seconds
-  val dummyJarsDir = new File("src/test/resources/classpaths")
+  val dummyJarsDir = new File("unicomplex/src/test/resources/classpaths")
 
   val port = Unicomplex.config getInt "bind-port"
 
@@ -33,13 +33,11 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
       println("[UnicomplexSpec] There is no cube to be loaded")
     }
 
-    Bootstrap.main(Array.empty[String])
-  }
-
-  override def afterAll() = {
-    if (!system.isTerminated) {
-      Bootstrap.shutdownSystem
+    sys.addShutdownHook {
+      Unicomplex.actorSystem.shutdown()
     }
+
+    Bootstrap.main(Array.empty[String])
   }
 
   "Bootstrap" must {

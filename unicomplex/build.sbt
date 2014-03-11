@@ -23,10 +23,6 @@ findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
-fork in Test := true
-
-fork in jacoco.Config := true
-
 parallelExecution in Test := false
 
 parallelExecution in jacoco.Config := false
