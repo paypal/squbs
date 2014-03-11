@@ -21,7 +21,7 @@ import scala.util.Success
 
 object Shutdown extends App {
 
-  Bootstrap.shutdownSystem()
+  Unicomplex() ! GracefulStop
 
 }
 
@@ -366,10 +366,6 @@ object Bootstrap extends App {
           s"${t.getClass.getName}: ${t.getMessage}")
         null
     }
-  }
-
-  def shutdownSystem() {
-    Unicomplex() ! GracefulStop
   }
 
   private[this] def parseOptions(options: String): Array[(String, String)] =
