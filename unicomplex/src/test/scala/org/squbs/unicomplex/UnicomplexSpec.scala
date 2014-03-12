@@ -10,6 +10,8 @@ import scala.io.Source
 import scala.concurrent._
 import akka.pattern.ask
 import akka.actor.ActorRef
+import scala.util.{Success, Failure, Try}
+import org.squbs.unicomplex.dummyextensions.DummyExtension
 
 /**
  * Created by zhuwang on 2/21/14.
@@ -38,6 +40,21 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
     }
 
     Bootstrap.main(Array.empty[String])
+
+    def svcReady = Try {
+      Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").getLines()
+    } match {
+      case Success(_) => true
+      case Failure(e) => println(e.getMessage); false
+    }
+
+    var retry = 5
+    while (!svcReady && retry > 0) {
+      Thread.sleep(1000)
+      retry -= 1
+    }
+
+    if (retry == 0) throw new Exception("Starting service timeout in 5s")
   }
 
   "Bootstrap" must {
@@ -73,12 +90,17 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
     "start all services" in {
       assert(Bootstrap.services.size == 2)
 
-      Thread.sleep(1000)
-
       assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
-
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+    }
+
+    "preInit, init and postInit all extenstions" in {
+      assert(Bootstrap.extensions.size == 2)
+
+      assert(Bootstrap.extensions.forall(_._3.isInstanceOf[DummyExtension]))
+      assert((Bootstrap.extensions(0)._3.asInstanceOf[DummyExtension]).state == "AstartpreInitinitpostInit")
+      assert((Bootstrap.extensions(1)._3.asInstanceOf[DummyExtension]).state == "BstartpreInitinitpostInit")
     }
   }
 
