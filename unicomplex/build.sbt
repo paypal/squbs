@@ -17,12 +17,13 @@ libraryDependencies ++= Seq(
   "org.zeromq" % "jeromq" % "0.3.3"
 )
 
-fork in Test := true
-
-parallelExecution in Test := false
-
 jacoco.settings
 
 findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
+
+parallelExecution in Test := false
+
+parallelExecution in jacoco.Config := false
+
