@@ -1,9 +1,8 @@
 package org.squbs.unicomplex
 
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{WordSpec, BeforeAndAfterAll}
+import org.scalatest.{WordSpecLike, Matchers, BeforeAndAfterAll}
 import java.io.{FileNotFoundException, File}
-import org.scalatest.matchers.ClassicMatchers
 import scala.concurrent.duration._
 import org.scalatest.concurrent.AsyncAssertions
 import scala.io.Source
@@ -17,7 +16,7 @@ import org.squbs.unicomplex.dummyextensions.DummyExtension
  * Created by zhuwang on 2/21/14.
  */
 class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
-                             with WordSpec with ClassicMatchers with BeforeAndAfterAll
+                             with WordSpecLike with Matchers with BeforeAndAfterAll
                              with AsyncAssertions {
 
   implicit val executionContext = system.dispatcher
@@ -66,24 +65,30 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
         w {assert(result.isSuccess)}
         w.dismiss()
       })
+      w.await()
+
       system.actorSelection("/user/DummyCubeSvc").resolveOne().onComplete(result => {
         w {assert(result.isSuccess)}
         w.dismiss()
       })
+      w.await()
 
       system.actorSelection("/user/DummyCube/Appender").resolveOne().onComplete(result => {
         w {assert(result.isSuccess)}
         w.dismiss()
       })
+      w.await()
+
       system.actorSelection("/user/DummyCube/Prepender").resolveOne().onComplete(result => {
         w {assert(result.isSuccess)}
         w.dismiss()
       })
+      w.await()
+
       system.actorSelection("/user/DummyCubeSvc/PingPongPlayer").resolveOne().onComplete(result => {
         w {assert(result.isSuccess)}
         w.dismiss()
       })
-
       w.await()
     }
 
