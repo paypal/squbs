@@ -362,7 +362,6 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
       w.await()
 
       assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
-
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
     }
@@ -382,10 +381,24 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       w.await()
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
+      def svcReady = Try {
+        assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      } match {
+        case Success(_) => true
+        case Failure(e) => println(e.getMessage); false
+      }
+
+      var retry = 5
+      while (!svcReady && retry > 0) {
+        Thread.sleep(1000)
+        retry -= 1
+      }
+
+      if (retry == 0) throw new Exception("service timeout in 5s")
+
     }
 
     "not mess up if stop and start a cube contains actors only simultaneously" in {
@@ -403,10 +416,22 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       w.await()
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
+      def svcReady = Try {
+        assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      } match {
+        case Success(_) => true
+        case Failure(e) => println(e.getMessage); false
+      }
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      var retry = 5
+      while (!svcReady && retry > 0) {
+        Thread.sleep(1000)
+        retry -= 1
+      }
+
+      if (retry == 0) throw new Exception("service timeout in 5s")
     }
 
     "not mess up if stop and start a cube contains services only simultaneously" in {
@@ -425,7 +450,6 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
       w.await()
 
       assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
-
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
     }
@@ -473,10 +497,22 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
         w.dismiss()
       })
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
+      def svcReady = Try {
+        assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      } match {
+        case Success(_) => true
+        case Failure(e) => println(e.getMessage); false
+      }
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      var retry = 5
+      while (!svcReady && retry > 0) {
+        Thread.sleep(1000)
+        retry -= 1
+      }
+
+      if (retry == 0) throw new Exception("service timeout in 5s")
     }
   }
 }
