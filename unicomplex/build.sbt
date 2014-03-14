@@ -24,6 +24,3 @@ findbugsSettings
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
 parallelExecution in Test := false
-
-parallelExecution in jacoco.Config := false
-

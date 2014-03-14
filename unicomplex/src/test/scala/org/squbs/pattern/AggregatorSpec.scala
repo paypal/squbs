@@ -8,8 +8,7 @@
 package org.squbs.pattern
 
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.FunSuite
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FunSuiteLike, FunSuite}
 import scala.annotation.tailrec
 
 //#demo-code
@@ -191,7 +190,7 @@ class ChainingSample extends Actor with Aggregator {
 }
 //#chain-sample
 
-class AggregatorSpec extends TestKit(ActorSystem("test")) with ImplicitSender with FunSuite with ShouldMatchers {
+class AggregatorSpec extends TestKit(ActorSystem("test")) with ImplicitSender with FunSuiteLike with Matchers {
 
   test ("Test request 1 account type") {
     system.actorOf(Props[AccountBalanceRetriever]) ! GetCustomerAccountBalances(1, Set(Savings))
@@ -199,7 +198,7 @@ class AggregatorSpec extends TestKit(ActorSystem("test")) with ImplicitSender wi
       case result: List[_] =>
         result should have size 1
       case result =>
-        assert(condition = false, s"Expect List, got ${result.getClass}")
+        assert( false, s"Expect List, got ${result.getClass}")
     }
   }
 
@@ -210,7 +209,7 @@ class AggregatorSpec extends TestKit(ActorSystem("test")) with ImplicitSender wi
       case result: List[_] =>
         result should have size 3
       case result =>
-        assert(condition = false, s"Expect List, got ${result.getClass}")
+        assert(false, s"Expect List, got ${result.getClass}")
     }
   }
 }

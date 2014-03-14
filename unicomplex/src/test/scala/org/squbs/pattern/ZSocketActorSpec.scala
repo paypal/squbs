@@ -2,7 +2,7 @@ package org.squbs.pattern
 
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.actor.{ActorContext, Props, ActorSystem}
-import org.scalatest.FunSuite
+import org.scalatest.{Matchers, FunSuiteLike}
 import org.zeromq.{ZFrame, ZMQ}
 import scala.concurrent.duration._
 
@@ -159,7 +159,7 @@ import scala.concurrent.duration._
 //  }
 //}
 
-class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with ImplicitSender with FunSuite {
+class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with ImplicitSender with FunSuiteLike with Matchers {
 
   test("test router/dealer socket"){
 
