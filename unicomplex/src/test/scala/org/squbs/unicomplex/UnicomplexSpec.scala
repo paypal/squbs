@@ -1,27 +1,28 @@
 package org.squbs.unicomplex
 
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{WordSpec, BeforeAndAfterAll}
+import org.scalatest.{WordSpecLike, Matchers, BeforeAndAfterAll}
 import java.io.{FileNotFoundException, File}
-import org.scalatest.matchers.ClassicMatchers
 import scala.concurrent.duration._
 import org.scalatest.concurrent.AsyncAssertions
 import scala.io.Source
 import scala.concurrent._
 import akka.pattern.ask
 import akka.actor.ActorRef
+import scala.util.{Success, Failure, Try}
+import org.squbs.unicomplex.dummyextensions.DummyExtension
 
 /**
  * Created by zhuwang on 2/21/14.
  */
 class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
-                             with WordSpec with ClassicMatchers with BeforeAndAfterAll
+                             with WordSpecLike with Matchers with BeforeAndAfterAll
                              with AsyncAssertions {
 
   implicit val executionContext = system.dispatcher
 
   implicit val timeout: akka.util.Timeout = 2 seconds
-  val dummyJarsDir = new File("src/test/resources/classpaths")
+  val dummyJarsDir = new File("unicomplex/src/test/resources/classpaths")
 
   val port = Unicomplex.config getInt "bind-port"
 
@@ -33,13 +34,26 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
       println("[UnicomplexSpec] There is no cube to be loaded")
     }
 
-    Bootstrap.main(Array.empty[String])
-  }
-
-  override def afterAll() = {
-    if (!system.isTerminated) {
-      Bootstrap.shutdownSystem
+    sys.addShutdownHook {
+      Unicomplex.actorSystem.shutdown()
     }
+
+    Bootstrap.main(Array.empty[String])
+
+    def svcReady = Try {
+      Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").getLines()
+    } match {
+      case Success(_) => true
+      case Failure(e) => println(e.getMessage); false
+    }
+
+    var retry = 5
+    while (!svcReady && retry > 0) {
+      Thread.sleep(1000)
+      retry -= 1
+    }
+
+    if (retry == 0) throw new Exception("Starting service timeout in 5s")
   }
 
   "Bootstrap" must {
@@ -51,36 +65,47 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
         w {assert(result.isSuccess)}
         w.dismiss()
       })
+      w.await()
+
       system.actorSelection("/user/DummyCubeSvc").resolveOne().onComplete(result => {
         w {assert(result.isSuccess)}
         w.dismiss()
       })
+      w.await()
 
       system.actorSelection("/user/DummyCube/Appender").resolveOne().onComplete(result => {
         w {assert(result.isSuccess)}
         w.dismiss()
       })
+      w.await()
+
       system.actorSelection("/user/DummyCube/Prepender").resolveOne().onComplete(result => {
         w {assert(result.isSuccess)}
         w.dismiss()
       })
+      w.await()
+
       system.actorSelection("/user/DummyCubeSvc/PingPongPlayer").resolveOne().onComplete(result => {
         w {assert(result.isSuccess)}
         w.dismiss()
       })
-
       w.await()
     }
 
     "start all services" in {
       assert(Bootstrap.services.size == 2)
 
-      Thread.sleep(1000)
-
       assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
-
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+    }
+
+    "preInit, init and postInit all extenstions" in {
+      assert(Bootstrap.extensions.size == 2)
+
+      assert(Bootstrap.extensions.forall(_._3.isInstanceOf[DummyExtension]))
+      assert((Bootstrap.extensions(0)._3.asInstanceOf[DummyExtension]).state == "AstartpreInitinitpostInit")
+      assert((Bootstrap.extensions(1)._3.asInstanceOf[DummyExtension]).state == "BstartpreInitinitpostInit")
     }
   }
 
@@ -342,7 +367,6 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
       w.await()
 
       assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
-
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
     }
@@ -362,10 +386,24 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       w.await()
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
+      def svcReady = Try {
+        assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      } match {
+        case Success(_) => true
+        case Failure(e) => println(e.getMessage); false
+      }
+
+      var retry = 5
+      while (!svcReady && retry > 0) {
+        Thread.sleep(1000)
+        retry -= 1
+      }
+
+      if (retry == 0) throw new Exception("service timeout in 5s")
+
     }
 
     "not mess up if stop and start a cube contains actors only simultaneously" in {
@@ -383,10 +421,22 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       w.await()
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
+      def svcReady = Try {
+        assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      } match {
+        case Success(_) => true
+        case Failure(e) => println(e.getMessage); false
+      }
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      var retry = 5
+      while (!svcReady && retry > 0) {
+        Thread.sleep(1000)
+        retry -= 1
+      }
+
+      if (retry == 0) throw new Exception("service timeout in 5s")
     }
 
     "not mess up if stop and start a cube contains services only simultaneously" in {
@@ -405,7 +455,6 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
       w.await()
 
       assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
-
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
       assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
     }
@@ -453,10 +502,22 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
         w.dismiss()
       })
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
+      def svcReady = Try {
+        assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
+        assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      } match {
+        case Success(_) => true
+        case Failure(e) => println(e.getMessage); false
+      }
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      var retry = 5
+      while (!svcReady && retry > 0) {
+        Thread.sleep(1000)
+        retry -= 1
+      }
+
+      if (retry == 0) throw new Exception("service timeout in 5s")
     }
   }
 }

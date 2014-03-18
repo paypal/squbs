@@ -6,7 +6,7 @@ import de.johoop.findbugs4sbt.FindBugs._
 name := "unicomplex"
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "1.9.1" % "test",
+  "org.scalatest" %% "scalatest" % "2.1.0" % "test",
   "com.typesafe.akka" %% "akka-actor" % "2.2.3",
   "com.typesafe.akka" %% "akka-agent" % "2.2.3",
   "com.typesafe.akka" %% "akka-testkit" % "2.2.3" % "test",
@@ -17,12 +17,10 @@ libraryDependencies ++= Seq(
   "org.zeromq" % "jeromq" % "0.3.3"
 )
 
-fork in Test := true
-
-parallelExecution in Test := false
-
 jacoco.settings
 
 findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
+
+parallelExecution in Test := false
