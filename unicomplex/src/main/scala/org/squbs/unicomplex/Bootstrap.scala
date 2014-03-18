@@ -287,6 +287,7 @@ object Bootstrap extends App {
             s"Cube: $symName $version\n" +
             s"Path: $jarPath\n" +
             s"${t.getClass.getName}: ${t.getMessage}")
+          t.printStackTrace()
           null
       }
     }
@@ -329,6 +330,7 @@ object Bootstrap extends App {
             s"Cube: $symName $version\n" +
             s"Path: $jarPath\n" +
             s"${t.getClass.getName}: ${t.getMessage}")
+          t.printStackTrace()
           null
       }
 
@@ -359,6 +361,7 @@ object Bootstrap extends App {
           s"Cube: $symName $version\n" +
           s"Path: $jarPath\n" +
           s"${t.getClass.getName}: ${t.getMessage}")
+        t.printStackTrace()
         null
     }
   }
