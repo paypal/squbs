@@ -129,9 +129,17 @@ their sequence in the classpath.
 Shutting Down squbs
 ===================
 
-The squbs runtime can be properly shutdown by sending the Unicomplex a GracefulStop message. As a result, squbs will
-properly invoke all shutdown hooks, gracefully terminate the web service and unbind the port listening. There is
-currently no standard console to a web container allowing users of squbs to build their own. The web console could
+The squbs runtime can be properly shutdown by sending the Unicomplex a GracefulStop message. 
+Or `org.squbs.unicomplex.Shutdown` can be set as the main method in some monitor process like JSW for shutting down the squbs system. 
+
+After receiving the `GracefulStop` message, the Unicomplex actor will stop the service and propagate the `GracefulStop`
+message to all cube supervisors. Each supervisor will be responsible for stopping the actors in its cube 
+(by propagating the `GracefulStop` message to its children who wants to perform a gracefull stop), 
+ensure they stopped successfully or re-send a `PoisonPill` after timeout, and then stop itself. 
+Once all cube supervisors and service are stopped, the squbs system shuts down. Then a shutdown hook will be
+invoked to stop all the extensions and finally exits the JVM.
+
+There is currently no standard console to a web container allowing users of squbs to build their own. The web console could
 provide proper user shutdown by sending a stop message to Unicomplex as follows:
 
 ```
@@ -193,16 +201,6 @@ squbs runtime will be in *Failed* state instead.
 
 Shutdown Hooks
 --------------
-
-### Shutdown Overview
-
-`Unicomplex() ! GracefulStop` is used to shutdown the whole system gracefully. Or org.squbs.unicomplex.Shutdown can be
-set as the main method in some monitor process like JSW for shutting down the squbs system.
-
-After receiving the `GracefulStop` message, the Unicomplex actor will stop the service and propagate the `GracefulStop`
-message to all cube supervisors. Each supervisor will be responsible for stopping the actors in its cube and then stop
-itself. Once all cube supervisors and service are stopped, the squbs system shuts down. Then a shutdown hook will be
-invoked to stop all the extensions and finally exits the JVM.
 
 ### Stop Actors
 
