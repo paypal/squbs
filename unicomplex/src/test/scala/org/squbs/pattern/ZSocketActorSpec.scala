@@ -28,7 +28,7 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with Implicit
 
     dealerActor ! Identity("zmq-dealer")
     dealerActor ! Connect(s"tcp://127.0.0.1:$port")
-    dealerActor ! ZEnvelop(Some(ByteString("zmq-dealer")), Seq(ByteString(s"request-${System.nanoTime}")))
+    dealerActor ! Seq(ByteString(s"request-${System.nanoTime}"))
 
     receiveOne(1000 millis)
   }
@@ -47,10 +47,10 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with Implicit
 
     subActor ! Identity("zmq-sub")
     subActor ! Connect(s"tcp://127.0.0.1:$port")
-    subActor ! ZEnvelop(Some(ByteString("zmq-topic")), Seq())
+    subActor ! Seq(ByteString("zmq-topic"))
 
     for(i <- 1 to 1000){
-      pubActor ! ZEnvelop(Some(ByteString("zmq-topic")), Seq(ByteString("some content")))
+      pubActor ! Seq(ByteString("zmq-topic"), ByteString("some content"))
     }
 
     receiveOne(1000 millis)
@@ -72,7 +72,7 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with Implicit
     pullActor ! Connect(s"tcp://127.0.0.1:$port")
 
     for(i <- 1 to 1000){
-      pushActor ! ZEnvelop(None, Seq(ByteString("some content")))
+      pushActor ! Seq(ByteString("some content"))
     }
 
     receiveOne(1000 millis)
@@ -95,8 +95,8 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with Implicit
     pairActor ! Identity("zmq-two")
     pairActor ! Connect(s"tcp://127.0.0.1:$port")
 
-    oneActor ! ZEnvelop(None, Seq(ByteString("some content")))
-    pairActor ! ZEnvelop(None, Seq(ByteString("some content")))
+    oneActor ! Seq(ByteString("some content"))
+    pairActor ! Seq(ByteString("some content"))
 
     receiveN(2, 1000 millis)
   }
@@ -116,7 +116,7 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with Implicit
     repActor ! Identity("zmq-rep")
     repActor ! Connect(s"tcp://127.0.0.1:$port")
 
-    reqActor ! ZEnvelop(Some(ByteString("zmq-req")), Seq(ByteString("some content")))
+    reqActor ! Seq(ByteString("some content"))
 
     receiveOne(1000 millis)
   }
