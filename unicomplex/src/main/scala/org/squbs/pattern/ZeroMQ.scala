@@ -3,12 +3,12 @@ package org.squbs.pattern
 import scala.concurrent.duration._
 import akka.actor.{ActorContext, FSM, Actor}
 import org.zeromq.ZMQ.Socket
-import org.zeromq.ZFrame
 import org.zeromq.ZContext
 import org.zeromq.ZMsg
 import org.zeromq.ZMQ
 import java.nio.charset.Charset
 import scala.reflect.ClassTag
+import akka.util.ByteString
 
 /**
  * Created by huzhou on 2/25/14.
@@ -56,17 +56,18 @@ private[pattern] case class ReceiveAsync(val delay:Long) {
 
 private[pattern] case object ReceiveBlock
 
-case class ZEnvelop(val identity:ZFrame, val payload:Seq[ZFrame]) {
+case class ZEnvelop(val identity:Option[ByteString], val payload:Seq[ByteString]) {
 
   def send(zSocket:Socket) = {
 
     zSocket.getType match {
       case ZMQ.SUB =>
-        zSocket.subscribe(identity.getData)
+        identity.foreach(id => zSocket.subscribe(id.getData))
       case ZMQ.PULL =>
         //don't do anything, or raise exception
+        throw new IllegalStateException("cannot send message via PULL socket type")
       case _ =>
-        identity.send(zSocket, ZMQ.SNDMORE)
+        identity.foreach(id => id.send(zSocket, ZMQ.SNDMORE))
         payload.foreach(f => f.send(zSocket, if(f == payload.last) 0 else ZMQ.SNDMORE))
     }
   }
@@ -145,11 +146,11 @@ trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
       val identity = zMessage.pop
       if(identity.hasData){
         //got real message, consume all frames, and resume by sending ReceiveAsync to self again
-        var zFrames = Seq[ZFrame]()
+        var zFrames = Seq[ByteString]()
         while(!zMessage.isEmpty){
-          zFrames = zFrames :+ zMessage.pop
+          zFrames = zFrames :+ zFrameToByteString(zMessage.pop)
         }
-        consume(ZEnvelop(identity, zFrames), context)
+        consume(ZEnvelop(Some(identity), zFrames), context)
         self ! ReceiveAsync(1L)
       }
       else{
@@ -221,11 +222,11 @@ trait ZBlockingOnAkka extends ZSocketOnAkka {
       val zMessage = ZMsg.recvMsg(socket, 0)//blocking
       val identity = zMessage.pop
       //got real message, consume all frames, and resume by sending ReceiveAsync to self again
-      var zFrames = Seq[ZFrame]()
+      var zFrames = Seq[ByteString]()
       while(!zMessage.isEmpty){
-        zFrames = zFrames :+ zMessage.pop
+        zFrames = zFrames :+ zFrameToByteString(zMessage.pop)
       }
-      consume(ZEnvelop(identity, zFrames), context)
+      consume(ZEnvelop(Some(identity), zFrames), context)
       goto(ZBlockingWritable) using r
   }
 }
