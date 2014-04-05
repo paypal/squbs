@@ -35,4 +35,6 @@ For an actor to use the blocking dispatcher, just specify the actor configuratio
   }
 ```
 
+Without any actor using the blocking-dispatcher, it won't be initialized and will not require any resources.
+
 **WARNING:** The blocking-dispatcher should only be used for blocking calls or performance could be severely impacted.
