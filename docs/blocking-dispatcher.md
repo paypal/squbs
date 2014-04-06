@@ -1,5 +1,4 @@
-Blocking-Dispatcher
-===================
+#Blocking-Dispatcher
 
 This topic is not about dispatchers in general, but about squbs-specific dispatcher configurations. Please check the [Akka documentation](http://doc.akka.io/docs/akka/2.2.3/scala/dispatchers.html) for descriptions and details of dispatchers.
 

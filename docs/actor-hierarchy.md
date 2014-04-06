@@ -1,5 +1,4 @@
-Actor Hierarchy
-===============
+#Actor Hierarchy
 
 ![image](img/squbs-actor-hierarchy.png)
 
