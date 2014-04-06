@@ -1,0 +1,19 @@
+#Actor Hierarchy
+
+![image](img/squbs-actor-hierarchy.png)
+
+squbs sets up the actor and component hierarchy shown in the above picture to support a modular runtime for actors and services running in a squbs system.
+
+* **ActorSystem** - This is the akka ActorSystem. A squbs system uses one single actor system to support all services and cubes. This will ensure that we have a single control point for dispatchers running in a squbs system. The ActorSystem name is "squbs" by default but can be overridden by overriding the settings in application.conf.
+
+* **Unicomplex** - This is the core singleton actor that manages the squbs system. It registers all cubes and communicates with the web-service actor and the cube supervisors for lifecycle management of the system. It is also responsible for starting the web-service and service-registrar actors. Applications or system components can access the ActorRef of Unicomplex by calling `Unicomplex()`
+
+* **web-service** - The web service actor binds with `IO(HTTP)` in the Spray system. By default, it binds port 8080 on address 0.0.0.0 (any interface). However, this can be overridden in application.conf.
+
+* **service-registrar** - The service registrar is in charge of registering new services. New services are represented by classes extending `RouteDefinition`. Upon registration of a new service, the service registrar will combine the new route with the current route and calculate a new aggregated route for the web service to use in subsequent requests. All registrations are asynchronous so a newly registered service may not get used immediately on subsequent requests. Normally, the timeframe for proper registration is within microseconds or milliseconds at most.
+
+* **RouteDefinition** - RouteDefinition is not an actor, but a route registration in form of a class extending the RouteDefinition trait. The routes in registered services (or RouteDefinitions) are executed in the context of the web-service actor. Any actors spawned off a route will therefore become a child actor of web-service and will have "web-service" in the actor path.
+
+* **CubeSupervisors** - CubeSupervisors are created directly from the actor system and register themselves with the Unicomplex. One instance of the CubeSupervor is created per cube. They act as the supervisor for any registered (well-known) actor that can be looked up by name and handle errors and restarts for these actors. They are responsible for the lifecycle of these well-known actors. Well-known actors requiring initialization will declare such needs in the squbs-meta.conf file. They will communicate with their parent - the CubeSupervisor for their initialization status. The CubeSupervisor will again communicate lifecycle status and initialization updates to the Unicomplex which maintains the lifecycle state for the whole system. Please refer to [Bootstraping](bootstrap.md) for information about cube and service configuration entries in the squbs-meta.conf and [Runtime Lifecycle & API](lifecycle.md) for lifecycle states and lifecycle status updates. In addition, the cube structure also provides namespacing for well-known actors preventing naming conflicts between well-known actors supplied by differen cubes.
+
+* **Well-known actors** - These actors are registered actors that get started by the CubeSupervisor. They register and provide basic startup information such as routers through squbs-meta.conf. Please refer to [Bootstrapping](bootstrap.md) for detailed information about cube configuration. You can provide additional configuration through the cube's reference.conf. Please refer to the [Typesafe Config](https://github.com/typesafehub/config) library documentation for specification and details of reference.conf and application.conf.
