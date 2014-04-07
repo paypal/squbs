@@ -1,3 +1,4 @@
+
 #Messages
 
 Akka actors communicate via immutable messages. These can be defined anywhere in code. As squbs deals with messages
