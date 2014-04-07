@@ -1,3 +1,4 @@
+
 #Bootstrapping squbs
 
 squbs divides applications into modules called cubes. Modules in squbs are intended to be run in modular isolation as
