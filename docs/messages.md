@@ -130,7 +130,7 @@ By following this pattern, messages stay immutable and the message project would
 
 ###Consumer View of Messages as Traits
 
-For the consumers (cubes only receiving) of messages that are represented as traits in the message project, the type they are dealing with are just the trait types. In this case `Sale` and `Auction`. So the receive block receiving such types cannot reference the concrete types `SaleMessage` or `AuctionMessage`. In essence, these receiving actores won't even have these concrete types in their dependency and referencing them would yield a compile error. Below is an example of a receive block:
+For the consumers (cubes only receiving) of messages that are represented as traits in the message project, the type they are dealing with are just the trait types. In this case `Sale` and `Auction`. So the receive block receiving such types cannot reference the concrete types `SaleMessage` or `AuctionMessage`. In essence, these receiving actors won't even have these concrete types in their dependency and referencing them would yield a compile error. Below is an example of a receive block:
 
 ```
 def receive = {
