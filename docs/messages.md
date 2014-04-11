@@ -3,9 +3,11 @@
 
 Akka actors communicate via immutable messages. These can be defined anywhere in code. As squbs deals with messages communicated across cubes, such messages will have to be defined in a message project (or jar) that is a dependency of both the sender and receiver of these messages. These message projects commonly have a single file in a single package. Alternatively, the messages can also be mapped to the receivers' packages.
 
-Messages must be defined as immutable case classes (don't use vars in your case class definitions) or case objects. Messages are generally very simple and does not contain logic. Multiple message case classes or case objects are declared in a particular Scala file.
+Messages must be defined as immutable case classes (don't use vars in your case class definitions) or case objects. Messages are generally very simple and does not contain logic. Multiple message case classes or case objects are declared in a particular Scala file totally separate from cube logic.
 
-Message jars should not have other dependencies. Ideally, they are all self-contained. Senders and/or receivers of such messages should not be subject to additional dependencies introduced by messages.
+Messages used for communicating between cubes should be separated in different jars and projects. Message jars and/or projects should not have other dependencies. Ideally, they are all self-contained. Senders and/or receivers of such messages should not be subject to additional dependencies introduced by messages. The project hierarchy below with actors and messages circled in red show clear project separations between cubes and messages.
+
+![Project Separation](img/Screen Shot 2014-04-11 at 2.01.38 PM.png)
 
 ##Constructing messages
 
@@ -125,3 +127,21 @@ object Message {
 ```
 
 By following this pattern, messages stay immutable and the message project would not add any dependencies on database or other infrastructure that can be propagated to the message consumer's dependency chain.
+
+###Consumer View of Messages as Traits
+
+For the consumers (cubes only receiving) of messages that are represented as traits in the message project, the type they are dealing with are just the trait types. In this case `Sale` and `Auction`. So the receive block receiving such types cannot reference the concrete types `SaleMessage` or `AuctionMessage`. In essence, these receiving actores won't even have these concrete types in their dependency and referencing them would yield a compile error. Below is an example of a receive block:
+
+```
+def receive = {
+  case auction: Auction => println(s"Item: ${auction.item}, Reserve met: ${auction.isReserveMet}")
+  case sale: Sale =>       println(s"Item: ${sale.item}")
+  
+  // Auction is a subtype of Sale and therefore will need to be matched first.
+  // If sale is first both Auction and Sale type will match the first 
+  // Sale type match.
+}
+
+``` 
+
+
