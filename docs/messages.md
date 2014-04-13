@@ -1,7 +1,7 @@
 
-#Messages
+#Message Structure & Conventions for Modular Applications
 
-Akka actors communicate via immutable messages. These can be defined anywhere in code. As squbs deals with messages communicated across cubes, such messages will have to be defined in a message project (or jar) that is a dependency of both the sender and receiver of these messages. These message projects commonly have a single file in a single package. Alternatively, the messages can also be mapped to the receivers' packages.
+Akka actors communicate via immutable messages. These can be defined anywhere in code. As squbs deals with messages communicated across cubes in a modular application, such messages will have to be defined in a message project (or jar) that is a dependency of both the sender and receiver of these messages. These message projects commonly have a single file in a single package.
 
 Messages must be defined as immutable case classes (don't use vars in your case class definitions) or case objects. Messages are generally very simple and does not contain logic. Multiple message case classes or case objects are declared in a particular Scala file totally separate from cube logic.
 
