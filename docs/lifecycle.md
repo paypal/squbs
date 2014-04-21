@@ -1,6 +1,5 @@
 
-Runtime Lifecycles & API
-==============================
+#Runtime Lifecycles & API
 
 The runtime has the following lifecycle states:
 
@@ -16,8 +15,7 @@ The runtime has the following lifecycle states:
 
 * Stopped - squbs runtime stopped. Unicomplex terminated. ActorSystem terminated.
 
-Lifecycle Hooks
----------------
+##Lifecycle Hooks
 
 Most actors don't care when they are started or shut down. However, there may be a category of actors that require
 execution certain initializations before they get to the state of accepting general traffic. Similarly, certain actors
@@ -37,8 +35,7 @@ You can also obtain the current state by sending `SystemState` to `Unicomplex()`
 * `case object Stopped extends LifecycleState`
  
 
-Startup Hooks
--------------
+##Startup Hooks
 
 An actor wishing to participate in initialization must indicate so in the squbs metadata META-INF/squbs-meta.conf as
 follows:
@@ -62,8 +59,7 @@ all cubes are successfully initialized. This also means each actor with init-req
 Initialized(report) with success. If any one cube reports an initialization error via the Initialization(report), the
 squbs runtime will be in *Failed* state instead.
 
-Shutdown Hooks
---------------
+##Shutdown Hooks
 
 ### Stop Actors
 

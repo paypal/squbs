@@ -1,5 +1,5 @@
-Blocking-Dispatcher
-===================
+
+#Blocking-Dispatcher
 
 This topic is not about dispatchers in general, but about squbs-specific dispatcher configurations. Please check the [Akka documentation](http://doc.akka.io/docs/akka/2.2.3/scala/dispatchers.html) for descriptions and details of dispatchers.
 
@@ -34,5 +34,7 @@ For an actor to use the blocking dispatcher, just specify the actor configuratio
     dispatcher = blocking-dispatcher
   }
 ```
+
+Without any actor using the blocking-dispatcher, it won't be initialized and will not require any resources.
 
 **WARNING:** The blocking-dispatcher should only be used for blocking calls or performance could be severely impacted.

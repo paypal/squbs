@@ -1,5 +1,5 @@
-Bootstrapping squbs
-===================
+
+#Bootstrapping squbs
 
 squbs divides applications into modules called cubes. Modules in squbs are intended to be run in modular isolation as
 well as on a flat classpath. Modular isolation is intended for true loose coupling of the modules, without incurring
@@ -7,8 +7,7 @@ any classpath conflicts due to the dependencies.
 
 The current implementation bootstraps from a flat classpath. Modular isolation is planned for a future version of squbs.
 
-Cube Jars
----------
+##Cube Jars
 
 All cubes are represented by a top-level jar file with the cube logic itself. All cubes must have the cube metadata
 residing in META-INF/squbs-meta.&lt;ext&gt;. Supported extensions are .conf, .json, and .properties. The format follows the
@@ -25,8 +24,7 @@ the followings:
     org.squbs.lifecycle.ExtensionInit trait.
 
 
-Well Known Actors
------------------
+##Well Known Actors
 
 Well known actors are just [Akka actors](http://doc.akka.io/docs/akka/2.2.3/scala/actors.html) as defined by the
 [Akka documentation](http://doc.akka.io/docs/akka/2.2.3/scala/actors.html). They are started by a supervisor actor that
@@ -81,8 +79,7 @@ akka.actor.deployment {
 Router concepts, examples, and configuration, are documented in the
 [Akka documentation](http://doc.akka.io/docs/akka/2.2.3/scala/routing.html).
 
-Services
---------
+##Services
 
 Services extend from org.squbs.unicomplex.RouteDefinition trait and have to provide 2 components.
 
@@ -101,9 +98,7 @@ squbs-services = [
 ]
 ```
 
-
-Extensions
-----------
+##Extensions
 
 Extensions for squbs are low level facilities that need to be started for the environment. The extension initializer
 has to extend from the org.squbs.lifecycle.ExtensionInit trait and override the proper callbacks. An extension
@@ -117,8 +112,7 @@ in the extension declaration. If the sequence is not specified, it defaults to I
 after all extensions that provide a sequence number. If there is more than one extension not specifying the sequence,
 the order between them is indeterministic.
 
-Bootstrapping
--------------
+##Bootstrapping
 
 Bootstrapping squbs is done by starting the org.squbs.unicomplex.Bootstrap object from the Java command line, IDE, sbt,
 or even maven. Bootstrap scans the classpath and finds META-INF/squbs-meta.&lt;ext&gt; in each classpath entry.
@@ -126,8 +120,7 @@ If squbs metadata is available, the jar is treated as squbs cube or extension an
 metadata declarations. The bootstrap then first initializes extensions, cubes, then service routes last regardless of
 their sequence in the classpath.
 
-Shutting Down squbs
-===================
+#Shutting Down squbs
 
 The squbs runtime can be properly shutdown by sending the Unicomplex a GracefulStop message. 
 Or `org.squbs.unicomplex.Shutdown` can be set as the main method in some monitor process like JSW for shutting down the squbs system. 
