@@ -331,6 +331,8 @@ class UnicomplexSpec extends TestKit(Unicomplex.actorSystem) with ImplicitSender
 
       w.await()
 
+      Thread.sleep(1000)
+
       system.actorSelection("/user/DummyCubeSvc").resolveOne().onComplete(result => {
         w {assert(result.isSuccess)}
         w.dismiss()
