@@ -11,6 +11,8 @@ import org.squbs.unicomplex.{Bootstrap, Unicomplex}
  *
  * Contributors:
  * asucharitakul
+ *
+ * this is 0.3.0-SNAPSHOT
  */
 object SqubsTestKit {
 
