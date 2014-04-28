@@ -12,6 +12,7 @@ import akka.actor.Terminated
 import akka.pattern.pipe
 import spray.can.Http.Bound
 import spray.can.Http
+import java.util.Date
 
 object Unicomplex {
 
@@ -102,6 +103,30 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   private var serviceBound = false
 
+  /**
+   * MXBean for exposing Unicomplex state
+   */
+  class SystemStateBean extends SystemStateMXBean {
+
+    import JMXHelper._
+    jmxRegister(this, "org.squbs:name=Unicomplex")
+    log.info("Registered MXBean org.squbs:name=Unicomplex")
+
+    private[Unicomplex] var startTime: Date = null
+    private[Unicomplex] var initDuration = -1
+    private[Unicomplex] var activationDuration = -1
+
+    override def getSystemState: String = systemState.toString
+
+    override def getStartTime: Date = startTime
+
+    override def getInitDuration: Int = initDuration
+
+    override def getActivationDuration: Int = activationDuration
+  }
+
+  private val stateMXBean = new SystemStateBean
+
   private def shutdownState: Receive = {
 
     case Http.ClosedAll | Http.Unbound =>
@@ -175,6 +200,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   def receive = hotDeployReceive orElse shutdownBehavior orElse {
     case t: Timestamp => // Setting the real start time from bootstrap
       systemStart = Some(t)
+      stateMXBean.startTime = new Date(t.millis)
 
     case r: CubeRegistration => // Cube registration requests, normally from bootstrap
       cubes = cubes + (r.cubeSupervisor -> (r, None))
@@ -276,11 +302,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         case Initializing =>
           systemStarted = Some(Timestamp(System.nanoTime, System.currentTimeMillis))
           val elapsed = (systemStarted.get.nanos - systemStart.get.nanos) / 1000000
+          stateMXBean.initDuration = elapsed.asInstanceOf[Int]
           log.info(s"squbs started in $elapsed milliseconds")
 
         case Active =>
           systemActive = Some(Timestamp(System.nanoTime, System.currentTimeMillis))
           val elapsed = (systemActive.get.nanos - systemStart.get.nanos) / 1000000
+          stateMXBean.activationDuration = elapsed.asInstanceOf[Int]
           log.info(s"squbs active in $elapsed milliseconds")
 
         case Stopping =>
