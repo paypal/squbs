@@ -79,7 +79,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
       case e: Exception =>
-        log.warning(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender.path}")
+        log.warning(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender().path}")
         Restart
     }
 
@@ -108,9 +108,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
    */
   class SystemStateBean extends SystemStateMXBean {
 
-    import JMXHelper._
-    jmxRegister(this, "org.squbs.unicomplex:type=Unicomplex")
-    log.info("Registered MXBean org.squbs.unicomplex:type=Unicomplex")
+    JMX.register(this)
 
     private[Unicomplex] var startTime: Date = null
     private[Unicomplex] var initDuration = -1
@@ -120,9 +118,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     override def getStartTime: Date = startTime
 
-    override def getInitDuration: Int = initDuration
+    override def getInitMillis: Int = initDuration
 
-    override def getActivationDuration: Int = activationDuration
+    override def getActivationMillis: Int = activationDuration
   }
 
   private val stateMXBean = new SystemStateBean
@@ -151,14 +149,14 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   private def hotDeployReceive: Receive = {
     case StopCube(cubeName) =>
-      log.info(s"got StopCube($cubeName) from $sender")
+      log.info(s"got StopCube($cubeName) from ${sender()}")
       Bootstrap.stopCube(cubeName) pipeTo self
-      context.become(waitCubeStop(sender))
+      context.become(waitCubeStop(sender()))
 
     case StartCube(cubeName) =>
-      log.info(s"got StartCube($cubeName) from $sender")
+      log.info(s"got StartCube($cubeName) from ${sender()}")
       Bootstrap.startCube(cubeName)
-      sender ! Ack
+      sender() ! Ack
   }
 
   private def waitCubeStop(originalSender: ActorRef): Receive = {
@@ -184,7 +182,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     case StopTimeout(timeout) => if (shutdownTimeout < timeout) shutdownTimeout = timeout
 
     case GracefulStop =>
-      log.info(s"got GracefulStop from ${sender.path}.")
+      log.info(s"got GracefulStop from ${sender().path}.")
       updateSystemState(Stopping)
       serviceRef match {
         case Some(_) =>
@@ -232,7 +230,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       if (systemState == Active) // Stable state.
         sender ! (systemState, cubes)
       else {
-        val requester = sender
+        val requester = sender()
         var pendingCubes = cubes collect {
           case (actorRef, (_, None)) => actorRef
           case (actorRef, (_, Some(InitReports(state, _)))) if state != Active => actorRef
@@ -273,7 +271,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         cubes = cubes + (sender -> (registration, Some(reports)))
         updateSystemState(checkInitState(cubes.values map (_._2)))
       case _ =>
-        log.warning(s"""Received startup report from non-registered cube "${sender.path}".""")
+        log.warning(s"""Received startup report from non-registered cube "${sender().path}".""")
     }
   }
 
@@ -337,7 +335,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
       case e: Exception =>
-        log.warning(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender.path}")
+        log.warning(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender().path}")
         Restart
     }
 
@@ -376,7 +374,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     case GracefulStop => // The stop message should only come from the uniActor
       if (sender != Unicomplex())
-        log.error(s"got GracefulStop from $sender instead of ${Unicomplex()}")
+        log.error(s"got GracefulStop from ${sender()} instead of ${Unicomplex()}")
       else
         defaultMidActorStop(stopSet, maxChildTimeout)
 
@@ -389,7 +387,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
           Unicomplex() ! InitReports(cubeState, initMap.toMap)
         }
       }
-      else log.warning(s"""Actor "${sender.path}" updating startup status is not registered. """ +
+      else log.warning(s"""Actor "${sender().path}" updating startup status is not registered. """ +
         "Please register by setting init-required = true in squbs-meta.conf")
 
     case CheckInitStatus => // Explicitly requested reports have an attached requested flag as a tuple
