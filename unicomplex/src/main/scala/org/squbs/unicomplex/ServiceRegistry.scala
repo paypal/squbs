@@ -10,6 +10,7 @@ import spray.http.{MediaType, MediaTypes}
 import spray.routing._
 import Directives._
 import Unicomplex._
+import java.net.InetAddress
 
 case class Register(routeDef: RouteDefinition)
 case class Unregister(key: String)
@@ -85,7 +86,8 @@ object ServiceRegistry {
     val serviceRef = context.actorOf(Props[WebSvcActor], "web-service")
 
     // create a new HttpServer using our handler tell it where to bind to
-    val interface = Unicomplex.config getString "bind-address"
+    val interface = if(Unicomplex.config getBoolean "full-address") InetAddress.getLocalHost.getCanonicalHostName
+      else Unicomplex.config getString "bind-address"
     val port = Unicomplex.config getInt "bind-port"
     implicit val self = context.self
     IO(Http) ! Http.Bind(serviceRef, interface, port)
