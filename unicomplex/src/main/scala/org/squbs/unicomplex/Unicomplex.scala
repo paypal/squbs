@@ -109,9 +109,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
    */
   class SystemStateBean extends SystemStateMXBean {
 
-    import JMX._
-    register(this, systemStateName)
-
     private[Unicomplex] var startTime: Date = null
     private[Unicomplex] var initDuration = -1
     private[Unicomplex] var activationDuration = -1
@@ -125,9 +122,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     override def getActivationMillis: Int = activationDuration
   }
 
-  object CubesBean extends CubesMXBean {
-    import JMX._
-    register(this, cubesName)
+  class CubesBean extends CubesMXBean {
 
     override def getCubes: util.List[CubeInfo] = {
       import collection.JavaConversions._
@@ -136,6 +131,18 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   }
 
   private val stateMXBean = new SystemStateBean
+
+  override def preStart() { // JMX registrations
+    import JMX._
+    register(stateMXBean, systemStateName)
+    register(new CubesBean, cubesName)
+  }
+
+  override def postStop() {
+    import JMX._
+    unregister(cubesName)
+    unregister(systemStateName)
+  }
 
   private def shutdownState: Receive = {
 
@@ -344,18 +351,25 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
-  object CubeStateBean extends CubeStateMXBean {
+  val name = self.path.elements.last
 
-    val name = self.path.elements.last
-
-    import JMX._
-    register(this, cubeStateName + name)
+  class CubeStateBean extends CubeStateMXBean {
 
     override def getName: String = name
 
     override def getCubeState: String = cubeState.toString
   }
 
+  override def preStart() {
+    import JMX._
+    val cubeStateMXBean = new CubeStateBean
+    register(cubeStateMXBean, cubeStateName + name)
+  }
+
+  override def postStop() {
+    import JMX._
+    unregister(cubeStateName + name)
+  }
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {

@@ -28,14 +28,22 @@ object ServiceRegistry {
    */
   private[unicomplex] class Registrar extends Actor with ActorLogging {
 
-    object ContextsBean extends ContextsMXBean {
-      import JMX._
-      register(this, contextsName)
+    class ContextsBean extends ContextsMXBean {
 
       override def getContexts: java.util.List[String] = {
         import collection.JavaConversions._
         registry.keys.toSeq
       }
+    }
+
+    override def preStart() {
+      import JMX._
+      register(new ContextsBean, contextsName)
+    }
+
+    override def postStop()  {
+      import JMX._
+      unregister(contextsName)
     }
 
     private var registry = Map.empty[String, RouteDefinition]
