@@ -23,10 +23,16 @@ object JMX {
 }
 
 case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", "supervisorPath"))(
-                                                                                 @BeanProperty name: String,
-                                                                                 @BeanProperty fullName: String,
-                                                                                 @BeanProperty version: String,
-                                                                                 @BeanProperty supervisorPath: String)
+                                          @BeanProperty name: String,
+                                          @BeanProperty fullName: String,
+                                          @BeanProperty version: String,
+                                          @BeanProperty supervisorPath: String)
+
+case class ContextInfo @ConstructorProperties(Array("context", "routeClass", "cubeFullName", "cubeVersion"))(
+                                          @BeanProperty context: String,
+                                          @BeanProperty routeClass: String,
+                                          @BeanProperty cubeFullName: String,
+                                          @BeanProperty cubeVersion: String)
 
 @MXBean
 trait SystemStateMXBean {
@@ -49,7 +55,7 @@ trait CubeStateMXBean {
 
 @MXBean
 trait ContextsMXBean {
-  def getContexts: java.util.List[String]
+  def getContexts: java.util.List[ContextInfo]
 }
 
 

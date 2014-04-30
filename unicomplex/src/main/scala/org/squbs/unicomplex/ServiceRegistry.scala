@@ -12,7 +12,7 @@ import Directives._
 import Unicomplex._
 import java.net.InetAddress
 
-case class Register(routeDef: RouteDefinition)
+case class Register(symName: String, version: String, routeDef: RouteDefinition)
 case class Unregister(key: String)
 
 object ServiceRegistry {
@@ -30,9 +30,11 @@ object ServiceRegistry {
 
     class ContextsBean extends ContextsMXBean {
 
-      override def getContexts: java.util.List[String] = {
+      override def getContexts: java.util.List[ContextInfo] = {
         import collection.JavaConversions._
-        registry.keys.toSeq
+        registry.map { case (ctx, Register(symName, version, routeDef)) =>
+          ContextInfo(ctx, routeDef.getClass.getName, symName, version)
+        } .toSeq
       }
     }
 
@@ -46,18 +48,18 @@ object ServiceRegistry {
       unregister(contextsName)
     }
 
-    private var registry = Map.empty[String, RouteDefinition]
+    private var registry = Map.empty[String, Register]
     
     // CalculateRoute MUST return a function and not a value
-    private def calculateRoute(tmpRegistry: Map[String, RouteDefinition]) =
-      Try(tmpRegistry.map{ case (webContext, routeDef) => pathPrefix(webContext) { routeDef.route } }
+    private def calculateRoute(tmpRegistry: Map[String, Register]) =
+      Try(tmpRegistry.map{ case (webContext, Register(_, _, routeDef)) => pathPrefix(webContext) { routeDef.route } }
        .reduceLeft(_ ~ _)).getOrElse(path(Slash) {get {complete {"Default Route"}}})
     
     def receive = {
-      case Register(routeDef) =>
+      case r @ Register(symName, version, routeDef) =>
         if (registry contains routeDef.webContext)
           log.warning(s"""Web context "${routeDef.webContext}" already registered. Overriding!""")
-        val tmpRegistry = registry + (routeDef.webContext -> routeDef)
+        val tmpRegistry = registry + (routeDef.webContext -> r)
         
         // This line is the problem. Don't pre-calculate.
         route send calculateRoute(tmpRegistry)
