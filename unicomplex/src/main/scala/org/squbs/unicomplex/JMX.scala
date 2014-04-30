@@ -10,6 +10,7 @@ object JMX {
 
   val systemStateName = "org.squbs.unicomplex:type=SystemState"
   val cubesName       = "org.squbs.unicomplex:type=Cubes"
+  val cubeStateName   = "org.squbs.unicomplex:type=Cube,name="
   val contextsName    = "org.squbs.unicomplex:type=Contexts"
 
   implicit def string2objectName(name:String):ObjectName = new ObjectName(name)
@@ -36,6 +37,12 @@ trait SystemStateMXBean {
 @MXBean
 trait CubesMXBean {
   def getCubes: java.util.List[CubeInfo]
+}
+
+@MXBean
+trait CubeStateMXBean {
+  def getName: String
+  def getCubeState: String
 }
 
 @MXBean

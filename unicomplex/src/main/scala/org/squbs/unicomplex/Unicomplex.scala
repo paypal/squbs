@@ -344,6 +344,19 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
+  object CubeStateBean extends CubeStateMXBean {
+
+    val name = self.path.elements.last
+
+    import JMX._
+    register(this, cubeStateName + name)
+
+    override def getName: String = name
+
+    override def getCubeState: String = cubeState.toString
+  }
+
+
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
       case e: Exception =>
