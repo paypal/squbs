@@ -37,7 +37,7 @@ trait SystemStateMXBean {
   def getStartTime : Date
   def getInitMillis: Int
   def getActivationMillis: Int
-  def getCubes: java.util.Collection[CubeInfo]
+  def getCubes: java.util.List[CubeInfo]
 }
 
 
