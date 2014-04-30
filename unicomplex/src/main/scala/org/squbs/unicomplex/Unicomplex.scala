@@ -109,7 +109,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
    */
   class SystemStateBean extends SystemStateMXBean {
 
-    JMX.register(this)
+    import JMX._
+    register(this, unicomplexName)
 
     private[Unicomplex] var startTime: Date = null
     private[Unicomplex] var initDuration = -1
