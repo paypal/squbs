@@ -10,7 +10,7 @@ object JMX {
 
   val systemStateName = "org.squbs.unicomplex:type=SystemState"
   val cubesName       = "org.squbs.unicomplex:type=Cubes"
-  val cubeStateName   = "org.squbs.unicomplex:type=Cube,name="
+  val cubeStateName   = "org.squbs.unicomplex:type=CubeState,name="
   val contextsName    = "org.squbs.unicomplex:type=Contexts"
 
   implicit def string2objectName(name:String):ObjectName = new ObjectName(name)
