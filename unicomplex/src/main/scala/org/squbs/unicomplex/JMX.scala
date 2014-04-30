@@ -19,7 +19,7 @@ object JMX {
   def get(objName: ObjectName, attr: String) = ManagementFactory.getPlatformMBeanServer.getAttribute(objName, attr)
 }
 
-case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", "supervisor"))(
+case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", "supervisorPath"))(
                                                                                  @BeanProperty name: String,
                                                                                  @BeanProperty fullName: String,
                                                                                  @BeanProperty version: String,
