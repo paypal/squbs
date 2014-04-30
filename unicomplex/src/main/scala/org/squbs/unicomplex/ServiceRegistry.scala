@@ -28,6 +28,16 @@ object ServiceRegistry {
    */
   private[unicomplex] class Registrar extends Actor with ActorLogging {
 
+    object ContextsBean extends ContextsMXBean {
+      import JMX._
+      register(this, contextsName)
+
+      override def getContexts: java.util.List[String] = {
+        import collection.JavaConversions._
+        registry.keys.toSeq
+      }
+    }
+
     private var registry = Map.empty[String, RouteDefinition]
     
     // CalculateRoute MUST return a function and not a value

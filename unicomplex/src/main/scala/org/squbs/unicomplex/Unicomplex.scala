@@ -110,7 +110,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   class SystemStateBean extends SystemStateMXBean {
 
     import JMX._
-    register(this, unicomplexName)
+    register(this, systemStateName)
 
     private[Unicomplex] var startTime: Date = null
     private[Unicomplex] var initDuration = -1
@@ -123,10 +123,15 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     override def getInitMillis: Int = initDuration
 
     override def getActivationMillis: Int = activationDuration
+  }
+
+  object CubesBean extends CubesMXBean {
+    import JMX._
+    register(this, cubesName)
 
     override def getCubes: util.List[CubeInfo] = {
       import collection.JavaConversions._
-      cubes.values.toSeq map { c => CubeInfo(c._1.name, c._1.fullName, c._1.version) }
+      cubes.values.toSeq map { c => CubeInfo(c._1.name, c._1.fullName, c._1.version, c._1.cubeSupervisor.path.name) }
     }
   }
 
