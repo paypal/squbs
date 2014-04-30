@@ -13,6 +13,7 @@ import akka.pattern.pipe
 import spray.can.Http.Bound
 import spray.can.Http
 import java.util.Date
+import java.util
 
 object Unicomplex {
 
@@ -121,6 +122,11 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     override def getInitMillis: Int = initDuration
 
     override def getActivationMillis: Int = activationDuration
+
+    override def getCubes: util.Collection[CubeInfo] = {
+      import collection.JavaConversions._
+      cubes.values map { c => CubeInfo(c._1.name, c._1.fullName, c._1.version) }
+    }
   }
 
   private val stateMXBean = new SystemStateBean

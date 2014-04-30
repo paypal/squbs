@@ -3,6 +3,8 @@ package org.squbs.unicomplex
 import java.lang.management.ManagementFactory
 import javax.management.{ObjectInstance, MXBean, ObjectName}
 import java.util.Date
+import java.beans.ConstructorProperties
+import scala.beans.BeanProperty
 
 object JMX {
 
@@ -25,12 +27,17 @@ object JMX {
   def get(objName: ObjectName, attr: String) = ManagementFactory.getPlatformMBeanServer.getAttribute(objName, attr)
 }
 
+case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version"))(@BeanProperty name: String,
+                                                                                 @BeanProperty fullName: String,
+                                                                                 @BeanProperty version: String)
+
 @MXBean
 trait SystemStateMXBean {
   def getSystemState: String
   def getStartTime : Date
   def getInitMillis: Int
   def getActivationMillis: Int
+  def getCubes: java.util.Collection[CubeInfo]
 }
 
 
