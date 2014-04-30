@@ -87,8 +87,9 @@ object ServiceRegistry {
     // create a new HttpServer using our handler tell it where to bind to
     val interface = Unicomplex.config getString "bind-address"
     val port = Unicomplex.config getInt "bind-port"
+    val bindService = Unicomplex.config getBoolean "bind-service"
     implicit val self = context.self
-    IO(Http) ! Http.Bind(serviceRef, interface, port)
+    if (bindService) IO(Http) ! Http.Bind(serviceRef, interface, port)
     context.watch(registrarRef)
     context.watch(serviceRef)
   }
