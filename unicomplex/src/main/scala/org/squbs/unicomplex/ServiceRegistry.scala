@@ -10,8 +10,9 @@ import spray.http.{MediaType, MediaTypes}
 import spray.routing._
 import Directives._
 import Unicomplex._
+import java.net.InetAddress
 
-case class Register(routeDef: RouteDefinition)
+case class Register(symName: String, version: String, routeDef: RouteDefinition)
 case class Unregister(key: String)
 
 object ServiceRegistry {
@@ -27,18 +28,38 @@ object ServiceRegistry {
    */
   private[unicomplex] class Registrar extends Actor with ActorLogging {
 
-    private var registry = Map.empty[String, RouteDefinition]
+    class ContextsBean extends ContextsMXBean {
+
+      override def getContexts: java.util.List[ContextInfo] = {
+        import collection.JavaConversions._
+        registry.map { case (ctx, Register(symName, version, routeDef)) =>
+          ContextInfo(ctx, routeDef.getClass.getName, symName, version)
+        } .toSeq
+      }
+    }
+
+    override def preStart() {
+      import JMX._
+      register(new ContextsBean, contextsName)
+    }
+
+    override def postStop()  {
+      import JMX._
+      unregister(contextsName)
+    }
+
+    private var registry = Map.empty[String, Register]
     
     // CalculateRoute MUST return a function and not a value
-    private def calculateRoute(tmpRegistry: Map[String, RouteDefinition]) =
-      Try(tmpRegistry.map{ case (webContext, routeDef) => pathPrefix(webContext) { routeDef.route } }
+    private def calculateRoute(tmpRegistry: Map[String, Register]) =
+      Try(tmpRegistry.map{ case (webContext, Register(_, _, routeDef)) => pathPrefix(webContext) { routeDef.route } }
        .reduceLeft(_ ~ _)).getOrElse(path(Slash) {get {complete {"Default Route"}}})
     
     def receive = {
-      case Register(routeDef) =>
+      case r @ Register(symName, version, routeDef) =>
         if (registry contains routeDef.webContext)
           log.warning(s"""Web context "${routeDef.webContext}" already registered. Overriding!""")
-        val tmpRegistry = registry + (routeDef.webContext -> routeDef)
+        val tmpRegistry = registry + (routeDef.webContext -> r)
         
         // This line is the problem. Don't pre-calculate.
         route send calculateRoute(tmpRegistry)
@@ -85,7 +106,8 @@ object ServiceRegistry {
     val serviceRef = context.actorOf(Props[WebSvcActor], "web-service")
 
     // create a new HttpServer using our handler tell it where to bind to
-    val interface = Unicomplex.config getString "bind-address"
+    val interface = if(Unicomplex.config getBoolean "full-address") InetAddress.getLocalHost.getCanonicalHostName
+      else Unicomplex.config getString "bind-address"
     val port = Unicomplex.config getInt "bind-port"
     implicit val self = context.self
     IO(Http) ! Http.Bind(serviceRef, interface, port)

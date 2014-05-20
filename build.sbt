@@ -1,9 +1,9 @@
 import de.johoop.jacoco4sbt._
 import JacocoPlugin._
 
-scalaVersion in ThisBuild := "2.10.3"
+scalaVersion in ThisBuild := "2.10.4"
 
-version in ThisBuild := "0.3.0-SNAPSHOT"
+version in ThisBuild := "0.4.0-SNAPSHOT"
 
 organization in ThisBuild := "org.squbs"
 

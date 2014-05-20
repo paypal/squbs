@@ -326,7 +326,7 @@ object Bootstrap extends App {
         val clazz = Class.forName(routeConfig.getString("class-name"), true, getClass.getClassLoader)
         val routeClass = clazz.asSubclass(classOf[RouteDefinition])
         val routeInstance = routeClass.newInstance
-        registrar() ! Register(routeInstance)
+        registrar() ! Register(symName, version, routeInstance)
         (symName, version, routeInstance)
       } catch {
         case e: Exception =>
@@ -426,9 +426,10 @@ object Bootstrap extends App {
     })
 
     // Start services if there are any
-    services.filter(_._1 == cubeName).map(_._3).foreach(routeDef => {
-      ServiceRegistry.registrar() ! Register(routeDef)
-    })
+    services.filter(_._1 == cubeName).foreach {
+      case (symName, version, routeDef) =>
+        ServiceRegistry.registrar() ! Register(symName, version, routeDef)
+    }
 
     // PostInit
     extensionsInCube.foreach(_.postInit(jarConfigs))
