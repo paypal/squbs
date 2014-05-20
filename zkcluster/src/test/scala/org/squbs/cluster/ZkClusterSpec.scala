@@ -23,6 +23,7 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
       import scala.collection.JavaConversions._
       preserve = Some(Files.readLines(conf, Charsets.UTF_8).mkString("\n"))
     }
+    Files.createParentDirs(conf)
     Files.write(
       s"""
           |zkCluster {
