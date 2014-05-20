@@ -1,0 +1,208 @@
+<?xml version="1.0"?>
+
+<ruleset name="Favorites"
+    xmlns="http://pmd.sf.net/ruleset/1.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pmd.sf.net/ruleset/1.0.0 http://pmd.sf.net/ruleset_xml_schema.xsd"
+    xsi:noNamespaceSchemaLocation="http://pmd.sf.net/ruleset_xml_schema.xsd">
+
+  <description>
+The Favorites rule-set contains links to rules that I like to use.  Usually I
+combine this ruleset with the unusedcode.xml, basic.xml, and import.xml rulesets for my projects.
+This ruleset also serves as an example of how to do a custom ruleset.
+  </description>
+
+  <!-- Excluding ConfigWeb project -->
+  <exclude-pattern>.*/raptor/configweb/.*</exclude-pattern>
+  <exclude-pattern>.*/com/ebay/raptor/fragment/jsp/AlternateFragment.*</exclude-pattern>
+  <exclude-pattern>.*/com/ebay/raptor/fragment/jsp/DeferredFragment.*</exclude-pattern>
+  <exclude-pattern>.*/com/ebay/raptor/kernel/context/IRaptorContext.*</exclude-pattern>
+
+  <rule ref="rulesets/basic.xml">
+  </rule>
+
+  <rule ref="rulesets/braces.xml">
+  </rule>
+
+  <rule ref="rulesets/clone.xml">
+  </rule>
+
+  <rule ref="rulesets/codesize.xml">
+	<!-- This rule checks the total number of if else, switch case statements and hence does not reports precise complexity -->
+	<exclude name="CyclomaticComplexity"/>	<!-- See more details at http://pmd.sourceforge.net/rules/codesize.html#CyclomaticComplexity -->
+	
+	<!-- This rules is not good specially in case of java beans or DAO objects. Generally we should not restrict number of public methods  -->
+	<exclude name="ExcessivePublicCount"/>  <!-- See more details at http://pmd.sourceforge.net/rules/codesize.html#ExcessivePublicCount -->
+	
+	<!-- This rule is not acurate and does not check the complexity in terms of real paths. if-if conditions are also taken as if-else which is not correct  -->
+	<exclude name="NPathComplexity"/>       <!-- See more details at http://pmd.sourceforge.net/rules/codesize.html#NPathComplexity -->
+	
+	<!-- This rules is not good specially in case of java beans or DAO objects. Generally we should not restrict number of fields  -->
+	<exclude name="TooManyFields"/> <!-- See more details at http://pmd.sourceforge.net/rules/codesize.html#TooManyFields -->
+	
+	<!-- This rules is not good specially in case of java beans or DAO objects. Generally we should not restrict number of methods  -->
+	<exclude name="TooManyMethods"/>        <!-- See more details at http://pmd.sourceforge.net/rules/codesize.html#TooManyMethods -->
+  </rule>
+
+  <rule ref="rulesets/controversial.xml">
+
+	<!-- This rule does not make sense! In Java every class has a default constructor -->	
+	<exclude name="AtLeastOneConstructor"/>	<!-- See more details at http://pmd.sourceforge.net/rules/controversial.html#AtLeastOneConstructor -->
+	
+	<!-- This rule can not be generalized as it is fine to have final variable (due to readonly collections or variables to beused in local classes -->
+	<exclude name="AvoidFinalLocalVariable"/>	<!-- See more details at http://pmd.sourceforge.net/rules/controversial.html#AvoidFinalLocalVariable -->
+	
+	<!-- This rule can not be generalized as most people do not use it and when they do, they know what they are doing. Besides its a need basis use.  -->
+	<exclude name="AvoidUsingVolatile"/>	<!-- See more details at http://pmd.sourceforge.net/rules/controversial.html#AvoidUsingVolatile -->
+	
+	<!-- The code is more readable without implementing this rule. Besides no measurable different in performance with proposed solution  -->
+	<exclude name="BooleanInversion"/>	<!-- See more details at http://pmd.sourceforge.net/rules/controversial.html#BooleanInversion -->
+	
+	<!-- This rule is not correct, the base class constructor is automatically called while constrructing child class  -->
+	<exclude name="CallSuperInConstructor"/>	<!-- See more details at http://pmd.sourceforge.net/rules/controversial.html#CallSuperInConstructor -->
+	
+	<!-- This rule not correct. Its perfectly fine to reassign the variable to some other value in java program!  -->
+	<exclude name="DataflowAnomalyAnalysis"/>	<!-- See more details at http://pmd.sourceforge.net/rules/controversial.html#DataflowAnomalyAnalysis -->
+	
+	<!-- Lot of times it is required to have package level scope for methods  -->
+	<exclude name="DefaultPackage"/>	<!-- See more details at http://pmd.sourceforge.net/rules/controversial.html#DefaultPackage -->
+	
+	<!-- Its perfectly fine to assign null to object hanlders and variables. Lot of times, itseven required!  -->
+	<exclude name="NullAssignment"/>	<!-- See more details at http://pmd.sourceforge.net/rules/controversial.html#NullAssignment -->
+	
+	<!-- This rule does not make sense! You can definitely have multiple exit poitns in your method  -->
+	<exclude name="OnlyOneReturn"/>	<!-- See more details at http://pmd.sourceforge.net/rules/controversial.html#OnlyOneReturn -->
+
+	<!-- It is very common practice to use such notations in I/O operations. The code looks cleaner this way rather than separating the logic  -->
+        <exclude name="AssignmentInOperand"/>   <!-- See more details at http://pmd.sourceforge.net/rules/controversial.html#AssignmentInOperand -->
+	
+	<!-- Putting public final for variables in interface makes them more readable.  -->
+	<exclude name="UnusedModifier"/>	<!-- See more details at http://pmd.sourceforge.net/rules/controversial.html#UnusedModifier -->
+
+  </rule>
+
+  <rule ref="rulesets/coupling.xml">
+	<!-- This whole ruleset deals with dependency analysis and as such should be treated differently. It should not be generallized -->  
+	<exclude name="CouplingBetweenObjects"/>	<!-- See more details at http://pmd.sourceforge.net/rules/coupling.html#CouplingBetweenObjects -->
+	
+	<!-- This rule does not amke sense! The imports are directly related to the functionality of class and its usage.  -->
+	<exclude name="ExcessiveImports"/>	<!-- See more details at http://pmd.sourceforge.net/rules/coupling.html#ExcessiveImports -->
+  </rule>
+
+  <rule ref="rulesets/design.xml">
+	
+	<!-- Its fine to have a marker class which is abstract in nature. Whoever writes that, knows what he is doing!  -->
+	<exclude name="AbstractClassWithoutAnyMethod"/>	<!-- See more details at http://pmd.sourceforge.net/rules/design.html#AbstractClassWithoutAnyMethod -->
+	
+	<!-- This rule is not good. Its fine to provide implementation to all methods of an interface and making that class abstract  -->
+	<exclude name="AbstractClassWithoutAbstractMethod"/>    <!-- See more details at http://pmd.sourceforge.net/rules/design.html#AbstractClassWithoutAbstractMethod -->
+	
+	<!-- This rule is generally not applicable  -->
+	<exclude name="AccessorClassGeneration"/>	<!-- See more details at http://pmd.sourceforge.net/rules/design.html#AccessorClassGeneration -->
+	
+	<!-- Not a good rule in general practice. It depends on the method logic as to what to with parameter.  -->
+	<exclude name="AvoidReassigningParameters"/>	<!-- See more details at http://pmd.sourceforge.net/rules/design.html#AvoidReassigningParameters -->
+	
+	<!-- In general this rule is good. But most of the errors reported are having couple of line of code. This rule needs to be modified to see a threasold of code size  -->
+	<exclude name="AvoidSynchronizedAtMethodLevel"/>        <!-- See more details at http://pmd.sourceforge.net/rules/design.html#AvoidSynchronizedAtMethodLevel -->
+	
+	<exclude name="ClassWithOnlyPrivateConstructorsShouldBeFinal"/>	<!-- See more details at http://pmd.sourceforge.net/rules/design.html#ClassWithOnlyPrivateConstructorsShouldBeFinal -->
+	
+	<!-- This rule is badly designed. Its perfectly fine to put conditions in if statement based on requirements.  -->
+	<exclude name="ConfusingTernary"/>	<!-- See more details at http://pmd.sourceforge.net/rules/design.html#ConfusingTernary -->
+	
+	<!-- At times its required to have such instantiations because of polymorphism and code structure  -->
+	<exclude name="ConstructorCallsOverridableMethod"/>     <!-- See more details at http://pmd.sourceforge.net/rules/design.html#ConstructorCallsOverridableMethod -->
+	
+	<!-- It will result in unnecessary copy of lot of array variables  -->
+	<exclude name="ReturnEmptyArrayRatherThanNull"/>	<!-- See more details at http://pmd.sourceforge.net/rules/design.html#ReturnEmptyArrayRatherThanNull -->
+	<exclude name="UseSingleton"/>	<!-- See more details at http://pmd.sourceforge.net/rules/design.html#UseSingleton -->
+	<exclude name="ImmutableField"/>	<!-- See more details at http://pmd.sourceforge.net/rules/design.html#ImmutableField -->
+	
+	<!-- This rule needs to be updated with a check if the method is overriden.  -->
+	<exclude name="UncommentedEmptyMethod"/>        <!-- See more details at http://pmd.sourceforge.net/rules/design.html#UncommentedEmptyMethod -->
+	
+	<!-- In case of case conversion utilities, not all times you need to worry about locale  -->
+	<exclude name="UseLocaleWithCaseConversions"/>  <!-- See more details at http://pmd.sourceforge.net/rules/design.html#UseLocaleWithCaseConversions -->
+  </rule>
+
+  <rule ref="rulesets/finalizers.xml">
+  </rule>
+
+  <rule ref="rulesets/imports.xml">
+  </rule>
+
+  <rule ref="rulesets/javabeans.xml">
+	<exclude name="BeanMembersShouldSerialize"/>    <!-- See more details at http://pmd.sourceforge.net/rules/javabeans.html#BeanMembersShouldSerialize -->
+  </rule>
+
+  <rule ref="rulesets/logging-jakarta-commons.xml">
+	<!-- This rule asks to make variable all caps like 'LOGGER' which is not good. It should be allowed to use lower case as well  -->
+	<exclude name="ProperLogger"/>  <!-- See more details at http://pmd.sourceforge.net/rules/logging-jakarta-commons.html#ProperLogger -->
+  </rule>
+
+  <rule ref="rulesets/logging-java.xml">
+	<exclude name="LoggerIsNotStaticFinal"/>	<!-- See more details at http://pmd.sourceforge.net/rules/logging-java.html#LoggerIsNotStaticFinal -->
+  </rule>
+
+  <rule ref="rulesets/migrating.xml">
+  </rule>
+
+  <rule ref="rulesets/naming.xml">
+	<exclude name="AbstractNaming"/>	<!-- See more details at http://pmd.sourceforge.net/rules/naming.html#AbstractNaming -->
+	<exclude name="AvoidFieldNameMatchingMethodName"/>	<!-- See more details at http://pmd.sourceforge.net/rules/naming.html#AvoidFieldNameMatchingMethodName -->
+	<exclude name="AvoidFieldNameMatchingTypeName"/>        <!-- See more details at http://pmd.sourceforge.net/rules/naming.html#AvoidFieldNameMatchingTypeName -->
+	<exclude name="GenericsNaming"/>	<!-- See more details at http://pmd.sourceforge.net/rules/naming.html#GenericsNaming -->
+	<exclude name="LongVariable"/>	<!-- See more details at http://pmd.sourceforge.net/rules/naming.html#LongVariable -->
+	<exclude name="ShortMethodName"/>	<!-- See more details at http://pmd.sourceforge.net/rules/naming.html#ShortMethodName -->
+	<exclude name="ShortVariable"/>	<!-- See more details at http://pmd.sourceforge.net/rules/naming.html#ShortVariable -->
+	<exclude name="SuspiciousHashcodeMethodName"/>	<!-- See more details at http://pmd.sourceforge.net/rules/naming.html#SuspiciousHashcodeMethodName -->
+	<exclude name="VariableNamingConventions"/>	<!-- See more details at http://pmd.sourceforge.net/rules/naming.html#VariableNamingConventions -->
+  </rule>
+
+  <rule ref="rulesets/optimizations.xml">
+        <exclude name="AvoidInstantiatingObjectsInLoops"/>      <!-- See more details at http://pmd.sourceforge.net/rules/optimizations.html#AvoidInstantiatingObjectsInLoops -->
+	<exclude name="LocalVariableCouldBeFinal"/>     <!-- See more details at http://pmd.sourceforge.net/rules/optimizations.html#LocalVariableCouldBeFinal -->
+        <exclude name="MethodArgumentCouldBeFinal"/>    <!-- See more details at http://pmd.sourceforge.net/rules/optimizations.html#MethodArgumentCouldBeFinal -->
+	<exclude name="UseStringBufferForStringAppends"/>       <!-- See more details at http://pmd.sourceforge.net/rules/optimizations.html#UseStringBufferForStringAppends -->
+  </rule>
+
+  <rule ref="rulesets/strictexception.xml">
+	<!-- In general most of these rules are very generic in nature. Practically these may not be applicable. --> 
+	<exclude name="AvoidCatchingThrowable"/>	<!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#AvoidCatchingThrowable -->
+	<exclude name="AvoidCatchingNPE"/>	<!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#AvoidCatchingNPE -->
+	<exclude name="AvoidThrowingRawExceptionTypes"/>	<!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#AvoidThrowingRawExceptionTypes -->
+	<exclude name="AvoidThrowingNullPointerException"/>	<!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#AvoidThrowingNullPointerException -->
+	<exclude name="AvoidRethrowingException"/>	<!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#AvoidRethrowingException -->
+	<exclude name="AvoidThrowingNewInstanceOfSameException"/>	<!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#AvoidThrowingNewInstanceOfSameException -->
+	<exclude name="AvoidCatchingGenericException"/>	<!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#AvoidCatchingGenericException -->
+	<exclude name="AvoidLosingExceptionInformation"/>	<!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#AvoidLosingExceptionInformation -->
+	<exclude name="DoNotExtendJavaLangError"/>	<!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#DoNotExtendJavaLangError -->
+	<exclude name="DoNotThrowExceptionInFinally"/>	<!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#DoNotThrowExceptionInFinally -->
+	<exclude name="ExceptionAsFlowControl"/>	<!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#ExceptionAsFlowControl -->
+	<exclude name="SignatureDeclareThrowsException"/>       <!-- See more details at http://pmd.sourceforge.net/rules/strictexception.html#SignatureDeclareThrowsException -->
+  </rule>
+
+  <rule ref="rulesets/strings.xml">
+	<exclude name="AvoidDuplicateLiterals"/>        <!-- See more details at http://pmd.sourceforge.net/rules/strings.html#AvoidDuplicateLiterals -->
+	<exclude name="AvoidStringBufferField"/>        <!-- See more details at http://pmd.sourceforge.net/rules/strings.html#AvoidStringBufferField -->
+	<exclude name="ConsecutiveLiteralAppends"/>     <!-- See more details at http://pmd.sourceforge.net/rules/strings.html#ConsecutiveLiteralAppends -->
+	<exclude name="InefficientEmptyStringCheck"/>   <!-- See more details at http://pmd.sourceforge.net/rules/strings.html#InefficientEmptyStringCheck -->
+  </rule>
+
+  <rule ref="rulesets/sunsecure.xml">
+	<exclude name="ArrayIsStoredDirectly"/>	<!-- See more details at http://pmd.sourceforge.net/rules/sunsecure.html#ArrayIsStoredDirectly -->
+	<exclude name="MethodReturnsInternalArray"/>    <!-- See more details at http://pmd.sourceforge.net/rules/sunsecure.html#MethodReturnsInternalArray -->	
+  </rule>
+
+  <rule ref="rulesets/typeresolution.xml">
+	<exclude name="SignatureDeclareThrowsException"/>       <!-- See more details at http://pmd.sourceforge.net/rules/typeresolution.html#SignatureDeclareThrowsException -->
+  </rule>
+
+  <rule ref="rulesets/unusedcode.xml">
+  </rule>	
+  
+</ruleset>
+
+
+
