@@ -59,15 +59,13 @@ class ZkCluster(system: ActorSystem,
   //this is the zk client that we'll use, using the namespace reserved throughout
   implicit def zkClientWithNs = zkClient.usingNamespace(zkNamespace)
 
-  //make sure /leader, /members, /partitions, /sizes znodes are available
+  //make sure /leader, /members, /segments znodes are available
   guarantee("/leader",   Some(Array[Byte]()), CreateMode.PERSISTENT)
   guarantee("/members",  Some(Array[Byte]()), CreateMode.PERSISTENT)
   guarantee("/segments", Some(Array[Byte]()), CreateMode.PERSISTENT)
-  guarantee("/sizes",    Some(Array[Byte]()), CreateMode.PERSISTENT)
 
   0.until(segmentationLogic.segmentsSize).foreach(s => {
     guarantee(s"/segments/segment-$s", Some(Array[Byte]()), CreateMode.PERSISTENT)
-    guarantee(s"/sizes/segment-$s",    Some(Array[Byte]()), CreateMode.PERSISTENT)
   })
 
   //all interactions with the zk cluster extension should be through the zkClusterActor below
@@ -113,6 +111,8 @@ case class ZkQueryPartition(partitionKey:ByteString, //partition key
                             createOnMiss:Option[Int] = None, //create partition when it's missing or not, and the size in case it's to be created
                             props:Array[Byte] = Array[Byte](), //properties of the partition, plain byte array
                             members:Set[Address] = Set.empty) //used internally
+
+case class ZkResizePartition(partitionKey:ByteString, sizeOf:Int)
 
 case class ZkRemovePartition(partitionKey:ByteString)
 
@@ -260,6 +260,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       partitions.map(partitionZNode => {
         ByteString(pathToKey(partitionZNode)) -> (try {
           zkClient.getChildren.usingWatcher(partitionWatcher).forPath(s"$segmentZkPath/$partitionZNode")
+            .filterNot(_ == "$$size")
             .map(memberZNode => AddressFromURIString(pathToKey(memberZNode))).toSet
           //the member data stored at znode is implicitly converted to Option[Address] which says where the member is in Akka
         }
@@ -326,6 +327,10 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       safelyDiscard(partitionZkPath(partitionKey))
       safelyDiscard(sizeOfParZkPath(partitionKey))
       sender() ! ZkPartition(partitionKey, Seq.empty, partitionZkPath(partitionKey), None)
+
+    case ZkResizePartition(partitionKey, sizeOf) =>
+      guarantee(sizeOfParZkPath(partitionKey), Some(intToBytes(sizeOf)), CreateMode.PERSISTENT)
+      sender() ! ZkPartition(partitionKey, partitionsToMembers.getOrElse(partitionKey, Set.empty).toSeq, partitionZkPath(partitionKey), None)
 
     case ZkMonitorPartition(onDifference) =>
       logger.debug("[partitions] monitor partitioning from:{}", sender().path)
@@ -479,6 +484,12 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
       }
       stay
 
+    case Event(resize:ZkResizePartition, zkClusterData) =>
+      zkClusterData.leader.foreach(address => {
+        context.actorSelection(self.path.toStringWithAddress(address)) forward resize
+      })
+      stay
+
     case Event(remove:ZkRemovePartition, zkClusterData) =>
       zkClusterData.leader.foreach(address => {
         context.actorSelection(self.path.toStringWithAddress(address)) forward remove
@@ -532,6 +543,11 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
         notification)
       stay
 
+    case Event(resize:ZkResizePartition, zkClusterData) =>
+      logger.info("[leader] resize partition:{} forwarded to partition manager", keyToPath(resize.partitionKey))
+      partitionManager forward resize
+      stay
+
     case Event(remove:ZkRemovePartition, zkClusterData) =>
       logger.info("[leader] remove partition:{} forwarded to partition manager", keyToPath(remove.partitionKey))
       partitionManager forward remove
@@ -569,7 +585,7 @@ trait RebalanceLogic {
     partitionsToMembers.map(assign => {
       val partitionKey = assign._1
       val servants = assign._2
-      val requires = size(partitionKey)//bytesToInt(zkClient.getData.forPath(s"/sizes/${keyToPath(partitionKey)}"))
+      val requires = size(partitionKey)
 
       if(servants.size < requires)
         partitionKey -> (servants ++ members.filterNot(servants.contains(_)).take(requires - servants.size))
@@ -626,7 +642,7 @@ trait SegmentationLogic {
 
   def partitionZkPath(partitionKey:ByteString) = s"/segments/${segmentation(partitionKey)}/${keyToPath(partitionKey)}"
 
-  def sizeOfParZkPath(partitionKey:ByteString) = s"/sizes/${segmentation(partitionKey)}/${keyToPath(partitionKey)}"
+  def sizeOfParZkPath(partitionKey:ByteString) = s"${partitionZkPath(partitionKey)}/$$size}"
 }
 
 object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Logging {
