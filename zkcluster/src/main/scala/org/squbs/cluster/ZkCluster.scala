@@ -260,7 +260,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       partitions.map(partitionZNode => {
         ByteString(pathToKey(partitionZNode)) -> (try {
           zkClient.getChildren.usingWatcher(partitionWatcher).forPath(s"$segmentZkPath/$partitionZNode")
-            .filterNot(_ == "$$size")
+            .filterNot(_ == "$size")
             .map(memberZNode => AddressFromURIString(pathToKey(memberZNode))).toSet
           //the member data stored at znode is implicitly converted to Option[Address] which says where the member is in Akka
         }
@@ -290,13 +290,20 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       logger.debug("[partitions] partitions change detected from zk: {}", change.map(pair => keyToPath(pair._1) -> pair._2))
 
       val (effects, onboards, dropoffs) = applyChanges(segmentsToPartitions, partitionsToMembers, origin)
-      partitionsToMembers = effects
+      val difference = dropoffs.nonEmpty || onboards.exists{partitionKey => partitionsToMembers.get(partitionKey) != effects.get(partitionKey)}
 
-      val diff = onboards.map{alter => alter -> orderByAge(alter, partitionsToMembers.getOrElse(alter, Set.empty)).toSeq}.toMap ++ dropoffs.map{dropoff => dropoff -> Seq.empty}
-      val zkPaths = diff.keySet.map{partitionKey => partitionKey -> partitionZkPath(partitionKey)}.toMap
+      if(difference) {
+        partitionsToMembers = effects
 
-      logger.debug("[partitions] change consolidated as:{} and notifying:{}", diff, notifyOnDifference)
-      notifyOnDifference.foreach{listener => context.actorSelection(listener) ! ZkPartitionDiff(diff, zkPaths)}
+        val diff = onboards.map { alter => alter -> orderByAge(alter, partitionsToMembers.getOrElse(alter, Set.empty)).toSeq}.toMap ++ dropoffs.map { dropoff => dropoff -> Seq.empty}
+        val zkPaths = diff.keySet.map { partitionKey => partitionKey -> partitionZkPath(partitionKey)}.toMap
+
+        logger.debug("[partitions] change consolidated as:{} and notifying:{}", diff, notifyOnDifference)
+        notifyOnDifference.foreach { listener => context.actorSelection(listener) ! ZkPartitionDiff(diff, zkPaths)}
+      }
+      else{
+        logger.debug("[partitions] change ignored as no difference was found and notifying no one")
+      }
 
     case ZkQueryPartition(partitionKey, notification, _, _, _) =>
       logger.info("[partitions] partition: {} identified", keyToPath(partitionKey))
@@ -327,10 +334,6 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       safelyDiscard(partitionZkPath(partitionKey))
       safelyDiscard(sizeOfParZkPath(partitionKey))
       sender() ! ZkPartition(partitionKey, Seq.empty, partitionZkPath(partitionKey), None)
-
-    case ZkResizePartition(partitionKey, sizeOf) =>
-      guarantee(sizeOfParZkPath(partitionKey), Some(intToBytes(sizeOf)), CreateMode.PERSISTENT)
-      sender() ! ZkPartition(partitionKey, partitionsToMembers.getOrElse(partitionKey, Set.empty).toSeq, partitionZkPath(partitionKey), None)
 
     case ZkMonitorPartition(onDifference) =>
       logger.debug("[partitions] monitor partitioning from:{}", sender().path)
@@ -543,10 +546,10 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
         notification)
       stay
 
-    case Event(resize:ZkResizePartition, zkClusterData) =>
-      logger.info("[leader] resize partition:{} forwarded to partition manager", keyToPath(resize.partitionKey))
-      partitionManager forward resize
-      stay
+    case Event(ZkResizePartition(partitionKey, sizeOf), zkClusterData) =>
+      logger.info("[leader] resize partition:{} forwarded to partition manager", keyToPath(partitionKey))
+      guarantee(sizeOfParZkPath(partitionKey), Some(intToBytes(sizeOf)), CreateMode.PERSISTENT)
+      stay using zkClusterData.copy(partitionsToMembers = rebalance(zkClusterData.partitionsToMembers, zkClusterData.members))
 
     case Event(remove:ZkRemovePartition, zkClusterData) =>
       logger.info("[leader] remove partition:{} forwarded to partition manager", keyToPath(remove.partitionKey))
@@ -712,7 +715,8 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Lo
       Seq.empty[Address]
     else {
       val zkPath = zkSegmentationLogic.partitionZkPath(partitionKey)
-      val ages = zkClient.getChildren.forPath(zkPath).map(child =>
+      val ages = zkClient.getChildren.forPath(zkPath).filterNot(_ == "$size")
+        .map(child =>
         AddressFromURIString.parse(pathToKey(child)) -> zkClient.checkExists.forPath(s"$zkPath/$child").getCtime).toMap
       //this is to ensure that the partitions query result will always give members in the order of oldest to youngest
       //this should make data sync easier, the newly onboard member should always consult with the 1st member in the query result to sync with.
