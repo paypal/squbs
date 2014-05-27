@@ -590,10 +590,14 @@ trait RebalanceLogic {
       val servants = assign._2
       val requires = size(partitionKey)
 
-      if(servants.size < requires)
-        partitionKey -> (servants ++ members.filterNot(servants.contains(_)).take(requires - servants.size))
-      else
-        assign
+      servants.size match {
+        case requires => //exact size, no change needed
+          assign
+        case _ if servants.size < requires => //shortage, must be compensated
+          partitionKey -> (servants ++ members.filterNot(servants.contains(_)).take(requires - servants.size))
+        case _ => //overflow, reduce the servants
+          partitionKey -> servants.take(requires)
+      }
     })
   }
 
