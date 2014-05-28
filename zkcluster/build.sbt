@@ -14,6 +14,7 @@ libraryDependencies ++= Seq(
   "org.apache.zookeeper" % "zookeeper" % "3.4.6",
   "com.typesafe" %% "scalalogging-slf4j" % "1.1.0",
   "com.google.protobuf" % "protobuf-java" % "2.5.0",
+  "com.google.guava" % "guava" % "16.0.1" % "test",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.2" % "test",
   "org.scalatest" %% "scalatest" % "2.1.0" % "test",
   "org.mockito" % "mockito-core" % "1.9.5" % "test"
