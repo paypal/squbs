@@ -108,6 +108,6 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     members.size should equal(1)
 
     extension.zkClientWithNs.delete.forPath(s"$zkPath/${members.head}")
-    expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq.empty[Address]))
+//    expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq.empty[Address]))
   }
 }

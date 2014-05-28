@@ -591,12 +591,12 @@ trait RebalanceLogic {
       val requires = size(partitionKey)
 
       servants.size match {
-        case requires => //exact size, no change needed
-          assign
-        case _ if servants.size < requires => //shortage, must be compensated
+        case size:Int if size < requires => //shortage, must be compensated
           partitionKey -> (servants ++ members.filterNot(servants.contains(_)).take(requires - servants.size))
-        case _ => //overflow, reduce the servants
+        case size:Int if size > requires => //overflow, reduce the servants
           partitionKey -> servants.take(requires)
+        case _ =>
+          assign
       }
     })
   }
@@ -649,7 +649,7 @@ trait SegmentationLogic {
 
   def partitionZkPath(partitionKey:ByteString) = s"/segments/${segmentation(partitionKey)}/${keyToPath(partitionKey)}"
 
-  def sizeOfParZkPath(partitionKey:ByteString) = s"${partitionZkPath(partitionKey)}/$$size}"
+  def sizeOfParZkPath(partitionKey:ByteString) = s"${partitionZkPath(partitionKey)}/$$size"
 }
 
 object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Logging {
