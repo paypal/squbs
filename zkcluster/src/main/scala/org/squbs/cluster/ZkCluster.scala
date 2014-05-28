@@ -22,6 +22,7 @@ import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.slf4j.Logging
 import java.nio.charset.Charset
+import org.squbs.unicomplex.ConfigUtil
 
 /**
  * Created by huzhou on 3/25/14.
@@ -742,32 +743,12 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Lo
       dropoffs)
   }
 
-  def ipv4 = {
-    val addresses = mutable.Set.empty[String]
-    val enum = NetworkInterface.getNetworkInterfaces
-    while (enum.hasMoreElements) {
-      val addrs = enum.nextElement.getInetAddresses
-      while (addrs.hasMoreElements) {
-        addresses += addrs.nextElement.getHostAddress
-      }
-    }
-
-    val pattern = "\\d+\\.\\d+\\.\\d+\\.\\d+".r
-    val matched = addresses.filter({
-      case pattern() => true
-      case _ => false
-    })
-      .filter(_ != "127.0.0.1")
-
-    matched.head
-  }
-
   private[cluster] def myAddress = InetAddress.getLocalHost.getCanonicalHostName match {
-    case "localhost" => ipv4
+    case "localhost" => ConfigUtil.ipv4
     case h:String => h
   }
 
-  private[cluster] def external(system:ExtendedActorSystem):Address = Address("akka.tcp", system.name, ipv4, system.provider.getDefaultAddress.port.getOrElse(8086))
+  private[cluster] def external(system:ExtendedActorSystem):Address = Address("akka.tcp", system.name, ConfigUtil.ipv4, system.provider.getDefaultAddress.port.getOrElse(8086))
 
   def keyToPath(name:String):String = URLEncoder.encode(name, "utf-8")
 

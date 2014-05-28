@@ -8,6 +8,7 @@ import com.google.common.base.Charsets
 import akka.testkit.{TestKit, ImplicitSender}
 import akka.util.ByteString
 import akka.actor.{Address, ActorSystem}
+import org.squbs.unicomplex.ConfigUtil
 
 /**
  * Created by huzhou on 5/12/14.
@@ -59,7 +60,7 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
   "ZkAddress" should "be the ip address of myself" in {
 
-    ZkCluster(system).zkAddress.host should equal(Some(ZkCluster.ipv4))
+    ZkCluster(system).zkAddress.host should equal(Some(ConfigUtil.ipv4))
   }
 
   "ZkClusterActor" should "respond with basic queries" in {
