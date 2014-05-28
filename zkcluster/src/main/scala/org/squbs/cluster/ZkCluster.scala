@@ -2,7 +2,6 @@ package org.squbs.cluster
 
 import java.io.File
 import java.nio.ByteBuffer
-import com.google.common.base.Charsets
 import java.net.{NetworkInterface, URLDecoder, URLEncoder, InetAddress}
 import org.apache.zookeeper.KeeperException.{NoNodeException, NodeExistsException}
 import org.apache.zookeeper.{WatchedEvent, CreateMode}
@@ -22,6 +21,7 @@ import akka.actor._
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.slf4j.Logging
+import java.nio.charset.Charset
 
 /**
  * Created by huzhou on 3/25/14.
@@ -782,14 +782,16 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Lo
     buf.array()
   }
 
+  val UTF_8 = Charset.forName("utf-8")
+
   implicit def bytesToInt(bytes:Array[Byte]) = ByteBuffer.wrap(bytes).getInt
 
-  implicit def bytesToUtf8(bytes:Array[Byte]):String = new String(bytes, Charsets.UTF_8)
+  implicit def bytesToUtf8(bytes:Array[Byte]):String = new String(bytes, UTF_8)
 
-  implicit def byteStringToUtf8(bs:ByteString):String = new String(bs.toArray, Charsets.UTF_8)
+  implicit def byteStringToUtf8(bs:ByteString):String = new String(bs.toArray, UTF_8)
 
   implicit def addressToBytes(address:Address):Array[Byte] = {
-    address.toString.getBytes(Charsets.UTF_8)
+    address.toString.getBytes(UTF_8)
   }
 
   implicit def bytesToAddress(bytes:Array[Byte]):Option[Address] = {
@@ -797,7 +799,7 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Lo
       case null => None
       case _ if bytes.length == 0 => None
       case _ => {
-        val uri = new String(bytes, Charsets.UTF_8)
+        val uri = new String(bytes, UTF_8)
         Some(AddressFromURIString(uri))
       }
     }
