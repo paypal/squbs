@@ -33,7 +33,7 @@ class ZkCluster(system: ActorSystem,
                 zkNamespace: String,
                 implicit val segmentationLogic: SegmentationLogic,
                 retryPolicy: RetryPolicy = new ExponentialBackoffRetry(1000, 3),
-                rebalanceLogic:RebalanceLogic = DefaultDataCenterAwareRebalanceLogic) extends Extension with Logging {
+                rebalanceLogic:RebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = false)) extends Extension with Logging {
 
   import ZkCluster._
 
@@ -377,7 +377,8 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
   def rebalance(partitionsToMembers:Map[ByteString, Set[Address]], members:Set[Address]) = {
 
-    val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, members.toSeq, requires _), members)
+    val candidates = (if(rebalanceLogic.spareLeader) members.filterNot(_ == stateData.leader.getOrElse(null)) else members).toSeq
+    val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, candidates, requires _), members)
 
     logger.info("[leader] rebalance planned as:{}", plan)
     partitionManager ! ZkRebalance(plan)
@@ -581,6 +582,8 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
 trait RebalanceLogic {
 
+  val spareLeader:Boolean = false
+
   /**
    * @return partitionsToMembers compensated when size in service is short compared with what's required
    */
@@ -661,15 +664,18 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Lo
 
     val source = new File(Unicomplex(system).externalConfigDir, "zkcluster.conf")
     logger.info("[zkcluster] reading configuration from:{}", source.getAbsolutePath)
-    val configuration = ConfigFactory.parseFile(source)
+    val configuration = ConfigFactory.parseFile(source) withFallback(ConfigFactory.parseMap(Map(
+      "zkCluster.segments" -> Int.box(128),
+      "zkCluster.spareLeader" -> Boolean.box(false))))
 
     val zkConnectionString = configuration.getString("zkCluster.connectionString")
     val zkNamespace = configuration.getString("zkCluster.namespace")
     val zkSegments = configuration.getInt("zkCluster.segments")
+    val zkSpareLeader = configuration.getBoolean("zkCluster.spareLeader")
     val zkAddress = external(system)
     logger.info("[zkcluster] connection to:{} and namespace:{} with segments:{} using address:{}", zkConnectionString, zkNamespace, zkSegments.toString, zkAddress)
 
-    new ZkCluster(system, zkAddress, zkConnectionString, zkNamespace, DefaultSegmentationLogic(zkSegments))
+    new ZkCluster(system, zkAddress, zkConnectionString, zkNamespace, DefaultSegmentationLogic(zkSegments), rebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = zkSpareLeader))
   }
 
   object DefaultRebalanceLogic extends RebalanceLogic

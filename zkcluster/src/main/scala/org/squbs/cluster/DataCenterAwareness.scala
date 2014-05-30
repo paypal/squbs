@@ -19,10 +19,16 @@ trait Correlation[C] {
   def common(address:Address):C
 }
 
-object DefaultCorrelation extends Correlation[String] {
+class DefaultCorrelation extends Correlation[String] {
   //for 10.100.254.73 ipv4, we use "10.100" as the common identifier for correlation
   override def common(address:Address) =
     InetAddress.getByName(address.host.getOrElse("127.0.0.1")).getHostAddress.split('.').take(2).mkString(".")
+}
+
+object DefaultCorrelation {
+
+  def apply() = new DefaultCorrelation
+
 }
 
 class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlation[C]) extends RoutingLogic {
@@ -44,7 +50,7 @@ class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlat
 
 object CorrelateRoundRobinRoutingLogic {
 
-  def apply[C](zkAddress:Address, correlation:Correlation[C] = DefaultCorrelation) =
+  def apply[C](zkAddress:Address, correlation:Correlation[C] = DefaultCorrelation()) =
     new CorrelateRoundRobinRoutingLogic[C](zkAddress, correlation)
 
 }
@@ -52,7 +58,7 @@ object CorrelateRoundRobinRoutingLogic {
 final case class CorrelateRoundRobinGroup[C](override val paths: immutable.Iterable[String],
                                              override val routerDispatcher: String = Dispatchers.DefaultDispatcherId,
                                              zkAddress:Address,
-                                             correlation:Correlation[C] = DefaultCorrelation) extends Group {
+                                             correlation:Correlation[C] = DefaultCorrelation()) extends Group {
 
   override def createRouter(system: ActorSystem): Router = new Router(CorrelateRoundRobinRoutingLogic(zkAddress, correlation))
 
@@ -65,7 +71,7 @@ final case class CorrelateRoundRobinGroup[C](override val paths: immutable.Itera
 }
 
 
-class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C]) extends RebalanceLogic {
+class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], spareLeader:Boolean) extends RebalanceLogic {
 
   @tailrec private[cluster] final def classify(members:Seq[Address], classified:Map[C, Seq[Address]]):Map[C, Seq[Address]] =
     if(members.isEmpty)
@@ -133,4 +139,7 @@ class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C]) extends Rebal
   }
 }
 
-object DefaultDataCenterAwareRebalanceLogic extends DataCenterAwareRebalanceLogic(DefaultCorrelation)
+object DataCenterAwareRebalanceLogic {
+
+  def apply[C](correlation:Correlation[C] = DefaultCorrelation(), spareLeader:Boolean = false) = new DataCenterAwareRebalanceLogic(correlation, spareLeader)
+}
