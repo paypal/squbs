@@ -7,13 +7,12 @@
  */
 package org.squbs.unicomplex
 
-import org.scalatest.FunSpec
-import org.squbs.unicomplex.Bootstrap._
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FunSpecLike}
+import org.squbs.unicomplex.UnicomplexBoot._
 
-class BootstrapSpec extends FunSpec with ShouldMatchers {
+class UnicomplexBootSpec extends FunSpecLike with Matchers {
 
-  describe ("The Bootstrap") {
+  describe ("The UnicomplexBootstrap") {
 
     it ("Should handle non-duplication in cube short names") {
       val initInfoList = Seq(
@@ -53,5 +52,4 @@ class BootstrapSpec extends FunSpec with ShouldMatchers {
       newAliases should be (refAliases)
     }
   }
-
 }

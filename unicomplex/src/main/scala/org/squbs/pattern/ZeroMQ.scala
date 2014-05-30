@@ -162,7 +162,8 @@ trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
 
     //inbound
     case Event(msg @ ReceiveAsync(delay), Runnings(socket, maxDelay)) =>
-      val zMessage = ZMsg.recvMsg(socket, ZMQ.DONTWAIT)
+//      val zMessage = ZMsg.recvMsg(socket, ZMQ.DONTWAIT)
+      val zMessage = ZMsg.recvMsg(socket, 0)
       val identity = zMessage.pop
       if(identity.hasData){
         //got real message, consume all frames, and resume by sending ReceiveAsync to self again

@@ -16,7 +16,7 @@ we'll need a `/squbsconfig/zkcluster.conf` under runtime directory, it should pr
 ~~~
 zkCluster {
     connectionString = "zk-node-phx-0-213163.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-1-213164.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-2-213165.phx-os1.stratus.dev.ebay.com:2181"
-    namespace = "pubsubdev"
+    namespace = "channelservicedev"
     segments = 128
 }
 ~~~
@@ -31,16 +31,16 @@ val zkClusterActor = ZkCluster(system).zkClusterActor
 zkClusterActor ! ZkQueryMembership
 zkClusterActor ! ZkQueryLeadership
 zkClusterActor ! ZkQueryPartition(partitionKey:ByteString, createOnMiss:Option[Int])
-zkClusterActor ! ZkMonitorPartition(paths:Set[ActorPath)
+zkClusterActor ! ZkMonitorPartition(paths:Set[ActorPath])
 ~~~
 
-in turn you'll receive responding messages in your actor
+accordingly you'll receive responding messages in your actor
 ~~~scala
 message match {
-    case ZkMembership(members:Set[Address) =>
+    case ZkMembership(members:Set[Address]) =>
     case ZkLeadership(leader:Address) =>
     case ZkPartition(partitionKey:ByteString, members:Set[Address]) =>
-    case ZkPartitionDiff(partitionsToMembers:Map[ByteString, Set[Address]) =>
+    case ZkPartitionDiff(partitionsToMembers:Map[ByteString, Set[Address]]) =>
 }
 ~~~
 
@@ -58,4 +58,4 @@ Read if you're making changes of zkcluster
 
 `ZkMembershipMonitor` is the actor type who handles membership & leadership
 `ZkPartitionsManager` is the one who handles partitions management and leader/follower communication
-`ZkClusterActor` is the interfacing actor user should be interacting with only
+`ZkClusterActor` is the interfacing actor user should be sending queries to
