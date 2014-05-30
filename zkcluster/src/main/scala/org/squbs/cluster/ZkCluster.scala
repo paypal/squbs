@@ -22,7 +22,7 @@ import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.slf4j.Logging
 import java.nio.charset.Charset
-import org.squbs.unicomplex.ConfigUtil
+import org.squbs.unicomplex.{Unicomplex, ConfigUtil}
 
 /**
  * Created by huzhou on 3/25/14.
@@ -659,7 +659,7 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Lo
 
   override def createExtension(system: ExtendedActorSystem): ZkCluster = {
 
-    val source = new File("squbsconfig", "zkcluster.conf")
+    val source = new File(Unicomplex(system).externalConfigDir, "zkcluster.conf")
     logger.info("[zkcluster] reading configuration from:{}", source.getAbsolutePath)
     val configuration = ConfigFactory.parseFile(source)
 
