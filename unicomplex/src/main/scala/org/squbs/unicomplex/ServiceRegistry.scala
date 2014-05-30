@@ -9,7 +9,6 @@ import spray.can.Http
 import spray.http.{MediaType, MediaTypes}
 import spray.routing._
 import Directives._
-import java.net.InetAddress
 
 case class Register(symName: String, alias: String, version: String, routeDef: RouteDefinition)
 case class Unregister(key: String)
@@ -35,7 +34,7 @@ class ServiceRegistry(system: ActorSystem) {
     serviceRef ! notifySender // serviceRef needs to send the notifySender an ack when it is ready.
 
     // create a new HttpServer using our handler tell it where to bind to
-    val interface = if(Unicomplex.config getBoolean "full-address") InetAddress.getLocalHost.getCanonicalHostName
+    val interface = if(Unicomplex.config getBoolean "full-address") ConfigUtil.ipv4
       else Unicomplex.config getString "bind-address"
     val port = Unicomplex.config getInt "bind-port"
     implicit val self = context.self

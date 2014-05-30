@@ -9,6 +9,8 @@ package org.squbs.unicomplex
 
 import scala.collection.JavaConversions._
 import com.typesafe.config.{ConfigException, Config}
+import scala.collection.mutable
+import java.net.NetworkInterface
 
 object ConfigUtil {
 
@@ -67,6 +69,26 @@ object ConfigUtil {
         }
       list map (_.toSeq)
     }
+  }
+
+  def ipv4 = {
+    val addresses = mutable.Set.empty[String]
+    val enum = NetworkInterface.getNetworkInterfaces
+    while (enum.hasMoreElements) {
+      val addrs = enum.nextElement.getInetAddresses
+      while (addrs.hasMoreElements) {
+        addresses += addrs.nextElement.getHostAddress
+      }
+    }
+
+    val pattern = "\\d+\\.\\d+\\.\\d+\\.\\d+".r
+    val matched = addresses.filter({
+      case pattern() => true
+      case _ => false
+    })
+      .filter(_ != "127.0.0.1")
+
+    matched.head
   }
 
 }
