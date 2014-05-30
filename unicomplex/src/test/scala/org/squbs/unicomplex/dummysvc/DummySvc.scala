@@ -25,16 +25,16 @@ class DummySvc extends RouteDefinition{
 
 private class DummyClient extends Actor with ActorLogging {
 
-  private def receiveMsg(sender: ActorRef): Receive = {
+  private def receiveMsg(responder: ActorRef): Receive = {
 
     case AppendedMsg(appendedMsg) => context.actorSelection("/user/DummyCube/Prepender") ! EchoMsg(appendedMsg)
 
-    case PrependedMsg(prependedMsg) => sender ! HttpResponse(entity = HttpEntity(`text/plain`, prependedMsg))
+    case PrependedMsg(prependedMsg) => responder ! HttpResponse(entity = HttpEntity(`text/plain`, prependedMsg))
       context.stop(self)
   }
 
   def receive = {
     case msg: EchoMsg => context.actorSelection("/user/DummyCube/Appender") ! msg
-      context.become(receiveMsg(sender))
+      context.become(receiveMsg(sender()))
   }
 }

@@ -31,20 +31,20 @@ private class PingPongClient extends Actor with ActorLogging {
 
   private val pingPongActor = context.actorSelection("/user/DummyCubeSvc/PingPongPlayer")
 
-  def ping(sender: ActorRef): Receive = {
-    case Pong => sender ! HttpResponse(entity = HttpEntity(`text/plain`, Pong.toString))
+  def ping(responder: ActorRef): Receive = {
+    case Pong => responder ! HttpResponse(entity = HttpEntity(`text/plain`, Pong.toString))
   }
 
-  def pong(sender: ActorRef): Receive = {
-    case Ping => sender ! HttpResponse(entity = HttpEntity(`text/plain`, Ping.toString))
+  def pong(responder: ActorRef): Receive = {
+    case Ping => responder ! HttpResponse(entity = HttpEntity(`text/plain`, Ping.toString))
   }
 
   def receive = {
     case "ping" => pingPongActor ! Ping
-      context.become(ping(sender))
+      context.become(ping(sender()))
 
     case "pong" => pingPongActor ! Pong
-      context.become(pong(sender))
+      context.become(pong(sender()))
   }
 
 }

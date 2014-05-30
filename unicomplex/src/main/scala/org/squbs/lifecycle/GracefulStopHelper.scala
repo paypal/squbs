@@ -39,7 +39,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
     context.parent ! StopTimeout(stopTimeout)
   }
 
-  implicit val executionContext = actorSystem.dispatcher
+  implicit val executionContext = context.system.dispatcher
 
   /**
    * Duration that the actor needs to finish the graceful stop.
@@ -48,7 +48,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * @return Duration
    */
   def stopTimeout: FiniteDuration =
-    FiniteDuration(config.getMilliseconds("default-stop-timeout"), TimeUnit.MILLISECONDS)
+    FiniteDuration(config.getDuration("default-stop-timeout", TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS)
 
   /**
    * Default gracefully stop behavior for leaf level actors
