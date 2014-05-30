@@ -8,7 +8,7 @@ import com.google.common.base.Charsets
 import akka.testkit.{TestKit, ImplicitSender}
 import akka.util.ByteString
 import akka.actor.{Address, ActorSystem}
-import org.squbs.unicomplex.ConfigUtil
+import org.squbs.unicomplex.{Unicomplex, ConfigUtil}
 
 /**
  * Created by huzhou on 5/12/14.
@@ -16,7 +16,7 @@ import org.squbs.unicomplex.ConfigUtil
 class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   var preserve:Option[String] = None
-  val conf = new File("squbsconfig", "zkcluster.conf")
+  val conf = new File(Unicomplex(system).externalConfigDir, "zkcluster.conf")
 
   override def beforeAll = {
 

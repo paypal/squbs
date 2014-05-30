@@ -83,6 +83,8 @@ case class ZEnvelop(val identity:Option[ByteString], val payload:Seq[ByteString]
 
 trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
 
+  import scala.collection.JavaConversions._
+
   val socketType:Int
 
   def zContext:ZContext = new ZContext
@@ -162,23 +164,16 @@ trait ZSocketOnAkka extends Actor with FSM[ZSocketState, ZSocketData]{
 
     //inbound
     case Event(msg @ ReceiveAsync(delay), Runnings(socket, maxDelay)) =>
-//      val zMessage = ZMsg.recvMsg(socket, ZMQ.DONTWAIT)
-      val zMessage = ZMsg.recvMsg(socket, 0)
-      val identity = zMessage.pop
-      if(identity.hasData){
-        //got real message, consume all frames, and resume by sending ReceiveAsync to self again
-        var zFrames = Seq[ByteString]()
-        while(!zMessage.isEmpty){
-          zFrames = zFrames :+ zFrameToByteString(zMessage.pop)
-        }
-        incoming(ZEnvelop(Some(identity), zFrames), context)
-        self ! ReceiveAsync(1L)
-      }
-      else{
-        //no real message comes in, delay further to avoid exhaust CPU with cap of maxDelay
-        import scala.concurrent.ExecutionContext.Implicits.global
-
-        context.system.scheduler.scheduleOnce(delay millis, self, msg.doubleDelay(maxDelay))
+      Option(ZMsg.recvMsg(socket, ZMQ.DONTWAIT)) match {
+        case Some(zMessage) if zMessage.peek.hasData =>
+          val identity = zMessage.pop
+          val zFrames = zMessage.map(zFrameToByteString(_)).toSeq
+          incoming(ZEnvelop(Some(identity), zFrames), context)
+          self ! ReceiveAsync(1L)
+        case _ =>
+          //no real message comes in, delay further to avoid exhaust CPU with cap of maxDelay
+          import scala.concurrent.ExecutionContext.Implicits.global
+          context.system.scheduler.scheduleOnce(delay millis, self, msg.doubleDelay(maxDelay))
       }
       stay
     //outbound
