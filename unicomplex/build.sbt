@@ -6,6 +6,7 @@ import de.johoop.findbugs4sbt.FindBugs._
 name := "unicomplex"
 
 libraryDependencies ++= Seq(
+  "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "org.scalatest" %% "scalatest" % "2.1.0" % "test",
   "com.typesafe.akka" %% "akka-actor" % "2.3.2",
   "com.typesafe.akka" %% "akka-agent" % "2.3.2",
@@ -23,4 +24,4 @@ findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
-parallelExecution in Test := false
+parallelExecution in Test := true
