@@ -8,25 +8,25 @@
 package org.squbs.lifecycle
 
 import com.typesafe.config.Config
-import akka.actor.ActorSystem
+import org.squbs.unicomplex.UnicomplexBoot
 
 object ExtensionLifecycle {
 
-  private[lifecycle] val localActorSystem = new ThreadLocal[Option[ActorSystem]] {
-    override def initialValue(): Option[ActorSystem] = None
+  private[lifecycle] val tlBoot = new ThreadLocal[Option[UnicomplexBoot]] {
+    override def initialValue(): Option[UnicomplexBoot] = None
   }
 
-  def apply[T](actorSystem: ActorSystem)(creator: ()=>T): T = {
-    localActorSystem.set(Some(actorSystem))
+  def apply[T](boot: UnicomplexBoot)(creator: ()=>T): T = {
+    tlBoot.set(Option(boot))
     val r = creator()
-    localActorSystem.set(None)
+    tlBoot.set(None)
     r
   }
 }
 
 trait ExtensionLifecycle {
 
-  protected implicit val actorSystem = ExtensionLifecycle.localActorSystem.get.get
+  protected implicit val boot = ExtensionLifecycle.tlBoot.get.get
 
   def preInit(jarConfig: Seq[(String, Config)]) {}
 

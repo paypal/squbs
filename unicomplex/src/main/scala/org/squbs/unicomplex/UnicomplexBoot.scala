@@ -17,8 +17,12 @@ import org.squbs.lifecycle.ExtensionLifecycle
 import ConfigUtil._
 import scala.Some
 import java.util.concurrent.TimeoutException
+import scala.collection.concurrent.TrieMap
 
 object UnicomplexBoot {
+
+  final val extConfigDirKey = "squbs.external-config-dir"
+  final val actorSystemNameKey = "squbs.actorsystem-name"
 
   object StartupType extends Enumeration {
     type StartupType = Value
@@ -36,14 +40,31 @@ object UnicomplexBoot {
   case class InitInfo(jarPath: String, symName: String, alias: String, version: String,
                          entries: Seq[_ <: Config], startupType: StartupType.Value)
 
-  case class StartInfo(actors: Seq[(String, String, String, Class[_])],
-                       services: Seq[(String, String, String, RouteDefinition)],
-                       extensions: Seq[(String, String, ExtensionLifecycle)],
-                       initInfoMap: Map[UnicomplexBoot.StartupType.Value, Seq[UnicomplexBoot.InitInfo]])
+  val actorSystems = TrieMap.empty[String, ActorSystem]
 
-  def apply(actorSystemCreator : () => ActorSystem): UnicomplexBoot = {
+  def apply(addOnConfig: Config): UnicomplexBoot = {
     val startTime = Timestamp(System.nanoTime, System.currentTimeMillis)
-    UnicomplexBoot(startTime, actorSystemCreator)
+    UnicomplexBoot(startTime, Option(addOnConfig), getFullConfig(Option(addOnConfig)))
+  }
+
+  def apply(actorSystemCreator : (String, Config) => ActorSystem): UnicomplexBoot = {
+    val startTime = Timestamp(System.nanoTime, System.currentTimeMillis)
+    UnicomplexBoot(startTime, None, getFullConfig(None), actorSystemCreator)
+  }
+
+  def getFullConfig(addOnConfig: Option[Config]): Config = {
+    // 1. See whether add-on config is there.
+    addOnConfig match {
+      case Some(config) =>
+        ConfigFactory.load(config)
+      case None =>
+        val baseConfig = ConfigFactory.load()
+        // Sorry, the configDir is used to read the file. So it cannot be read from this config file.
+        val configDir = new File(baseConfig.getString(extConfigDirKey))
+        val configFile = new File(configDir, "application.conf")
+        if (configFile.exists) ConfigFactory.load(ConfigFactory.parseFile(configFile))
+        else ConfigFactory.load()
+    }
   }
 
   private[unicomplex] def scan(jarNames: Seq[String])(obj: UnicomplexBoot):
@@ -289,21 +310,29 @@ object UnicomplexBoot {
   }
 }
 
-case class UnicomplexBoot private[unicomplex] (startTime: Timestamp, actorSystemCreator: () => ActorSystem,
-                          initInfoMap: Map[UnicomplexBoot.StartupType.Value, Seq[UnicomplexBoot.InitInfo]] = Map.empty,
+case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
+                          addOnConfig: Option[Config] = None,
+                          config: Config,
+                          actorSystemCreator: (String, Config) => ActorSystem =
+                            {(name, config) => ActorSystem(name, config)},
+                          initInfoMap: Map[UnicomplexBoot.StartupType.Value,
+                            Seq[UnicomplexBoot.InitInfo]] = Map.empty,
                           jarConfigs: Seq[(String, Config)] = Seq.empty,
                           jarNames: Seq[String] = Seq.empty,
+                          actors: Seq[(String, String, String, Class[_])] = Seq.empty,
+                          services: Seq[(String, String, String, RouteDefinition)] = Seq.empty,
                           extensions: Seq[(String, String, ExtensionLifecycle)] = Seq.empty,
                           stopJVM: Boolean = false) {
 
   import UnicomplexBoot._
 
-  implicit lazy val actorSystem = synchronized {
-    val system = actorSystemCreator()
-    system.registerExtension(Unicomplex)
-    Unicomplex(system).setScannedComponents(jarNames)
-    system
-  }
+  def actorSystemName = config.getString(actorSystemNameKey)
+
+  def actorSystem = UnicomplexBoot.actorSystems(actorSystemName)
+
+  def externalConfigDir = config.getString(extConfigDirKey)
+
+  def createUsing(actorSystemCreator: (String, Config) => ActorSystem) = copy(actorSystemCreator = actorSystemCreator)
 
   def scanComponents(jarNames: Seq[String]): UnicomplexBoot = scan(jarNames)(this)
 
@@ -329,7 +358,21 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp, actorSystem
 
   def stopJVMOnExit: UnicomplexBoot = copy(stopJVM = true)
 
-  def start(): StartInfo = {
+  def start(): UnicomplexBoot = {
+
+    // Extensions may have changed the config. So we need to reload the config here.
+    val newConfig = UnicomplexBoot.getFullConfig(addOnConfig)
+    val newName = config.getString(UnicomplexBoot.actorSystemNameKey)
+
+    implicit val actorSystem = {
+      val system = actorSystemCreator(newName, newConfig)
+      system.registerExtension(Unicomplex)
+      Unicomplex(system).setScannedComponents(jarNames)
+      system
+    }
+
+    UnicomplexBoot.actorSystems += actorSystem.name -> actorSystem
+    actorSystem.registerOnTermination { UnicomplexBoot.actorSystems -= actorSystem.name }
 
     registerExtensionShutdown(actorSystem)
 
@@ -372,7 +415,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp, actorSystem
 
     extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs) }
 
-    StartInfo(actors, services, extensions, initInfoMap)
+    copy(config = actorSystem.settings.config, actors = actors, services = services, extensions = extensions)
   }
 
   def registerExtensionShutdown(actorSystem: ActorSystem) {
@@ -423,7 +466,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp, actorSystem
     import initInfo.{symName, version, jarPath}
     try {
       val clazz = Class.forName(extension, true, getClass.getClassLoader)
-      val extLifecycle = ExtensionLifecycle(actorSystem) { clazz.asSubclass(classOf[ExtensionLifecycle]).newInstance }
+      val extLifecycle = ExtensionLifecycle(this) { clazz.asSubclass(classOf[ExtensionLifecycle]).newInstance }
       extLifecycle.preInit(jarConfigs)
       (symName, version, extLifecycle)
     } catch {
