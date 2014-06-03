@@ -322,6 +322,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
                           actors: Seq[(String, String, String, Class[_])] = Seq.empty,
                           services: Seq[(String, String, String, RouteDefinition)] = Seq.empty,
                           extensions: Seq[(String, String, ExtensionLifecycle)] = Seq.empty,
+                          started: Boolean = false,
                           stopJVM: Boolean = false) {
 
   import UnicomplexBoot._
@@ -358,7 +359,9 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
   def stopJVMOnExit: UnicomplexBoot = copy(stopJVM = true)
 
-  def start(): UnicomplexBoot = {
+  def start(): UnicomplexBoot = synchronized {
+
+    if (started) throw new IllegalStateException("Unicomplex already started!")
 
     // Extensions may have changed the config. So we need to reload the config here.
     val newConfig = UnicomplexBoot.getFullConfig(addOnConfig)
@@ -415,7 +418,8 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs) }
 
-    copy(config = actorSystem.settings.config, actors = actors, services = services, extensions = extensions)
+    copy(config = actorSystem.settings.config, actors = actors, services = services, extensions = extensions,
+      started = true)
   }
 
   def registerExtensionShutdown(actorSystem: ActorSystem) {
