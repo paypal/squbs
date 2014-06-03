@@ -1,11 +1,63 @@
-
 #Bootstrapping squbs
+squbs is provided with a default bootstrap class developers can just use to call from the command line. The class to start is `org.squbs.unicomplex.Bootstrap`. Given normal circumstances, bootstrapping detail are irrelevant. However, one may need to programmatically bootstrap squbs in different ways. This is especially common in test cases needing custom configuration and needing to run in parallel. Please see [Testing](testing.md) for more information. The syntax for bootstrapping squbs is as follows:
+
+**Option 1)** Start with user-defined configuration
+
+```
+UnicomplexBoot(customConfig)
+  .createUsing {(name, config) => ActorSystem(name, config)}
+  .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
+  .initExtensions
+  .stopJVMOnExit
+  .start()
+```
+
+**Option 2)** Start with default configuration
+
+```
+UnicomplexBoot {(name, config) => ActorSystem(name, config)}
+  .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
+  .initExtensions
+  .stopJVMOnExit
+  .start()  
+```
+
+Lets take a look at each component.
+
+1. Creating the UnicomplexBoot (boot) object. This can be done by passing a custom config or an actor system creator function to `UnicomplexBoot.apply()`.
+
+2. The configuration object shown as customConfig in the example above. This is a configuration object obtained from the Typesafe Config library's parse functions. This config object is not yet merged with `reference.conf`. It is optional and substitutes other `application.conf` configurations defined.
+
+3. The ActorSystem creator passes a function to create the ActorSystem. The actual creation happens in the start phase (item 7, below). The default function is `{(name, config) => ActorSystem(name, config)}`. The name passed in is the intended ActorSystem name read from the configuration. The config is the loaded configuration object after merging with any provided config. Most use cases would want to create the ActorSystem this way and thus the function need not be provided.
+
+4. Scanning components looking for cubes, services, or extensions using the `scanComponents()` function. This is mandatory as there would be no components to start. Normally, the squbs bootstrap will scan the whole classpath. Test cases may want to target certain components to scan only.
+
+5. Initialize the extensions using the `initExtentension` function. This will initialize the extensions scanned. Extension initialization is done before the ActorSystem is created. For multiple Unicomplex cases (multiple ActorSystems), the same extension must not be initialized more than once. An extension can only be used by one test case. In some cases we do not want to initialize the extensions at all and would not call `initExtension`
+
+6. Stopping the JVM on exit. This is enabled by calling the `stopJVMOnExit` function. This option should generally not be used for test cases. It is used by squbs' bootstrap to make sure squbs shuts down and exits properly.
+
+7. Starting the Unicomplex by calling `start()`. This is a mandatory step. Without it no ActorSystems start and no Actor would be able to run. It also runs other housekeeping tasks.
+
+
+#Configuration Resolution
+
+squbs chooses exactly one application configuration and merges it with the aggregated reference.conf. The application configuration being merged are chosen from the following order.
+
+1. If a configuration is provided when creating the boot object, this configuration is chosen. This is the `customConfig` field from the example above.
+
+2. If an `application.conf` file is provided in the external config directory, this `application.conf` is chosen. The external config dir is configured by setting the config property `squbs.external-config-dir` and defaults to `squbsconfig`. Not that this directory cannot be changed or overridden by supplied configuration or an external configuration (as the directory itself is determined using the config property.)
+
+3. Otherwise, the `application.conf` provided with the application, if any, will be used. This then falls back to the reference.conf.
+
+#Drop-in Modular System 
 
 squbs divides applications into modules called cubes. Modules in squbs are intended to be run in modular isolation as
 well as on a flat classpath. Modular isolation is intended for true loose coupling of the modules, without incurring
 any classpath conflicts due to the dependencies.
 
 The current implementation bootstraps from a flat classpath. Modular isolation is planned for a future version of squbs.
+
+On bootstrapping, squbs will automatically detect the modules by classpath scanning. Scanned cubes are detected and started automatically.
 
 ##Cube Jars
 
