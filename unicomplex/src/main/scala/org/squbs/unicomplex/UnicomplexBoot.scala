@@ -63,7 +63,8 @@ object UnicomplexBoot {
         val configDir = new File(baseConfig.getString(extConfigDirKey))
         val configFile = new File(configDir, "application")
         val parseOptions = ConfigParseOptions.defaults().setAllowMissing(true)
-        ConfigFactory.load(ConfigFactory.parseFileAnySyntax(configFile, parseOptions))
+        val config = ConfigFactory.parseFileAnySyntax(configFile, parseOptions)
+        if (config.entrySet.isEmpty) baseConfig else ConfigFactory.load(config)
     }
   }
 

@@ -81,8 +81,7 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
             |squbs {
             |  testAttribute1 = foobar1
             |}
-          """.
-            stripMargin
+          """.stripMargin
         val confFile = new File(configDir, "application.conf")
         val writer = new PrintWriter(confFile)
         writer.append(appConf)
@@ -101,8 +100,7 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
             |    "testAttribute2" : "foobar2"
             |  }
             |}
-          """.
-            stripMargin
+          """.stripMargin
         val confFile = new File(configDir, "application.json")
         val writer = new PrintWriter(confFile)
         writer.append(appConf)
