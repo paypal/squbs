@@ -12,7 +12,7 @@ import akka.actor._
 import akka.routing.FromConfig
 import akka.util.Timeout
 import akka.pattern.ask
-import com.typesafe.config.{ConfigException, ConfigFactory, Config}
+import com.typesafe.config.{ConfigParseOptions, ConfigException, ConfigFactory, Config}
 import org.squbs.lifecycle.ExtensionLifecycle
 import ConfigUtil._
 import scala.Some
@@ -61,9 +61,9 @@ object UnicomplexBoot {
         val baseConfig = ConfigFactory.load()
         // Sorry, the configDir is used to read the file. So it cannot be read from this config file.
         val configDir = new File(baseConfig.getString(extConfigDirKey))
-        val configFile = new File(configDir, "application.conf")
-        if (configFile.exists) ConfigFactory.load(ConfigFactory.parseFile(configFile))
-        else ConfigFactory.load()
+        val configFile = new File(configDir, "application")
+        val parseOptions = ConfigParseOptions.defaults().setAllowMissing(true)
+        ConfigFactory.load(ConfigFactory.parseFileAnySyntax(configFile, parseOptions))
     }
   }
 
