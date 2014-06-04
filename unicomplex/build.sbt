@@ -25,5 +25,3 @@ findbugsSettings
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
 parallelExecution in Test := true
-
-fork in Test := true
