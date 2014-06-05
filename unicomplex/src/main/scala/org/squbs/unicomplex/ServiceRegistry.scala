@@ -37,9 +37,10 @@ class ServiceRegistry(system: ActorSystem) {
     val interface = if(Unicomplex.config getBoolean "full-address") ConfigUtil.ipv4
       else Unicomplex.config getString "bind-address"
     val port = Unicomplex.config getInt "bind-port"
+    val bindService = Unicomplex.config getBoolean "bind-service"
     implicit val self = context.self
     implicit val system = context.system
-    IO(Http) ! Http.Bind(serviceRef, interface, port)
+    if (bindService) IO(Http) ! Http.Bind(serviceRef, interface, port)
     context.watch(registrarRef)
     context.watch(serviceRef)
   }
