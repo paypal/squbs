@@ -19,6 +19,6 @@ object DebugTiming {
 trait DebugTiming extends TestKitBase {
   import DebugTiming._
   override def receiveOne(max: Duration): AnyRef =
-    if (debugMode) receiveOne(debugTimeout)
+    if (debugMode) super.receiveOne(debugTimeout)
     else super.receiveOne(max)
 }

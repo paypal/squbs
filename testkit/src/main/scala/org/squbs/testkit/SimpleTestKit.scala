@@ -18,7 +18,7 @@ import com.typesafe.config.ConfigFactory
  */
 object SimpleTestKit {
 
-  val testConfFile = Option(getClass.getResource("test.conf")) orElse Option(getClass.getResource("default-test.conf"))
+  val testConfFile = Option(getClass.getResource("/test.conf")) orElse Option(getClass.getResource("/default-test.conf"))
   val testConfig = testConfFile map ConfigFactory.parseURL getOrElse null
 
   val boot = UnicomplexBoot(testConfig)
