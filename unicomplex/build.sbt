@@ -7,7 +7,7 @@ name := "unicomplex"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  "org.scalatest" %% "scalatest" % "2.1.0" % "test",
+  "org.scalatest" %% "scalatest" % "2.1.0" % "test->*",
   "com.typesafe.akka" %% "akka-actor" % "2.3.2",
   "com.typesafe.akka" %% "akka-agent" % "2.3.2",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.2" % "test",
@@ -25,3 +25,5 @@ findbugsSettings
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
 parallelExecution in Test := true
+
+(testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/report/unicomplex")

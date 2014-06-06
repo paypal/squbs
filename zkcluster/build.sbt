@@ -16,7 +16,7 @@ libraryDependencies ++= Seq(
   "com.google.protobuf" % "protobuf-java" % "2.5.0",
   "com.google.guava" % "guava" % "16.0.1" % "test",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.2" % "test",
-  "org.scalatest" %% "scalatest" % "2.1.0" % "test",
+  "org.scalatest" %% "scalatest" % "2.1.0" % "test->*",
   "org.mockito" % "mockito-core" % "1.9.5" % "test"
 )
 
@@ -27,3 +27,5 @@ findbugsSettings
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
 parallelExecution in Test := false
+
+(testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/report/zkcluster")
