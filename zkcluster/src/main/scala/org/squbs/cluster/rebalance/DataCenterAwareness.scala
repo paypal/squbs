@@ -1,14 +1,13 @@
 package org.squbs.cluster
 
-import akka.actor._
-import akka.routing._
 import scala.annotation.tailrec
 import scala.collection.immutable
 import java.net._
-import akka.util.ByteString
+import akka.actor.{ActorSystem, ActorPath, Address}
+import akka.routing._
 import akka.dispatch.Dispatchers
-import akka.routing.Router
 import akka.routing.ActorSelectionRoutee
+import akka.util.ByteString
 
 /**
  * Created by huzhou on 5/6/14.
@@ -71,7 +70,7 @@ final case class CorrelateRoundRobinGroup[C](override val paths: immutable.Itera
 }
 
 
-class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], spareLeader:Boolean) extends RebalanceLogic {
+class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], val spareLeader:Boolean) extends RebalanceLogic {
 
   @tailrec private[cluster] final def classify(members:Seq[Address], classified:Map[C, Seq[Address]]):Map[C, Seq[Address]] =
     if(members.isEmpty)
@@ -94,7 +93,7 @@ class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], spareLeader:B
    * @return partitionsToMembers compensated when size in service is short compared with what's required
    */
   override def compensate(partitionsToMembers:Map[ByteString, Set[Address]], members:Seq[Address], size:(ByteString => Int)):Map[ByteString, Set[Address]] =
-    ZkCluster.DefaultRebalanceLogic.compensate(partitionsToMembers, shuffle(members), size)
+    DefaultRebalanceLogic(spareLeader).compensate(partitionsToMembers, shuffle(members), size)
 
   /**
    * @return partitionsToMembers rebalanced
@@ -134,7 +133,7 @@ class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], spareLeader:B
     }
 
     classified.values.foldLeft(rebalanceAcrossCorrelates(partitionsToMembers)){(memoize, correlates) =>
-      ZkCluster.DefaultRebalanceLogic.rebalance(memoize, correlates.toSet)
+      DefaultRebalanceLogic(spareLeader).rebalance(memoize, correlates.toSet)
     }
   }
 }
