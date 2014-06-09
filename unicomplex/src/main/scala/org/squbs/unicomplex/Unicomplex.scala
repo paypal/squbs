@@ -4,7 +4,7 @@ import java.util.Date
 import java.util
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.util.{Failure, Try}
 
 import akka.actor._
 import akka.actor.SupervisorStrategy._
@@ -306,6 +306,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
           serviceRegistry.registrar send { _ - name }
           serviceRegistry.registry send { _ - name }
           serviceRegistry.serviceActorContext send { _ - name }
+          systemState = Failed
           context.unbecome()
           unstashAll()
           
@@ -529,17 +530,17 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         maxChildTimeout = timeout
         Unicomplex() ! StopTimeout(maxChildTimeout * 2)
       }
-      stopSet += sender
+      stopSet += sender()
 
     case GracefulStop => // The stop message should only come from the uniActor
-      if (sender != Unicomplex())
+      if (sender() != Unicomplex())
         log.error(s"got GracefulStop from ${sender()} instead of ${Unicomplex()}")
       else
         defaultMidActorStop(stopSet, maxChildTimeout)
 
     case Initialized(report) =>
-      if (initMap contains sender) {
-        initMap += sender -> Some(report)
+      if (initMap contains sender()) {
+        initMap += sender() -> Some(report)
         if (!(initMap exists (_._2 == None))) {
           val finalMap = (initMap mapValues (_.get)).toMap
           if (finalMap.exists(_._2.isFailure)) cubeState = Failed else cubeState = Active

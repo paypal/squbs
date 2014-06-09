@@ -499,6 +499,29 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs) }
 
+    // Make sure we wait for Unicomplex to be started properly before completing the start.
+    import actorSystem.dispatcher
+    implicit val timeout = Timeout(1.seconds)
+
+    var state: LifecycleState = Starting
+    var retries = 0
+
+    while (state != Active && state != Failed && retries < 100) {
+      val stateFuture = (Unicomplex(actorSystem).uniActor ? SystemState).mapTo[LifecycleState]
+      stateFuture foreach (state = _)
+      Await.ready(stateFuture, timeout.duration)
+      if (state != Active && state != Failed) {
+        Thread.sleep(1000)
+        retries += 1
+      }
+    }
+
+    if (state != Active && state != Failed) throw new InstantiationException(
+      s"Unicomplex not entering 'Active' or 'Failed' state. Stuck at '$state' state. Timing out.")
+    if (state == Failed)
+      println(s"WARN: Unicomplex initialization: Some cubes failed to initialize")
+
+
     copy(config = actorSystem.settings.config, actors = actors, services = services, listenerAliases = aliases,
       extensions = extensions, started = true)
   }
