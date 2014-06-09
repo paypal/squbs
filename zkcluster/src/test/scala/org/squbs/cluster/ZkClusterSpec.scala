@@ -29,7 +29,7 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
       s"""
           |zkCluster {
           |    connectionString = "zk-node-phx-0-213163.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-1-213164.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-2-213165.phx-os1.stratus.dev.ebay.com:2181"
-          |    namespace = "pubsubunitest-${System.nanoTime}"
+          |    namespace = "zkclusterunitest-${System.nanoTime}"
           |    segments = 16
           |}
         """.stripMargin, conf, Charsets.UTF_8)
@@ -37,7 +37,7 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
   override def afterAll = {
 
-    ZkCluster.safelyDiscard("")(ZkCluster(system).zkClientWithNs)
+    safelyDiscard("")(ZkCluster(system).zkClientWithNs)
 
     preserve match {
       case None => conf.delete
