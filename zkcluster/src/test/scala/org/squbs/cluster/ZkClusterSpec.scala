@@ -43,6 +43,8 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
       case None => conf.delete
       case Some(value) => Files.write(value, conf, Charsets.UTF_8)
     }
+
+    system.shutdown()
   }
 
   "ZkCluster" should "start and connect to zookeeper" in {
