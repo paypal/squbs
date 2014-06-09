@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>org.squbs</groupId>
+	<artifactId>unicomplex-mergecc</artifactId>
+	<version>0.0.2-SNAPSHOT</version>
+	<!-- Packing Type is bundle for OSGI Library Bundle -->
+	
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.6</version>
+				<executions>
+					<execution>
+						<phase>post-integration-test</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target>
+							<!-- Execute an ant task within maven -->
+								<echo message="Generating JaCoCo Reports" />
+								<taskdef name="report" classname="org.jacoco.ant.ReportTask">
+									<classpath path="${basedir}/target/jacoco-jars/org.jacoco.ant.jar" />
+								</taskdef>
+								<mkdir dir="${basedir}/target/coverage-report" />
+								<report>
+									<executiondata>
+										<fileset dir="${basedir}/unicomplex/target/scala-2.10/jacoco">
+											<include name="jacoco.exec" />
+										</fileset>
+										<fileset dir="${basedir}/zkcluster/target/scala-2.10/jacoco">
+											<include name="jacoco.exec" />
+										</fileset>
+									</executiondata>
+									<structure name="jacoco-multi Coverage Project">
+										<group name="jacoco-multi">
+											<classfiles>
+												<fileset dir="${basedir}/unicomplex/target/scala-2.10/classes" />
+												<fileset dir="${basedir}/zkcluster/target/scala-2.10/classes" />
+											</classfiles>
+											<sourcefiles encoding="UTF-8">
+												<fileset dir="${basedir}/unicomplex/src"></fileset>
+												<fileset dir="${basedir}/zkcluster/src"></fileset>
+											</sourcefiles>
+										</group>
+									</structure>
+									<html destdir="${basedir}/target/coverage-report/html" />
+									<xml destfile="${basedir}/target/coverage-report/coverage-report.xml" />
+									<csv destfile="${basedir}/target/coverage-report/coverage-report.csv" />
+								</report>
+							</target>
+						</configuration>
+					</execution>
+				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>org.jacoco</groupId>
+						<artifactId>org.jacoco.ant</artifactId>
+						<version>0.7.1.201405082137</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+		</plugins>
+	</build>
+</project>
