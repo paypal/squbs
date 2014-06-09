@@ -4,20 +4,19 @@ import java.io.{FileInputStream, InputStreamReader, Reader, File}
 import java.util.{TimerTask, Timer}
 import java.util.jar.JarFile
 import scala.annotation.tailrec
-import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.Await
+import scala.concurrent.{Future, Await}
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
 import akka.actor._
 import akka.routing.FromConfig
 import akka.util.Timeout
 import akka.pattern.ask
-import com.typesafe.config.{ConfigParseOptions, ConfigException, ConfigFactory, Config}
+import com.typesafe.config._
 import org.squbs.lifecycle.ExtensionLifecycle
 import ConfigUtil._
-import scala.Some
 import java.util.concurrent.TimeoutException
 import scala.collection.concurrent.TrieMap
+import scala.util.{Success, Failure}
+import scala.collection.mutable
 
 object UnicomplexBoot {
 
@@ -152,7 +151,7 @@ object UnicomplexBoot {
 
     val cubeAlias = cubeName.substring(cubeName.lastIndexOf('.') + 1)
 
-    val initList = ArrayBuffer.empty[InitInfo]
+    val initList = mutable.ArrayBuffer.empty[InitInfo]
 
     val actors = config.getOptionalConfigList("squbs-actors")
     actors foreach { a =>
@@ -251,12 +250,75 @@ object UnicomplexBoot {
     actorInfo
   }
 
-  def startServiceInfra()(implicit actorSystem: ActorSystem) {
+  def configuredListeners(config: Config): Map[String, Config] = {
+    import collection.JavaConversions._
+    val listeners = config.root.toSeq collect {
+      case (n, v: ConfigObject) if v.toConfig.getOptionalString("type") == Some("squbs.listener") => (n, v.toConfig)
+    }
+    // Check for duplicates
+    val listenerMap = mutable.Map.empty[String, Config]
+    listeners foreach { case (name, cfg) =>
+        listenerMap.get(name) match {
+          case Some(_) => System.err.println(s"WARN: Duplicate listener $name already declared. Ignoring.")
+          case None => listenerMap += name -> cfg
+        }
+    }
+    listenerMap.toMap
+  }
+
+  def findListenerAliases(listeners: Map[String, Config]): Map[String, String] = {
+    val aliases =
+    for ((name, config) <- listeners) yield {
+      val aliasNames = config.getOptionalStringList("aliases") getOrElse Seq.empty[String]
+      (name, name) +: (aliasNames map ((_, name)))
+    }
+    val aliasMap = mutable.Map.empty[String, String]
+
+    // Check for duplicate aliases
+    for {
+      group <- aliases
+      (alias, listener) <- group
+    } {
+      aliasMap.get(alias) match {
+        case Some(l) =>
+          System.err.println(s"WARN: Duplicate alias $alias for listener $listener already declared for listener $l. " +
+            "Ignoring.")
+        case None => aliasMap += alias -> listener
+      }
+    }
+    aliasMap.toMap
+  }
+
+  def findListeners(config: Config, services: Seq[InitInfo]) = {
+    val demandedListeners =
+    for {
+      svc <- services
+      routes <- svc.entries
+      routeListeners <- routes getOptionalStringList "listeners" getOrElse Seq("default-listener")
+    } yield {
+      routeListeners
+    }
+    val listeners = configuredListeners(config)
+    val aliases = findListenerAliases(listeners)
+    val activeAliases = aliases filter { case (n, _) => demandedListeners exists (_ == n) }
+    val missingAliases = demandedListeners filterNot { l => activeAliases exists { case (n, _) => n == l } }
+    val activeListenerNames = activeAliases.values
+    val activeListeners = listeners filter { case (n, c) => activeListenerNames.exists(_ == n)}
+    (activeAliases, activeListeners, missingAliases)
+  }
+
+  def startServiceInfra(services: Seq[InitInfo])(implicit actorSystem: ActorSystem) = {
+    import actorSystem.dispatcher
+    val (activeAliases, activeListeners, missingAliases) = findListeners(actorSystem.settings.config, services)
+    missingAliases foreach { name => System.err.println(s"Requested listener $name not found!") }
     val startTime = System.nanoTime
-    implicit val timeout = Timeout(1.second)
-    val ackFuture = Unicomplex(actorSystem).uniActor ? StartWebService
+    implicit val timeout = Timeout(activeListeners.size.seconds)
+    val ackFutures =
+      for ((listenerName, config) <- activeListeners) yield {
+        Unicomplex(actorSystem).uniActor ? StartWebService(listenerName, config)
+      }
     // Block for the web service to be started.
-    Await.ready(ackFuture, timeout.duration)
+    Await.ready(Future.sequence(ackFutures), timeout.duration)
     // Tight loop making sure the registrar is in place
     val registry = Unicomplex(actorSystem).serviceRegistry
     import registry._
@@ -273,17 +335,32 @@ object UnicomplexBoot {
 
     val elapsed = (System.nanoTime - startTime) / 1000000
     println(s"Web Service started in $elapsed milliseconds")
+    activeAliases
   }
 
-  def startRoutes(initInfo: InitInfo)(implicit actorSystem: ActorSystem) = {
+  def startRoutes(initInfo: InitInfo, aliases: Map[String, String])(implicit actorSystem: ActorSystem) = {
     import initInfo.{jarPath, symName, alias, version, entries}
-    def startRoute(routeConfig: Config): (String, String, String, RouteDefinition) =
+    def startRoute(routeConfig: Config): Seq[(String, String, String, RouteDefinition, String)] =
       try {
         val clazz = Class.forName(routeConfig.getString("class-name"), true, getClass.getClassLoader)
         val routeClass = clazz.asSubclass(classOf[RouteDefinition])
-        val routeInstance = RouteDefinition.startRoutes(actorSystem) { routeClass.newInstance }
-        Unicomplex(actorSystem).serviceRegistry.registrar() ! Register(symName, alias, version, routeInstance)
-        (symName, version, alias, routeInstance)
+        val listeners = routeConfig.getOptionalStringList("listeners").fold(Seq("default-listener"))({ list =>
+          val listenerMapping = list map (entry => (entry, aliases get entry))
+          listenerMapping foreach {
+            // Make sure we report any missing listeners
+            case (entry, None) =>
+              System.err.println(s"WARN: Listener $entry required by $symName is not configured. Ignoring.")
+            case _ =>
+          }
+          listenerMapping collect { case (entry, Some(listener)) => listener }
+        })
+
+        listeners map { listener =>
+          val routeInstance = RouteDefinition.startRoutes(actorSystem, listener) { routeClass.newInstance }
+          val registrar = Unicomplex(actorSystem).serviceRegistry.registrar()(listener)
+          registrar ! Register(symName, alias, version, routeInstance)
+          (symName, version, alias, routeInstance, listener)
+        }
       } catch {
         case e: Exception =>
           val t = getRootCause(e)
@@ -295,7 +372,7 @@ object UnicomplexBoot {
           null
       }
 
-    val routeInfo = entries map startRoute
+    val routeInfo = entries flatMap startRoute
     println(s"Started routes in $symName $version")
     routeInfo
   }
@@ -318,10 +395,11 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
                             {(name, config) => ActorSystem(name, config)},
                           initInfoMap: Map[UnicomplexBoot.StartupType.Value,
                             Seq[UnicomplexBoot.InitInfo]] = Map.empty,
+                          listenerAliases: Map[String, String] = Map.empty,
                           jarConfigs: Seq[(String, Config)] = Seq.empty,
                           jarNames: Seq[String] = Seq.empty,
                           actors: Seq[(String, String, String, Class[_])] = Seq.empty,
-                          services: Seq[(String, String, String, RouteDefinition)] = Seq.empty,
+                          services: Seq[(String, String, String, RouteDefinition, String)] = Seq.empty,
                           extensions: Seq[(String, String, ExtensionLifecycle)] = Seq.empty,
                           started: Boolean = false,
                           stopJVM: Boolean = false) {
@@ -407,20 +485,22 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
     val actors = actorsToStart.map(startActors).flatten.filter(_ != null)
 
     // Start the service infrastructure if services are enabled and registered.
-    if (!servicesToStart.isEmpty) startServiceInfra()
+
+    val aliases = if (!servicesToStart.isEmpty) startServiceInfra(servicesToStart) else Map.empty[String, String]
 
     // Start all service routes
-    val services = servicesToStart.map(startRoutes).flatten.filter(_ != null)
+    val services = servicesToStart.map(startRoutes(_, aliases)).flatten.filter(_ != null)
 
 
     // Queue message on registrar which will then forwarded to Unicomplex when all services are processed.
     // Prevents out of band notification.
-    if (!servicesToStart.isEmpty) Unicomplex(actorSystem).serviceRegistry.registrar() ! WebServicesStarted
+    if (!servicesToStart.isEmpty)
+      Unicomplex(actorSystem).serviceRegistry.registrar().values foreach (_ ! RoutesStarted)
 
     extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs) }
 
-    copy(config = actorSystem.settings.config, actors = actors, services = services, extensions = extensions,
-      started = true)
+    copy(config = actorSystem.settings.config, actors = actors, services = services, listenerAliases = aliases,
+      extensions = extensions, started = true)
   }
 
   def registerExtensionShutdown(actorSystem: ActorSystem) {
