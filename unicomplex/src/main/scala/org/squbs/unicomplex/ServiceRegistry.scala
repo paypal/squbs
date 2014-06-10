@@ -1,12 +1,15 @@
 package org.squbs.unicomplex
 
 
+import javax.net.ssl.SSLContext
 import scala.util.Try
 import akka.io.IO
 import akka.actor._
 import akka.agent.Agent
 import spray.can.Http
+import spray.can.server.ServerSettings
 import spray.http.{MediaType, MediaTypes}
+import spray.io.ServerSSLEngineProvider
 import spray.routing._
 import Directives._
 import com.typesafe.config.Config
@@ -46,7 +49,37 @@ class ServiceRegistry(system: ActorSystem) {
     val bindService = config getOptionalBoolean "bind-service" getOrElse true
     implicit val self = context.self
     implicit val system = context.system
-    if (bindService) IO(Http) ! Http.Bind(serviceRef, interface, port)
+
+    // SSL use case
+    if (bindService && config.getBoolean("secure")) {
+      val settings = ServerSettings(system).copy(sslEncryption = true)
+
+      val sslContextClassName = config.getString("ssl-context")
+      implicit def sslContext =
+        if (sslContextClassName == "default") SSLContext.getDefault
+        else {
+          try {
+            val clazz = Class.forName(sslContextClassName)
+            clazz.getMethod("getServerSslContext").invoke(clazz.newInstance()).asInstanceOf[SSLContext]
+          } catch {
+            case e : Throwable =>
+              System.err.println(s"WARN: Failure obtaining SSLContext from $sslContextClassName. " +
+                "Falling back to default.")
+              SSLContext.getDefault
+          }
+        }
+
+      val needClientAuth = config.getBoolean("need-client-auth")
+
+      implicit val serverEngineProvider = ServerSSLEngineProvider { engine =>
+        engine.setNeedClientAuth(needClientAuth)
+        engine
+      }
+
+      IO(Http) ! Http.Bind(serviceRef, interface, port, settings = Option(settings))
+
+    } else if (bindService) IO(Http) ! Http.Bind(serviceRef, interface, port) // Non-SSL
+
     context.watch(registrarRef)
     context.watch(serviceRef)
   }
