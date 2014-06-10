@@ -45,6 +45,8 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
       case None => conf.delete
       case Some(value) => Files.write(value, conf, Charsets.UTF_8)
     }
+
+    system.shutdown()
   }
 
   "ZkCluster" should "start and connect to zookeeper" in {
@@ -97,20 +99,25 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
     import scala.collection.JavaConversions._
 
+    val timeout = 360.second
+
     val extension = ZkCluster(system)
     val cluster = extension.zkClusterActor
     val partitionKey = ByteString(s"pk-${System.nanoTime}")
 
     cluster ! ZkQueryPartition(partitionKey, None, Some(1))
-    expectMsgType[ZkPartition].members.size should equal(1)
+    expectMsgType[ZkPartition](timeout).members.size should equal(1)
 
     cluster ! ZkMonitorPartition(Set(self.path))
 
     val zkPath = extension.segmentationLogic.partitionZkPath(partitionKey)
     val members = extension.zkClientWithNs.getChildren.forPath(zkPath)
-    members.size should equal(1)
+    members.contains("$size") should equal(true)
+    members.remove("$size")
 
-    extension.zkClientWithNs.delete.forPath(s"$zkPath/${members.head}")
-//    expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq.empty[Address]))
+    if (members.nonEmpty) {
+      extension.zkClientWithNs.delete.forPath(s"$zkPath/${members.head}")
+      expectMsgType[ZkPartitionDiff](timeout).diff should equal(Map(partitionKey -> Seq.empty[Address]))
+    }
   }
 }

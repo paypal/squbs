@@ -109,10 +109,7 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
 
   private[this] implicit val log = logger
 
-  override def preStart = {
-
-    //enroll in the leadership competition
-    zkLeaderLatch.start
+  def initialize = {
 
     //watch over leader changes
     val leader = zkClient.getData.usingWatcher(new CuratorWatcher {
@@ -128,7 +125,7 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
 
     //watch over members changes
     val me = guarantee(s"/members/${keyToPath(zkAddress.toString)}", Some(Array[Byte]()), CreateMode.EPHEMERAL)
-    zkClient.sync.forPath(me)
+    //zkClient.sync.forPath(me)
 
     lazy val members = zkClient.getChildren.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
@@ -149,7 +146,15 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
     zkClusterActor ! ZkLeaderElected(leader)
   }
 
-  override def postStop = {
+  override def preStart = {
+
+    //enroll in the leadership competition
+    zkLeaderLatch.start
+
+    initialize
+  }
+
+    override def postStop = {
 
     //stop the leader latch to quit the competition
     zkLeaderLatch.close
@@ -162,6 +167,7 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
       zkLeaderLatch.close
       zkLeaderLatch = new LeaderLatch(zkClient, "/leadership")
       zkLeaderLatch.start
+      initialize
 
     case ZkAcquireLeadership =>
       //repeatedly enroll in the leadership competition once the last attempt fails
@@ -196,8 +202,12 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
   private[cluster] var partitionsToMembers = Map.empty[ByteString, Set[Address]]
   private[cluster] var notifyOnDifference = Set.empty[ActorPath]
 
-  override def preStart = {
+  def initialize = {
     segmentsToPartitions = zkClient.getChildren.forPath("/segments").map{segment => segment -> watchOverSegment(segment)}.toMap
+  }
+
+  override def preStart = {
+    initialize
   }
 
   def watchOverSegment(segment:String) = {
@@ -253,6 +263,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
     case ZkClientUpdated(updated) =>
       zkClient = updated
+      initialize
 
     case origin @ ZkPartitionsChanged(segment, change) => //partition changes found in zk
       log.debug("[partitions] partitions change detected from zk: {}", change.map(pair => keyToPath(pair._1) -> pair._2))
