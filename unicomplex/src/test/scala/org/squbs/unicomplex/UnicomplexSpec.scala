@@ -34,7 +34,7 @@ object UnicomplexSpec {
 
   val mapConfig = ConfigFactory.parseMap(
     Map(
-      "squbs.actorsystem-name"    -> "UnicomplexSpec",
+      "squbs.actorsystem-name"    -> "unicomplexSpec",
       "squbs." + JMX.prefixConfig -> Boolean.box(true)
     )
   )

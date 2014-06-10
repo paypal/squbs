@@ -4,7 +4,7 @@ import java.util.Date
 import java.util
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.util.{Failure, Try}
+import scala.util.Try
 
 import akka.actor._
 import akka.actor.SupervisorStrategy._
@@ -67,6 +67,7 @@ private[unicomplex] case class  StartCubeActor(props: Props, name: String = "", 
 private[unicomplex] case object CheckInitStatus
 private[unicomplex] case class  InitReports(state: LifecycleState, reports: Map[ActorRef, Option[InitReport]])
 private[unicomplex] case object Started
+private[unicomplex] case object Activate
 private[unicomplex] case class  CubeRegistration(name: String, fullName: String, version: String, cubeSupervisor: ActorRef)
 private[unicomplex] case object ShutdownTimedout
 private[unicomplex] case class Extensions(exts: Seq[(String, String, ExtensionLifecycle)])
@@ -304,6 +305,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     case Started => // Bootstrap startup and extension init done
       updateSystemState(Initializing)
+
+    case Activate => // Bootstrap is done. Just in case all else is done (no cubes or services), just check the state.
+      updateSystemState(checkInitState(cubes.values map (_._2)))
 
     case ir: InitReports => // Cubes initialized
       updateCubes(ir)

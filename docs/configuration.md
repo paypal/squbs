@@ -51,9 +51,10 @@ default-listener {
   secure = false
 
   # HTTPS needs client authorization? This configuration is not read if secure is false.
-  need-client-auth = false
+  client-authn = false
 
-  # Any custom SSLContext provider? Setting to "default" means platform default.
+  # SSLContext fully qualified classname. Setting to "default" means platform default.
+  # ssl-context = org.foobar.MySSLContext
   ssl-context = default
 }
 
