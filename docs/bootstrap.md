@@ -139,6 +139,8 @@ Services extend from org.squbs.unicomplex.RouteDefinition trait and have to prov
    This webContext must be a lowercase alphanumeric string without any slash ('/') character
 2. The route - A Spray route according to the
    [Spray documentation](http://spray.io/documentation/1.2.0/spray-routing/key-concepts/routes/).
+   
+Service metadata is declared in META-INF/squbs-meta.conf as shown in the following example.
 
 ```
 cube-name = org.squbs.bottlesvc
@@ -146,9 +148,14 @@ cube-version = "0.0.2-SNAPSHOT"
 squbs-services = [
   {
     class-name = org.squbs.bottlesvc.BottleSvc
+    
+    # The listeners entry is optional, and defaults to 'default-listener'
+    listeners = [ default-listener, my-listener ]
   }
 ]
 ```
+
+Optionally, a service route can attach itself to a particular listener. If the listeners field is not provided, it will default to the `default-listener`. Listeners declare interfaces, ports, and security attributes, and are explained in [Configuration](configuration.md)
 
 ##Extensions
 
