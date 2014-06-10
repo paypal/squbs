@@ -99,7 +99,7 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
     import scala.collection.JavaConversions._
 
-    val timeout = 360.second
+    implicit val timeout = 360.second
 
     val extension = ZkCluster(system)
     val cluster = extension.zkClusterActor
@@ -117,7 +117,10 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
     if (members.nonEmpty) {
       extension.zkClientWithNs.delete.forPath(s"$zkPath/${members.head}")
-      expectMsgType[ZkPartitionDiff](timeout).diff should equal(Map(partitionKey -> Seq.empty[Address]))
+      expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq.empty[Address]))
     }
+
+    cluster ! ZkListPartitions(extension.zkAddress)
+    expectMsgType[ZkPartitions] shouldNot equal(Seq.empty[ByteString])
   }
 }
