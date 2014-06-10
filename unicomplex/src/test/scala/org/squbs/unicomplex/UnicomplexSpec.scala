@@ -80,7 +80,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
   }
   
   override def afterAll() {
-    Unicomplex(system).uniActor ! GracefulStop
+    system.shutdown
   }
 
   "UnicomplexBoot" must {
