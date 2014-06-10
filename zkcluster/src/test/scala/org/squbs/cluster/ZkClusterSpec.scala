@@ -37,6 +37,8 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
   override def afterAll = {
 
+    system.shutdown
+
     safelyDiscard("")(ZkCluster(system).zkClientWithNs)
 
     preserve match {
