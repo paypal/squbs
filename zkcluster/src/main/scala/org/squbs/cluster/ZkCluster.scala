@@ -389,6 +389,12 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
       log.info("[follower/leader] stop monitor partitioning from:{}", sender().path)
       partitionManager forward origin
       stay
+
+    case Event(ZkListPartitions(member), _) =>
+      sender() ! ZkPartitions(stateData.partitionsToMembers.collect{
+        case (partitionKey:ByteString, members:Set[Address]) if members.contains(member) => partitionKey
+      }.toSeq)
+      stay
   }
 
   private[this] def init:(Map[String, Set[ByteString]], Map[ByteString, Set[Address]]) = {
