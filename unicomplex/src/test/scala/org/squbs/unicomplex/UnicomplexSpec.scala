@@ -65,6 +65,8 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
   override def beforeAll() {
     def svcReady = Try {
       Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").getLines()
+      Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").getLines()
+      Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").getLines()
     } match {
       case Success(_) => true
       case Failure(e) => println(e.getMessage); false
@@ -181,8 +183,6 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
     }
 
     "stop a single cube without affect other cubes" in {
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
       Unicomplex(system).uniActor ! StopCube("org.squbs.unicomplex.test.DummyCubeSvc")
       expectMsg(Ack)
 
