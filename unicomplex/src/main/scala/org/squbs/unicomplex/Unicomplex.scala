@@ -213,7 +213,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       stopCube(cubeName) match {
         case Some(cube) =>
           log.debug(s"Shutting down cube $cubeName")
-          context.become(waitCubeStop(sender()))
+          context.become(waitCubeStop(sender(), cube.cubeSupervisor), false)
         case None =>
           log.warning(s"Could not find cube $cubeName")
           sender() ! Ack
@@ -225,30 +225,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       sender() ! Ack
   }
 
-  private def waitCubeStop(originalSender: ActorRef): Receive = {
-    case Terminated(cubeSupervisor) =>
-      cubes -= cubeSupervisor
+  private def waitCubeStop(originalSender: ActorRef, target: ActorRef): Receive = {
+    case Terminated(`target`) =>
+      cubes -= target
+      context.unbecome()
+      unstashAll()
+      log.debug(s"Cube supervisor $target terminated.")
       originalSender ! Ack
-      context.unbecome()
-      unstashAll()
-      log.debug(s"Cube supervisor $cubeSupervisor terminated.")
-
-
-    case cubeSupervisor: ActorRef => cubeSupervisor ! GracefulStop
-      context.become({
-        case Terminated(`cubeSupervisor`) => cubes -= cubeSupervisor
-
-          originalSender ! Ack
-          context.unbecome()
-          unstashAll()
-
-        case other => stash()
-      }, true)
-
-    // This cube doesn't contain any cube actors or cube already stopped
-    case Status.Failure(e) => originalSender ! Ack
-      context.unbecome()
-      unstashAll()
 
     case other => stash()
   }
@@ -463,7 +446,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     // TODO prevent starting an active Cube
     // Start actors if there are any
     if (cubes.exists { case (ref, (CubeRegistration(_, fullName, _ ,_), _)) => fullName == cubeName })
-      println(s"[warn][Bootstrap] actors in $cubeName are already activated")
+      log.warning(s"[warn][Bootstrap] actors in $cubeName are already activated")
     else
       initInfoMap.getOrElse(StartupType.ACTORS, Seq.empty[InitInfo]).filter(_.symName == cubeName)
         .foreach(startActors(_)(context.system))

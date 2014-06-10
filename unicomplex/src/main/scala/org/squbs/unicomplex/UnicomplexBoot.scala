@@ -15,7 +15,7 @@ import org.squbs.lifecycle.ExtensionLifecycle
 import ConfigUtil._
 import java.util.concurrent.TimeoutException
 import scala.collection.concurrent.TrieMap
-import scala.util.{Success, Failure}
+import scala.util.{Try, Success, Failure}
 import scala.collection.mutable
 
 object UnicomplexBoot {
@@ -513,8 +513,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     while (state != Active && state != Failed && retries < 100) {
       val stateFuture = (Unicomplex(actorSystem).uniActor ? SystemState).mapTo[LifecycleState]
-      stateFuture foreach (state = _)
-      Await.ready(stateFuture, timeout.duration)
+      state = Try(Await.result(stateFuture, timeout.duration)) getOrElse Starting
       if (state != Active && state != Failed) {
         Thread.sleep(1000)
         retries += 1
