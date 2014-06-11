@@ -45,8 +45,6 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
       case None => conf.delete
       case Some(value) => Files.write(value, conf, Charsets.UTF_8)
     }
-
-    system.shutdown()
   }
 
   "ZkCluster" should "start and connect to zookeeper" in {
@@ -99,7 +97,7 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
     import scala.collection.JavaConversions._
 
-    implicit val timeout = 360.second
+    implicit val timeout = 60.second
 
     val extension = ZkCluster(system)
     val cluster = extension.zkClusterActor
