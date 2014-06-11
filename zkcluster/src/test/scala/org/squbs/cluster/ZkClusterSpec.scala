@@ -7,7 +7,7 @@ import com.google.common.io.Files
 import com.google.common.base.Charsets
 import akka.testkit.{TestKit, ImplicitSender}
 import akka.util.ByteString
-import akka.actor.{Address, ActorSystem}
+import akka.actor.{Props, Address, ActorSystem}
 import org.squbs.unicomplex.{Unicomplex, ConfigUtil}
 
 /**
@@ -28,11 +28,13 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     Files.write(
       s"""
           |zkCluster {
-          |    connectionString = "zk-node-phx-0-213163.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-1-213164.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-2-213165.phx-os1.stratus.dev.ebay.com:2181"
+          |    connectionString = "localhost:2181"
           |    namespace = "zkclusterunitest-${System.nanoTime}"
           |    segments = 16
           |}
         """.stripMargin, conf, Charsets.UTF_8)
+
+    system.actorOf(Props[ZkActorForTestOnly])
   }
 
   override def afterAll = {
