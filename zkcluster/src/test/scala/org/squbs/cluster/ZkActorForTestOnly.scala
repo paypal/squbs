@@ -48,11 +48,7 @@ class ZkActorForTestOnly extends Actor {
       log.warn("[zk] zoo.cfg:{}", cfg)
       Files.write(cfg, new File(outputDir, "zoo.cfg"), Charsets.UTF_8)
 
-      (new Thread() {
-        override def run = {
-            QuorumPeerMain.main(Array[String](new File(outputDir, "zoo.cfg").getAbsolutePath))
-        }
-      }).start
+      QuorumPeerMain.main(Array[String](new File(outputDir, "zoo.cfg").getAbsolutePath))
     }
   }
 
