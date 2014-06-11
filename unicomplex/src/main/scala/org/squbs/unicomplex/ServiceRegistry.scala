@@ -176,7 +176,8 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
 /**
  * The main service actor.
  */
-private[unicomplex] class WebSvcActor(listenerName: String, route: Agent[Route]) extends Actor with HttpService {
+private[unicomplex] class WebSvcActor(listenerName: String, route: Agent[Route])
+    extends Actor with HttpService with ActorLogging {
 
   val serviceRegistry = Unicomplex.serviceRegistry
   import serviceRegistry._
@@ -187,6 +188,7 @@ private[unicomplex] class WebSvcActor(listenerName: String, route: Agent[Route])
 
   // All RouteDefinitions should use this context.
   serviceActorContext send { _ + (listenerName -> context) }
+  log.debug(s"Sent ActorContext for ${context.self.path} to Agent.")
 
   def receive = {
     // Notify the real sender for completion, but in lue of the parent
