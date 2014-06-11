@@ -65,7 +65,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       case Failure(e) => e.printStackTrace(); false
     }
 
-    var retry = 100
+    var retry = 3
     while (!svcReady && retry > 0) {
       Thread.sleep(1000)
       retry -= 1
