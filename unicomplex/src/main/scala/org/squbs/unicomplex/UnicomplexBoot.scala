@@ -311,7 +311,7 @@ object UnicomplexBoot {
     val (activeAliases, activeListeners, missingAliases) = findListeners(actorSystem.settings.config, services)
     missingAliases foreach { name => System.err.println(s"Requested listener $name not found!") }
     val startTime = System.nanoTime
-    implicit val timeout = Timeout(activeListeners.size.seconds)
+    implicit val timeout = Timeout((activeListeners.size * 5) seconds)
     val ackFutures =
       for ((listenerName, config) <- activeListeners) yield {
         Unicomplex(actorSystem).uniActor ? StartWebService(listenerName, config)
