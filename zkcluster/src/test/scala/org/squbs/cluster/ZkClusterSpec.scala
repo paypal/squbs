@@ -34,7 +34,7 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
           |}
         """.stripMargin, conf, Charsets.UTF_8)
 
-    system.actorOf(Props[ZkActorForTestOnly])
+    system.actorOf(Props[ZkActorForTestOnly].withDispatcher("pinned-dispatcher"))
   }
 
   override def afterAll = {
