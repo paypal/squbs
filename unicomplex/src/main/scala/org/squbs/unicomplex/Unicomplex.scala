@@ -90,12 +90,6 @@ case object LifecycleTimesRequest
 case class LifecycleTimes(start: Option[Timestamp], started: Option[Timestamp],
                           active: Option[Timestamp], stop: Option[Timestamp])
 case class ObtainLifecycleEvents(states: LifecycleState*)
-
-case class StopCube(cubeName: String)
-case class StartCube(cubeName: String,
-                     initInfoMap: Map[UnicomplexBoot.StartupType.Value, Seq[UnicomplexBoot.InitInfo]],
-                     listenerAliases: Map[String, String]
-                    )
 case class StopTimeout(timeout: FiniteDuration)
 
 /**
@@ -207,35 +201,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       context.system.shutdown()
   }
 
-  private def hotDeployReceive: Receive = {
-    case StopCube(cubeName) =>
-      log.info(s"got StopCube($cubeName) from ${sender()}")
-      stopCube(cubeName) match {
-        case Some(cube) =>
-          log.debug(s"Shutting down cube $cubeName")
-          context.become(waitCubeStop(sender(), cube.cubeSupervisor), false)
-        case None =>
-          log.warning(s"Could not find cube $cubeName")
-          sender() ! Ack
-      }
-
-    case StartCube(cubeName, initInfoMap, listenerAliases) =>
-      log.info(s"got StartCube($cubeName) from ${sender()}")
-      startCube(cubeName, initInfoMap, listenerAliases)
-      sender() ! Ack
-  }
-
-  private def waitCubeStop(originalSender: ActorRef, target: ActorRef): Receive = {
-    case Terminated(`target`) =>
-      cubes -= target
-      context.unbecome()
-      unstashAll()
-      log.debug(s"Cube supervisor $target terminated.")
-      originalSender ! Ack
-
-    case other => stash()
-  }
-
   def shutdownBehavior: Receive = {
     case StopTimeout(timeout) => if (shutdownTimeout < timeout) shutdownTimeout = timeout
 
@@ -257,7 +222,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       context.system.scheduler.scheduleOnce(shutdownTimeout, self, ShutdownTimedout)
   }
 
-  def receive = hotDeployReceive orElse shutdownBehavior orElse {
+  def receive = shutdownBehavior orElse {
     case t: Timestamp => // Setting the real start time from bootstrap
       systemStart = Some(t)
       stateMXBean.startTime = new Date(t.millis)
@@ -415,46 +380,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   }
 
   def services = serviceRegistry.registry().values
-
-  // TODO use the following in hot deployment
-  private[unicomplex] def stopCube(cubeName: String): Option[CubeRegistration] = {
-    implicit val executionContext = context.dispatcher
-
-    // Unregister the routes of this cube across all listeners if there are any
-    serviceRegistry.registry() foreach { case (listener, registry) =>
-      registry.values foreach {
-        case Register(`cubeName`, _, _, routeDef) =>
-          serviceRegistry.registrar()(listener) ! Unregister(routeDef.webContext)
-        case _ =>
-      }
-    }
-
-    // Stop the CubeSupervisor if there is one
-    val cubeOption = cubes find { case (ref, (CubeRegistration(_, fullName, _, _), _)) => fullName == cubeName }
-
-    cubeOption foreach (_._1 ! GracefulStop)
-
-    cubeOption map { case (_, (registration, _)) => registration}
-  }
-
-  private[unicomplex] def startCube(cubeName: String,
-                                    initInfoMap: Map[UnicomplexBoot.StartupType.Value, Seq[UnicomplexBoot.InitInfo]],
-                                    listenerAliases: Map[String, String]): Unit = {
-    import UnicomplexBoot._
-    implicit val executionContext = context.dispatcher
-
-    // TODO prevent starting an active Cube
-    // Start actors if there are any
-    if (cubes.exists { case (ref, (CubeRegistration(_, fullName, _ ,_), _)) => fullName == cubeName })
-      log.warning(s"[warn][Bootstrap] actors in $cubeName are already activated")
-    else
-      initInfoMap.getOrElse(StartupType.ACTORS, Seq.empty[InitInfo]).filter(_.symName == cubeName)
-        .foreach(startActors(_)(context.system))
-
-    // Start services if there are any
-    initInfoMap.getOrElse(StartupType.SERVICES, Seq.empty[InitInfo]).filter(_.symName == cubeName)
-      .foreach(startRoutes(_, listenerAliases)(context.system))
-  }
 }
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {

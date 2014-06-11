@@ -24,8 +24,6 @@ findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
-parallelExecution in Test := false
-
-parallelExecution in jacoco.Config := false
+parallelExecution in Test := true
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/unicomplex")
