@@ -13,6 +13,10 @@ import spray.io.ServerSSLEngineProvider
 import spray.routing._
 import Directives._
 import com.typesafe.config.Config
+import scala.concurrent.Await
+import akka.util.Timeout
+import scala.concurrent.duration._
+import scala.annotation.tailrec
 
 case class Register(symName: String, alias: String, version: String, routeDef: RouteDefinition)
 case class Unregister(key: String)
@@ -204,8 +208,22 @@ object RouteDefinition {
     override def initialValue(): Option[ActorContext] = None
   }
 
+  @tailrec
+  private def getContext(system: ActorSystem, listenerName: String, retries: Int): Option[ActorContext] = {
+    val contextAgent = Unicomplex(system).serviceRegistry.serviceActorContext
+    contextAgent().get(listenerName) match {
+      case c: Some[ActorContext] => c
+      case None =>
+        if (retries == 0)
+          throw new IllegalStateException(s"Timed out waiting for service actor context for listener $listenerName.")
+        implicit val timeout = Timeout(1.seconds)
+        Await.ready(contextAgent.future(), timeout.duration)
+        getContext(system, listenerName, retries - 1)
+    }
+  }
+
   def startRoutes[T](system: ActorSystem, listenerName: String)(fn: ()=>T): T = {
-    localContext.set(Unicomplex(system).serviceRegistry.serviceActorContext().get(listenerName))
+    localContext.set(getContext(system, listenerName, 10))
     val r = fn()
     localContext.set(None)
     r
