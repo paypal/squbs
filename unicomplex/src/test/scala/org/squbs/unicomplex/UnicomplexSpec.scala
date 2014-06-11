@@ -62,7 +62,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").getLines()
     } match {
       case Success(_) => true
-      case Failure(e) => println(e.getMessage); false
+      case Failure(e) => e.printStackTrace(); false
     }
 
     var retry = 100
