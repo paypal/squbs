@@ -13,7 +13,6 @@ import akka.pattern.ask
 import com.typesafe.config._
 import org.squbs.lifecycle.ExtensionLifecycle
 import ConfigUtil._
-import java.util.concurrent.TimeoutException
 import scala.collection.concurrent.TrieMap
 import scala.util.{Try, Success, Failure}
 import scala.collection.mutable
@@ -319,19 +318,6 @@ object UnicomplexBoot {
       }
     // Block for the web service to be started.
     Await.ready(Future.sequence(ackFutures), timeout.duration)
-    // Tight loop making sure the registrar is in place
-    val registry = Unicomplex(actorSystem).serviceRegistry
-    import registry._
-
-    val retry = 1000
-    var count = 0
-
-    while (serviceActorContext() == null && count < retry) {
-      count += 1
-      println("waiting: " + count)
-      Await.result(serviceActorContext.future(), timeout.duration)
-    }
-    if (count == retry) throw new TimeoutException(s"Timing out service creation after $retry waits.")
 
     val elapsed = (System.nanoTime - startTime) / 1000000
     println(s"Web Service started in $elapsed milliseconds")
@@ -505,7 +491,6 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
     Unicomplex(actorSystem).uniActor ! Activate // Tell Unicomplex we're done.
 
     // Make sure we wait for Unicomplex to be started properly before completing the start.
-    import actorSystem.dispatcher
     implicit val timeout = Timeout(1.seconds)
 
     var state: LifecycleState = Starting

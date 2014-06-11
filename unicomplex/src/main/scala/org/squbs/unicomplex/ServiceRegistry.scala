@@ -6,6 +6,7 @@ import scala.util.Try
 import akka.io.IO
 import akka.actor._
 import akka.agent.Agent
+import akka.pattern._
 import spray.can.Http
 import spray.can.server.ServerSettings
 import spray.http.{MediaType, MediaTypes}
@@ -186,15 +187,18 @@ private[unicomplex] class WebSvcActor(listenerName: String, route: Agent[Route])
   // connects the services environment to the enclosing actor or test
   def actorRefFactory = context
 
-  // All RouteDefinitions should use this context.
-  serviceActorContext send { _ + (listenerName -> context) }
-  log.debug(s"Sent ActorContext for ${context.self.path} to Agent.")
 
   def receive = {
     // Notify the real sender for completion, but in lue of the parent
     case ref: ActorRef =>
-      ref.tell(Ack, context.parent)
-      context.become(wsReceive)
+      // All RouteDefinitions should use this context.
+      serviceActorContext alter { _ + (listenerName -> context) } pipeTo self
+      context.become {
+        case m: Map[String, ActorRef] =>
+          log.debug(s"Updated serviceActorContext for listener $listenerName.")
+          ref.tell(Ack, context.parent)
+          context.become(wsReceive)
+      }
   }
 
   // this actor only runs our route, but you could add
