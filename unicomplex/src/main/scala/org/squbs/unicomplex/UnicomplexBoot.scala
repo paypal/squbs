@@ -13,9 +13,8 @@ import akka.pattern.ask
 import com.typesafe.config._
 import org.squbs.lifecycle.ExtensionLifecycle
 import ConfigUtil._
-import java.util.concurrent.TimeoutException
 import scala.collection.concurrent.TrieMap
-import scala.util.{Success, Failure}
+import scala.util.{Try, Success, Failure}
 import scala.collection.mutable
 
 object UnicomplexBoot {
@@ -312,30 +311,17 @@ object UnicomplexBoot {
     val (activeAliases, activeListeners, missingAliases) = findListeners(actorSystem.settings.config, services)
     missingAliases foreach { name => System.err.println(s"Requested listener $name not found!") }
     val startTime = System.nanoTime
-    implicit val timeout = Timeout(activeListeners.size.seconds)
+    implicit val timeout = Timeout((activeListeners.size * 5) seconds)
     val ackFutures =
       for ((listenerName, config) <- activeListeners) yield {
         Unicomplex(actorSystem).uniActor ? StartWebService(listenerName, config)
       }
     // Block for the web service to be started.
     Await.ready(Future.sequence(ackFutures), timeout.duration)
-    // Tight loop making sure the registrar is in place
-    val registry = Unicomplex(actorSystem).serviceRegistry
-    import registry._
-
-    val retry = 1000
-    var count = 0
-
-    while (serviceActorContext() == null && count < retry) {
-      count += 1
-      println("waiting: " + count)
-      Await.result(serviceActorContext.future(), timeout.duration)
-    }
-    if (count == retry) throw new TimeoutException(s"Timing out service creation after $retry waits.")
 
     val elapsed = (System.nanoTime - startTime) / 1000000
     println(s"Web Service started in $elapsed milliseconds")
-    activeAliases
+    (activeListeners, activeAliases)
   }
 
   def startRoutes(initInfo: InitInfo, aliases: Map[String, String])(implicit actorSystem: ActorSystem) = {
@@ -395,6 +381,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
                             {(name, config) => ActorSystem(name, config)},
                           initInfoMap: Map[UnicomplexBoot.StartupType.Value,
                             Seq[UnicomplexBoot.InitInfo]] = Map.empty,
+                          listeners: Map[String, Config] = Map.empty,
                           listenerAliases: Map[String, String] = Map.empty,
                           jarConfigs: Seq[(String, Config)] = Seq.empty,
                           jarNames: Seq[String] = Seq.empty,
@@ -486,7 +473,9 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     // Start the service infrastructure if services are enabled and registered.
 
-    val aliases = if (!servicesToStart.isEmpty) startServiceInfra(servicesToStart) else Map.empty[String, String]
+    val (listeners, aliases) =
+      if (!servicesToStart.isEmpty) startServiceInfra(servicesToStart)
+      else (Map.empty[String, Config], Map.empty[String, String])
 
     // Start all service routes
     val services = servicesToStart.map(startRoutes(_, aliases)).flatten.filter(_ != null)
@@ -499,8 +488,9 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs) }
 
+    Unicomplex(actorSystem).uniActor ! Activate // Tell Unicomplex we're done.
+
     // Make sure we wait for Unicomplex to be started properly before completing the start.
-    import actorSystem.dispatcher
     implicit val timeout = Timeout(1.seconds)
 
     var state: LifecycleState = Starting
@@ -508,8 +498,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     while (state != Active && state != Failed && retries < 100) {
       val stateFuture = (Unicomplex(actorSystem).uniActor ? SystemState).mapTo[LifecycleState]
-      stateFuture foreach (state = _)
-      Await.ready(stateFuture, timeout.duration)
+      state = Try(Await.result(stateFuture, timeout.duration)) getOrElse Starting
       if (state != Active && state != Failed) {
         Thread.sleep(1000)
         retries += 1
@@ -519,11 +508,11 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
     if (state != Active && state != Failed) throw new InstantiationException(
       s"Unicomplex not entering 'Active' or 'Failed' state. Stuck at '$state' state. Timing out.")
     if (state == Failed)
-      println(s"WARN: Unicomplex initialization: Some cubes failed to initialize")
+      println("WARN: Unicomplex initialization: Some cubes failed to initialize")
 
 
-    copy(config = actorSystem.settings.config, actors = actors, services = services, listenerAliases = aliases,
-      extensions = extensions, started = true)
+    copy(config = actorSystem.settings.config, actors = actors, services = services,
+      listeners = listeners,listenerAliases = aliases, extensions = extensions, started = true)
   }
 
   def registerExtensionShutdown(actorSystem: ActorSystem) {

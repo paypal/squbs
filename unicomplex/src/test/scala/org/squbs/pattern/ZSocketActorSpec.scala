@@ -6,13 +6,15 @@ import akka.actor.{ActorContext, Props, ActorSystem}
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.ByteString
 import scala.concurrent.duration._
-import org.scalatest.{Matchers, FunSuiteLike}
+import org.scalatest.{BeforeAndAfterAll, Matchers, FunSuiteLike}
 
 
 /**
  * Created by huzhou on 2/25/14.
  */
-class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with ImplicitSender with FunSuiteLike with Matchers {
+class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with ImplicitSender with FunSuiteLike with Matchers with BeforeAndAfterAll {
+
+  override def afterAll = system.shutdown
 
   test("test router/dealer socket"){
 
