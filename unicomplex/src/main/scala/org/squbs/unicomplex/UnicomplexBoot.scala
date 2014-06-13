@@ -496,7 +496,11 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs) }
 
-    Unicomplex(actorSystem).uniActor ! Activate // Tell Unicomplex we're done.
+    {
+      implicit val timeout = Timeout(60 seconds)
+      Await.ready(Unicomplex(actorSystem).uniActor ? Activate, timeout.duration) // Tell Unicomplex we're done.
+    }
+
 
     // Make sure we wait for Unicomplex to be started properly before completing the start.
     implicit val timeout = Timeout(1.seconds)

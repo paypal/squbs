@@ -119,11 +119,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   private var systemState: LifecycleState = Starting
 
+  private var activated = false
+
   private var cubes = Map.empty[ActorRef, (CubeRegistration, Option[InitReports])]
 
   private var extensions = Seq.empty[(String, String, ExtensionLifecycle)]
 
-  private var lifecycleListeners = Seq.empty[(ActorRef, Seq[LifecycleState])]
+  private var lifecycleListeners = Seq.empty[(ActorRef, Seq[LifecycleState], Boolean)] // Last boolean is flag whether to remove
 
   private var servicesStarted: Option[Int] = None // None means no svc infra, Some(n) - n listeners initialized
 
@@ -276,7 +278,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     case Started => // Bootstrap startup and extension init done
       updateSystemState(Initializing)
 
-    case Activate => // Bootstrap is done. Just in case all else is done (no cubes or services), just check the state.
+    case Activate => // Bootstrap is done. Register for callback when system is active or failed. Remove afterwards
+      lifecycleListeners = lifecycleListeners :+ (sender(), Seq(Active, Failed), true)
+      activated = true
       updateSystemState(checkInitState)
 
     case ir: InitReports => // Cubes initialized
@@ -314,7 +318,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       sender ! systemState
 
     case r: ObtainLifecycleEvents => // Registration of lifecycle listeners
-      lifecycleListeners = lifecycleListeners :+ (sender -> r.states)
+      lifecycleListeners = lifecycleListeners :+ (sender(), r.states, false)
 
     case LifecycleTimesRequest => // Obtain all timestamps.
       sender ! LifecycleTimes(systemStart, systemStarted, systemActive, systemStop)
@@ -340,6 +344,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     if ((states exists (_ == Failed)) || (serviceListeners.values exists (_ == None))) Failed
     else if (states exists (_ == Initializing)) Initializing
     else if (pendingServiceStarts) Initializing
+    else if (!activated) Initializing // Waiting for boot to activate
     else Active
   }
 
@@ -379,8 +384,11 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       }
 
       if (state != Stopped) // don't care about Stopped
-        lifecycleListeners foreach {case (actorRef, states) => // Send state to all listeners.
-          if (states.isEmpty || states.contains(state)) actorRef ! state
+        lifecycleListeners = lifecycleListeners filterNot { case (actorRef, states, remove) =>
+          if (states.isEmpty || states.contains(state)) {
+            actorRef ! state // Send state to all listeners.
+            remove
+          } else false
         }
     }
   }
