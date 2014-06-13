@@ -155,14 +155,16 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
       val tmpRegistry = localRegistry + (routeDef.webContext -> r)
 
       // This line is the problem. Don't pre-calculate.
-      route send calculateRoute(tmpRegistry)
-      registry send { _ + (listenerName -> tmpRegistry) }
+      val f1 = route alter calculateRoute(tmpRegistry)
+      val f2 = registry alter { _ + (listenerName -> tmpRegistry) }
+      (for (v1 <- f1 ; v2 <- f2) yield Ack) pipeTo sender()
       log.info(s"""Web context "${routeDef.webContext}" (${routeDef.getClass.getName}) registered.""")
 
     case Unregister(webContext) =>
       val tmpRegistry = registry()(listenerName) - webContext
-      route send calculateRoute(tmpRegistry)
-      registry send { _ + (listenerName -> tmpRegistry) }
+      val f1 = route alter calculateRoute(tmpRegistry)
+      val f2 = registry alter { _ + (listenerName -> tmpRegistry) }
+      (for (v1 <- f1 ; v2 <- f2) yield Ack) pipeTo sender()
       log.info(s"Web service route $webContext unregistered.")
 
     case RoutesStarted => // Got all the service registrations for now.

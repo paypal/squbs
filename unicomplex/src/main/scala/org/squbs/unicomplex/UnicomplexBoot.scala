@@ -331,7 +331,7 @@ object UnicomplexBoot {
 
   def startRoutes(initInfo: InitInfo, aliases: Map[String, String])(implicit actorSystem: ActorSystem) = {
     import initInfo.{jarPath, symName, alias, version, entries}
-    def startRoute(routeConfig: Config): Seq[(String, String, String, RouteDefinition, String)] =
+    def startRoute(routeConfig: Config): Seq[(String, String, String, RouteDefinition, String, Future[_])] =
       try {
         val clazz = Class.forName(routeConfig.getString("class-name"), true, getClass.getClassLoader)
         val routeClass = clazz.asSubclass(classOf[RouteDefinition])
@@ -346,11 +346,12 @@ object UnicomplexBoot {
           listenerMapping collect { case (entry, Some(listener)) => listener }
         })
 
+        implicit val timeout = Timeout(1 second)
         listeners map { listener =>
           val routeInstance = RouteDefinition.startRoutes(actorSystem, listener) { routeClass.newInstance }
           val registrar = Unicomplex(actorSystem).serviceRegistry.registrar()(listener)
-          registrar ! Register(symName, alias, version, routeInstance)
-          (symName, version, alias, routeInstance, listener)
+          val ackFuture = registrar ? Register(symName, alias, version, routeInstance)
+          (symName, version, alias, routeInstance, listener, ackFuture)
         }
       } catch {
         case e: Exception =>
@@ -477,16 +478,21 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
     val actors = actorsToStart.map(startActors).flatten.filter(_ != null)
 
     // Start the service infrastructure if services are enabled and registered.
-    if (!servicesToStart.isEmpty) startServiceInfra(servicesToStart, this)
+    val services =
+      if (!servicesToStart.isEmpty) {
+        startServiceInfra(servicesToStart, this)
 
-    // Start all service routes
-    val services = servicesToStart.map(startRoutes(_, listenerAliases)).flatten.filter(_ != null)
+        // Start all service routes
+        import actorSystem.dispatcher
+        val swf = servicesToStart.map(startRoutes(_, listenerAliases)).flatten.filter(_ != null)
+        val timeout = Timeout((swf.size * 5) seconds)
+        Await.ready(Future.sequence(swf map (_._6)), timeout.duration)
 
-
-    // Queue message on registrar which will then forwarded to Unicomplex when all services are processed.
-    // Prevents out of band notification.
-    if (!servicesToStart.isEmpty)
-      Unicomplex(actorSystem).serviceRegistry.registrar().values foreach (_ ! RoutesStarted)
+        // Queue message on registrar which will then forwarded to Unicomplex when all services are processed.
+        // Prevents out of band notification.
+        Unicomplex(actorSystem).serviceRegistry.registrar().values foreach (_ ! RoutesStarted)
+        swf map (r => (r._1, r._2, r._3, r._4, r._5))
+      } else Seq.empty[(String, String, String, RouteDefinition, String)]
 
     extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs) }
 
