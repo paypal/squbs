@@ -130,10 +130,17 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
     unregister(prefix + contextsName + listenerName)
   }
 
-  //private var registry = Map.empty[String, Register]
+  private def updateRegistry(register: Register)(current: Map[String, Registry]): Map[String, Registry] = {
+    import register._
+    val registry = current(listenerName)
+    if (registry contains routeDef.webContext)
+      log.warning(s"""Web context "${routeDef.webContext}" already registered. Overriding!""")
+    val tmpRegistry = registry + (routeDef.webContext -> register)
+    current + (listenerName -> tmpRegistry)
+  }
 
   // CalculateRoute MUST return a function and not a value
-  private def calculateRoute(tmpRegistry: Registry) = {
+  private def calculateRoute(tmpRegistry: Registry)(current: Route) = {
     Try(tmpRegistry.map {
       case (webContext, Register(_, _, _, routeDef)) => pathPrefix(webContext) {
         routeDef.route
@@ -148,23 +155,22 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
   }
 
   def receive = {
-    case r @ Register(symName, alias, version, routeDef) =>
-      val localRegistry = registry()(listenerName)
-      if (localRegistry contains routeDef.webContext)
-        log.warning(s"""Web context "${routeDef.webContext}" already registered. Overriding!""")
-      val tmpRegistry = localRegistry + (routeDef.webContext -> r)
-
-      // This line is the problem. Don't pre-calculate.
-      val f1 = route alter calculateRoute(tmpRegistry)
-      val f2 = registry alter { _ + (listenerName -> tmpRegistry) }
-      (for (v1 <- f1 ; v2 <- f2) yield Ack) pipeTo sender()
-      log.info(s"""Web context "${routeDef.webContext}" (${routeDef.getClass.getName}) registered.""")
+    case r: Register =>
+      val ackFuture =
+        for {
+          reg      <- registry alter { updateRegistry(r)(_) }
+          newRoute <- route    alter { calculateRoute(reg(listenerName))(_) }
+        } yield Ack
+      ackFuture pipeTo sender()
+      log.info(s"""Web context "${r.routeDef.webContext}" (${r.routeDef.getClass.getName}) registered.""")
 
     case Unregister(webContext) =>
-      val tmpRegistry = registry()(listenerName) - webContext
-      val f1 = route alter calculateRoute(tmpRegistry)
-      val f2 = registry alter { _ + (listenerName -> tmpRegistry) }
-      (for (v1 <- f1 ; v2 <- f2) yield Ack) pipeTo sender()
+      val ackFuture =
+        for {
+          reg      <- registry alter { r => val newR = r(listenerName) - webContext ; r + (listenerName -> newR) }
+          newRoute <- route    alter { calculateRoute(reg(listenerName))(_) }
+        } yield Ack
+      ackFuture pipeTo sender()
       log.info(s"Web service route $webContext unregistered.")
 
     case RoutesStarted => // Got all the service registrations for now.
