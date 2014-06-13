@@ -70,7 +70,7 @@ object MyTest {
     .start()
 }
 
-class MyTest extends CustomTestKit(ActorCalLogTest.boot)
+class MyTest extends CustomTestKit(MyTest.boot)
       with FunSpecLike with Matchers {
   
   // Write your tests here.      

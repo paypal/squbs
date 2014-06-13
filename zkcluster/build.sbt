@@ -17,7 +17,8 @@ libraryDependencies ++= Seq(
   "com.google.guava" % "guava" % "16.0.1" % "test",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.2" % "test",
   "org.scalatest" %% "scalatest" % "2.1.0" % "test->*",
-  "org.mockito" % "mockito-core" % "1.9.5" % "test"
+  "org.mockito" % "mockito-core" % "1.9.5" % "test",
+  "log4j" % "log4j" % "1.2.17" % "test"
 )
 
 jacoco.settings

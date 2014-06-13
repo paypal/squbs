@@ -7,7 +7,7 @@ import com.google.common.io.Files
 import com.google.common.base.Charsets
 import akka.testkit.{TestKit, ImplicitSender}
 import akka.util.ByteString
-import akka.actor.{Address, ActorSystem}
+import akka.actor.{Props, Address, ActorSystem}
 import org.squbs.unicomplex.{Unicomplex, ConfigUtil}
 
 /**
@@ -28,23 +28,25 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     Files.write(
       s"""
           |zkCluster {
-          |    connectionString = "zk-node-phx-0-213163.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-1-213164.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-2-213165.phx-os1.stratus.dev.ebay.com:2181"
-          |    namespace = "pubsubunitest-${System.nanoTime}"
+          |    connectionString = "localhost:2181"
+          |    namespace = "zkclusterunitest-${System.nanoTime}"
           |    segments = 16
           |}
         """.stripMargin, conf, Charsets.UTF_8)
+
+    system.actorOf(Props[ZkActorForTestOnly].withDispatcher("pinned-dispatcher"))
   }
 
   override def afterAll = {
 
-    ZkCluster.safelyDiscard("")(ZkCluster(system).zkClientWithNs)
+    system.shutdown
+
+    safelyDiscard("")(ZkCluster(system).zkClientWithNs)
 
     preserve match {
       case None => conf.delete
       case Some(value) => Files.write(value, conf, Charsets.UTF_8)
     }
-
-    system.shutdown()
   }
 
   "ZkCluster" should "start and connect to zookeeper" in {
@@ -97,7 +99,7 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
     import scala.collection.JavaConversions._
 
-    val timeout = 360.second
+    implicit val timeout = 60.second
 
     val extension = ZkCluster(system)
     val cluster = extension.zkClusterActor
@@ -115,7 +117,10 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
     if (members.nonEmpty) {
       extension.zkClientWithNs.delete.forPath(s"$zkPath/${members.head}")
-      expectMsgType[ZkPartitionDiff](timeout).diff should equal(Map(partitionKey -> Seq.empty[Address]))
+      expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq.empty[Address]))
     }
+
+    cluster ! ZkListPartitions(extension.zkAddress)
+    expectMsgType[ZkPartitions] shouldNot equal(Seq.empty[ByteString])
   }
 }
