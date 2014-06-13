@@ -66,7 +66,7 @@ object UnicomplexBoot {
     }
   }
 
-  private[unicomplex] def scan(jarNames: Seq[String])(obj: UnicomplexBoot):
+  private[unicomplex] def scan(jarNames: Seq[String])(boot: UnicomplexBoot):
         UnicomplexBoot = {
     val configEntries = jarNames map readConfigs
 
@@ -78,9 +78,17 @@ object UnicomplexBoot {
       case (jar, config) => getInitInfo(jar, config)
     }
 
+    // Read listener and alias information.
     val initInfoMap: Map[StartupType.Value, Seq[InitInfo]] = resolveAliasConflicts(initInfoList) groupBy (_.startupType)
 
-    obj.copy(initInfoMap = initInfoMap, jarConfigs = jarConfigs, jarNames = jarNames)
+    if (boot.config getBoolean "squbs.start-service") {
+      val servicesToStart = initInfoMap.getOrElse(StartupType.SERVICES, Seq.empty)
+      val (activeAliases, activeListeners, missingAliases) = findListeners(boot.config, servicesToStart)
+      missingAliases foreach { name => System.err.println(s"Requested listener $name not found!") }
+      boot.copy(initInfoMap = initInfoMap, jarConfigs = jarConfigs, jarNames = jarNames,
+        listeners = activeListeners, listenerAliases = activeAliases)
+    } else
+      boot.copy(initInfoMap = initInfoMap, jarConfigs = jarConfigs, jarNames = jarNames)
   }
 
   private[this] def readConfigs(jarName: String): Option[Config] = {
@@ -306,14 +314,12 @@ object UnicomplexBoot {
     (activeAliases, activeListeners, missingAliases)
   }
 
-  def startServiceInfra(services: Seq[InitInfo])(implicit actorSystem: ActorSystem) = {
+  def startServiceInfra(services: Seq[InitInfo], boot: UnicomplexBoot)(implicit actorSystem: ActorSystem) {
     import actorSystem.dispatcher
-    val (activeAliases, activeListeners, missingAliases) = findListeners(actorSystem.settings.config, services)
-    missingAliases foreach { name => System.err.println(s"Requested listener $name not found!") }
     val startTime = System.nanoTime
-    implicit val timeout = Timeout((activeListeners.size * 5) seconds)
+    implicit val timeout = Timeout((boot.listeners.size * 5) seconds)
     val ackFutures =
-      for ((listenerName, config) <- activeListeners) yield {
+      for ((listenerName, config) <- boot.listeners) yield {
         Unicomplex(actorSystem).uniActor ? StartWebService(listenerName, config)
       }
     // Block for the web service to be started.
@@ -321,7 +327,6 @@ object UnicomplexBoot {
 
     val elapsed = (System.nanoTime - startTime) / 1000000
     println(s"Web Service started in $elapsed milliseconds")
-    (activeListeners, activeAliases)
   }
 
   def startRoutes(initInfo: InitInfo, aliases: Map[String, String])(implicit actorSystem: ActorSystem) = {
@@ -472,13 +477,10 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
     val actors = actorsToStart.map(startActors).flatten.filter(_ != null)
 
     // Start the service infrastructure if services are enabled and registered.
-
-    val (listeners, aliases) =
-      if (!servicesToStart.isEmpty) startServiceInfra(servicesToStart)
-      else (Map.empty[String, Config], Map.empty[String, String])
+    if (!servicesToStart.isEmpty) startServiceInfra(servicesToStart, this)
 
     // Start all service routes
-    val services = servicesToStart.map(startRoutes(_, aliases)).flatten.filter(_ != null)
+    val services = servicesToStart.map(startRoutes(_, listenerAliases)).flatten.filter(_ != null)
 
 
     // Queue message on registrar which will then forwarded to Unicomplex when all services are processed.
@@ -511,8 +513,8 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
       println("WARN: Unicomplex initialization: Some cubes failed to initialize")
 
 
-    copy(config = actorSystem.settings.config, actors = actors, services = services,
-      listeners = listeners,listenerAliases = aliases, extensions = extensions, started = true)
+    copy(config = actorSystem.settings.config, actors = actors, services = services, extensions = extensions,
+      started = true)
   }
 
   def registerExtensionShutdown(actorSystem: ActorSystem) {
