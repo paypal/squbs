@@ -11,7 +11,7 @@ import scala.concurrent.Await
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Seconds, Span}
 
-class CustomTestKitTest extends CustomTestKit(CustomTestKitTest.boot) with FlatSpecLike with Matchers with Eventually {
+class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatSpecLike with Matchers with Eventually {
 
   override implicit val patienceConfig = new PatienceConfig(timeout = Span(3, Seconds))
 
@@ -20,14 +20,14 @@ class CustomTestKitTest extends CustomTestKit(CustomTestKitTest.boot) with FlatS
 
   it should "return OK" in {
     eventually {
-      val req = url(s"http://localhost:${CustomTestKitTest.port}/test")
+      val req = url(s"http://localhost:${CustomTestKitSpec.port}/test")
       val result = Await.result(Http(req OK as.String), 1 second)
       result should include("success")
     }
   }
 }
 
-object CustomTestKitTest {
+object CustomTestKitSpec {
 
   import collection.JavaConversions._
 
@@ -37,14 +37,13 @@ object CustomTestKitTest {
     Map(
       "squbs.actorsystem-name" -> "myTest",
       "squbs.external-config-dir" -> "actorCalLogTestConfig",
-      "squbs.bind-port" -> Int.box(port),
+      "default-listener.bind-port" -> Int.box(port),
       "squbs." + JMX.prefixConfig -> Boolean.box(true)
     )
   )
 
   lazy val boot = UnicomplexBoot(testConfig)
     .scanComponents(Seq(new File("testkit/src/test/resources/CustomTestKitTest").getAbsolutePath))
-    .initExtensions
     .start()
 }
 
