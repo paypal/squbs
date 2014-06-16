@@ -1,12 +1,16 @@
 package org.squbs.unicomplex
 
 
+import javax.net.ssl.SSLContext
 import scala.util.Try
 import akka.io.IO
 import akka.actor._
 import akka.agent.Agent
+import akka.pattern._
 import spray.can.Http
+import spray.can.server.ServerSettings
 import spray.http.{MediaType, MediaTypes}
+import spray.io.ServerSSLEngineProvider
 import spray.routing._
 import Directives._
 import com.typesafe.config.Config
@@ -46,7 +50,37 @@ class ServiceRegistry(system: ActorSystem) {
     val bindService = config getOptionalBoolean "bind-service" getOrElse true
     implicit val self = context.self
     implicit val system = context.system
-    if (bindService) IO(Http) ! Http.Bind(serviceRef, interface, port)
+
+    // SSL use case
+    if (bindService && config.getBoolean("secure")) {
+      val settings = ServerSettings(system).copy(sslEncryption = true)
+
+      val sslContextClassName = config.getString("ssl-context")
+      implicit def sslContext =
+        if (sslContextClassName == "default") SSLContext.getDefault
+        else {
+          try {
+            val clazz = Class.forName(sslContextClassName)
+            clazz.getMethod("getServerSslContext").invoke(clazz.newInstance()).asInstanceOf[SSLContext]
+          } catch {
+            case e : Throwable =>
+              System.err.println(s"WARN: Failure obtaining SSLContext from $sslContextClassName. " +
+                "Falling back to default.")
+              SSLContext.getDefault
+          }
+        }
+
+      val needClientAuth = config.getBoolean("need-client-auth")
+
+      implicit val serverEngineProvider = ServerSSLEngineProvider { engine =>
+        engine.setNeedClientAuth(needClientAuth)
+        engine
+      }
+
+      IO(Http) ! Http.Bind(serviceRef, interface, port, settings = Option(settings))
+
+    } else if (bindService) IO(Http) ! Http.Bind(serviceRef, interface, port) // Non-SSL
+
     context.watch(registrarRef)
     context.watch(serviceRef)
   }
@@ -96,10 +130,17 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
     unregister(prefix + contextsName + listenerName)
   }
 
-  //private var registry = Map.empty[String, Register]
+  private def updateRegistry(register: Register)(current: Map[String, Registry]): Map[String, Registry] = {
+    import register._
+    val registry = current(listenerName)
+    if (registry contains routeDef.webContext)
+      log.warning(s"""Web context "${routeDef.webContext}" already registered. Overriding!""")
+    val tmpRegistry = registry + (routeDef.webContext -> register)
+    current + (listenerName -> tmpRegistry)
+  }
 
   // CalculateRoute MUST return a function and not a value
-  private def calculateRoute(tmpRegistry: Registry) = {
+  private def calculateRoute(tmpRegistry: Registry)(current: Route) = {
     Try(tmpRegistry.map {
       case (webContext, Register(_, _, _, routeDef)) => pathPrefix(webContext) {
         routeDef.route
@@ -114,21 +155,22 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
   }
 
   def receive = {
-    case r @ Register(symName, alias, version, routeDef) =>
-      val localRegistry = registry()(listenerName)
-      if (localRegistry contains routeDef.webContext)
-        log.warning(s"""Web context "${routeDef.webContext}" already registered. Overriding!""")
-      val tmpRegistry = localRegistry + (routeDef.webContext -> r)
-
-      // This line is the problem. Don't pre-calculate.
-      route send calculateRoute(tmpRegistry)
-      registry send { _ + (listenerName -> tmpRegistry) }
-      log.info(s"""Web context "${routeDef.webContext}" (${routeDef.getClass.getName}) registered.""")
+    case r: Register =>
+      val ackFuture =
+        for {
+          reg      <- registry alter { updateRegistry(r)(_) }
+          newRoute <- route    alter { calculateRoute(reg(listenerName))(_) }
+        } yield Ack
+      ackFuture pipeTo sender()
+      log.info(s"""Web context "${r.routeDef.webContext}" (${r.routeDef.getClass.getName}) registered.""")
 
     case Unregister(webContext) =>
-      val tmpRegistry = registry()(listenerName) - webContext
-      route send calculateRoute(tmpRegistry)
-      registry send { _ + (listenerName -> tmpRegistry) }
+      val ackFuture =
+        for {
+          reg      <- registry alter { r => val newR = r(listenerName) - webContext ; r + (listenerName -> newR) }
+          newRoute <- route    alter { calculateRoute(reg(listenerName))(_) }
+        } yield Ack
+      ackFuture pipeTo sender()
       log.info(s"Web service route $webContext unregistered.")
 
     case RoutesStarted => // Got all the service registrations for now.
@@ -139,7 +181,8 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
 /**
  * The main service actor.
  */
-private[unicomplex] class WebSvcActor(listenerName: String, route: Agent[Route]) extends Actor with HttpService {
+private[unicomplex] class WebSvcActor(listenerName: String, route: Agent[Route])
+    extends Actor with HttpService with ActorLogging {
 
   val serviceRegistry = Unicomplex.serviceRegistry
   import serviceRegistry._
@@ -148,14 +191,18 @@ private[unicomplex] class WebSvcActor(listenerName: String, route: Agent[Route])
   // connects the services environment to the enclosing actor or test
   def actorRefFactory = context
 
-  // All RouteDefinitions should use this context.
-  serviceActorContext send { _ + (listenerName -> context) }
 
   def receive = {
     // Notify the real sender for completion, but in lue of the parent
     case ref: ActorRef =>
-      ref.tell(Ack, context.parent)
-      context.become(wsReceive)
+      // All RouteDefinitions should use this context.
+      serviceActorContext alter { _ + (listenerName -> context) } pipeTo self
+      context.become {
+        case m: Map[_, _] =>
+          log.debug(s"Updated serviceActorContext for listener $listenerName.")
+          ref.tell(Ack, context.parent)
+          context.become(wsReceive)
+      }
   }
 
   // this actor only runs our route, but you could add
