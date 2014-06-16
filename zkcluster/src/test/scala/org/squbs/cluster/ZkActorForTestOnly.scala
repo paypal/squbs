@@ -44,7 +44,7 @@ class ZkActorForTestOnly extends Actor {
     else {
       Files.write(id, new File(dataDir, "myid"), Charsets.UTF_8)
 
-      val cfg = zoo(members, dataDir.getAbsolutePath, txlogDir.getAbsolutePath, port = port)
+      val cfg = zoo(members, dataDir.getAbsolutePath.replaceAll("\\\\","/"), txlogDir.getAbsolutePath.replaceAll("\\\\","/"), port = port)
       log.warn("[zk] zoo.cfg:{}", cfg)
       Files.write(cfg, new File(outputDir, "zoo.cfg"), Charsets.UTF_8)
 
