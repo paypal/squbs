@@ -311,8 +311,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
     case ZkRemovePartition(partitionKey) =>
       safelyDiscard(partitionZkPath(partitionKey))
-      safelyDiscard(sizeOfParZkPath(partitionKey))
-      sender() ! ZkPartition(partitionKey, Seq.empty, partitionZkPath(partitionKey), None)
+      notifyOnDifference.foreach { listener => context.actorSelection(listener) ! ZkPartitionRemoval(partitionKey)}
 
     case ZkMonitorPartition(onDifference) =>
       log.debug("[partitions] monitor partitioning from:{}", sender().path)
