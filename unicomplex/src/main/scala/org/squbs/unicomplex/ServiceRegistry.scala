@@ -35,7 +35,7 @@ class ServiceRegistry(system: ActorSystem) {
   private[unicomplex] def startWebService(name: String, config: Config, notifySender: ActorRef)
                                          (implicit context: ActorContext) = {
 
-    val route = Agent[Route](null) // Route for registrar and service pair
+    val route = Agent[Route]( path(Neutral) { reject } ) // Route for registrar and service pair
     val registrarRef = context.actorOf(Props(classOf[Registrar], name, route), name + "-registrar")
     registrar send { _ + (name -> registrarRef) }
     registry send { _ + (name -> Map.empty) }
