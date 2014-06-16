@@ -14,7 +14,7 @@ import com.typesafe.config._
 import org.squbs.lifecycle.ExtensionLifecycle
 import ConfigUtil._
 import scala.collection.concurrent.TrieMap
-import scala.util.{Try, Success, Failure}
+import scala.util.{Success, Failure}
 import scala.collection.mutable
 
 object UnicomplexBoot {
@@ -497,31 +497,15 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
     extensions foreach { case (jarName, jarVersion, extLifecycle) => extLifecycle.postInit(jarConfigs) }
 
     {
+      // Tell Unicomplex we're done.
       implicit val timeout = Timeout(60 seconds)
-      Await.ready(Unicomplex(actorSystem).uniActor ? Activate, timeout.duration) // Tell Unicomplex we're done.
-    }
-
-
-    // Make sure we wait for Unicomplex to be started properly before completing the start.
-    implicit val timeout = Timeout(1.seconds)
-
-    var state: LifecycleState = Starting
-    var retries = 0
-
-    while (state != Active && state != Failed && retries < 100) {
-      val stateFuture = (Unicomplex(actorSystem).uniActor ? SystemState).mapTo[LifecycleState]
-      state = Try(Await.result(stateFuture, timeout.duration)) getOrElse Starting
-      if (state != Active && state != Failed) {
-        Thread.sleep(1000)
-        retries += 1
+      val stateFuture = Unicomplex(actorSystem).uniActor ? Activate
+      Await.ready(stateFuture, timeout.duration)
+      stateFuture.value.get.get match {
+        case Failed => println("WARN: Unicomplex initialization failed.")
+        case _ =>
       }
     }
-
-    if (state != Active && state != Failed) throw new InstantiationException(
-      s"Unicomplex not entering 'Active' or 'Failed' state. Stuck at '$state' state. Timing out.")
-    if (state == Failed)
-      println("WARN: Unicomplex initialization: Some cubes failed to initialize")
-
 
     copy(config = actorSystem.settings.config, actors = actors, services = services, extensions = extensions,
       started = true)

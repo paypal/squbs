@@ -341,7 +341,14 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       case None => Initializing
       case Some(reports) => reports.state
     }
-    if ((states exists (_ == Failed)) || (serviceListeners.values exists (_ == None))) Failed
+    if (states exists (_ == Failed)) {
+      if (systemState != Failed) log.warning("Some cubes failed to initialize. Marking system state as Failed")
+      Failed
+    }
+    else if (serviceListeners.values exists (_ == None)) {
+      if (systemState != Failed) log.warning("Some listeners failed to initialize. Marking system state as Failed")
+      Failed
+    }
     else if (states exists (_ == Initializing)) Initializing
     else if (pendingServiceStarts) Initializing
     else if (!activated) Initializing // Waiting for boot to activate
