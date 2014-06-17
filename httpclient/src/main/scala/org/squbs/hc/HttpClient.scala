@@ -6,14 +6,9 @@ import spray.client.pipelining._
 import spray.httpx.unmarshalling._
 import spray.httpx.marshalling.Marshaller
 import scala.util.Try
-import spray.http._
 import scala.concurrent._
 import scala.annotation.tailrec
 import org.squbs.hc.pipeline.{PipelineDefinition, PipelineManager}
-import spray.can.Http
-import akka.io.IO
-import akka.pattern.ask
-import akka.util.Timeout
 import spray.http.HttpRequest
 import scala.util.Failure
 import scala.Some
@@ -43,34 +38,11 @@ case class HttpClient(name: String, endpoint: String, config: Option[Configurati
     status = HttpClientStatus.DOWN
   }
 
-//  def pipeline = {
-//    implicit val connectionTimeout: Timeout = Timeout(config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis)
-//    import ExecutionContext.Implicits.global
-//    for (
-//      Http.HostConnectorInfo(connector, _) <-
-//      IO(Http) ? hostConnectorSetup
-//    ) yield sendReceive(connector)
-//  }
-//
-//  protected def hostConnectorSetup = {
-//    val uri = Uri(endpoint)
-//    val host = uri.authority.host.toString
-//    val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
-//    val isSecure = uri.scheme.toLowerCase.equals("https")
-//    val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
-//    config map {configuration =>
-//      defaultHostConnectorSetup.copy(settings = configuration.hostConfig.hostSettings, connectionType = configuration.hostConfig.connectionType)
-//    } match {
-//      case None => defaultHostConnectorSetup
-//      case Some(hostConnectorSetup) => hostConnectorSetup
-//    }
-//  }
-
   protected def handle(pipeline: Try[HttpRequest => Future[HttpResponseWrapper]], httpRequest: HttpRequest): Future[HttpResponseWrapper] = {
     pipeline match {
       case Success(res) => retry(res, httpRequest)
       case Failure(t @ ServiceMarkDownException(_, _, _)) => future{HttpResponseWrapper(HttpClientException.serviceMarkDownError, Left(t))}
-      case Failure(t) => println("SSSSSSSSSSSSSSSSS=" + t.getMessage); future{HttpResponseWrapper(999, Left(t))}
+      case Failure(t) => future{HttpResponseWrapper(999, Left(t))}
     }
   }
 
@@ -78,7 +50,7 @@ case class HttpClient(name: String, endpoint: String, config: Option[Configurati
     pipeline match {
       case Success(res) => retry(res, httpRequest)
       case Failure(t @ ServiceMarkDownException(_, _, _)) => future{HttpResponseEntityWrapper(HttpClientException.serviceMarkDownError, Left(t), None)}
-      case Failure(t) => println("SSSSSSSSSSSSSSSSS=" + t.getMessage);future{HttpResponseEntityWrapper(999, Left(t), None)}
+      case Failure(t) => future{HttpResponseEntityWrapper(999, Left(t), None)}
     }
   }
 
