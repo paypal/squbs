@@ -1,0 +1,14 @@
+.cache
+ebay.log
+temp_*.xml
+perfmonMetric.txt
+/.idea
+/.idea_modules
+/bin
+/target
+/project/project
+/project/target
+/higgins
+/squbsconfig
+/fullDistro
+/src/main/resources/application.conf

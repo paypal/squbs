@@ -1,0 +1,80 @@
+package org.squbs.hc.jmx
+
+import java.beans.ConstructorProperties
+import scala.beans.BeanProperty
+import javax.management.{ObjectName, MXBean}
+import java.lang.management.ManagementFactory
+import org.squbs.hc.routing.RoutingRegistry
+import org.squbs.hc.pipeline.EmptyPipelineDefinition
+import org.squbs.hc.config.ServiceConfiguration
+import org.squbs.hc.config.Configuration
+import org.squbs.hc.config.HostConfiguration
+import org.squbs.hc.HttpClient
+import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
+
+/**
+ * Created by hakuang on 6/9/2014.
+ */
+// TODO JMXUtil need to replace by squbs JMX
+object JMX {
+
+  val HTTPCLIENTNFO = "org.squbs.unicomplex:type=HttpClient"
+
+  implicit def string2objectName(name: String):ObjectName = new ObjectName(name)
+
+  def register(ob: AnyRef, objName: ObjectName) = ManagementFactory.getPlatformMBeanServer.registerMBean(ob, objName)
+
+  def unregister(objName: ObjectName) = ManagementFactory.getPlatformMBeanServer.unregisterMBean(objName)
+
+  def isRegistered(objName: ObjectName) = ManagementFactory.getPlatformMBeanServer.isRegistered(objName)
+
+  def get(objName: ObjectName, attr: String) = ManagementFactory.getPlatformMBeanServer.getAttribute(objName, attr)
+}
+
+case class HttpClientInfo @ConstructorProperties(
+  Array("serviceName", "endpoint", "status", "maxRetryCount", "serviceTimeout", "connectionTimeout", "connectionType", "requestPipeline", "responsePipeline"))(
+     @BeanProperty serviceName: String,
+     @BeanProperty endpoint: String,
+     @BeanProperty status: String,
+     @BeanProperty maxRetryCount: Int,
+     @BeanProperty serviceTimeout: Long,
+     @BeanProperty connectionTimeout: Long,
+     @BeanProperty connectionType: String,
+     @BeanProperty requestPipeline: String,
+     @BeanProperty responsePipeline: String)
+
+@MXBean
+trait HttpClientMXBean {
+  def getInfo: java.util.List[HttpClientInfo]
+}
+
+object HttpClientBean extends HttpClientMXBean {
+
+  import scala.collection.JavaConversions._
+
+  override def getInfo: java.util.List[HttpClientInfo] = {
+    val httpClients = HttpClient.get
+    httpClients.values.toList map {mapToHttpClientInfo(_)}
+  }
+
+  def mapToHttpClientInfo(httpClient: HttpClient) = {
+    val name = httpClient.name
+    val endpoint = RoutingRegistry.resolve(name).getOrElse("")
+    val status = httpClient.status.toString
+    val config = httpClient.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration()))
+    val svcConfig = config.svcConfig
+    val hostConfig = config.hostConfig
+    val pipelines = httpClient.pipelineDefinition.getOrElse(EmptyPipelineDefinition)
+    val requestPipelines = pipelines.requestPipelines.map(_.getClass.getName).foldLeft[String]("")((result, each) => if (result == "") each else result + "=>" + each)
+    val responsePipelines = pipelines.responsePipelines.map(_.getClass.getName).foldLeft[String]("")((result, each) => if (result == "") each else result + "=>" + each)
+    val connectionType = hostConfig.connectionType match {
+      case Direct => "Direct"
+      case AutoProxied => "AutoProxied"
+      case Proxied(host, port) => s"$host:$port"
+    }
+    HttpClientInfo(name, endpoint, status, svcConfig.maxRetryCount, svcConfig.serviceTimeout.toMillis, svcConfig.connectionTimeout.toMillis, connectionType, requestPipelines, responsePipelines)
+  }
+}
+
+
+
