@@ -299,18 +299,19 @@ object UnicomplexBoot {
   def findListeners(config: Config, services: Seq[InitInfo]) = {
     val demandedListeners =
     for {
-      svc <- services
-      routes <- svc.entries
+      svc            <- services
+      routes         <- svc.entries
       routeListeners <- routes getOptionalStringList "listeners" getOrElse Seq("default-listener")
+                        if routeListeners != "*" // Filter out wildcard listener bindings, not starting those.
     } yield {
       routeListeners
     }
     val listeners = configuredListeners(config)
     val aliases = findListenerAliases(listeners)
-    val activeAliases = aliases filter { case (n, _) => demandedListeners exists (_ == n) }
+    val activeAliases = aliases filter { case (n, _) => demandedListeners contains n }
     val missingAliases = demandedListeners filterNot { l => activeAliases exists { case (n, _) => n == l } }
     val activeListenerNames = activeAliases.values
-    val activeListeners = listeners filter { case (n, c) => activeListenerNames.exists(_ == n)}
+    val activeListeners = listeners filter { case (n, c) => activeListenerNames exists (_ == n) }
     (activeAliases, activeListeners, missingAliases)
   }
 
@@ -336,14 +337,20 @@ object UnicomplexBoot {
         val clazz = Class.forName(routeConfig.getString("class-name"), true, getClass.getClassLoader)
         val routeClass = clazz.asSubclass(classOf[RouteDefinition])
         val listeners = routeConfig.getOptionalStringList("listeners").fold(Seq("default-listener"))({ list =>
-          val listenerMapping = list map (entry => (entry, aliases get entry))
+
+          val listenerMapping = list collect {
+            case entry if entry != "*" => (entry, aliases get entry)
+          }
+
           listenerMapping foreach {
             // Make sure we report any missing listeners
             case (entry, None) =>
               System.err.println(s"WARN: Listener $entry required by $symName is not configured. Ignoring.")
             case _ =>
           }
-          listenerMapping collect { case (entry, Some(listener)) => listener }
+
+          if (list contains "*") aliases.values.toSeq.distinct
+          else listenerMapping collect { case (entry, Some(listener)) => listener }
         })
 
         implicit val timeout = Timeout(1 second)

@@ -35,7 +35,7 @@ class ServiceRegistry(system: ActorSystem) {
   private[unicomplex] def startWebService(name: String, config: Config, notifySender: ActorRef)
                                          (implicit context: ActorContext) = {
 
-    val route = Agent[Route](null) // Route for registrar and service pair
+    val route = Agent[Route]( path(Neutral) { reject } ) // Route for registrar and service pair
     val registrarRef = context.actorOf(Props(classOf[Registrar], name, route), name + "-registrar")
     registrar send { _ + (name -> registrarRef) }
     registry send { _ + (name -> Map.empty) }
@@ -141,17 +141,14 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
 
   // CalculateRoute MUST return a function and not a value
   private def calculateRoute(tmpRegistry: Registry)(current: Route) = {
-    Try(tmpRegistry.map {
-      case (webContext, Register(_, _, _, routeDef)) => pathPrefix(webContext) {
-        routeDef.route
-      }
-    }.reduceLeft(_ ~ _)).getOrElse(path(Slash) {
-      get {
-        complete {
-          "Default Route"
+    Try(
+      tmpRegistry map {
+        case (webContext, Register(_, _, _, routeDef)) => pathPrefix(webContext) {
+          routeDef.route
         }
-      }
-    })
+      } reduceLeft (_ ~ _)) getOrElse path(Neutral) {
+      reject
+    }
   }
 
   def receive = {
