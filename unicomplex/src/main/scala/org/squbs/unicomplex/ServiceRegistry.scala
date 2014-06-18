@@ -141,17 +141,14 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
 
   // CalculateRoute MUST return a function and not a value
   private def calculateRoute(tmpRegistry: Registry)(current: Route) = {
-    Try(tmpRegistry.map {
-      case (webContext, Register(_, _, _, routeDef)) => pathPrefix(webContext) {
-        routeDef.route
-      }
-    }.reduceLeft(_ ~ _)).getOrElse(path(Slash) {
-      get {
-        complete {
-          "Default Route"
+    Try(
+      tmpRegistry map {
+        case (webContext, Register(_, _, _, routeDef)) => pathPrefix(webContext) {
+          routeDef.route
         }
-      }
-    })
+      } reduceLeft (_ ~ _)) getOrElse path(Neutral) {
+      reject
+    }
   }
 
   def receive = {
