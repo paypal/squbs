@@ -15,22 +15,6 @@ import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
 /**
  * Created by hakuang on 6/9/2014.
  */
-// TODO JMXUtil need to replace by squbs JMX
-object JMX {
-
-  val HTTPCLIENTNFO = "org.squbs.unicomplex:type=HttpClient"
-
-  implicit def string2objectName(name: String):ObjectName = new ObjectName(name)
-
-  def register(ob: AnyRef, objName: ObjectName) = ManagementFactory.getPlatformMBeanServer.registerMBean(ob, objName)
-
-  def unregister(objName: ObjectName) = ManagementFactory.getPlatformMBeanServer.unregisterMBean(objName)
-
-  def isRegistered(objName: ObjectName) = ManagementFactory.getPlatformMBeanServer.isRegistered(objName)
-
-  def get(objName: ObjectName, attr: String) = ManagementFactory.getPlatformMBeanServer.getAttribute(objName, attr)
-}
-
 case class HttpClientInfo @ConstructorProperties(
   Array("serviceName", "endpoint", "status", "maxRetryCount", "serviceTimeout", "connectionTimeout", "connectionType", "requestPipeline", "responsePipeline"))(
      @BeanProperty serviceName: String,
@@ -49,6 +33,8 @@ trait HttpClientMXBean {
 }
 
 object HttpClientBean extends HttpClientMXBean {
+
+  val HTTPCLIENTNFO = "org.squbs.unicomplex:type=HttpClient"
 
   import scala.collection.JavaConversions._
 

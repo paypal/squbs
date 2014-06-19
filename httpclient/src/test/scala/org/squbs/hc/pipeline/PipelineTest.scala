@@ -25,6 +25,7 @@ class PipelineTest extends FlatSpec with Matchers with BeforeAndAfterAll{
 
   override def beforeAll() {
     HttpClient.clear
+    RoutingRegistry.clear
     RoutingRegistry.register(new GoogleRoutingDefinition())
   }
 

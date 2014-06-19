@@ -31,6 +31,7 @@ class HttpClientTest extends FlatSpec with Matchers with BeforeAndAfterAll with 
 
   override def beforeAll() {
     HttpClient.clear
+    RoutingRegistry.clear
     RoutingRegistry.register(new GoogleRoutingDefinition())
     RoutingRegistry.register(new GoogleRoutingDefinitionMarkdown())
     RoutingRegistry.register(new GoogleRoutingHTTPSDefinition())

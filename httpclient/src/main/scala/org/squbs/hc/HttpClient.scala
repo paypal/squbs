@@ -15,18 +15,122 @@ import scala.Some
 import org.squbs.hc.config.{HostConfiguration, ServiceConfiguration, Configuration}
 import scala.util.Success
 import scala.collection.concurrent.TrieMap
-import org.squbs.hc.jmx.{HttpClientBean, JMX}
-import org.squbs.hc.jmx.JMX._
+import scala.concurrent.duration.Duration
+import org.squbs.unicomplex.JMX
+import org.squbs.unicomplex.JMX._
+import org.squbs.hc.jmx.HttpClientBean
 
 /**
  * Created by hakuang on 5/9/14.
  */
-
-case class HttpClient(name: String, endpoint: String, config: Option[Configuration] = None, pipelineDefinition: Option[PipelineDefinition] = None)(implicit system: ActorSystem) {
+trait HttpCallSupport extends RetrySupport {
 
   import ExecutionContext.Implicits.global
 
+  def httpClientInstance: HttpClient
+
+  def handle(pipeline: Try[HttpRequest => Future[HttpResponseWrapper]], httpRequest: HttpRequest): Future[HttpResponseWrapper] = {
+    val maxRetryCount = httpClientInstance.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.maxRetryCount
+    val serviceTimeout = httpClientInstance.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
+    pipeline match {
+      case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
+      case Failure(t @ ServiceMarkDownException(_, _, _)) => future{HttpResponseWrapper(HttpClientException.serviceMarkDownError, Left(t))}
+      case Failure(t) => future{HttpResponseWrapper(999, Left(t))}
+    }
+  }
+
+  def get(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+    handle(PipelineManager.invokeToHttpResponse(httpClientInstance), Get(httpClientInstance.endpoint + uri))
+  }
+
+  def post[T: Marshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+    handle(PipelineManager.invokeToHttpResponse(httpClientInstance), Post(httpClientInstance.endpoint + uri, content))
+  }
+
+  def put[T: Marshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+    handle(PipelineManager.invokeToHttpResponse(httpClientInstance), Put(httpClientInstance.endpoint + uri, content))
+  }
+
+  def head(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+    handle(PipelineManager.invokeToHttpResponse(httpClientInstance), Head(httpClientInstance.endpoint + uri))
+  }
+
+  def delete(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+    handle(PipelineManager.invokeToHttpResponse(httpClientInstance), Delete(httpClientInstance.endpoint + uri))
+  }
+
+  def options(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+    handle(PipelineManager.invokeToHttpResponse(httpClientInstance), Options(httpClientInstance.endpoint + uri))
+  }
+
+}
+
+trait HttpEntityCallSupport extends RetrySupport {
+
+  import ExecutionContext.Implicits.global
+
+  def httpClientInstance: HttpClient
+
+  def handleEntity[T: FromResponseUnmarshaller](pipeline: Try[HttpRequest => Future[HttpResponseEntityWrapper[T]]], httpRequest: HttpRequest): Future[HttpResponseEntityWrapper[T]] = {
+    val maxRetryCount = httpClientInstance.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.maxRetryCount
+    val serviceTimeout = httpClientInstance.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
+    pipeline match {
+      case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
+      case Failure(t @ ServiceMarkDownException(_, _, _)) => future{HttpResponseEntityWrapper(HttpClientException.serviceMarkDownError, Left(t), None)}
+      case Failure(t) => future{HttpResponseEntityWrapper(999, Left(t), None)}
+    }
+  }
+
+  def getEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
+    handleEntity[R](PipelineManager.invokeToEntity[R](httpClientInstance), Get(httpClientInstance.endpoint + uri))
+  }
+
+  def postEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
+    handleEntity[R](PipelineManager.invokeToEntity[R](httpClientInstance), Post(httpClientInstance.endpoint + uri, content))
+  }
+
+  def putEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
+    handleEntity[R](PipelineManager.invokeToEntity[R](httpClientInstance), Put(httpClientInstance.endpoint + uri, content))
+  }
+
+  def headEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
+    handleEntity[R](PipelineManager.invokeToEntity[R](httpClientInstance), Head(httpClientInstance.endpoint + uri))
+  }
+
+  def deleteEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
+    handleEntity[R](PipelineManager.invokeToEntity[R](httpClientInstance), Delete(httpClientInstance.endpoint + uri))
+  }
+
+  def optionsEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
+    handleEntity[R](PipelineManager.invokeToEntity[R](httpClientInstance), Options(httpClientInstance.endpoint + uri))
+  }
+}
+
+trait RetrySupport {
+  def retry[T](pipeline: HttpRequest => Future[T], httpRequest: HttpRequest, maxRetryCount: Int, serviceTimeout: Duration): Future[T] = {
+
+    @tailrec
+    def doRetry(times: Int): Future[T] = {
+      val work = pipeline{httpRequest}
+      Try{Await.result(work, serviceTimeout)} match {
+        case Success(s) => work
+        case Failure(throwable) if times == 0 => work
+        case Failure(throwable) =>
+          println("Retry service [uri=" + httpRequest.uri.toString() + "] @ " + (maxRetryCount - times + 1) + " times")
+          doRetry(times - 1)
+      }
+    }
+    doRetry(maxRetryCount)
+  }
+}
+
+trait HttpClientSupport extends HttpCallSupport with HttpEntityCallSupport
+
+case class HttpClient(name: String, endpoint: String, config: Option[Configuration] = None, pipelineDefinition: Option[PipelineDefinition] = None) extends HttpClientSupport{
+
   require(endpoint.toLowerCase.startsWith("http://") || endpoint.toLowerCase.startsWith("https://"), "endpoint should be start with http:// or https://")
+
+  def httpClientInstance = this
 
   var status = HttpClientStatus.UP
 
@@ -38,87 +142,6 @@ case class HttpClient(name: String, endpoint: String, config: Option[Configurati
     status = HttpClientStatus.DOWN
   }
 
-  protected def handle(pipeline: Try[HttpRequest => Future[HttpResponseWrapper]], httpRequest: HttpRequest): Future[HttpResponseWrapper] = {
-    pipeline match {
-      case Success(res) => retry(res, httpRequest)
-      case Failure(t @ ServiceMarkDownException(_, _, _)) => future{HttpResponseWrapper(HttpClientException.serviceMarkDownError, Left(t))}
-      case Failure(t) => future{HttpResponseWrapper(999, Left(t))}
-    }
-  }
-
-  protected def handleEntity[T: FromResponseUnmarshaller](pipeline: Try[HttpRequest => Future[HttpResponseEntityWrapper[T]]], httpRequest: HttpRequest): Future[HttpResponseEntityWrapper[T]] = {
-    pipeline match {
-      case Success(res) => retry(res, httpRequest)
-      case Failure(t @ ServiceMarkDownException(_, _, _)) => future{HttpResponseEntityWrapper(HttpClientException.serviceMarkDownError, Left(t), None)}
-      case Failure(t) => future{HttpResponseEntityWrapper(999, Left(t), None)}
-    }
-  }
-
-  protected def retry[T](pipeline: HttpRequest => Future[T], httpRequest: HttpRequest): Future[T] = {
-
-    val maxRetryCount = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.maxRetryCount
-
-    @tailrec
-    def doRetry(times: Int): Future[T] = {
-      val work = pipeline{httpRequest}
-      Try{Await.result(work, config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout)} match {
-        case Success(s) => work
-        case Failure(throwable) if times == 0 => work
-        case Failure(throwable) =>
-          println("Retry service [uri=" + httpRequest.uri.toString() + "] @ " + (maxRetryCount - times + 1) + " times")
-          doRetry(times - 1)
-      }
-    }
-    doRetry(maxRetryCount)
-  }
-
-  def get(uri: String): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(this), Get(endpoint + uri))
-  }
-
-  def post[T: Marshaller](uri: String, content: Some[T]): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(this), Post(endpoint + uri, content))
-  }
-
-  def put[T: Marshaller](uri: String, content: Some[T]): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(this), Put(endpoint + uri, content))
-  }
-
-  def head(uri: String): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(this), Head(endpoint + uri))
-  }
-
-  def delete(uri: String): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(this), Delete(endpoint + uri))
-  }
-
-  def options(uri: String): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(this), Options(endpoint + uri))
-  }
-
-  def getEntity[R: FromResponseUnmarshaller](uri: String): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](this), Get(endpoint + uri))
-  }
-
-  def postEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T]): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](this), Post(endpoint + uri, content))
-  }
-
-  def putEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T]): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](this), Put(endpoint + uri, content))
-  }
-
-  def headEntity[R: FromResponseUnmarshaller](uri: String): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](this), Head(endpoint + uri))
-  }
-
-  def deleteEntity[R: FromResponseUnmarshaller](uri: String): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](this), Delete(endpoint + uri))
-  }
-
-  def optionsEntity[R: FromResponseUnmarshaller](uri: String): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](this), Options(endpoint + uri))
-  }
 }
 
 object HttpClientStatus extends Enumeration {
@@ -130,21 +153,21 @@ object HttpClient {
 
   private val httpClientMap: TrieMap[String, HttpClient] = TrieMap[String, HttpClient]()
 
-  if (!JMX.isRegistered(JMX.HTTPCLIENTNFO)) JMX.register(HttpClientBean, JMX.HTTPCLIENTNFO)
+  if (!JMX.isRegistered(HttpClientBean.HTTPCLIENTNFO)) JMX.register(HttpClientBean, HttpClientBean.HTTPCLIENTNFO)
 
-  def create(svcName: String)(implicit system:ActorSystem): HttpClient = {
+  def create(svcName: String): HttpClient = {
     create(svcName, env = None)
   }
 
-  def create(svcName: String, env: String)(implicit system:ActorSystem): HttpClient = {
+  def create(svcName: String, env: String): HttpClient = {
     create(svcName, env = Some(env))
   }
 
-  def create(svcName: String, config: Configuration)(implicit system:ActorSystem): HttpClient = {
+  def create(svcName: String, config: Configuration): HttpClient = {
     create(svcName, config = Some(config))
   }
 
-  def create(svcName: String, env: Option[String] = None, config: Option[Configuration] = None, pipeline: Option[PipelineDefinition] = None)(implicit system:ActorSystem): HttpClient = {
+  def create(svcName: String, env: Option[String] = None, config: Option[Configuration] = None, pipeline: Option[PipelineDefinition] = None): HttpClient = {
     httpClientMap.getOrElseUpdate(svcName, {
       val endpoint = RoutingRegistry.resolve(svcName, env).getOrElse("")
       HttpClient(svcName, endpoint, config, pipeline)

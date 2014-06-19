@@ -1,13 +1,14 @@
 package org.squbs.hc.pipeline
 
-import spray.httpx.{UnsuccessfulResponseException, PipelineException}
+import spray.httpx.{UnsuccessfulResponseException, PipelineException, RequestBuilding}
 import spray.client.pipelining._
 import akka.actor.ActorSystem
+import spray.client.pipelining
 import spray.httpx.unmarshalling._
 import scala.concurrent.{ExecutionContext, Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.squbs.hc._
-import spray.http.{Uri, HttpRequest, HttpResponse}
+import spray.http.{Uri, StatusCodes, HttpRequest, HttpResponse}
 import org.squbs.hc.HttpResponseEntityWrapper
 import scala.util.Try
 import akka.pattern._
