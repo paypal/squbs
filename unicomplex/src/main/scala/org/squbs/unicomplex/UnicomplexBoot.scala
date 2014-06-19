@@ -162,18 +162,18 @@ object UnicomplexBoot {
 
     val actors = config.getOptionalConfigList("squbs-actors")
     actors foreach { a =>
-      if (!a.isEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, a, StartupType.ACTORS)
+      if (a.nonEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, a, StartupType.ACTORS)
     }
 
     val routeDefs = config.getOptionalConfigList("squbs-services")
     routeDefs foreach { d =>
-      if (!d.isEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, d, StartupType.SERVICES)
+      if (d.nonEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, d, StartupType.SERVICES)
     }
 
     val extensions = config.getOptionalConfigList("squbs-extensions")
     
     extensions foreach { e =>
-      if (!e.isEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, e, StartupType.EXTENSIONS)
+      if (e.nonEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, e, StartupType.EXTENSIONS)
     }
 
     initList.toSeq
@@ -476,7 +476,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
       else Seq.empty
 
     // Notify Unicomplex that services will be started.
-    if (!servicesToStart.isEmpty) uniActor ! PreStartWebService
+    if (servicesToStart.nonEmpty) uniActor ! PreStartWebService
 
     // Signal started to Unicomplex.
     uniActor ! Started
@@ -486,7 +486,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     // Start the service infrastructure if services are enabled and registered.
     val services =
-      if (!servicesToStart.isEmpty) {
+      if (servicesToStart.nonEmpty && listeners.nonEmpty) {
         startServiceInfra(servicesToStart, this)
 
         // Start all service routes
@@ -519,7 +519,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
   }
 
   def registerExtensionShutdown(actorSystem: ActorSystem) {
-    if (!extensions.isEmpty) {
+    if (extensions.nonEmpty) {
       actorSystem.registerOnTermination {
         // Run the shutdown in a different thread, not in the ActorSystem's onTermination thread.
         import scala.concurrent.Future
