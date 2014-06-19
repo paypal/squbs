@@ -14,7 +14,7 @@ import com.typesafe.config._
 import org.squbs.lifecycle.ExtensionLifecycle
 import ConfigUtil._
 import scala.collection.concurrent.TrieMap
-import scala.util.{Success, Failure}
+import scala.util.{Try, Success, Failure}
 import scala.collection.mutable
 
 object UnicomplexBoot {
@@ -507,10 +507,9 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
       // Tell Unicomplex we're done.
       implicit val timeout = Timeout(60 seconds)
       val stateFuture = Unicomplex(actorSystem).uniActor ? Activate
-      Await.ready(stateFuture, timeout.duration)
-      stateFuture.value.get.get match {
-        case Failed => println("WARN: Unicomplex initialization failed.")
-        case _ =>
+      Try(Await.result(stateFuture, timeout.duration)) match {
+        case Success(Active) => println(s"[$actorSystemName] activated")
+        case _ => println(s"WARN:[$actorSystemName] initialization failed.")
       }
     }
 

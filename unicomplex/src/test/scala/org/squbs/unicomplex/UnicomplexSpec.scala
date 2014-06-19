@@ -12,6 +12,11 @@ import com.typesafe.config.ConfigFactory
 import scala.util.Failure
 import scala.util.Success
 import org.squbs.lifecycle.GracefulStop
+import spray.can.Http
+import akka.io.IO
+import spray.http._
+import spray.http.HttpRequest
+import spray.http.HttpResponse
 
 /**
  * Created by zhuwang on 2/21/14.
@@ -49,30 +54,11 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
   import UnicomplexSpec._
 
-  implicit val timeout: akka.util.Timeout = 2.seconds
+  implicit val timeout: akka.util.Timeout = 10 seconds
 
   val port = system.settings.config getInt "default-listener.bind-port"
 
   implicit val executionContext = system.dispatcher
-
-  override def beforeAll() {
-    def svcReady = Try {
-      Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").getLines()
-      Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").getLines()
-      Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").getLines()
-    } match {
-      case Success(_) => true
-      case Failure(e) => e.printStackTrace(); false
-    }
-
-    var retry = 5
-    while (!svcReady && retry > 0) {
-      Thread.sleep(2000)
-      retry -= 1
-    }
-
-    if (retry == 0) throw new Exception("Starting service timeout in 5s")
-  }
   
   override def afterAll() {
     Unicomplex(system).uniActor ! GracefulStop
@@ -116,18 +102,33 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
     "start all services" in {
       assert(boot.services.size == 2)
+      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvc/msg/hello")))
+      within(10 seconds) {
+        val response = expectMsgType[HttpResponse]
+        response.status should be(StatusCodes.OK)
+        response.entity.asString should be("^hello$")
+      }
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/ping")))
+      within(10 seconds) {
+        val response = expectMsgType[HttpResponse]
+        response.status should be(StatusCodes.OK)
+        response.entity.asString should be("Pong")
+      }
+
+      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/pong")))
+      within(10 seconds) {
+        val response = expectMsgType[HttpResponse]
+        response.status should be(StatusCodes.OK)
+        response.entity.asString should be("Ping")
+      }
     }
 
     "preInit, init and postInit all extenstions" in {
-      assert(boot.extensions.size == 2)
-
-      assert(boot.extensions.forall(_._3.isInstanceOf[DummyExtension]))
-      assert(boot.extensions(0)._3.asInstanceOf[DummyExtension].state == "AstartpreInitinitpostInit")
-      assert(boot.extensions(1)._3.asInstanceOf[DummyExtension].state == "BstartpreInitinitpostInit")
+      boot.extensions.size should be (2)
+      boot.extensions.forall(_._3.isInstanceOf[DummyExtension]) should be (true)
+      boot.extensions(0)._3.asInstanceOf[DummyExtension].state should be ("AstartpreInitinitpostInit")
+      boot.extensions(1)._3.asInstanceOf[DummyExtension].state should be ("BstartpreInitinitpostInit")
     }
   }
 }
