@@ -125,7 +125,6 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
 
     //watch over members changes
     val me = guarantee(s"/members/${keyToPath(zkAddress.toString)}", Some(Array[Byte]()), CreateMode.EPHEMERAL)
-    //zkClient.sync.forPath(me)
 
     lazy val members = zkClient.getChildren.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
@@ -138,7 +137,10 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
       }
     }).forPath("/members")
 
-    def refresh(members:Seq[String]) = zkClusterActor ! ZkMembersChanged(members.map(m => AddressFromURIString(pathToKey(m))).toSet)
+    def refresh(members:Seq[String]) = {
+      zkClusterActor ! ZkMembersChanged(members.map(m => AddressFromURIString(pathToKey(m))).toSet)
+      self ! ZkAcquireLeadership
+    }
 
     refresh(members)
 
@@ -171,7 +173,6 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
 
     case ZkAcquireLeadership =>
       //repeatedly enroll in the leadership competition once the last attempt fails
-      import scala.concurrent.ExecutionContext.Implicits.global
 
       val oneSecond = 1.second
       zkLeaderLatch.await(oneSecond.length, oneSecond.unit) match {
@@ -179,7 +180,6 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
           log.info("[membership] leadership acquired @ {}", zkAddress)
           guarantee("/leader", Some(zkAddress))
         case false =>
-          context.system.scheduler.scheduleOnce(100.millis, self, ZkAcquireLeadership)
       }
   }
 }
@@ -332,6 +332,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       safelyDiscard(s"$zkPath/${keyToPath(zkAddress.toString)}")
   }
 }
+
 
 /**
  * The main Actor of ZkCluster
