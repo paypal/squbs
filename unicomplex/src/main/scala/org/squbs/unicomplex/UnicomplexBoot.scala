@@ -469,7 +469,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
       else Seq.empty
 
     // Notify Unicomplex that services will be started.
-    if (servicesToStart.nonEmpty) uniActor ! PreStartWebService
+    if (servicesToStart.nonEmpty && listeners.nonEmpty) uniActor ! PreStartWebService
 
     // Signal started to Unicomplex.
     uniActor ! Started
