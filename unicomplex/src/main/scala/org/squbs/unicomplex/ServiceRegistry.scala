@@ -105,7 +105,7 @@ class ServiceRegistry(system: ActorSystem) {
 /**
  * The Registrar receives Register and Unregister messages.
  */
-private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) extends Actor with ActorLogging {
+private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) extends Actor with Stash with ActorLogging {
 
   val serviceRegistry = Unicomplex.serviceRegistry
   import serviceRegistry._
@@ -140,7 +140,7 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
   }
 
   // CalculateRoute MUST return a function and not a value
-  private def calculateRoute(tmpRegistry: Registry)(current: Route) = {
+  private def calculateRoute(tmpRegistry: Registry) = {
     Try(
       tmpRegistry map {
         case (webContext, Register(_, _, _, routeDef)) => pathPrefix(webContext) {
@@ -153,12 +153,22 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
 
   def receive = {
     case r: Register =>
-      val ackFuture =
-        for {
-          reg      <- registry alter { updateRegistry(r)(_) }
-          newRoute <- route    alter { calculateRoute(reg(listenerName))(_) }
-        } yield Ack
-      ackFuture pipeTo sender()
+      val ackTarget = sender()
+      registry alter { updateRegistry(r)(_) } pipeTo self
+      context.become ({
+        case reg: Map[_, _] =>
+          val newRoute = calculateRoute(reg.asInstanceOf[Map[String, Registry]](listenerName))
+          route alter newRoute pipeTo ackTarget
+          unstashAll()
+          context.unbecome()
+        case _ => stash()
+      }, discardOld = false)
+//      val ackFuture =
+//        for {
+//          reg      <- registry alter { updateRegistry(r)(_) }
+//          newRoute <- route    alter { calculateRoute(reg(listenerName))(_) }
+//        } yield Ack
+//      ackFuture pipeTo sender()
       log.info(s"""Web context "${r.routeDef.webContext}" (${r.routeDef.getClass.getName}) registered.""")
 
     case Unregister(webContext) =>
