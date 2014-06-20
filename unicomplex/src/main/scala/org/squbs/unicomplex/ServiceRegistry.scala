@@ -151,34 +151,31 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
     }
   }
 
+  private def alterRegistry (alterFn: (Map[String, Registry]) => Map[String, Registry])(message: String) {
+    val ackTarget = sender()
+    registry alter alterFn pipeTo self
+    context.become ({
+      case reg: Map[_, _] =>
+        val newRoute = calculateRoute(reg.asInstanceOf[Map[String, Registry]](listenerName))
+        route alter newRoute pipeTo ackTarget
+        log.info(message)
+        unstashAll()
+        context.unbecome()
+      case _ => stash()
+    }, discardOld = false)
+  }
+
   def receive = {
     case r: Register =>
-      val ackTarget = sender()
-      registry alter { updateRegistry(r)(_) } pipeTo self
-      context.become ({
-        case reg: Map[_, _] =>
-          val newRoute = calculateRoute(reg.asInstanceOf[Map[String, Registry]](listenerName))
-          route alter newRoute pipeTo ackTarget
-          unstashAll()
-          context.unbecome()
-        case _ => stash()
-      }, discardOld = false)
-//      val ackFuture =
-//        for {
-//          reg      <- registry alter { updateRegistry(r)(_) }
-//          newRoute <- route    alter { calculateRoute(reg(listenerName))(_) }
-//        } yield Ack
-//      ackFuture pipeTo sender()
-      log.info(s"""Web context "${r.routeDef.webContext}" (${r.routeDef.getClass.getName}) registered.""")
+      alterRegistry {
+        updateRegistry(r)(_)
+      } (s"""Web context "${r.routeDef.webContext}" (${r.routeDef.getClass.getName}) registered.""")
 
     case Unregister(webContext) =>
-      val ackFuture =
-        for {
-          reg      <- registry alter { r => val newR = r(listenerName) - webContext ; r + (listenerName -> newR) }
-          newRoute <- route    alter { calculateRoute(reg(listenerName))(_) }
-        } yield Ack
-      ackFuture pipeTo sender()
-      log.info(s"Web service route $webContext unregistered.")
+      alterRegistry { r =>
+        val newR = r(listenerName) - webContext
+        r + (listenerName -> newR)
+      } (s"Web service route $webContext unregistered.")
 
     case RoutesStarted => // Got all the service registrations for now.
       Unicomplex() ! RoutesStarted // Just send the message onto Unicomplex after processing all registrations.
