@@ -1,14 +1,16 @@
 package org.squbs.cluster
 
-import org.scalatest.{FlatSpecLike, BeforeAndAfterAll, Matchers}
-import scala.concurrent.duration._
 import java.io.File
-import com.google.common.io.Files
-import com.google.common.base.Charsets
-import akka.testkit.{TestKit, ImplicitSender}
+
+import akka.actor._
+import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.ByteString
-import akka.actor.{Props, Address, ActorSystem}
-import org.squbs.unicomplex.{Unicomplex, ConfigUtil}
+import com.google.common.base.Charsets
+import com.google.common.io.Files
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.squbs.unicomplex.{ConfigUtil, Unicomplex}
+
+import scala.concurrent.duration._
 
 /**
  * Created by huzhou on 5/12/14.
@@ -17,11 +19,12 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
   var preserve:Option[String] = None
   val conf = new File(Unicomplex(system).externalConfigDir, "zkcluster.conf")
+  var zk:ZkActorForTestOnly = null
 
   override def beforeAll = {
 
+    import scala.collection.JavaConversions._
     if(conf.exists){
-      import scala.collection.JavaConversions._
       preserve = Some(Files.readLines(conf, Charsets.UTF_8).mkString("\n"))
     }
     Files.createParentDirs(conf)
@@ -34,14 +37,31 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
           |}
         """.stripMargin, conf, Charsets.UTF_8)
 
-    system.actorOf(Props[ZkActorForTestOnly].withDispatcher("pinned-dispatcher"))
+    zk = new ZkActorForTestOnly(Unicomplex(system).externalConfigDir)
+    zk.startup(2181)
   }
 
   override def afterAll = {
 
+    val zkClient = ZkCluster(system).zkClientWithNs
+
     system.shutdown
 
-    safelyDiscard("")(ZkCluster(system).zkClientWithNs)
+    safelyDiscard("")(zkClient)
+
+    zk.postStop
+
+    try {
+      Runtime.getRuntime.exec("netstat -anp | grep :2181 | grep ESTABLISHED | awk {'print $7}' | awk -F '/' {'print $1'} | xargs kill -9")
+    }
+    catch{
+      case e:Exception => //ignored
+    }
+
+    system.awaitTermination
+
+    //find zk process if it sticks
+
 
     preserve match {
       case None => conf.delete
@@ -105,10 +125,10 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     val cluster = extension.zkClusterActor
     val partitionKey = ByteString(s"pk-${System.nanoTime}")
 
+    cluster ! ZkMonitorPartition(Set(self.path))
     cluster ! ZkQueryPartition(partitionKey, None, Some(1))
     expectMsgType[ZkPartition](timeout).members.size should equal(1)
-
-    cluster ! ZkMonitorPartition(Set(self.path))
+    expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq(extension.zkAddress)))
 
     val zkPath = extension.segmentationLogic.partitionZkPath(partitionKey)
     val members = extension.zkClientWithNs.getChildren.forPath(zkPath)

@@ -146,9 +146,13 @@ package object cluster {
       Seq.empty[Address]
     else {
       val zkPath = zkSegmentationLogic.partitionZkPath(partitionKey)
-      val ages = zkClient.getChildren.forPath(zkPath).filterNot(_ == "$size")
-        .map(child =>
-        AddressFromURIString.parse(pathToKey(child)) -> zkClient.checkExists.forPath(s"$zkPath/$child").getCtime).toMap
+      val ages:Map[Address, Long] = zkClient.getChildren.forPath(zkPath).filterNot(_ == "$size").map(child => try{
+          AddressFromURIString.parse(pathToKey(child)) -> zkClient.checkExists.forPath(s"$zkPath/$child").getCtime
+        }
+        catch{
+          case e:Exception =>
+            AddressFromURIString.parse(pathToKey(child)) -> -1L
+        }).filterNot(_._2 == -1L).toMap
       //this is to ensure that the partitions query result will always give members in the order of oldest to youngest
       //this should make data sync easier, the newly onboard member should always consult with the 1st member in the query result to sync with.
       members.toSeq.sortBy(ages.getOrElse(_, 0L))
@@ -159,8 +163,8 @@ package object cluster {
                                     partitionsToMembers:Map[ByteString, Set[Address]],
                                     changed:ZkPartitionsChanged) = {
     val impacted = partitionsToMembers.filterKeys(segmentsToPartitions.getOrElse(changed.segment, Set.empty).contains(_)).keySet
-    val onboards = changed.partitions.keySet
-    val dropoffs = impacted.diff(changed.partitions.keySet)
+    val onboards = changed.partitions.keySet.filter{partitionKey => partitionsToMembers.getOrElse(partitionKey, Set.empty).size < changed.partitions.getOrElse(partitionKey, Set.empty).size}
+    val dropoffs = impacted.diff(changed.partitions.keySet) ++ changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}
 
     //drop off members no longer in the partition
     (partitionsToMembers.filterKeys(!dropoffs.contains(_))
