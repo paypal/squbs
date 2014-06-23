@@ -35,7 +35,7 @@ class ServiceRegistry(system: ActorSystem) {
   private[unicomplex] def startWebService(name: String, config: Config, notifySender: ActorRef)
                                          (implicit context: ActorContext) = {
 
-    val route = Agent[Route](null) // Route for registrar and service pair
+    val route = Agent[Route]( path(Neutral) { reject } ) // Route for registrar and service pair
     val registrarRef = context.actorOf(Props(classOf[Registrar], name, route), name + "-registrar")
     registrar send { _ + (name -> registrarRef) }
     registry send { _ + (name -> Map.empty) }
@@ -105,7 +105,7 @@ class ServiceRegistry(system: ActorSystem) {
 /**
  * The Registrar receives Register and Unregister messages.
  */
-private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) extends Actor with ActorLogging {
+private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) extends Actor with Stash with ActorLogging {
 
   val serviceRegistry = Unicomplex.serviceRegistry
   import serviceRegistry._
@@ -140,38 +140,42 @@ private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) e
   }
 
   // CalculateRoute MUST return a function and not a value
-  private def calculateRoute(tmpRegistry: Registry)(current: Route) = {
-    Try(tmpRegistry.map {
-      case (webContext, Register(_, _, _, routeDef)) => pathPrefix(webContext) {
-        routeDef.route
-      }
-    }.reduceLeft(_ ~ _)).getOrElse(path(Slash) {
-      get {
-        complete {
-          "Default Route"
+  private def calculateRoute(tmpRegistry: Registry) = {
+    Try(
+      tmpRegistry map {
+        case (webContext, Register(_, _, _, routeDef)) => pathPrefix(webContext) {
+          routeDef.route
         }
-      }
-    })
+      } reduceLeft (_ ~ _)) getOrElse path(Neutral) {
+      reject
+    }
+  }
+
+  private def alterRegistry (alterFn: (Map[String, Registry]) => Map[String, Registry])(message: String) {
+    val ackTarget = sender()
+    registry alter alterFn pipeTo self
+    context.become ({
+      case reg: Map[_, _] =>
+        val newRoute = calculateRoute(reg.asInstanceOf[Map[String, Registry]](listenerName))
+        route alter newRoute pipeTo ackTarget
+        log.info(message)
+        unstashAll()
+        context.unbecome()
+      case _ => stash()
+    }, discardOld = false)
   }
 
   def receive = {
     case r: Register =>
-      val ackFuture =
-        for {
-          reg      <- registry alter { updateRegistry(r)(_) }
-          newRoute <- route    alter { calculateRoute(reg(listenerName))(_) }
-        } yield Ack
-      ackFuture pipeTo sender()
-      log.info(s"""Web context "${r.routeDef.webContext}" (${r.routeDef.getClass.getName}) registered.""")
+      alterRegistry {
+        updateRegistry(r)(_)
+      } (s"""Web context "${r.routeDef.webContext}" (${r.routeDef.getClass.getName}) registered.""")
 
     case Unregister(webContext) =>
-      val ackFuture =
-        for {
-          reg      <- registry alter { r => val newR = r(listenerName) - webContext ; r + (listenerName -> newR) }
-          newRoute <- route    alter { calculateRoute(reg(listenerName))(_) }
-        } yield Ack
-      ackFuture pipeTo sender()
-      log.info(s"Web service route $webContext unregistered.")
+      alterRegistry { r =>
+        val newR = r(listenerName) - webContext
+        r + (listenerName -> newR)
+      } (s"Web service route $webContext unregistered.")
 
     case RoutesStarted => // Got all the service registrations for now.
       Unicomplex() ! RoutesStarted // Just send the message onto Unicomplex after processing all registrations.

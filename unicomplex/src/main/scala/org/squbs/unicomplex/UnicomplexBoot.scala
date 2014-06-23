@@ -14,7 +14,7 @@ import com.typesafe.config._
 import org.squbs.lifecycle.ExtensionLifecycle
 import ConfigUtil._
 import scala.collection.concurrent.TrieMap
-import scala.util.{Success, Failure}
+import scala.util.{Try, Success, Failure}
 import scala.collection.mutable
 
 object UnicomplexBoot {
@@ -162,18 +162,18 @@ object UnicomplexBoot {
 
     val actors = config.getOptionalConfigList("squbs-actors")
     actors foreach { a =>
-      if (!a.isEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, a, StartupType.ACTORS)
+      if (a.nonEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, a, StartupType.ACTORS)
     }
 
     val routeDefs = config.getOptionalConfigList("squbs-services")
     routeDefs foreach { d =>
-      if (!d.isEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, d, StartupType.SERVICES)
+      if (d.nonEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, d, StartupType.SERVICES)
     }
 
     val extensions = config.getOptionalConfigList("squbs-extensions")
     
     extensions foreach { e =>
-      if (!e.isEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, e, StartupType.EXTENSIONS)
+      if (e.nonEmpty) initList += InitInfo(jarPath, cubeName, cubeAlias, cubeVersion, e, StartupType.EXTENSIONS)
     }
 
     initList.toSeq
@@ -299,18 +299,19 @@ object UnicomplexBoot {
   def findListeners(config: Config, services: Seq[InitInfo]) = {
     val demandedListeners =
     for {
-      svc <- services
-      routes <- svc.entries
+      svc            <- services
+      routes         <- svc.entries
       routeListeners <- routes getOptionalStringList "listeners" getOrElse Seq("default-listener")
+                        if routeListeners != "*" // Filter out wildcard listener bindings, not starting those.
     } yield {
       routeListeners
     }
     val listeners = configuredListeners(config)
     val aliases = findListenerAliases(listeners)
-    val activeAliases = aliases filter { case (n, _) => demandedListeners exists (_ == n) }
+    val activeAliases = aliases filter { case (n, _) => demandedListeners contains n }
     val missingAliases = demandedListeners filterNot { l => activeAliases exists { case (n, _) => n == l } }
     val activeListenerNames = activeAliases.values
-    val activeListeners = listeners filter { case (n, c) => activeListenerNames.exists(_ == n)}
+    val activeListeners = listeners filter { case (n, c) => activeListenerNames exists (_ == n) }
     (activeAliases, activeListeners, missingAliases)
   }
 
@@ -336,14 +337,20 @@ object UnicomplexBoot {
         val clazz = Class.forName(routeConfig.getString("class-name"), true, getClass.getClassLoader)
         val routeClass = clazz.asSubclass(classOf[RouteDefinition])
         val listeners = routeConfig.getOptionalStringList("listeners").fold(Seq("default-listener"))({ list =>
-          val listenerMapping = list map (entry => (entry, aliases get entry))
+
+          val listenerMapping = list collect {
+            case entry if entry != "*" => (entry, aliases get entry)
+          }
+
           listenerMapping foreach {
             // Make sure we report any missing listeners
             case (entry, None) =>
               System.err.println(s"WARN: Listener $entry required by $symName is not configured. Ignoring.")
             case _ =>
           }
-          listenerMapping collect { case (entry, Some(listener)) => listener }
+
+          if (list contains "*") aliases.values.toSeq.distinct
+          else listenerMapping collect { case (entry, Some(listener)) => listener }
         })
 
         implicit val timeout = Timeout(1 second)
@@ -469,7 +476,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
       else Seq.empty
 
     // Notify Unicomplex that services will be started.
-    if (!servicesToStart.isEmpty) uniActor ! PreStartWebService
+    if (servicesToStart.nonEmpty && listeners.nonEmpty) uniActor ! PreStartWebService
 
     // Signal started to Unicomplex.
     uniActor ! Started
@@ -479,7 +486,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     // Start the service infrastructure if services are enabled and registered.
     val services =
-      if (!servicesToStart.isEmpty) {
+      if (servicesToStart.nonEmpty && listeners.nonEmpty) {
         startServiceInfra(servicesToStart, this)
 
         // Start all service routes
@@ -500,10 +507,9 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
       // Tell Unicomplex we're done.
       implicit val timeout = Timeout(60 seconds)
       val stateFuture = Unicomplex(actorSystem).uniActor ? Activate
-      Await.ready(stateFuture, timeout.duration)
-      stateFuture.value.get.get match {
-        case Failed => println("WARN: Unicomplex initialization failed.")
-        case _ =>
+      Try(Await.result(stateFuture, timeout.duration)) match {
+        case Success(Active) => println(s"[$actorSystemName] activated")
+        case _ => println(s"WARN:[$actorSystemName] initialization failed.")
       }
     }
 
@@ -512,7 +518,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
   }
 
   def registerExtensionShutdown(actorSystem: ActorSystem) {
-    if (!extensions.isEmpty) {
+    if (extensions.nonEmpty) {
       actorSystem.registerOnTermination {
         // Run the shutdown in a different thread, not in the ActorSystem's onTermination thread.
         import scala.concurrent.Future
