@@ -1,5 +1,6 @@
 package org.squbs.cluster
 
+import com.google.common.primitives.Ints
 import org.scalatest.{FlatSpecLike, BeforeAndAfterAll, Matchers}
 import scala.concurrent.duration._
 import java.io.File
@@ -7,7 +8,7 @@ import com.google.common.io.Files
 import com.google.common.base.Charsets
 import akka.testkit.{TestKit, ImplicitSender}
 import akka.util.ByteString
-import akka.actor.{Props, Address, ActorSystem}
+import akka.actor._
 import org.squbs.unicomplex.{Unicomplex, ConfigUtil}
 
 /**
@@ -17,11 +18,12 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
   var preserve:Option[String] = None
   val conf = new File(Unicomplex(system).externalConfigDir, "zkcluster.conf")
+  var zk:ZkActorForTestOnly = null
 
   override def beforeAll = {
 
+    import scala.collection.JavaConversions._
     if(conf.exists){
-      import scala.collection.JavaConversions._
       preserve = Some(Files.readLines(conf, Charsets.UTF_8).mkString("\n"))
     }
     Files.createParentDirs(conf)
@@ -34,14 +36,31 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
           |}
         """.stripMargin, conf, Charsets.UTF_8)
 
-    system.actorOf(Props[ZkActorForTestOnly].withDispatcher("pinned-dispatcher"))
+    zk = new ZkActorForTestOnly(Unicomplex(system).externalConfigDir)
+    zk.startup(2181)
   }
 
   override def afterAll = {
 
+    val zkClient = ZkCluster(system).zkClientWithNs
+
     system.shutdown
 
-    safelyDiscard("")(ZkCluster(system).zkClientWithNs)
+    safelyDiscard("")(zkClient)
+
+    zk.postStop
+
+    try {
+      Runtime.getRuntime.exec("netstat -anp | grep :2181 | grep ESTABLISHED | awk {'print $7}' | awk -F '/' {'print $1'} | xargs kill -9")
+    }
+    catch{
+      case e:Exception => //ignored
+    }
+
+    system.awaitTermination
+
+    //find zk process if it sticks
+
 
     preserve match {
       case None => conf.delete
@@ -115,8 +134,10 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     members.contains("$size") should equal(true)
     members.remove("$size")
 
+    Thread.sleep(3000)
     if (members.nonEmpty) {
       extension.zkClientWithNs.delete.forPath(s"$zkPath/${members.head}")
+      println(expectMsgType[ZkPartitionDiff].diff)// should equal(Map(partitionKey -> Seq.empty[Address])) must FIXIT
       expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq.empty[Address]))
     }
 

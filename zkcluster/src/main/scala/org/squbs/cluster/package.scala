@@ -146,9 +146,13 @@ package object cluster {
       Seq.empty[Address]
     else {
       val zkPath = zkSegmentationLogic.partitionZkPath(partitionKey)
-      val ages = zkClient.getChildren.forPath(zkPath).filterNot(_ == "$size")
-        .map(child =>
-        AddressFromURIString.parse(pathToKey(child)) -> zkClient.checkExists.forPath(s"$zkPath/$child").getCtime).toMap
+      val ages:Map[Address, Long] = zkClient.getChildren.forPath(zkPath).filterNot(_ == "$size").map(child => try{
+          AddressFromURIString.parse(pathToKey(child)) -> zkClient.checkExists.forPath(s"$zkPath/$child").getCtime
+        }
+        catch{
+          case e:Exception =>
+            AddressFromURIString.parse(pathToKey(child)) -> -1L
+        }).filterNot(_._2 == -1L).toMap
       //this is to ensure that the partitions query result will always give members in the order of oldest to youngest
       //this should make data sync easier, the newly onboard member should always consult with the 1st member in the query result to sync with.
       members.toSeq.sortBy(ages.getOrElse(_, 0L))
