@@ -125,9 +125,10 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     val cluster = extension.zkClusterActor
     val partitionKey = ByteString(s"pk-${System.nanoTime}")
 
-    cluster ! ZkMonitorPartition(Set(self.path))
     cluster ! ZkQueryPartition(partitionKey, None, Some(1))
     expectMsgType[ZkPartition](timeout).members.size should equal(1)
+
+    cluster ! ZkMonitorPartition(Set(self.path))
     expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq(extension.zkAddress)))
 
     val zkPath = extension.segmentationLogic.partitionZkPath(partitionKey)
