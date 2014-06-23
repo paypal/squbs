@@ -220,6 +220,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       override def process(event: WatchedEvent): Unit = {
         event.getType match {
           case EventType.NodeChildrenChanged =>
+            segmentsToPartitions += segment -> zkClient.getChildren.forPath(segmentZkPath).map{partitionPath => ByteString(pathToKey(partitionPath))}.toSet
             refresh(zkClient.getChildren.usingWatcher(this).forPath(segmentZkPath), partitionWatcher)
           case _ =>
         }
@@ -275,12 +276,16 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
       if(difference) {
         partitionsToMembers = effects
-
-        val diff = onboards.map { alter => alter -> orderByAge(alter, partitionsToMembers.getOrElse(alter, Set.empty)).toSeq}.toMap ++ dropoffs.map { dropoff => dropoff -> Seq.empty}
+        //reduced the diff events, notifying only when the expected size have reached! (either the total members or the expected size)
+        val diff = onboards.filter{alter => Array[Int](bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(alter))), zkClient.getChildren.forPath("/members").size).exists(partitionsToMembers.getOrElse(alter, Set.empty).size == _)}
+          .map{alter => alter -> orderByAge(alter, partitionsToMembers.getOrElse(alter, Set.empty)).toSeq}.toMap ++
+          dropoffs.map{dropoff => dropoff -> Seq.empty}
         val zkPaths = diff.keySet.map { partitionKey => partitionKey -> partitionZkPath(partitionKey)}.toMap
 
         log.debug("[partitions] change consolidated as:{} and notifying:{}", diff, notifyOnDifference)
-        notifyOnDifference.foreach { listener => context.actorSelection(listener) ! ZkPartitionDiff(diff, zkPaths)}
+        if(diff.nonEmpty){
+          notifyOnDifference.foreach { listener => context.actorSelection(listener) ! ZkPartitionDiff(diff, zkPaths)}
+        }
       }
       else{
         log.debug("[partitions] change ignored as no difference was found and notifying no one")

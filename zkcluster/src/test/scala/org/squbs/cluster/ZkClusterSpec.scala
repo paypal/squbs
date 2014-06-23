@@ -1,15 +1,16 @@
 package org.squbs.cluster
 
-import com.google.common.primitives.Ints
-import org.scalatest.{FlatSpecLike, BeforeAndAfterAll, Matchers}
-import scala.concurrent.duration._
 import java.io.File
-import com.google.common.io.Files
-import com.google.common.base.Charsets
-import akka.testkit.{TestKit, ImplicitSender}
-import akka.util.ByteString
+
 import akka.actor._
-import org.squbs.unicomplex.{Unicomplex, ConfigUtil}
+import akka.testkit.{ImplicitSender, TestKit}
+import akka.util.ByteString
+import com.google.common.base.Charsets
+import com.google.common.io.Files
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.squbs.unicomplex.{ConfigUtil, Unicomplex}
+
+import scala.concurrent.duration._
 
 /**
  * Created by huzhou on 5/12/14.
@@ -124,20 +125,18 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     val cluster = extension.zkClusterActor
     val partitionKey = ByteString(s"pk-${System.nanoTime}")
 
+    cluster ! ZkMonitorPartition(Set(self.path))
     cluster ! ZkQueryPartition(partitionKey, None, Some(1))
     expectMsgType[ZkPartition](timeout).members.size should equal(1)
-
-    cluster ! ZkMonitorPartition(Set(self.path))
+    expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq(extension.zkAddress)))
 
     val zkPath = extension.segmentationLogic.partitionZkPath(partitionKey)
     val members = extension.zkClientWithNs.getChildren.forPath(zkPath)
     members.contains("$size") should equal(true)
     members.remove("$size")
 
-    Thread.sleep(3000)
     if (members.nonEmpty) {
       extension.zkClientWithNs.delete.forPath(s"$zkPath/${members.head}")
-      println(expectMsgType[ZkPartitionDiff].diff)// should equal(Map(partitionKey -> Seq.empty[Address])) must FIXIT
       expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq.empty[Address]))
     }
 
