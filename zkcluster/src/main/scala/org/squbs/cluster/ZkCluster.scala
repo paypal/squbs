@@ -2,7 +2,6 @@ package org.squbs.cluster
 
 import java.io.File
 import java.util.concurrent.TimeUnit
-import com.google.common.primitives.Ints
 import org.apache.zookeeper.KeeperException.NoNodeException
 import org.apache.zookeeper.{WatchedEvent, CreateMode}
 import org.apache.zookeeper.Watcher.Event.EventType
@@ -12,7 +11,6 @@ import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.framework.recipes.leader.LeaderLatch
 import org.apache.curator.framework.state.{ConnectionState, ConnectionStateListener}
 import org.apache.curator.framework.api._
-import org.uncommons.maths.Maths
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
 import scala.concurrent.Await
@@ -369,7 +367,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
     //we'll notify only when the partition has reached its expected size (either the total number of VMs or the required partition size)
     //any change inbetween will be silently ignored, as we know leader will rebalance and trigger another event to reach the expected size eventually
     val onboards = changed.partitions.keySet.filter{partitionKey =>
-      Ints.min(bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey))), numOfNodes) == changed.partitions.getOrElse(partitionKey, Set.empty).size &&
+      Math.min(bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey))), numOfNodes) == changed.partitions.getOrElse(partitionKey, Set.empty).size &&
         partitionsToMembers.getOrElse(partitionKey, Set.empty) != changed.partitions.getOrElse(partitionKey, Set.empty)
     }
     val dropoffs = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}.filter(impacted.contains(_))
