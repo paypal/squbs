@@ -163,12 +163,11 @@ package object cluster {
                                     partitionsToMembers:Map[ByteString, Set[Address]],
                                     changed:ZkPartitionsChanged) = {
     val impacted = partitionsToMembers.filterKeys(segmentsToPartitions.getOrElse(changed.segment, Set.empty).contains(_)).keySet
-    val onboards = changed.partitions.keySet.filter{partitionKey => partitionsToMembers.getOrElse(partitionKey, Set.empty).size < changed.partitions.getOrElse(partitionKey, Set.empty).size}
+    val onboards = changed.partitions.keySet.filter{partitionKey => partitionsToMembers.getOrElse(partitionKey, Set.empty).size <= changed.partitions.getOrElse(partitionKey, Set.empty).size}
     val dropoffs = impacted.diff(changed.partitions.keySet) ++ changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}
 
     //drop off members no longer in the partition
-    (partitionsToMembers.filterKeys(!dropoffs.contains(_))
-      .map(assign => assign._1 -> (if(changed.partitions.getOrElse(assign._1, Set.empty).nonEmpty) changed.partitions(assign._1) else assign._2)) ++ onboards.map(assign => assign -> changed.partitions(assign)),
+    ((partitionsToMembers ++ changed.partitions).filterKeys(!dropoffs.contains(_)),
       onboards,
       dropoffs)
   }
