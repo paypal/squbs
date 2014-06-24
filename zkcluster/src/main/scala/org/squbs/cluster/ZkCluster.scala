@@ -272,7 +272,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       log.debug("[partitions] partitions change detected from zk: {}", change.map(pair => keyToPath(pair._1) -> pair._2))
 
       val (effects, onboards, dropoffs) = applyChanges(segmentsToPartitions, partitionsToMembers, origin)
-      val difference = dropoffs.nonEmpty || onboards.exists{partitionKey => partitionsToMembers.get(partitionKey) != effects.get(partitionKey)}
+      val difference = dropoffs.nonEmpty || onboards.nonEmpty
 
       if(difference) {
         partitionsToMembers = effects
@@ -356,6 +356,21 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       log.debug("[partitions] release:{} with zkPath:{}", keyToPath(partitionKey), zkPath)
       safelyDiscard(s"$zkPath/${keyToPath(zkAddress.toString)}")
       sender() ! true
+  }
+
+  private[cluster] def applyChanges(segmentsToPartitions:Map[String, Set[ByteString]],
+                                    partitionsToMembers:Map[ByteString, Set[Address]],
+                                    changed:ZkPartitionsChanged) = {
+
+    val impacted = partitionsToMembers.filterKeys(segmentsToPartitions.getOrElse(changed.segment, Set.empty).contains(_)).keySet
+    val onboards = changed.partitions.keySet.filter{partitionKey => partitionsToMembers.getOrElse(partitionKey, Set.empty) != changed.partitions.getOrElse(partitionKey, Set.empty)}
+    val dropoffs = impacted.diff(changed.partitions.keySet) ++ changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}
+
+    log.debug("[partitions] applying changes:{} against:{}, onboards:{}, dropoffs:{}", changed.partitions, partitionsToMembers, onboards, dropoffs)
+    //drop off members no longer in the partition
+    ((partitionsToMembers ++ changed.partitions).filterKeys(!dropoffs.contains(_)),
+      onboards -- dropoffs,
+      dropoffs)
   }
 }
 
