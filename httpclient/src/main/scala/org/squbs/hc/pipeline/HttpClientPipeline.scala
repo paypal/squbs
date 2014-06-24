@@ -2,7 +2,7 @@ package org.squbs.hc.pipeline
 
 import spray.httpx.{UnsuccessfulResponseException, PipelineException, RequestBuilding}
 import spray.client.pipelining._
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import spray.client.pipelining
 import spray.httpx.unmarshalling._
 import scala.concurrent.{ExecutionContext, Await, Future}
@@ -48,7 +48,7 @@ object EmptyPipelineDefinition extends PipelineDefinition {
 
 object PipelineManager {
 
-  private def pipelining(client: HttpClient)(implicit actorSystem: ActorSystem) = {
+  private def pipelining(client: IHttpClient)(implicit actorSystem: ActorSystem) = {
     implicit val connectionTimeout: Timeout = Timeout(client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis)
     import ExecutionContext.Implicits.global
     for (
@@ -57,7 +57,7 @@ object PipelineManager {
     ) yield sendReceive(connector)
   }
 
-  private def hostConnectorSetup(client: HttpClient)(implicit actorSystem: ActorSystem) = {
+  def hostConnectorSetup(client: IHttpClient)(implicit actorSystem: ActorSystem) = {
     val uri = Uri(client.endpoint)
     val host = uri.authority.host.toString
     val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
@@ -71,11 +71,11 @@ object PipelineManager {
     }
   }
 
-  def invokeToHttpResponse(client: HttpClient)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseWrapper])] = {
+  def invokeToHttpResponse(client: IHttpClient)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseWrapper])] = {
     val pipelines = client.pipelineDefinition.getOrElse(EmptyPipelineDefinition)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines
-    val connTimeout = client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
+    val connTimeout = client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout
     Try{
       val futurePipeline = pipelining(client)
       val pipeline = Await.result(futurePipeline, connTimeout)
@@ -94,14 +94,58 @@ object PipelineManager {
     }
   }
 
-  def invokeToEntity[T: FromResponseUnmarshaller](client: HttpClient)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseEntityWrapper[T]])] = {
+  def invokeToHttpResponseWithoutSetup(client: IHttpClient, actorRef: ActorRef)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseWrapper])] = {
     val pipelines = client.pipelineDefinition.getOrElse(EmptyPipelineDefinition)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines
-    val connTimeout = client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
+    implicit val connTimeout = Timeout(client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis)
+    val pipeline = spray.client.pipelining.sendReceive(actorRef)
+    Try{
+      (reqPipelines, resPipelines, client.status) match {
+        case (_, _, HttpClientStatus.DOWN) =>
+          throw new ServiceMarkDownException(client.name)
+        case (Seq(), Seq(), _) =>
+          pipeline ~> withWrapper
+        case (Seq(), _: Seq[ResponseTransformer], _) =>
+          pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> withWrapper
+        case (_: Seq[RequestTransformer], Seq(), _) =>
+          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> withWrapper
+        case (_: Seq[RequestTransformer], _: Seq[ResponseTransformer], _) =>
+          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> withWrapper
+      }
+    }
+  }
+
+  def invokeToEntity[T: FromResponseUnmarshaller](client: IHttpClient)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseEntityWrapper[T]])] = {
+    val pipelines = client.pipelineDefinition.getOrElse(EmptyPipelineDefinition)
+    val reqPipelines = pipelines.requestPipelines
+    val resPipelines = pipelines.responsePipelines
+    val connTimeout = client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout
     Try{
       val futurePipeline = pipelining(client)
       val pipeline = Await.result(futurePipeline, connTimeout)
+      (reqPipelines, resPipelines, client.status) match {
+        case (_, _, HttpClientStatus.DOWN) =>
+          throw new ServiceMarkDownException(client.name)
+        case (Seq(), Seq(), _) =>
+          pipeline ~> unmarshalWithWrapper[T]
+        case (Seq(), _: Seq[ResponseTransformer], _) =>
+          pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> unmarshalWithWrapper[T]
+        case (_: Seq[RequestTransformer], Seq(), _) =>
+          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> unmarshalWithWrapper[T]
+        case (_: Seq[RequestTransformer], _: Seq[ResponseTransformer], _) =>
+          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> unmarshalWithWrapper[T]
+      }
+    }
+  }
+
+  def invokeToEntityWithoutSetup[T: FromResponseUnmarshaller](client: IHttpClient, actorRef: ActorRef)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseEntityWrapper[T]])] = {
+    val pipelines = client.pipelineDefinition.getOrElse(EmptyPipelineDefinition)
+    val reqPipelines = pipelines.requestPipelines
+    val resPipelines = pipelines.responsePipelines
+    implicit val connTimeout = Timeout(client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis)
+    val pipeline = spray.client.pipelining.sendReceive(actorRef)
+    Try{
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, HttpClientStatus.DOWN) =>
           throw new ServiceMarkDownException(client.name)
