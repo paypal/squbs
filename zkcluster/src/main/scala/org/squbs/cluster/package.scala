@@ -159,19 +159,6 @@ package object cluster {
     }
   }
 
-  private[cluster] def applyChanges(segmentsToPartitions:Map[String, Set[ByteString]],
-                                    partitionsToMembers:Map[ByteString, Set[Address]],
-                                    changed:ZkPartitionsChanged) = {
-    val impacted = partitionsToMembers.filterKeys(segmentsToPartitions.getOrElse(changed.segment, Set.empty).contains(_)).keySet
-    val onboards = changed.partitions.keySet.filter{partitionKey => partitionsToMembers.getOrElse(partitionKey, Set.empty).size != changed.partitions.getOrElse(partitionKey, Set.empty).size}
-    val dropoffs = impacted.diff(changed.partitions.keySet) ++ changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}
-
-    //drop off members no longer in the partition
-    ((partitionsToMembers ++ changed.partitions).filterKeys(!dropoffs.contains(_)),
-      onboards -- dropoffs,
-      dropoffs)
-  }
-
   private[cluster] def myAddress = InetAddress.getLocalHost.getCanonicalHostName match {
     case "localhost" => ConfigUtil.ipv4
     case h:String => h
