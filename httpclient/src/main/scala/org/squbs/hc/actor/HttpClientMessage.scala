@@ -13,23 +13,32 @@ import org.squbs.hc.routing.RoutingRegistry
 */
 object HttpClientMessage {
 
-  case class HttpClientMsg[T: Marshaller](name: String,
+  case class HttpClientGetMsg(name: String,
+                              uri: String,
+                              httpMethod: HttpMethod,
+                              env: Option[String] = None,
+                              config: Option[Configuration] = None,
+                              pipelineDefinition: Option[PipelineDefinition] = None) extends IHttpClient {
+    override def endpoint: String = RoutingRegistry.resolve(name, env).getOrElse("")
+  }
+
+  case class HttpClientPostMsg[T: Marshaller](name: String,
                                           uri: String,
                                           httpMethod: HttpMethod,
-                                          content: Option[T],
+                                          content: Some[T],
                                           env: Option[String] = None,
                                           config: Option[Configuration] = None,
                                           pipelineDefinition: Option[PipelineDefinition] = None) extends IHttpClient {
     override def endpoint: String = RoutingRegistry.resolve(name, env).getOrElse("")
   }
 
-  case class HttpClientEntityMsg[T: Marshaller, R: FromResponseUnmarshaller](name: String,
-                                                                             uri: String,
-                                                                             httpMethod: HttpMethod,
-                                                                             content: Option[T],
-                                                                             env: Option[String] = None,
-                                                                             config: Option[Configuration] = None,
-                                                                             pipelineDefinition: Option[PipelineDefinition] = None) extends IHttpClient {
-    override def endpoint: String = RoutingRegistry.resolve(name, env).getOrElse("")
-  }
+//  case class HttpClientEntityMsg[T: Marshaller, R: FromResponseUnmarshaller](name: String,
+//                                                                             uri: String,
+//                                                                             httpMethod: HttpMethod,
+//                                                                             content: Option[T],
+//                                                                             env: Option[String] = None,
+//                                                                             config: Option[Configuration] = None,
+//                                                                             pipelineDefinition: Option[PipelineDefinition] = None) extends IHttpClient {
+//    override def endpoint: String = RoutingRegistry.resolve(name, env).getOrElse("")
+//  }
 }
