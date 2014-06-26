@@ -53,8 +53,8 @@ trait HttpCallActorSupport extends RetrySupport {
     val serviceTimeout = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
     pipeline match {
       case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
-      case Failure(t@ServiceMarkDownException(_, _, _)) => future {
-        HttpResponseWrapper(HttpClientException.serviceMarkDownError, Left(t))
+      case Failure(t@HttpClientMarkDownException(_)) => future {
+        HttpResponseWrapper(HttpClientException.httpClientMarkDownError, Left(t))
       }
       case Failure(t) => future {
         HttpResponseWrapper(999, Left(t))
@@ -105,8 +105,8 @@ trait HttpCallSupport extends RetrySupport {
     val serviceTimeout = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
     pipeline match {
       case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
-      case Failure(t@ServiceMarkDownException(_, _, _)) => future {
-        HttpResponseWrapper(HttpClientException.serviceMarkDownError, Left(t))
+      case Failure(t@HttpClientMarkDownException(_)) => future {
+        HttpResponseWrapper(HttpClientException.httpClientMarkDownError, Left(t))
       }
       case Failure(t) => future {
         HttpResponseWrapper(999, Left(t))
@@ -154,8 +154,8 @@ trait HttpEntityCallActorSupport extends RetrySupport {
     val serviceTimeout = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
     pipeline match {
       case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
-      case Failure(t@ServiceMarkDownException(_, _, _)) => future {
-        HttpResponseEntityWrapper(HttpClientException.serviceMarkDownError, Left(t), None)
+      case Failure(t@HttpClientMarkDownException(_)) => future {
+        HttpResponseEntityWrapper(HttpClientException.httpClientMarkDownError, Left(t), None)
       }
       case Failure(t) => future {
         HttpResponseEntityWrapper(999, Left(t), None)
@@ -207,8 +207,8 @@ trait HttpEntityCallSupport extends RetrySupport {
     val serviceTimeout = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
     pipeline match {
       case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
-      case Failure(t@ServiceMarkDownException(_, _, _)) => future {
-        HttpResponseEntityWrapper(HttpClientException.serviceMarkDownError, Left(t), None)
+      case Failure(t@HttpClientMarkDownException(_)) => future {
+        HttpResponseEntityWrapper(HttpClientException.httpClientMarkDownError, Left(t), None)
       }
       case Failure(t) => future {
         HttpResponseEntityWrapper(999, Left(t), None)

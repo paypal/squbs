@@ -81,9 +81,9 @@ class HttpClientTest extends FlatSpec with Matchers with BeforeAndAfterAll with 
     client.markDown
     val response = client.get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     val result = Await.result(response, 3 seconds)
-    result.status should be (HttpClientException.serviceMarkDownError)
+    result.status should be (HttpClientException.httpClientMarkDownError)
     result.content.isLeft should be (true)
-    result.content should be (Left(HttpClientException(900, "Service:googlemap2 has been Markdown!")))
+    result.content should be (Left(HttpClientMarkDownException("googlemap2")))
   }
 
   "HttpClient.create('googlemap').getEntity(uri) with correct endpoint" should "get correct Unmarshaller value" in {

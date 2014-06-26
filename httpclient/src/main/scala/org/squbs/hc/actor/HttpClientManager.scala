@@ -7,12 +7,23 @@ import akka.io.IO
 import org.squbs.hc.pipeline.PipelineManager
 import org.squbs.hc._
 import akka.pattern._
-import org.squbs.hc.actor.HttpClientMessage.{HttpClientGetMsg, HttpClientPostMsg}
+import org.squbs.hc.actor.HttpClientMessage._
 import org.squbs.hc.config.{HostConfiguration, ServiceConfiguration, Configuration}
 import akka.util.Timeout
 import spray.httpx.unmarshalling._
 import spray.httpx.{PipelineException, UnsuccessfulResponseException}
 import spray.httpx.marshalling.{MarshallingContext, Marshaller}
+import scala.collection.concurrent.TrieMap
+import org.squbs.hc.config.ServiceConfiguration
+import org.squbs.hc.actor.HttpClientMessage.CreateHttpClientMsg
+import scala.Some
+import org.squbs.hc.actor.HttpClientMessage.HttpClientPostMsg
+import spray.http.HttpResponse
+import org.squbs.hc.HttpResponseEntityWrapper
+import org.squbs.hc.config.Configuration
+import org.squbs.hc.actor.HttpClientMessage.UpdateHttpClientMsg
+import org.squbs.hc.config.HostConfiguration
+import org.squbs.hc.actor.HttpClientMessage.HttpClientGetMsg
 
 /**
  * Created by hakuang on 6/23/2014.
@@ -20,10 +31,12 @@ import spray.httpx.marshalling.{MarshallingContext, Marshaller}
 
 class HttpClientManagerExtension(system: ExtendedActorSystem) extends Extension {
 
-  val httpClientActor = system.actorOf(Props[HttpClientManager], "httpClientActor")
+  val httpClientManager = system.actorOf(Props[HttpClientManager], "httpClientManager")
 }
 
 object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with ExtensionIdProvider {
+
+//  private[HttpClientManager] val httpClientMap: TrieMap[String, IHttpClient] = TrieMap[String, IHttpClient]()
 
   override def createExtension(system: ExtendedActorSystem): HttpClientManagerExtension = new HttpClientManagerExtension(system)
 
@@ -54,32 +67,32 @@ class HttpClientCallActor extends Actor with HttpCallActorSupport with ActorLogg
   import scala.concurrent.ExecutionContext.Implicits.global
 
   override def receive: Actor.Receive = {
-    case msg @ HttpClientGetMsg(name, uri, httpMethod, env, config, pipeline) =>
-      IO(Http) ! PipelineManager.hostConnectorSetup(msg)
-      context.become(receiveGetConnection(msg, sender()))
-    case msg @ HttpClientPostMsg(name, uri, httpMethod, content, env, config, pipeline) =>
-      IO(Http) ! PipelineManager.hostConnectorSetup(msg)
-      context.become(receivePostConnection(msg, sender()))
+    case (msg @ HttpClientGetMsg(name, httpMethod, uri), hc: IHttpClient) =>
+      IO(Http) ! PipelineManager.hostConnectorSetup(hc)
+      context.become(receiveGetConnection(msg, hc, sender()))
+    case (msg @ HttpClientPostMsg(name, httpMethod, uri, content), hc: IHttpClient) =>
+      IO(Http) ! PipelineManager.hostConnectorSetup(hc)
+      context.become(receivePostConnection(msg, hc, sender()))
   }
 
-  def receiveGetConnection(msg: HttpClientGetMsg, actorRef: ActorRef): Actor.Receive = {
+  def receiveGetConnection(msg: HttpClientGetMsg, hc: IHttpClient, actorRef: ActorRef): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
-      implicit val timeout: Timeout = msg.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis
+      implicit val timeout: Timeout = hc.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis
       msg.httpMethod match {
         case HttpMethods.GET =>
-          get(msg, connector, msg.uri).pipeTo(actorRef)
+          get(hc, connector, msg.uri).pipeTo(actorRef)
           context.stop(self)
         case HttpMethods.DELETE =>
-          delete(msg, connector, msg.uri).pipeTo(actorRef)
+          delete(hc, connector, msg.uri).pipeTo(actorRef)
           context.stop(self)
         case HttpMethods.HEAD =>
-          head(msg, connector, msg.uri).pipeTo(actorRef)
+          head(hc, connector, msg.uri).pipeTo(actorRef)
           context.stop(self)
         case HttpMethods.OPTIONS =>
-          options(msg, connector, msg.uri).pipeTo(actorRef)
+          options(hc, connector, msg.uri).pipeTo(actorRef)
           context.stop(self)
         case httpMethod =>
-          log.error(s"HttpClientCallActor->HttpClientGetMsg, it only could handle GET/DELETE/HEAD/OPTIONS methods, cannot handle $httpMethod")
+          log.error(HttpClientNotSupportMethodException(msg.name).getMessage)
           context.stop(self)
       }
   }
@@ -92,18 +105,18 @@ class HttpClientCallActor extends Actor with HttpCallActorSupport with ActorLogg
       ctx.marshalTo(HttpEntity(contentType, value.asInstanceOf[String]))
     }
 
-  def receivePostConnection[T](msg: HttpClientPostMsg[T], actorRef: ActorRef): Actor.Receive = {
+  def receivePostConnection[T](msg: HttpClientPostMsg[T], hc: IHttpClient, actorRef: ActorRef): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
-      implicit val timeout: Timeout = msg.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis
+      implicit val timeout: Timeout = hc.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis
       msg.httpMethod match {
         case HttpMethods.POST =>
-          post[T](msg, connector, msg.uri, msg.content).pipeTo(actorRef)
+          post[T](hc, connector, msg.uri, msg.content).pipeTo(actorRef)
           context.stop(self)
         case HttpMethods.PUT =>
-          put[T](msg, connector, msg.uri, msg.content).pipeTo(actorRef)
+          put[T](hc, connector, msg.uri, msg.content).pipeTo(actorRef)
           context.stop(self)
         case httpMethod =>
-          log.error(s"HttpClientCallActor->HttpClientPostMsg, it only could handle POST/PUT methods, cannot handle $httpMethod")
+          log.error(HttpClientNotSupportMethodException(msg.name).getMessage)
           context.stop(self)
       }
   }
@@ -146,12 +159,59 @@ class HttpClientEntityCallActor(client: ActorRef) extends Actor with HttpEntityC
 }
 */
 class HttpClientManager extends Actor {
+
+  private[HttpClientManager] val httpClientMap: TrieMap[String, IHttpClient] = TrieMap[String, IHttpClient]()
+
   override def receive: Receive = {
-    case msg @ HttpClientPostMsg(name, uri, httpMethod, content, env, config, pipeline) =>
-      context.actorOf(Props(classOf[HttpClientCallActor])).forward(msg)
-    case msg @ HttpClientGetMsg(name, uri, httpMethod, env, config, pipeline) =>
-      context.actorOf(Props(classOf[HttpClientCallActor])).forward(msg)
+    case msg @ CreateHttpClientMsg(name, env, config, pipeline) =>
+      httpClientMap.get(name) match {
+        case Some(hc) => sender ! HttpClientExistException(name)
+        case None     => sender ! httpClientMap.getOrElseUpdate(name, msg)
+      }
+    case msg @ UpdateHttpClientMsg(name, env, config, pipeline) =>
+      httpClientMap.get(name) match {
+        case Some(hc) => sender ! httpClientMap.getOrElseUpdate(name, msg)
+        case None     => sender ! HttpClientNotExistException(name)
+      }
+    case msg @ GetHttpClientMsg(name) =>
+      httpClientMap.get(name) match {
+        case Some(hc) => sender ! hc
+        case None     => sender ! HttpClientNotExistException(name)
+      }
+    case msg @ DeleteHttpClientMsg(name) =>
+      httpClientMap.get(name) match {
+        case Some(hc) =>
+          httpClientMap.remove(name)
+          sender ! hc
+        case None     => sender ! HttpClientNotExistException(name)
+      }
+    case msg @ MarkDownHttpClientMsg(name) =>
+      httpClientMap.get(name) match {
+        case Some(hc) =>
+          hc.status = HttpClientStatus.DOWN
+          sender ! httpClientMap.getOrElseUpdate(name, hc)
+        case None     => sender ! HttpClientNotExistException(name)
+      }
+    case msg @ MarkUpHttpClientMsg(name) =>
+      httpClientMap.get(name) match {
+        case Some(hc) =>
+          hc.status = HttpClientStatus.UP
+          sender ! httpClientMap.getOrElseUpdate(name, hc)
+        case None     => sender ! HttpClientNotExistException(name)
+      }
+    case msg @ HttpClientPostMsg(name, httpMethod, uri, content) =>
+      httpClientMap.get(name) match {
+        case Some(hc) => context.actorOf(Props(classOf[HttpClientCallActor])).forward((msg, hc))
+        case None     => sender ! HttpClientNotExistException(name)
+      }
+
+    case msg @ HttpClientGetMsg(name, httpMethod, uri) =>
+      httpClientMap.get(name) match {
+        case Some(hc) => context.actorOf(Props(classOf[HttpClientCallActor])).forward((msg, hc))
+        case None => sender ! HttpClientNotExistException(name)
+      }
 //    case msg @ HttpClientEntityMsg(name, uri, httpMethod, content, env, config, pipeline) =>
 //      context.actorOf(Props(new HttpClientEntityCallActor(sender))) ! msg
   }
+
 }

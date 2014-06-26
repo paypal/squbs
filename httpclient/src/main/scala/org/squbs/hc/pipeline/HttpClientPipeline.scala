@@ -81,7 +81,7 @@ object PipelineManager {
       val pipeline = Await.result(futurePipeline, connTimeout)
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, HttpClientStatus.DOWN) =>
-          throw new ServiceMarkDownException(client.name)
+          throw new HttpClientMarkDownException(client.name)
         case (Seq(), Seq(), _) =>
           pipeline ~> withWrapper
         case (Seq(), _: Seq[ResponseTransformer], _) =>
@@ -103,7 +103,7 @@ object PipelineManager {
     Try{
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, HttpClientStatus.DOWN) =>
-          throw new ServiceMarkDownException(client.name)
+          throw new HttpClientMarkDownException(client.name)
         case (Seq(), Seq(), _) =>
           pipeline ~> withWrapper
         case (Seq(), _: Seq[ResponseTransformer], _) =>
@@ -126,7 +126,7 @@ object PipelineManager {
       val pipeline = Await.result(futurePipeline, connTimeout)
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, HttpClientStatus.DOWN) =>
-          throw new ServiceMarkDownException(client.name)
+          throw new HttpClientMarkDownException(client.name)
         case (Seq(), Seq(), _) =>
           pipeline ~> unmarshalWithWrapper[T]
         case (Seq(), _: Seq[ResponseTransformer], _) =>
@@ -148,7 +148,7 @@ object PipelineManager {
     Try{
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, HttpClientStatus.DOWN) =>
-          throw new ServiceMarkDownException(client.name)
+          throw new HttpClientMarkDownException(client.name)
         case (Seq(), Seq(), _) =>
           pipeline ~> unmarshalWithWrapper[T]
         case (Seq(), _: Seq[ResponseTransformer], _) =>

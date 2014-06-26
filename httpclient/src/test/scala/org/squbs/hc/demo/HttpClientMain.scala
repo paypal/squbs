@@ -7,18 +7,27 @@ import spray.can.Http
 import akka.pattern._
 import scala.concurrent.duration._
 import spray.util._
-import scala.util.{Failure, Success}
 import spray.http.{HttpMethods, StatusCodes}
-import org.squbs.hc.{HttpResponseEntityWrapper, HttpResponseWrapper, HttpClient}
-import org.squbs.hc.actor.{HttpClientCallActor, HttpClientManager}
-import org.squbs.hc.actor.HttpClientMessage.{HttpClientGetMsg, HttpClientPostMsg}
-import scala.concurrent.Future
+import org.squbs.hc._
+import org.squbs.hc.actor.{HttpClientManager}
+import org.squbs.hc.actor.HttpClientMessage._
 import akka.util.Timeout
-import org.squbs.hc.config.{Configuration, HostConfiguration, ServiceConfiguration}
-import akka.actor.Actor.Receive
+import scala.util.Failure
+import scala.Some
+import org.squbs.hc.HttpResponseEntityWrapper
+import org.squbs.hc.actor.HttpClientMessage.CreateHttpClientMsg
+import scala.util.Success
+import org.squbs.hc.HttpResponseWrapper
+import org.squbs.hc.HttpClientExistException
+import org.squbs.hc.actor.HttpClientMessage.HttpClientGetMsg
+import scala.collection.concurrent.TrieMap
 
 /**
  * Created by hakuang on 6/13/2014.
+ */
+
+/**
+ * Traditional API using get
  */
 object HttpClientMain1 extends App {
 
@@ -45,6 +54,9 @@ object HttpClientMain1 extends App {
   }
 }
 
+/**
+ * Traditional API using getEntity
+ */
 object HttpClientMain2 extends App {
 
   private implicit val system = ActorSystem("HttpClientMain2")
@@ -71,6 +83,9 @@ object HttpClientMain2 extends App {
   }
 }
 
+/**
+ * Message Based API:Get using ask
+ */
 object HttpClientMain3 extends App {
 
   private implicit val system = ActorSystem("HttpClientMain3")
@@ -78,13 +93,24 @@ object HttpClientMain3 extends App {
   RoutingRegistry.register(new GoogleMapAPIRoutingDefinition)
 
   implicit val timeout: Timeout = 2 seconds
-  val response = HttpClientManager(system).httpClientActor ? HttpClientGetMsg("googlemap", "/api/elevation/json?locations=27.988056,86.925278&sensor=false", HttpMethods.GET, None, None, None)
-  response onComplete {
-    case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
-      println("Success, response entity is: " + res.entity.asString)
-      shutdown
-    case Success(HttpResponseWrapper(code, _)) =>
-      println("Success, the status code is: " + code)
+  val createResponse = HttpClientManager(system).httpClientManager ? CreateHttpClientMsg(name = "googlemap")
+  createResponse onComplete {
+    case Success(CreateHttpClientMsg(name, endpoint, config, pipeline)) =>
+      println(s"Success, creating HttpClient: $name")
+      val response = HttpClientManager(system).httpClientManager ? HttpClientGetMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+      response onComplete {
+        case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
+          println("Success, response entity is: " + res.entity.asString)
+          shutdown
+        case Success(HttpResponseWrapper(code, _)) =>
+          println("Success, the status code is: " + code)
+          shutdown
+        case Failure(e) =>
+          println("Failure, the reason is: " + e.getMessage)
+          shutdown
+      }
+    case Success(e@HttpClientExistException(name)) =>
+      println("Failure, the reason is: " + e.getMessage)
       shutdown
     case Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
@@ -97,34 +123,9 @@ object HttpClientMain3 extends App {
   }
 }
 
-object HttpClientMain5 extends App {
-
-  private implicit val system = ActorSystem("HttpClientMain5")
-  import system.dispatcher
-  RoutingRegistry.register(new GoogleMapAPIRoutingDefinition)
-  import org.squbs.hc.json.Json4sJacksonNoTypeHintsProtocol._
-
-  implicit val timeout:Timeout = 2 seconds
-  val response = HttpClientManager(system).httpClientActor ? HttpClientGetMsg("googlemap", "/api/elevation/json?locations=27.988056,86.925278&sensor=false", HttpMethods.GET, None, None, None)
-  response onComplete {
-    case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
-      val obj = HttpClientManager.unmarshal[GoogleApiResult[Elevation]](res)
-      println("Success, response status is: " + res.status + ", elevation is: " + obj.get.results.head.elevation + ", location.lat is: " + obj.get.results.head.location.lat)
-      shutdown
-    case Success(HttpResponseWrapper(code, _)) =>
-      println("Success, the status code is: " + code)
-      shutdown
-    case Failure(e) =>
-      println("Failure, the reason is: " + e.getMessage)
-      shutdown
-  }
-
-  def shutdown() {
-    IO(Http).ask(Http.CloseAll)(1.second).await
-    system.shutdown()
-  }
-}
-
+/**
+ * Message Based API:GetEntity using ask
+ */
 object HttpClientMain4 extends App {
 
   private implicit val system = ActorSystem("HttpClientMain4")
@@ -132,26 +133,75 @@ object HttpClientMain4 extends App {
   RoutingRegistry.register(new GoogleMapAPIRoutingDefinition)
   import org.squbs.hc.json.Json4sJacksonNoTypeHintsProtocol._
 
+  implicit val timeout:Timeout = 2 seconds
+
+  val createResponse = HttpClientManager(system).httpClientManager ? CreateHttpClientMsg(name = "googlemap")
+  createResponse onComplete {
+    case Success(CreateHttpClientMsg(name, endpoint, config, pipeline)) =>
+      println(s"Success, creating HttpClient: $name")
+      val response = HttpClientManager(system).httpClientManager ? HttpClientGetMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+      response onComplete {
+        case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
+          val obj = HttpClientManager.unmarshal[GoogleApiResult[Elevation]](res)
+          println("Success, response status is: " + res.status + ", elevation is: " + obj.get.results.head.elevation + ", location.lat is: " + obj.get.results.head.location.lat)
+          shutdown
+        case Success(HttpResponseWrapper(code, _)) =>
+          println("Success, the status code is: " + code)
+          shutdown
+        case Failure(e) =>
+          println("Failure, the reason is: " + e.getMessage)
+          shutdown
+      }
+    case Success(e@HttpClientExistException(name)) =>
+      println("Failure, the reason is: " + e.getMessage)
+      shutdown
+    case Failure(e) =>
+      println("Failure, the reason is: " + e.getMessage)
+      shutdown
+  }
+
+  def shutdown() {
+    IO(Http).ask(Http.CloseAll)(1.second).await
+    system.shutdown()
+  }
+}
+
+/**
+ * Message Based API:Get using tell
+ */
+object HttpClientMain5 extends App {
+
+  private implicit val system = ActorSystem("HttpClientMain5")
+  import system.dispatcher
+  RoutingRegistry.register(new GoogleMapAPIRoutingDefinition)
+  import org.squbs.hc.json.Json4sJacksonNoTypeHintsProtocol._
+
   implicit val timeout: Timeout = 2 seconds
-  val googleMapAPIActor = system.actorOf(Props(new GoogleMapAPIActor()))
+  val googleMapAPIActor = system.actorOf(Props(new GoogleMapAPIActor5()))
   googleMapAPIActor ! GoogleMapAPIMessage
 }
 
 case object GoogleMapAPIMessage
 
-class GoogleMapAPIActor(implicit system: ActorSystem) extends Actor {
+class GoogleMapAPIActor5(implicit system: ActorSystem) extends Actor {
   override def receive: Receive = {
     case GoogleMapAPIMessage =>
+      HttpClientManager(system).httpClientManager ! CreateHttpClientMsg(name = "googlemap")
+    case msg: IHttpClient =>
       import org.squbs.hc.json.Json4sJacksonNoTypeHintsProtocol._
-      HttpClientManager(system).httpClientActor ! HttpClientGetMsg("googlemap", "/api/elevation/json?locations=27.988056,86.925278&sensor=false", HttpMethods.GET, None, None, None)
+      HttpClientManager(system).httpClientManager ! HttpClientGetMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    case e@HttpClientExistException(name) =>
+      println("Failure, the reason is: " + e.getMessage)
+      shutdown
     case HttpResponseWrapper(StatusCodes.OK, Right(res)) =>
       println("Success, response entity is: " + res.entity.asString)
-      shutdown()
+      shutdown
     case HttpResponseWrapper(code, _) =>
-      shutdown()
-    case e: Throwable =>
+      println("Success, the status code is: " + code)
+      shutdown
+    case Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
-      shutdown()
+      shutdown
   }
   def shutdown() {
     IO(Http).ask(Http.CloseAll)(1.second).await
