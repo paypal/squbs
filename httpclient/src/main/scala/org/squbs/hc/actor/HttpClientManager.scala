@@ -178,6 +178,7 @@ class HttpClientManager extends Actor {
         case Some(hc) => sender ! hc
         case None     => sender ! HttpClientNotExistException(name)
       }
+    case msg @ GetAllHttpClientMsg => sender ! httpClientMap
     case msg @ DeleteHttpClientMsg(name) =>
       httpClientMap.get(name) match {
         case Some(hc) =>

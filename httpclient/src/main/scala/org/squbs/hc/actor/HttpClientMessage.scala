@@ -4,8 +4,13 @@ import org.squbs.hc.pipeline.PipelineDefinition
 import spray.httpx.marshalling.Marshaller
 import spray.http.HttpMethod
 import org.squbs.hc.config.Configuration
-import org.squbs.hc.{HttpClientException, IHttpClient}
+import org.squbs.hc._
 import org.squbs.hc.routing.RoutingRegistry
+import org.squbs.hc.config.Configuration
+import org.squbs.hc.HttpClientExistException
+import scala.Some
+import org.squbs.hc.HttpClientNotExistException
+import scala.collection.concurrent.TrieMap
 
 /**
 * Created by hakuang on 6/18/2014.
@@ -50,6 +55,11 @@ object HttpClientMessage {
   case class DeleteHttpClientMsg(name: String)
 
   /**
+   * Success => 
+   */
+  case object DeleteAllHttpClientMsg
+
+  /**
    * Success => IHttpClient
    * Failure => HttpClientNotExistException
    * @param name
@@ -57,7 +67,7 @@ object HttpClientMessage {
   case class GetHttpClientMsg(name: String)
 
   /**
-   * Success => HTrieMap[String, IHttpClient]
+   * Success => TrieMap[String, IHttpClient]
    */
   case object GetAllHttpClientMsg
 
@@ -95,9 +105,20 @@ object HttpClientMessage {
    */
   case class HttpClientPostMsg[T: Marshaller](name: String, httpMethod: HttpMethod, uri: String, content: Some[T])
 
-//  case class HttpClientCallSuccess[T](content: T)
-//
-//  case class HttpClientCallFailure(e: HttpClientException)
+  class HttpClientSuccessMsg[T](content: T)
+  case class CreateHttpClientSuccessMsg[IHttpClient](hc: IHttpClient) extends HttpClientSuccessMsg(hc)
+  case class UpdateHttpClientSuccessMsg[IHttpClient](hc: IHttpClient) extends HttpClientSuccessMsg(hc)
+  case class DeleteHttpClientSuccessMsg[IHttpClient](hc: IHttpClient) extends HttpClientSuccessMsg(hc)
+  case class GetHttpClientSuccessMsg[IHttpClient](hc: IHttpClient) extends HttpClientSuccessMsg(hc)
+  case class GetAllHttpClientSuccessMsg[TrieMap[String, IHttpClient]](map: TrieMap[String, IHttpClient]) extends HttpClientSuccessMsg(map)
+  case object DeleteAllHttpClientSuccessMsg extends HttpClientSuccessMsg
+
+  class HttpClientFailureMsg(e: HttpClientException)
+  case class CreateHttpClientFailureMsg(e: HttpClientExistException) extends HttpClientFailureMsg(e)
+  case class UpdateHttpClientFailureMsg(e: HttpClientNotExistException) extends HttpClientFailureMsg(e)
+  case class DeleteHttpClientFailureMsg(e: HttpClientNotExistException) extends HttpClientFailureMsg(e)
+  case class GetHttpClientFailureMsg(e: HttpClientNotExistException) extends HttpClientFailureMsg(e)
+
   
 //  case class HttpClientEntityMsg[T: Marshaller, R: FromResponseUnmarshaller](name: String,
 //                                                                             uri: String,
