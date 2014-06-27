@@ -19,7 +19,7 @@ import org.squbs.hc.actor.HttpClientMessage.CreateHttpClientMsg
 import scala.util.Success
 import org.squbs.hc.HttpResponseWrapper
 import org.squbs.hc.HttpClientExistException
-import org.squbs.hc.actor.HttpClientMessage.HttpClientGetMsg
+import org.squbs.hc.actor.HttpClientMessage.HttpClientGetCallMsg
 import scala.collection.concurrent.TrieMap
 
 /**
@@ -95,9 +95,10 @@ object HttpClientMain3 extends App {
   implicit val timeout: Timeout = 2 seconds
   val createResponse = HttpClientManager(system).httpClientManager ? CreateHttpClientMsg(name = "googlemap")
   createResponse onComplete {
-    case Success(CreateHttpClientMsg(name, endpoint, config, pipeline)) =>
+    case Success(msg:CreateHttpClientSuccessMsg[IHttpClient]) =>
+      val name = msg.hc.name
       println(s"Success, creating HttpClient: $name")
-      val response = HttpClientManager(system).httpClientManager ? HttpClientGetMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+      val response = HttpClientManager(system).httpClientManager ? HttpClientGetCallMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
       response onComplete {
         case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
           println("Success, response entity is: " + res.entity.asString)
@@ -109,8 +110,8 @@ object HttpClientMain3 extends App {
           println("Failure, the reason is: " + e.getMessage)
           shutdown
       }
-    case Success(e@HttpClientExistException(name)) =>
-      println("Failure, the reason is: " + e.getMessage)
+    case Success(msg: CreateHttpClientFailureMsg) =>
+      println("Failure, the reason is: " + msg.e.getMessage)
       shutdown
     case Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
@@ -137,9 +138,10 @@ object HttpClientMain4 extends App {
 
   val createResponse = HttpClientManager(system).httpClientManager ? CreateHttpClientMsg(name = "googlemap")
   createResponse onComplete {
-    case Success(CreateHttpClientMsg(name, endpoint, config, pipeline)) =>
+    case Success(msg:CreateHttpClientSuccessMsg[IHttpClient]) =>
+      val name = msg.hc.name
       println(s"Success, creating HttpClient: $name")
-      val response = HttpClientManager(system).httpClientManager ? HttpClientGetMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+      val response = HttpClientManager(system).httpClientManager ? HttpClientGetCallMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
       response onComplete {
         case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
           val obj = HttpClientManager.unmarshal[GoogleApiResult[Elevation]](res)
@@ -152,8 +154,8 @@ object HttpClientMain4 extends App {
           println("Failure, the reason is: " + e.getMessage)
           shutdown
       }
-    case Success(e@HttpClientExistException(name)) =>
-      println("Failure, the reason is: " + e.getMessage)
+    case Success(msg: CreateHttpClientFailureMsg) =>
+      println("Failure, the reason is: " + msg.e.getMessage)
       shutdown
     case Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
@@ -187,11 +189,11 @@ class GoogleMapAPIActor5(implicit system: ActorSystem) extends Actor {
   override def receive: Receive = {
     case GoogleMapAPIMessage =>
       HttpClientManager(system).httpClientManager ! CreateHttpClientMsg(name = "googlemap")
-    case msg: IHttpClient =>
+    case msg: CreateHttpClientSuccessMsg[IHttpClient] =>
       import org.squbs.hc.json.Json4sJacksonNoTypeHintsProtocol._
-      HttpClientManager(system).httpClientManager ! HttpClientGetMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
-    case e@HttpClientExistException(name) =>
-      println("Failure, the reason is: " + e.getMessage)
+      HttpClientManager(system).httpClientManager ! HttpClientGetCallMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    case msg: CreateHttpClientFailureMsg =>
+      println("Failure, the reason is: " + msg.e.getMessage)
       shutdown
     case HttpResponseWrapper(StatusCodes.OK, Right(res)) =>
       println("Success, response entity is: " + res.entity.asString)

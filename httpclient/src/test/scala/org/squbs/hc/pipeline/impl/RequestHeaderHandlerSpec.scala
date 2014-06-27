@@ -7,7 +7,7 @@ import spray.http.HttpHeaders.RawHeader
 /**
  * Created by hakuang on 6/5/2014.
  */
-class RequestHeaderHandlerTest extends FlatSpec with Matchers{
+class RequestHeaderHandlerSpec extends FlatSpec with Matchers{
 
   "RequestAddHeaderHandler" should "support to add HttpHeader in HttpRequest" in {
     val httpRequest = HttpRequest()

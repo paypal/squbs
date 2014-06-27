@@ -23,7 +23,7 @@ import spray.util._
 /**
  * Created by hakuang on 6/10/2014.
  */
-class JMXTest extends FlatSpec with Matchers with BeforeAndAfterEach with BeforeAndAfterAll{
+class JMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach with BeforeAndAfterAll{
 
   private implicit val system = ActorSystem("JMXTest")
 

@@ -6,7 +6,7 @@ import org.squbs.hc.HttpClientException
 /**
  * Created by hakuang on 5/22/2014.
  */
-class RoutingTest extends FlatSpec with Matchers with BeforeAndAfterEach{
+class RoutingSpec extends FlatSpec with Matchers with BeforeAndAfterEach{
 
   override def beforeEach() {
     RoutingRegistry.clear

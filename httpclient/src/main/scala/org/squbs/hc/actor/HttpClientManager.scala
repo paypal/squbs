@@ -17,13 +17,43 @@ import scala.collection.concurrent.TrieMap
 import org.squbs.hc.config.ServiceConfiguration
 import org.squbs.hc.actor.HttpClientMessage.CreateHttpClientMsg
 import scala.Some
-import org.squbs.hc.actor.HttpClientMessage.HttpClientPostMsg
+import org.squbs.hc.actor.HttpClientMessage.HttpClientPostCallMsg
 import spray.http.HttpResponse
-import org.squbs.hc.HttpResponseEntityWrapper
 import org.squbs.hc.config.Configuration
 import org.squbs.hc.actor.HttpClientMessage.UpdateHttpClientMsg
 import org.squbs.hc.config.HostConfiguration
-import org.squbs.hc.actor.HttpClientMessage.HttpClientGetMsg
+import org.squbs.hc.actor.HttpClientMessage.HttpClientGetCallMsg
+import org.squbs.hc.config.ServiceConfiguration
+import org.squbs.hc.actor.HttpClientMessage.MarkUpHttpClientMsg
+import org.squbs.hc.actor.HttpClientMessage.CreateHttpClientSuccessMsg
+import org.squbs.hc.actor.HttpClientMessage.MarkDownHttpClientSuccessMsg
+import org.squbs.hc.actor.HttpClientMessage.CreateHttpClientFailureMsg
+import org.squbs.hc.actor.HttpClientMessage.MarkDownHttpClientFailureMsg
+import org.squbs.hc.actor.HttpClientMessage.DeleteHttpClientMsg
+import org.squbs.hc.actor.HttpClientMessage.MarkDownHttpClientMsg
+import org.squbs.hc.actor.HttpClientMessage.HttpClientPostCallMsg
+import org.squbs.hc.actor.HttpClientMessage.GetHttpClientMsg
+import scala.Some
+import org.squbs.hc.actor.HttpClientMessage.MarkUpHttpClientSuccessMsg
+import org.squbs.hc.actor.HttpClientMessage.UpdateHttpClientMsg
+import org.squbs.hc.actor.HttpClientMessage.MarkUpHttpClientFailureMsg
+import org.squbs.hc.actor.HttpClientMessage.HttpClientGetCallMsg
+import spray.http.HttpResponse
+import org.squbs.hc.HttpResponseEntityWrapper
+import org.squbs.hc.config.Configuration
+import org.squbs.hc.actor.HttpClientMessage.CreateHttpClientMsg
+import org.squbs.hc.actor.HttpClientMessage.GetAllHttpClientSuccessMsg
+import org.squbs.hc.actor.HttpClientMessage.DeleteHttpClientFailureMsg
+import org.squbs.hc.actor.HttpClientMessage.DeleteHttpClientSuccessMsg
+import org.squbs.hc.HttpClientNotExistException
+import org.squbs.hc.actor.HttpClientMessage.GetHttpClientSuccessMsg
+import org.squbs.hc.actor.HttpClientMessage.HttpClientGetCallFailureMsg
+import org.squbs.hc.HttpClientExistException
+import org.squbs.hc.config.HostConfiguration
+import org.squbs.hc.actor.HttpClientMessage.UpdateHttpClientFailureMsg
+import org.squbs.hc.HttpClientNotSupportMethodException
+import org.squbs.hc.actor.HttpClientMessage.GetHttpClientFailureMsg
+import org.squbs.hc.actor.HttpClientMessage.UpdateHttpClientSuccessMsg
 
 /**
  * Created by hakuang on 6/23/2014.
@@ -67,15 +97,15 @@ class HttpClientCallActor extends Actor with HttpCallActorSupport with ActorLogg
   import scala.concurrent.ExecutionContext.Implicits.global
 
   override def receive: Actor.Receive = {
-    case (msg @ HttpClientGetMsg(name, httpMethod, uri), hc: IHttpClient) =>
+    case (msg @ HttpClientGetCallMsg(name, httpMethod, uri), hc: IHttpClient) =>
       IO(Http) ! PipelineManager.hostConnectorSetup(hc)
       context.become(receiveGetConnection(msg, hc, sender()))
-    case (msg @ HttpClientPostMsg(name, httpMethod, uri, content), hc: IHttpClient) =>
+    case (msg @ HttpClientPostCallMsg(name, httpMethod, uri, content), hc: IHttpClient) =>
       IO(Http) ! PipelineManager.hostConnectorSetup(hc)
       context.become(receivePostConnection(msg, hc, sender()))
   }
 
-  def receiveGetConnection(msg: HttpClientGetMsg, hc: IHttpClient, actorRef: ActorRef): Actor.Receive = {
+  def receiveGetConnection(msg: HttpClientGetCallMsg, hc: IHttpClient, actorRef: ActorRef): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
       implicit val timeout: Timeout = hc.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis
       msg.httpMethod match {
@@ -92,6 +122,7 @@ class HttpClientCallActor extends Actor with HttpCallActorSupport with ActorLogg
           options(hc, connector, msg.uri).pipeTo(actorRef)
           context.stop(self)
         case httpMethod =>
+          actorRef ! HttpClientGetCallFailureMsg(HttpClientNotSupportMethodException(msg.name))
           log.error(HttpClientNotSupportMethodException(msg.name).getMessage)
           context.stop(self)
       }
@@ -105,7 +136,7 @@ class HttpClientCallActor extends Actor with HttpCallActorSupport with ActorLogg
       ctx.marshalTo(HttpEntity(contentType, value.asInstanceOf[String]))
     }
 
-  def receivePostConnection[T](msg: HttpClientPostMsg[T], hc: IHttpClient, actorRef: ActorRef): Actor.Receive = {
+  def receivePostConnection[T](msg: HttpClientPostCallMsg[T], hc: IHttpClient, actorRef: ActorRef): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
       implicit val timeout: Timeout = hc.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis
       msg.httpMethod match {
@@ -116,6 +147,7 @@ class HttpClientCallActor extends Actor with HttpCallActorSupport with ActorLogg
           put[T](hc, connector, msg.uri, msg.content).pipeTo(actorRef)
           context.stop(self)
         case httpMethod =>
+          actorRef ! HttpClientPostCallFailureMsg(HttpClientNotSupportMethodException(msg.name))
           log.error(HttpClientNotSupportMethodException(msg.name).getMessage)
           context.stop(self)
       }
@@ -165,48 +197,55 @@ class HttpClientManager extends Actor {
   override def receive: Receive = {
     case msg @ CreateHttpClientMsg(name, env, config, pipeline) =>
       httpClientMap.get(name) match {
-        case Some(hc) => sender ! HttpClientExistException(name)
-        case None     => sender ! httpClientMap.getOrElseUpdate(name, msg)
+        case Some(hc) => sender ! CreateHttpClientFailureMsg(HttpClientExistException(name))
+        case None     => sender ! CreateHttpClientSuccessMsg(httpClientMap.getOrElseUpdate(name, msg))
       }
     case msg @ UpdateHttpClientMsg(name, env, config, pipeline) =>
       httpClientMap.get(name) match {
-        case Some(hc) => sender ! httpClientMap.getOrElseUpdate(name, msg)
-        case None     => sender ! HttpClientNotExistException(name)
+        case Some(hc) =>
+          httpClientMap.put(name, msg)
+          sender ! UpdateHttpClientSuccessMsg(msg)
+        case None     => sender ! UpdateHttpClientFailureMsg(HttpClientNotExistException(name))
       }
     case msg @ GetHttpClientMsg(name) =>
       httpClientMap.get(name) match {
-        case Some(hc) => sender ! hc
-        case None     => sender ! HttpClientNotExistException(name)
+        case Some(hc) => sender ! GetHttpClientSuccessMsg(hc)
+        case None     => sender ! GetHttpClientFailureMsg(HttpClientNotExistException(name))
       }
-    case msg @ GetAllHttpClientMsg => sender ! httpClientMap
+    case msg @ GetAllHttpClientMsg => sender ! GetAllHttpClientSuccessMsg(httpClientMap)
     case msg @ DeleteHttpClientMsg(name) =>
       httpClientMap.get(name) match {
         case Some(hc) =>
           httpClientMap.remove(name)
-          sender ! hc
-        case None     => sender ! HttpClientNotExistException(name)
+          sender ! DeleteHttpClientSuccessMsg(hc)
+        case None     => sender ! DeleteHttpClientFailureMsg(HttpClientNotExistException(name))
       }
+    case msg @ DeleteAllHttpClientMsg =>
+      httpClientMap.clear
+      sender ! DeleteAllHttpClientSuccessMsg(httpClientMap)
     case msg @ MarkDownHttpClientMsg(name) =>
       httpClientMap.get(name) match {
         case Some(hc) =>
           hc.status = HttpClientStatus.DOWN
-          sender ! httpClientMap.getOrElseUpdate(name, hc)
-        case None     => sender ! HttpClientNotExistException(name)
+          httpClientMap.put(name, hc)
+          sender ! MarkDownHttpClientSuccessMsg(hc)
+        case None     => sender ! MarkDownHttpClientFailureMsg(HttpClientNotExistException(name))
       }
     case msg @ MarkUpHttpClientMsg(name) =>
       httpClientMap.get(name) match {
         case Some(hc) =>
           hc.status = HttpClientStatus.UP
-          sender ! httpClientMap.getOrElseUpdate(name, hc)
-        case None     => sender ! HttpClientNotExistException(name)
+          httpClientMap.put(name, hc)
+          sender ! MarkUpHttpClientSuccessMsg(hc)
+        case None     => sender ! MarkUpHttpClientFailureMsg(HttpClientNotExistException(name))
       }
-    case msg @ HttpClientPostMsg(name, httpMethod, uri, content) =>
+    case msg @ HttpClientPostCallMsg(name, httpMethod, uri, content) =>
       httpClientMap.get(name) match {
         case Some(hc) => context.actorOf(Props(classOf[HttpClientCallActor])).forward((msg, hc))
         case None     => sender ! HttpClientNotExistException(name)
       }
 
-    case msg @ HttpClientGetMsg(name, httpMethod, uri) =>
+    case msg @ HttpClientGetCallMsg(name, httpMethod, uri) =>
       httpClientMap.get(name) match {
         case Some(hc) => context.actorOf(Props(classOf[HttpClientCallActor])).forward((msg, hc))
         case None => sender ! HttpClientNotExistException(name)

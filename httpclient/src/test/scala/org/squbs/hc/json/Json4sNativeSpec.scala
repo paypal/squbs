@@ -2,15 +2,15 @@ package org.squbs.hc.json
 
 import org.scalatest.{Matchers, FlatSpec}
 import org.json4s._
-import jackson.Serialization._
+import native.Serialization._
 
 /**
  * Created by hakuang on 6/2/2014.
  */
-class Json4sJacksonTest extends FlatSpec with Matchers{
+class Json4sNativeSpec extends FlatSpec with Matchers{
 
   "NotTypeHints Example (case class)" should "have correct behaviour of read/write" in {
-    import Json4sJacksonNoTypeHintsProtocol._
+    import Json4sNativeNoTypeHintsProtocol._
     val playInfo = PlayerInfo("d", "k", 30)
     val jsonString = """{"firstName":"d","lastName":"k","age":30}"""
     write(playInfo) should be (jsonString)
@@ -18,7 +18,7 @@ class Json4sJacksonTest extends FlatSpec with Matchers{
   }
 
   "NotTypeHints Example (case class contain the other case class)" should "have correct behaviour of read/write" in {
-    import Json4sJacksonNoTypeHintsProtocol._
+    import Json4sNativeNoTypeHintsProtocol._
     val name = Player("d", "k")
     val playInfo = PlayerInfo2(name, 30)
     val jsonString = """{"name":{"firstName":"d","lastName":"k"},"age":30}"""
@@ -27,7 +27,7 @@ class Json4sJacksonTest extends FlatSpec with Matchers{
   }
 
   "ShortTypeHints Example (inheritance)" should "have correct behaviour of read/write" in {
-    import Json4sJacksonShortTypeHintsProtocolExample._
+    import Json4sNativeShortTypeHintsProtocolExample._
     val animals = Animals(Dog("pluto") :: Fish(1.2) :: Nil)
     val jsonString = """{"animals":[{"jsonClass":"Dog","name":"pluto"},{"jsonClass":"Fish","weight":1.2}]}"""
     write(animals) should be (jsonString)
@@ -35,7 +35,7 @@ class Json4sJacksonTest extends FlatSpec with Matchers{
   }
 
   "FullTypeHints Example (inheritance)" should "have correct behaviour of read/write" in {
-    import Json4sJacksonFullTypeHintsProtocolExample._
+    import Json4sNativeFullTypeHintsProtocolExample._
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
     val jsonString = """{"animals":[{"jsonClass":"org.squbs.hc.json.Dog","name":"lucky"},{"jsonClass":"org.squbs.hc.json.Fish","weight":3.4}]}"""
     write(animals) should be (jsonString)
@@ -43,7 +43,7 @@ class Json4sJacksonTest extends FlatSpec with Matchers{
   }
 
   "Custome Example (inheritance)" should "have correct behaviour of read/write" in {
-    import Json4sJacksonCustomProtocolExample._
+    import Json4sNativeCustomProtocolExample._
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
     val jsonString = """{"animals":[{"$type$":"org.squbs.hc.json.Dog","name":"lucky"},{"$type$":"org.squbs.hc.json.Fish","weight":3.4}]}"""
     write(animals) should be (jsonString)
@@ -52,27 +52,18 @@ class Json4sJacksonTest extends FlatSpec with Matchers{
 
 }
 
-object Json4sJacksonShortTypeHintsProtocolExample extends Json4sJacksonShortTypeHintsProtocol {
+object Json4sNativeShortTypeHintsProtocolExample extends Json4sNativeShortTypeHintsProtocol {
   override def hints: List[Class[_]] = List(classOf[Dog], classOf[Fish])
 }
 
-object Json4sJacksonFullTypeHintsProtocolExample extends Json4sJacksonFullTypeHintsProtocol {
+object Json4sNativeFullTypeHintsProtocolExample extends Json4sNativeFullTypeHintsProtocol {
   override def hints: List[Class[_]] = List(classOf[Dog], classOf[Fish])
 }
 
-object Json4sJacksonCustomProtocolExample extends Json4sJacksonCustomProtocol {
-  override implicit def json4sJacksonFormats: Formats = new Formats {
+object Json4sNativeCustomProtocolExample extends Json4sNativeCustomProtocol {
+  override implicit def json4sFormats: Formats = new Formats {
     val dateFormat = DefaultFormats.lossless.dateFormat
     override val typeHints = FullTypeHints(classOf[Fish] :: classOf[Dog] :: Nil)
     override val typeHintFieldName = "$type$"
   }
 }
-
-case class Player(firstName: String, lastName: String)
-case class PlayerInfo(firstName: String, lastName: String, age: Int)
-case class PlayerInfo2(name: Player, age: Int)
-
-trait Animal
-case class Dog(name: String) extends Animal
-case class Fish(weight: Double) extends Animal
-case class Animals(animals: List[Animal])

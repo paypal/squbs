@@ -6,7 +6,7 @@ import spray.http.{BasicHttpCredentials, HttpRequest, OAuth2BearerToken}
 /**
  * Created by hakuang on 6/5/2014.
  */
-class RequestCredentialsHandlerTest extends FlatSpec with Matchers {
+class RequestCredentialsHandlerSpec extends FlatSpec with Matchers {
 
   "RequestCredentialsHandler" should "support OAuth2BearerToken" in {
     val httpRequest = HttpRequest()

@@ -17,7 +17,7 @@ import org.squbs.hc.pipeline.impl.ResponseAddHeaderHandler
 import spray.http.HttpHeaders.RawHeader
 import scala.Some
 
-class PipelineTest extends FlatSpec with Matchers with BeforeAndAfterAll{
+class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
 
   private implicit val system = ActorSystem("PipelineTest")
   import system.dispatcher
