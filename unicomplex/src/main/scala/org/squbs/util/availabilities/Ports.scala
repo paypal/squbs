@@ -14,7 +14,7 @@ object Ports {
   private[this] val unavailable = new ConcurrentHashMap[Int, Boolean]()
   private[this] val nextAttempt = new AtomicInteger(0)
 
-  @tailrec def available(lower:Int = 1000, upper:Int = 9999):Int = {
+  def available(lower:Int = 1000, upper:Int = 9999):Int = {
 
     lower + nextAttempt.getAndIncrement % (upper - lower) match {
 
@@ -33,7 +33,7 @@ object Ports {
           verifying
         }
         catch {
-          case ex => //failure, try next port
+          case ex: Throwable => //failure, try next port
             available(lower, upper)
         }
         finally{
@@ -42,7 +42,7 @@ object Ports {
             serverSocket.foreach(_.close)
           }
           catch {
-            case _ => //ignored
+            case _: Throwable => //ignored
           }
         }
       //all ports in range are unavailable
