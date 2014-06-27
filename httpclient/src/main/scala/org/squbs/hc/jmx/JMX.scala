@@ -2,15 +2,15 @@ package org.squbs.hc.jmx
 
 import java.beans.ConstructorProperties
 import scala.beans.BeanProperty
-import javax.management.{ObjectName, MXBean}
-import java.lang.management.ManagementFactory
+import javax.management.{MXBean}
 import org.squbs.hc.routing.RoutingRegistry
 import org.squbs.hc.pipeline.EmptyPipelineDefinition
 import org.squbs.hc.config.ServiceConfiguration
 import org.squbs.hc.config.Configuration
 import org.squbs.hc.config.HostConfiguration
-import org.squbs.hc.HttpClient
+import org.squbs.hc.{HttpClientFactory, IHttpClient, HttpClient}
 import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
+import org.squbs.hc.actor.HttpClientManager
 
 /**
  * Created by hakuang on 6/9/2014.
@@ -39,11 +39,12 @@ object HttpClientBean extends HttpClientMXBean {
   import scala.collection.JavaConversions._
 
   override def getInfo: java.util.List[HttpClientInfo] = {
-    val httpClients = HttpClient.get
-    httpClients.values.toList map {mapToHttpClientInfo(_)}
+    val httpClients = HttpClientFactory.httpClientMap
+    val httpClientActors = HttpClientManager.httpClientMap
+    (httpClientActors ++ httpClients).values.toList map {mapToHttpClientInfo(_)}
   }
 
-  def mapToHttpClientInfo(httpClient: HttpClient) = {
+  def mapToHttpClientInfo(httpClient: IHttpClient) = {
     val name = httpClient.name
     val endpoint = RoutingRegistry.resolve(name).getOrElse("")
     val status = httpClient.status.toString

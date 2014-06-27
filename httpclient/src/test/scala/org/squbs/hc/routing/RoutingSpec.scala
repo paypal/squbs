@@ -1,15 +1,18 @@
 package org.squbs.hc.routing
 
-import org.scalatest.{BeforeAndAfterEach, BeforeAndAfter, Matchers, FlatSpec}
-import org.squbs.hc.HttpClientException
+import org.scalatest.{BeforeAndAfterEach, Matchers, FlatSpec}
+import org.squbs.hc.{HttpClientFactory, HttpClientException}
+import org.squbs.hc.actor.HttpClientManager
 
 /**
  * Created by hakuang on 5/22/2014.
  */
 class RoutingSpec extends FlatSpec with Matchers with BeforeAndAfterEach{
 
-  override def beforeEach() {
-    RoutingRegistry.clear
+  override def afterEach = {
+    RoutingRegistry.routingDefinitions.clear
+    HttpClientManager.httpClientMap.clear
+    HttpClientFactory.httpClientMap.clear
   }
 
   class LocalhostRouting extends RoutingDefinition {
@@ -27,28 +30,28 @@ class RoutingSpec extends FlatSpec with Matchers with BeforeAndAfterEach{
 
   "RoutingRegistry" should "contain LocalhostRouting" in {
     RoutingRegistry.register(new LocalhostRouting)
-    RoutingRegistry.get.length should be (1)
-    RoutingRegistry.get.head.isInstanceOf[LocalhostRouting] should be (true)
+    RoutingRegistry.routingDefinitions.length should be (1)
+    RoutingRegistry.routingDefinitions.head.isInstanceOf[LocalhostRouting] should be (true)
   }
 
   "localhost routing" should "be return to the correct value" in {
     RoutingRegistry.register(new LocalhostRouting)
-    RoutingRegistry.routing("abcService") should not be (None)
-    RoutingRegistry.routing("abcService").get.name should be ("localhost")
-    RoutingRegistry.routing("abcService").get.resolve("abcService") should be (Some("http://localhost:8080/abcService"))
+    RoutingRegistry.route("abcService") should not be (None)
+    RoutingRegistry.route("abcService").get.name should be ("localhost")
+    RoutingRegistry.route("abcService").get.resolve("abcService") should be (Some("http://localhost:8080/abcService"))
   }
 
   "localhost routing" should "be throw out HttpClientException if env isn't Dev" in {
     a[HttpClientException] should be thrownBy {
       RoutingRegistry.register(new LocalhostRouting)
-      RoutingRegistry.routing("abcService", Some("qa"))
+      RoutingRegistry.route("abcService", Some("qa"))
     }
   }
 
   "localhost routing" should "be return to the correct value if env is Dev" in {
     RoutingRegistry.register(new LocalhostRouting)
-    RoutingRegistry.routing("abcService", Some("dev")) should not be (None)
-    RoutingRegistry.routing("abcService", Some("dev")).get.name should be ("localhost")
+    RoutingRegistry.route("abcService", Some("dev")) should not be (None)
+    RoutingRegistry.route("abcService", Some("dev")).get.name should be ("localhost")
     RoutingRegistry.resolve("abcService", Some("dev")) should be (Some("http://localhost:8080/abcService"))
   }
 
@@ -59,11 +62,11 @@ class RoutingSpec extends FlatSpec with Matchers with BeforeAndAfterEach{
 
       override def name: String = "override"
     })
-    RoutingRegistry.get.length should be (2)
-    RoutingRegistry.get.head.isInstanceOf[LocalhostRouting] should be (false)
-    RoutingRegistry.get.head.asInstanceOf[RoutingDefinition].name should be ("override")
-    RoutingRegistry.routing("abcService") should not be (None)
-    RoutingRegistry.routing("abcService").get.name should be ("override")
+    RoutingRegistry.routingDefinitions.length should be (2)
+    RoutingRegistry.routingDefinitions.head.isInstanceOf[LocalhostRouting] should be (false)
+    RoutingRegistry.routingDefinitions.head.asInstanceOf[RoutingDefinition].name should be ("override")
+    RoutingRegistry.route("abcService") should not be (None)
+    RoutingRegistry.route("abcService").get.name should be ("override")
     RoutingRegistry.resolve("abcService") should be (Some("http://localhost:8080/override"))
   }
 
@@ -79,11 +82,11 @@ class RoutingSpec extends FlatSpec with Matchers with BeforeAndAfterEach{
 
       override def name: String = "unique"
     })
-    RoutingRegistry.get.length should be (2)
-    RoutingRegistry.routing("abcService") should not be (None)
-    RoutingRegistry.routing("abcService").get.name should be ("localhost")
-    RoutingRegistry.routing("unique") should not be (None)
-    RoutingRegistry.routing("unique").get.name should be ("unique")
+    RoutingRegistry.routingDefinitions.length should be (2)
+    RoutingRegistry.route("abcService") should not be (None)
+    RoutingRegistry.route("abcService").get.name should be ("localhost")
+    RoutingRegistry.route("unique") should not be (None)
+    RoutingRegistry.route("unique").get.name should be ("unique")
     RoutingRegistry.resolve("abcService") should be (Some("http://localhost:8080/abcService"))
     RoutingRegistry.resolve("unique") should be (Some("http://www.ebay.com/unique"))
   }
@@ -101,11 +104,11 @@ class RoutingSpec extends FlatSpec with Matchers with BeforeAndAfterEach{
     })
     RoutingRegistry.register(new LocalhostRouting)
 
-    RoutingRegistry.get.length should be (2)
-    RoutingRegistry.get.head.isInstanceOf[LocalhostRouting] should be (true)
+    RoutingRegistry.routingDefinitions.length should be (2)
+    RoutingRegistry.routingDefinitions.head.isInstanceOf[LocalhostRouting] should be (true)
     RoutingRegistry.resolve("unique") should be (Some("http://localhost:8080/unique"))
     RoutingRegistry.unregister("localhost")
-    RoutingRegistry.get.length should be (1)
+    RoutingRegistry.routingDefinitions.length should be (1)
     RoutingRegistry.resolve("unique") should be (Some("http://www.ebay.com/unique"))
   }
 }

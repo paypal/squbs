@@ -9,18 +9,13 @@ import scala.util.Try
 import scala.concurrent._
 import scala.annotation.tailrec
 import org.squbs.hc.pipeline.{PipelineDefinition, PipelineManager}
-import spray.http.HttpRequest
 import scala.util.Failure
 import scala.Some
 import org.squbs.hc.config.{HostConfiguration, ServiceConfiguration, Configuration}
 import scala.util.Success
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.Duration
-import org.squbs.unicomplex.JMX
-import org.squbs.unicomplex.JMX._
-import org.squbs.hc.jmx.HttpClientBean
 import spray.http.HttpRequest
-import spray.client.pipelining
 
 /**
  * Created by hakuang on 5/9/14.
@@ -288,11 +283,11 @@ object HttpClientStatus extends Enumeration {
   val UP, DOWN = Value
 }
 
-object HttpClient {
+object HttpClientFactory {
 
-  private val httpClientMap: TrieMap[String, HttpClient] = TrieMap[String, HttpClient]()
+  val httpClientMap: TrieMap[String, HttpClient] = TrieMap[String, HttpClient]()
 
-  if (!JMX.isRegistered(HttpClientBean.HTTPCLIENTNFO)) JMX.register(HttpClientBean, HttpClientBean.HTTPCLIENTNFO)
+//  if (!JMX.isRegistered(HttpClientBean.HTTPCLIENTNFO)) JMX.register(HttpClientBean, HttpClientBean.HTTPCLIENTNFO)
 
   def create(svcName: String): HttpClient = {
     create(svcName, env = None)
@@ -311,15 +306,5 @@ object HttpClient {
       val endpoint = RoutingRegistry.resolve(svcName, env).getOrElse("")
       HttpClient(svcName, endpoint, config, pipeline)
     })
-  }
-
-  def clear = {
-    httpClientMap.clear()
-  }
-
-  def get = httpClientMap
-
-  def remove(svcName: String) = {
-    httpClientMap.remove(svcName)
   }
 }

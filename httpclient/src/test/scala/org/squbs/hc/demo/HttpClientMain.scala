@@ -18,9 +18,7 @@ import org.squbs.hc.HttpResponseEntityWrapper
 import org.squbs.hc.actor.HttpClientMessage.CreateHttpClientMsg
 import scala.util.Success
 import org.squbs.hc.HttpResponseWrapper
-import org.squbs.hc.HttpClientExistException
 import org.squbs.hc.actor.HttpClientMessage.HttpClientGetCallMsg
-import scala.collection.concurrent.TrieMap
 
 /**
  * Created by hakuang on 6/13/2014.
@@ -35,7 +33,7 @@ object HttpClientMain1 extends App {
   import system.dispatcher
   RoutingRegistry.register(new GoogleMapAPIRoutingDefinition)
 
-  val response = HttpClient.create("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.create("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
       println("Success, response entity is: " + res.entity.asString)
@@ -64,7 +62,7 @@ object HttpClientMain2 extends App {
   RoutingRegistry.register(new GoogleMapAPIRoutingDefinition)
   import org.squbs.hc.json.Json4sJacksonNoTypeHintsProtocol._
 
-  val response = HttpClient.create("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.create("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(HttpResponseEntityWrapper(StatusCodes.OK, Right(res), rawHttpResponse)) =>
       println("Success, response status is: " + res.status + ", elevation is: " + res.results.head.elevation + ", location.lat is: " + res.results.head.location.lat)

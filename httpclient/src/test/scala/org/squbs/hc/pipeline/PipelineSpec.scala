@@ -1,8 +1,8 @@
 package org.squbs.hc.pipeline
 
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpec}
+import org.scalatest.{BeforeAndAfterEach, BeforeAndAfterAll, Matchers, FlatSpec}
 import spray.client.pipelining._
-import org.squbs.hc.HttpClient
+import org.squbs.hc.{HttpClientFactory}
 import org.squbs.hc.routing.{RoutingRegistry, RoutingDefinition}
 import akka.actor.ActorSystem
 import akka.io.IO
@@ -16,26 +16,31 @@ import org.squbs.hc.pipeline.impl.RequestAddHeaderHandler
 import org.squbs.hc.pipeline.impl.ResponseAddHeaderHandler
 import spray.http.HttpHeaders.RawHeader
 import scala.Some
+import org.squbs.hc.actor.HttpClientManager
 
-class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
+class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll with BeforeAndAfterEach{
 
-  private implicit val system = ActorSystem("PipelineTest")
+  private implicit val system = ActorSystem("PipelineSpec")
   import system.dispatcher
   import org.squbs.hc.json.Json4sJacksonNoTypeHintsProtocol._
 
-  override def beforeAll() {
-    HttpClient.clear
-    RoutingRegistry.clear
+  override def beforeEach = {
     RoutingRegistry.register(new GoogleRoutingDefinition())
   }
 
-  override def afterAll() {
+  override def afterEach = {
+    HttpClientFactory.httpClientMap.clear
+    HttpClientManager.httpClientMap.clear
+    RoutingRegistry.routingDefinitions.clear
+  }
+
+  override def afterAll = {
     IO(Http).ask(Http.CloseAll)(1.second).await
     system.shutdown()
   }
 
   "Request Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClient.create("googlemap", pipeline = Some(RequestPipeline))
+    val httpClient = HttpClientFactory.create("googlemap", pipeline = Some(RequestPipeline))
     val sendReceive = PipelineManager.invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
     val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
@@ -44,7 +49,7 @@ class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClient.create("googlemap", pipeline = Some(ResponsePipeline))
+    val httpClient = HttpClientFactory.create("googlemap", pipeline = Some(ResponsePipeline))
     val sendReceive = PipelineManager.invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
     val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
@@ -54,7 +59,7 @@ class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "Request-Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClient.create("googlemap", pipeline = Some(RequestResponsePipeline))
+    val httpClient = HttpClientFactory.create("googlemap", pipeline = Some(RequestResponsePipeline))
     val sendReceive = PipelineManager.invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
     val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
@@ -64,7 +69,7 @@ class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "Request Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClient.create("googlemap", pipeline = Some(RequestPipeline))
+    val httpClient = HttpClientFactory.create("googlemap", pipeline = Some(RequestPipeline))
     val sendReceive = PipelineManager.invokeToEntity[GoogleApiResult[Elevation]](httpClient)
     sendReceive.isSuccess should be (true)
     val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
@@ -73,7 +78,7 @@ class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "Response Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClient.create("googlemap", pipeline = Some(ResponsePipeline))
+    val httpClient = HttpClientFactory.create("googlemap", pipeline = Some(ResponsePipeline))
     val sendReceive = PipelineManager.invokeToEntity[GoogleApiResult[Elevation]](httpClient)
     sendReceive.isSuccess should be (true)
     val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
@@ -83,7 +88,7 @@ class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "Request-Response Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClient.create("googlemap", pipeline = Some(RequestResponsePipeline))
+    val httpClient = HttpClientFactory.create("googlemap", pipeline = Some(RequestResponsePipeline))
     val sendReceive = PipelineManager.invokeToEntity[GoogleApiResult[Elevation]](httpClient)
     sendReceive.isSuccess should be (true)
     val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))

@@ -66,7 +66,7 @@ class HttpClientManagerExtension(system: ExtendedActorSystem) extends Extension 
 
 object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with ExtensionIdProvider {
 
-//  private[HttpClientManager] val httpClientMap: TrieMap[String, IHttpClient] = TrieMap[String, IHttpClient]()
+  val httpClientMap: TrieMap[String, IHttpClient] = TrieMap[String, IHttpClient]()
 
   override def createExtension(system: ExtendedActorSystem): HttpClientManagerExtension = new HttpClientManagerExtension(system)
 
@@ -192,8 +192,8 @@ class HttpClientEntityCallActor(client: ActorRef) extends Actor with HttpEntityC
 */
 class HttpClientManager extends Actor {
 
-  private[HttpClientManager] val httpClientMap: TrieMap[String, IHttpClient] = TrieMap[String, IHttpClient]()
-
+//  private[HttpClientManager] val httpClientMap: TrieMap[String, IHttpClient] = TrieMap[String, IHttpClient]()
+  import HttpClientManager.httpClientMap
   override def receive: Receive = {
     case msg @ CreateHttpClientMsg(name, env, config, pipeline) =>
       httpClientMap.get(name) match {

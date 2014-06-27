@@ -7,12 +7,7 @@ import org.squbs.hc.actor.HttpClientMessage._
 import scala.collection.concurrent.TrieMap
 import org.squbs.hc._
 import org.squbs.hc.routing.{RoutingRegistry, RoutingDefinition}
-import org.squbs.hc.actor.HttpClientMessage.CreateHttpClientMsg
-import org.squbs.hc.actor.HttpClientMessage.GetAllHttpClientSuccessMsg
-import scala.Some
-import org.squbs.hc.actor.HttpClientMessage.UpdateHttpClientMsg
 import akka.pattern._
-import akka.util._
 import scala.concurrent.duration._
 import spray.util._
 import org.squbs.hc.actor.HttpClientMessage.CreateHttpClientSuccessMsg
@@ -24,22 +19,27 @@ import scala.Some
 import org.squbs.hc.actor.HttpClientMessage.UpdateHttpClientFailureMsg
 import org.squbs.hc.actor.HttpClientMessage.UpdateHttpClientMsg
 import org.squbs.hc.actor.HttpClientMessage.UpdateHttpClientSuccessMsg
-import spray.http.{HttpResponse, StatusCodes, HttpMethods}
+import spray.http.{StatusCodes, HttpMethods}
+import akka.io.IO
+import spray.can.Http
 
 /**
  * Created by hakuang on 6/26/2014.
  */
-class HttpClientManagerSpec extends TestKit(ActorSystem("httpclientmanagerspec")) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll with BeforeAndAfterEach{
+class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll with BeforeAndAfterEach{
 
   override def afterAll = {
+    IO(Http).ask(Http.CloseAll)(1.second).await
     system.shutdown
   }
 
-  override def beforeEach = {
-    RoutingRegistry.clear
-    val httpClientManager = HttpClientManager(system).httpClientManager
-    implicit val timeout: Timeout = Timeout(2 seconds)
-    httpClientManager ? DeleteAllHttpClientMsg
+  override def afterEach = {
+    RoutingRegistry.routingDefinitions.clear
+    HttpClientManager.httpClientMap.clear
+    HttpClientFactory.httpClientMap.clear
+//    val httpClientManager = HttpClientManager(system).httpClientManager
+//    implicit val timeout: Timeout = Timeout(2 seconds)
+//    httpClientManager ? DeleteAllHttpClientMsg
   }
 
   "httpClientMap" should "be emtpy before creating any httpclient" in {
@@ -172,4 +172,3 @@ class GoogleRoutingDefinition extends RoutingDefinition {
 
   override def name: String = "googlemap"
 }
-

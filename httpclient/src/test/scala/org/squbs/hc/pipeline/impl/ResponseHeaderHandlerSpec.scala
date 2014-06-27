@@ -1,7 +1,7 @@
 package org.squbs.hc.pipeline.impl
 
 import org.scalatest.{Matchers, FlatSpec}
-import spray.http.{HttpHeader, HttpResponse, HttpRequest}
+import spray.http.{HttpHeader, HttpResponse}
 import spray.http.HttpHeaders.RawHeader
 
 /**

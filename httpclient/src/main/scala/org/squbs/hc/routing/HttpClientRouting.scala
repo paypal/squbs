@@ -14,33 +14,28 @@ trait RoutingDefinition {
 
 object RoutingRegistry {
 
-  private val _routing = ListBuffer[RoutingDefinition]()
+  val routingDefinitions = ListBuffer[RoutingDefinition]()
 
   def register(routingDefinition: RoutingDefinition) = {
-    _routing.find(_.name == routingDefinition.name) match {
-      case None => _routing.prepend(routingDefinition)
+    routingDefinitions.find(_.name == routingDefinition.name) match {
+      case None => routingDefinitions.prepend(routingDefinition)
       case Some(routing) => println("routing:" + routingDefinition.name + " has been registry, skip current routing registry!")
     }
   }
 
   def unregister(name: String) = {
-    _routing.find(_.name == name) match {
+    routingDefinitions.find(_.name == name) match {
       case None => println("routing:" + name + " cannot be found, skip current routing unregistry!")
-      case Some(routing) => _routing.remove(_routing.indexOf(routing))
+      case Some(route) => routingDefinitions.remove(routingDefinitions.indexOf(route))
     }                                      
   }
 
-  def clear = {
-    _routing.clear()
-  }
-
-  def get = _routing
-
-  def routing(svcName: String, env: Option[String] = None): Option[RoutingDefinition] = {
-    _routing.find(_.resolve(svcName, env) != None)
+  def route(svcName: String, env: Option[String] = None): Option[RoutingDefinition] = {
+    routingDefinitions.find(_.resolve(svcName, env) != None)
   }
 
   def resolve(svcName: String, env: Option[String] = None): Option[String] = {
-    _routing.find(_.resolve(svcName, env) != None) flatMap (_.resolve(svcName, env))
+    routingDefinitions.find(_.resolve(svcName, env) != None) flatMap (_.resolve(svcName, env))
   }
 }
+
