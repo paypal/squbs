@@ -34,9 +34,9 @@ package object cluster {
         val requires = size(partitionKey)
 
         servants.size match {
-          case size:Int if size < requires => //shortage, must be compensated
+          case size if size < requires => //shortage, must be compensated
             partitionKey -> (servants ++ members.filterNot(servants.contains(_)).take(requires - servants.size))
-          case size:Int if size > requires => //overflow, reduce the servants
+          case size if size > requires => //overflow, reduce the servants
             partitionKey -> servants.take(requires)
           case _ =>
             assign
