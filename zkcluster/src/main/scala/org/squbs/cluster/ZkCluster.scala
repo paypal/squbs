@@ -366,9 +366,12 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
     //https://github.scm.corp.ebay.com/Squbs/chnlsvc/issues/49
     //we'll notify only when the partition has reached its expected size (either the total number of VMs or the required partition size)
     //any change inbetween will be silently ignored, as we know leader will rebalance and trigger another event to reach the expected size eventually
-    val onboards = changed.partitions.keySet.filter{partitionKey =>
-      Math.min(bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey))), numOfNodes) == changed.partitions.getOrElse(partitionKey, Set.empty).size &&
-        partitionsToMembers.getOrElse(partitionKey, Set.empty) != changed.partitions.getOrElse(partitionKey, Set.empty)
+    val onboards = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).size == Math.min(try{
+          bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
+        } catch {
+          case _ => 0 //in case the $size node is being removed
+        }, numOfNodes) &&
+      partitionsToMembers.getOrElse(partitionKey, Set.empty) != changed.partitions.getOrElse(partitionKey, Set.empty)
     }
     val dropoffs = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}.filter(impacted.contains(_))
 
@@ -399,7 +402,12 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
   private[cluster] def partitionManager = context.actorSelection("../zkPartitions")
 
-  private[cluster] def requires(partitionKey:ByteString):Int = bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
+  private[cluster] def requires(partitionKey:ByteString):Int = try{
+    bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
+  }
+  catch{
+    case _ => 0
+  }
 
   private[cluster] def rebalance(partitionsToMembers:Map[ByteString, Set[Address]], members:Set[Address]):Option[Map[ByteString, Set[Address]]] = {
 
