@@ -14,7 +14,7 @@ object Ports {
   private[this] val unavailable = new ConcurrentHashMap[Int, Boolean]()
   private[this] val nextAttempt = new AtomicInteger(0)
 
-  @tailrec def available(lower:Int = 1000, upper:Int = 9999):Int = {
+  def available(lower:Int = 1000, upper:Int = 9999):Int = {
 
     lower + nextAttempt.getAndIncrement % (upper - lower) match {
 
