@@ -306,7 +306,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
         else
           Right(context.actorSelection(self.path.toStringWithAddress(address)))
 
-      sender() ! Try {
+      val result = Try {
         planned.foldLeft(true){(result, assign) => {
           val partitionKey = assign._1
           val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address])
@@ -319,14 +319,14 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
           onboards.foldLeft(result) { (successful, it) =>
             successful && (addressee(it) match {
-              case Left(me) => me ! ZkPartitionOnboard(partitionKey, zkPath)
+              case Left(me) => me.tell(ZkPartitionOnboard(partitionKey, zkPath), me)
                 true
               case Right(other) =>
                 Await.result(other ? ZkPartitionOnboard(partitionKey, zkPath), timeout.duration).asInstanceOf[Boolean]
             })
           } && dropoffs.foldLeft(result) { (successful, it) =>
             successful && (addressee(it) match {
-              case Left(me) => me ! ZkPartitionDropoff(partitionKey, zkPath)
+              case Left(me) => me.tell(ZkPartitionDropoff(partitionKey, zkPath), me)
                 true
               case Right(other) =>
                 Await.result(other ? ZkPartitionDropoff(partitionKey, zkPath), timeout.duration).asInstanceOf[Boolean]
@@ -334,6 +334,8 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
           }
         }}
       }
+      log.debug("[partitions] rebalance plan done:{}", result)
+      sender() ! result
 
     case ZkRemovePartition(partitionKey) =>
       safelyDiscard(partitionZkPath(partitionKey))
@@ -348,14 +350,14 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       notifyOnDifference = notifyOnDifference -- stopOnDifference
 
     case ZkPartitionOnboard(partitionKey, zkPath) => //partition assignment handling
-      log.debug("[partitions] assignment:{} with zkPath:{}", keyToPath(partitionKey), zkPath)
+      log.debug("[partitions] assignment:{} with zkPath:{} replying to:{}", keyToPath(partitionKey), zkPath, sender().path)
       guarantee(zkPath, None)
       //mark acceptance
       guarantee(s"$zkPath/${keyToPath(zkAddress.toString)}", Some(Array[Byte]()), CreateMode.EPHEMERAL)
       sender() ! true
 
     case ZkPartitionDropoff(partitionKey, zkPath) =>
-      log.debug("[partitions] release:{} with zkPath:{}", keyToPath(partitionKey), zkPath)
+      log.debug("[partitions] release:{} with zkPath:{} replying to:{}", keyToPath(partitionKey), zkPath, sender().path)
       safelyDiscard(s"$zkPath/${keyToPath(zkAddress.toString)}")
       sender() ! true
   }
