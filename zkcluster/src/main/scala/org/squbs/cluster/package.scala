@@ -146,7 +146,14 @@ package object cluster {
       Seq.empty[Address]
     else {
       val zkPath = zkSegmentationLogic.partitionZkPath(partitionKey)
-      val ages:Map[Address, Long] = zkClient.getChildren.forPath(zkPath).filterNot(_ == "$size").map(child => try{
+      val servants:Seq[String] = try{
+        zkClient.getChildren.forPath(zkPath)
+      }
+      catch {
+        case e:Exception => Seq.empty[String]
+      }
+
+      val ages:Map[Address, Long] = servants.filterNot(_ == "$size").map(child => try{
           AddressFromURIString.parse(pathToKey(child)) -> zkClient.checkExists.forPath(s"$zkPath/$child").getCtime
         }
         catch{
