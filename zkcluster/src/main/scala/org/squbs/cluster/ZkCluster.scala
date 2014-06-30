@@ -271,7 +271,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       initialize
 
     case origin @ ZkPartitionsChanged(segment, change) => //partition changes found in zk
-      log.debug("[partitions] partitions change detected from zk: {}", change.map(pair => keyToPath(pair._1) -> pair._2))
+      log.debug("[partitions] partitions change detected from zk: {}", change.map{case (key, members) => keyToPath(key) -> members})
 
       val numOfNodes = zkClient.getChildren.forPath("/members").size
       val (effects, onboards, dropoffs) = applyChanges(segmentsToPartitions, partitionsToMembers, origin, numOfNodes)
@@ -284,7 +284,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
           dropoffs.map{dropoff => dropoff -> Seq.empty}
         val zkPaths = diff.keySet.map { partitionKey => partitionKey -> partitionZkPath(partitionKey)}.toMap
 
-        log.debug("[partitions] change consolidated as:{} and notifying:{}", diff, notifyOnDifference)
+        log.debug("[partitions] change consolidated as:{} and notifying:{}", diff.map{case (key, members) => keyToPath(key) -> members}, notifyOnDifference)
         if(diff.nonEmpty){
           notifyOnDifference.foreach { listener => context.actorSelection(listener) ! ZkPartitionDiff(diff, zkPaths)}
         }
@@ -378,7 +378,12 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
     }
     val dropoffs = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}.filter(impacted.contains(_))
 
-    log.debug("[partitions] applying changes:{} against:{}, onboards:{}, dropoffs:{}", changed.partitions, partitionsToMembers, onboards, dropoffs)
+    log.debug("[partitions] applying changes:{} against:{}, onboards:{}, dropoffs:{}",
+      changed.partitions.map{case (key, members) => keyToPath(key) -> members},
+      partitionsToMembers.filterKeys(impacted.contains(_)).map{case (key, members) => keyToPath(key) -> members},
+      onboards,
+      dropoffs)
+
     //drop off members no longer in the partition
     ((partitionsToMembers ++ changed.partitions).filterKeys(!dropoffs.contains(_)),
       onboards -- dropoffs,
@@ -417,12 +422,14 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
     val candidates = (if(rebalanceLogic.spareLeader) members.filterNot(_ == stateData.leader.getOrElse(null)) else members).toSeq
     val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, candidates, requires _), members)
 
-    log.info("[leader] rebalance planned as:{}", plan)
+    log.info("[leader] rebalance planned as:{}", plan.map{case (key, members) => keyToPath(key) -> members})
     implicit val timeout = Timeout(10000, TimeUnit.MILLISECONDS)
     Await.result(partitionManager ? ZkRebalance(plan), timeout.duration) match {
       case Success(true) =>
+        log.info("[leader] rebalance successfully done")
         Some(plan)
       case _ =>
+        log.info("[leader] rebalance timeout")
         None
     }
   }
