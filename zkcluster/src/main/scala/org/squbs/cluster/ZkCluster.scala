@@ -64,9 +64,12 @@ class ZkCluster(system: ActorSystem,
   guarantee("/members",  Some(Array[Byte]()), CreateMode.PERSISTENT)
   guarantee("/segments", Some(Array[Byte]()), CreateMode.PERSISTENT)
 
-  0.until(segmentationLogic.segmentsSize).foreach(s => {
-    guarantee(s"/segments/segment-$s", Some(Array[Byte]()), CreateMode.PERSISTENT)
-  })
+  val segmentsSize = zkClientWithNs.getChildren.forPath("/segments").size()
+  if (segmentsSize != segmentationLogic.segmentsSize) {
+      0.until(segmentationLogic.segmentsSize).foreach(s => {
+        guarantee(s"/segments/segment-$s", Some(Array[Byte]()), CreateMode.PERSISTENT)
+      })
+  }
 
   //all interactions with the zk cluster extension should be through the zkClusterActor below
   val zkClusterActor = system.actorOf(Props.create(classOf[ZkClusterActor], zkClientWithNs, zkAddress, rebalanceLogic, segmentationLogic), "zkCluster")
