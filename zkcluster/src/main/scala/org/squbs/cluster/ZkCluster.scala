@@ -369,13 +369,13 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
     val impacted = partitionsToMembers.filterKeys(segmentsToPartitions.getOrElse(changed.segment, Set.empty).contains(_)).keySet
     //https://github.scm.corp.ebay.com/Squbs/chnlsvc/issues/49
-    //we'll notify only when the partition has reached its expected size (either the total number of VMs or the required partition size)
+    //we'll notify only when the partition has reached its expected size (either the total number of VMs - 1 or the required partition size)
     //any change inbetween will be silently ignored, as we know leader will rebalance and trigger another event to reach the expected size eventually
-    val onboards = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).size == Math.min(try{
+    val onboards = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).size >= Math.min(try{
           bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
         } catch {
           case _ => 0 //in case the $size node is being removed
-        }, numOfNodes) &&
+        }, numOfNodes - 1) &&
       partitionsToMembers.getOrElse(partitionKey, Set.empty) != changed.partitions.getOrElse(partitionKey, Set.empty)
     }
     val dropoffs = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}.filter(impacted.contains(_))
