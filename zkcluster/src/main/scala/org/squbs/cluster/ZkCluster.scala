@@ -338,7 +338,17 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       sender() ! result
 
     case ZkRemovePartition(partitionKey) =>
+      log.debug("[partitions] remove partition {}", keyToPath(partitionKey))
       safelyDiscard(partitionZkPath(partitionKey))
+      zkClient.getChildren.forPath("/members").map(m => AddressFromURIString(pathToKey(m)) match {
+        case address if address == zkAddress =>
+          self ! ZkPartitionRemoval(partitionKey)
+        case remote =>
+          context.actorSelection(self.path.toStringWithAddress(remote)) ! ZkPartitionRemoval(partitionKey)
+      })
+
+    case ZkPartitionRemoval(partitionKey) =>
+      log.debug("[partitions] partition {} was removed", keyToPath(partitionKey))
       notifyOnDifference.foreach { listener => context.actorSelection(listener) ! ZkPartitionRemoval(partitionKey)}
 
     case ZkMonitorPartition(onDifference) =>
