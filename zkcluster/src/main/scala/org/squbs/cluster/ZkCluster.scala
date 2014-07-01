@@ -314,7 +314,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
           val dropoffs = servants.diff(assign._2)
           val zkPath = partitionZkPath(partitionKey)
 
-          log.debug("[partitions] onboards:{} and dropoffs:{}", onboards, dropoffs)
+          log.debug("[partitions] {} - onboards:{} and dropoffs:{}", keyToPath(partitionKey), onboards, dropoffs)
           implicit val timeout = Timeout(3000, TimeUnit.MILLISECONDS)
 
           onboards.foldLeft(result) { (successful, it) =>
@@ -380,11 +380,12 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
     }
     val dropoffs = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}.filter(impacted.contains(_))
 
-    log.debug("[partitions] applying changes:{} against:{}, onboards:{}, dropoffs:{}",
+    log.debug("[partitions] applying changes:{} against:{}, impacted:{}, onboards:{}, dropoffs:{}",
       changed.partitions.map{case (key, members) => keyToPath(key) -> members},
       partitionsToMembers.filterKeys(impacted.contains(_)).map{case (key, members) => keyToPath(key) -> members},
-      onboards,
-      dropoffs)
+      impacted.map(key => keyToPath(key)),
+      onboards.map(key => keyToPath(key)),
+      dropoffs.map(key => keyToPath(key)))
 
     //drop off members no longer in the partition
     ((partitionsToMembers ++ changed.partitions).filterKeys(!dropoffs.contains(_)),
