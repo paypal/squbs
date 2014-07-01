@@ -79,7 +79,7 @@ class ZkCluster(system: ActorSystem,
     Props(classOf[ZkMembershipMonitor], zkClientWithNs, zkClusterActor, zkAddress, new LeaderLatch(zkClientWithNs, "/leadership")).withDispatcher("pinned-dispatcher"), "zkMembership")
   //begin the process of partitioning management
   private[cluster] val zkPartitionsManager = system.actorOf(
-    Props(classOf[ZkPartitionsManager], zkClientWithNs, zkClusterActor, zkAddress, segmentationLogic), "zkPartitions")
+    Props(classOf[ZkPartitionsManager], zkClientWithNs, zkClusterActor, zkAddress, rebalanceLogic, segmentationLogic), "zkPartitions")
 }
 
 private[cluster] sealed trait ZkClusterState
@@ -198,6 +198,7 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
 private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramework,
                                            zkClusterActor: ActorRef,
                                            zkAddress: Address,
+                                           rebalanceLogic: RebalanceLogic,
                                            implicit val segmentationLogic:SegmentationLogic) extends Actor with Logging {
 
   import segmentationLogic._
@@ -274,7 +275,9 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       log.debug("[partitions] partitions change detected from zk: {}", change.map{case (key, members) => keyToPath(key) -> members})
 
       val numOfNodes = zkClient.getChildren.forPath("/members").size
-      val (effects, onboards, dropoffs) = applyChanges(segmentsToPartitions, partitionsToMembers, origin, numOfNodes)
+      //correction of https://github.scm.corp.ebay.com/Squbs/chnlsvc/pull/79
+      //numOfNodes as participants should be 1 less than total count iff rebalanceLogic spares the leader
+      val (effects, onboards, dropoffs) = applyChanges(segmentsToPartitions, partitionsToMembers, origin, if(rebalanceLogic.spareLeader) numOfNodes - 1 else numOfNodes)
       segmentsToPartitions += segment -> effects.keySet
 
       if(dropoffs.nonEmpty || onboards.nonEmpty) {
@@ -379,13 +382,14 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
     val impacted = partitionsToMembers.filterKeys(segmentsToPartitions.getOrElse(changed.segment, Set.empty).contains(_)).keySet
     //https://github.scm.corp.ebay.com/Squbs/chnlsvc/issues/49
-    //we'll notify only when the partition has reached its expected size (either the total number of VMs - 1 or the required partition size)
+    //we'll notify only when the partition has reached its expected size (either the total number of VMs (-1 iff spareLeader) or the required partition size)
     //any change inbetween will be silently ignored, as we know leader will rebalance and trigger another event to reach the expected size eventually
-    val onboards = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).size >= Math.min(try{
+    //NOTE, the size must be tested with `EQUAL` other than `LESS OR EQUAL`, due to a corner case, where onboard members happen ahead of dropoff members in a shift (no size change)
+    val onboards = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).size == Math.min(try{
           bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
         } catch {
           case _ => 0 //in case the $size node is being removed
-        }, numOfNodes - 1) &&
+        }, numOfNodes) &&
       partitionsToMembers.getOrElse(partitionKey, Set.empty) != changed.partitions.getOrElse(partitionKey, Set.empty)
     }
     val dropoffs = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}.filter(impacted.contains(_))
@@ -393,9 +397,9 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
     log.debug("[partitions] applying changes:{} against:{}, impacted:{}, onboards:{}, dropoffs:{}",
       changed.partitions.map{case (key, members) => keyToPath(key) -> members},
       partitionsToMembers.filterKeys(impacted.contains(_)).map{case (key, members) => keyToPath(key) -> members},
-      impacted.map(key => keyToPath(key)),
-      onboards.map(key => keyToPath(key)),
-      dropoffs.map(key => keyToPath(key)))
+      impacted.map(keyToPath(_)),
+      onboards.map(keyToPath(_)),
+      dropoffs.map(keyToPath(_)))
 
     //drop off members no longer in the partition
     ((partitionsToMembers ++ changed.partitions).filterKeys(!dropoffs.contains(_)),
