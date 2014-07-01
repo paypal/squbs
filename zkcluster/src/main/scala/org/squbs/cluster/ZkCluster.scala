@@ -299,7 +299,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, partitionsToMembers.getOrElse(partitionKey, Set.empty)), partitionZkPath(partitionKey), notification)
 
     case ZkRebalance(planned) =>
-      log.info("[partitions] rebalance partitions based on plan:{}", planned)
+      log.info("[partitions] rebalance partitions based on plan:{}", planned.map{case (key, members) => keyToPath(key) -> members})
       def addressee(address:Address):Either[ActorRef, ActorSelection] =
         if(address == zkAddress)
           Left(self)
@@ -422,7 +422,10 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
   private[cluster] def rebalance(partitionsToMembers:Map[ByteString, Set[Address]], members:Set[Address]):Option[Map[ByteString, Set[Address]]] = {
 
-    val candidates = (if(rebalanceLogic.spareLeader) members.filterNot(_ == stateData.leader.getOrElse(null)) else members).toSeq
+    var  candidates = (if(rebalanceLogic.spareLeader) members.filterNot(_ == stateData.leader.getOrElse(null)) else members).toList
+    if (candidates.isEmpty) {
+      candidates = zkAddress :: candidates
+    }
     val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, candidates, requires _), members)
 
     log.info("[leader] rebalance planned as:{}", plan.map{case (key, members) => keyToPath(key) -> members})
