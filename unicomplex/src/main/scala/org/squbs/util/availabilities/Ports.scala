@@ -33,7 +33,7 @@ object Ports {
           verifying
         }
         catch {
-          case ex => //failure, try next port
+          case ex: Throwable => //failure, try next port
             available(lower, upper)
         }
         finally{
@@ -42,7 +42,7 @@ object Ports {
             serverSocket.foreach(_.close)
           }
           catch {
-            case _ => //ignored
+            case _: Throwable => //ignored
           }
         }
       //all ports in range are unavailable

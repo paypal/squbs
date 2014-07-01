@@ -64,9 +64,12 @@ class ZkCluster(system: ActorSystem,
   guarantee("/members",  Some(Array[Byte]()), CreateMode.PERSISTENT)
   guarantee("/segments", Some(Array[Byte]()), CreateMode.PERSISTENT)
 
-  0.until(segmentationLogic.segmentsSize).foreach(s => {
-    guarantee(s"/segments/segment-$s", Some(Array[Byte]()), CreateMode.PERSISTENT)
-  })
+  val segmentsSize = zkClientWithNs.getChildren.forPath("/segments").size()
+  if (segmentsSize != segmentationLogic.segmentsSize) {
+      0.until(segmentationLogic.segmentsSize).foreach(s => {
+        guarantee(s"/segments/segment-$s", Some(Array[Byte]()), CreateMode.PERSISTENT)
+      })
+  }
 
   //all interactions with the zk cluster extension should be through the zkClusterActor below
   val zkClusterActor = system.actorOf(Props.create(classOf[ZkClusterActor], zkClientWithNs, zkAddress, rebalanceLogic, segmentationLogic), "zkCluster")
@@ -296,7 +299,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, partitionsToMembers.getOrElse(partitionKey, Set.empty)), partitionZkPath(partitionKey), notification)
 
     case ZkRebalance(planned) =>
-      log.info("[partitions] rebalance partitions based on plan:{}", planned)
+      log.info("[partitions] rebalance partitions based on plan:{}", planned.map{case (key, members) => keyToPath(key) -> members})
       def addressee(address:Address):Either[ActorRef, ActorSelection] =
         if(address == zkAddress)
           Left(self)
@@ -311,7 +314,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
           val dropoffs = servants.diff(assign._2)
           val zkPath = partitionZkPath(partitionKey)
 
-          log.debug("[partitions] onboards:{} and dropoffs:{}", onboards, dropoffs)
+          log.debug("[partitions] {} - onboards:{} and dropoffs:{}", keyToPath(partitionKey), onboards, dropoffs)
           implicit val timeout = Timeout(3000, TimeUnit.MILLISECONDS)
 
           onboards.foldLeft(result) { (successful, it) =>
@@ -335,7 +338,17 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       sender() ! result
 
     case ZkRemovePartition(partitionKey) =>
+      log.debug("[partitions] remove partition {}", keyToPath(partitionKey))
       safelyDiscard(partitionZkPath(partitionKey))
+      zkClient.getChildren.forPath("/members").map(m => AddressFromURIString(pathToKey(m)) match {
+        case address if address == zkAddress =>
+          self ! ZkPartitionRemoval(partitionKey)
+        case remote =>
+          context.actorSelection(self.path.toStringWithAddress(remote)) ! ZkPartitionRemoval(partitionKey)
+      })
+
+    case ZkPartitionRemoval(partitionKey) =>
+      log.debug("[partitions] partition {} was removed", keyToPath(partitionKey))
       notifyOnDifference.foreach { listener => context.actorSelection(listener) ! ZkPartitionRemoval(partitionKey)}
 
     case ZkMonitorPartition(onDifference) =>
@@ -366,22 +379,23 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
     val impacted = partitionsToMembers.filterKeys(segmentsToPartitions.getOrElse(changed.segment, Set.empty).contains(_)).keySet
     //https://github.scm.corp.ebay.com/Squbs/chnlsvc/issues/49
-    //we'll notify only when the partition has reached its expected size (either the total number of VMs or the required partition size)
+    //we'll notify only when the partition has reached its expected size (either the total number of VMs - 1 or the required partition size)
     //any change inbetween will be silently ignored, as we know leader will rebalance and trigger another event to reach the expected size eventually
-    val onboards = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).size == Math.min(try{
+    val onboards = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).size >= Math.min(try{
           bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
         } catch {
           case _ => 0 //in case the $size node is being removed
-        }, numOfNodes) &&
+        }, numOfNodes - 1) &&
       partitionsToMembers.getOrElse(partitionKey, Set.empty) != changed.partitions.getOrElse(partitionKey, Set.empty)
     }
     val dropoffs = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}.filter(impacted.contains(_))
 
-    log.debug("[partitions] applying changes:{} against:{}, onboards:{}, dropoffs:{}",
+    log.debug("[partitions] applying changes:{} against:{}, impacted:{}, onboards:{}, dropoffs:{}",
       changed.partitions.map{case (key, members) => keyToPath(key) -> members},
       partitionsToMembers.filterKeys(impacted.contains(_)).map{case (key, members) => keyToPath(key) -> members},
-      onboards,
-      dropoffs)
+      impacted.map(key => keyToPath(key)),
+      onboards.map(key => keyToPath(key)),
+      dropoffs.map(key => keyToPath(key)))
 
     //drop off members no longer in the partition
     ((partitionsToMembers ++ changed.partitions).filterKeys(!dropoffs.contains(_)),
@@ -418,7 +432,10 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
   private[cluster] def rebalance(partitionsToMembers:Map[ByteString, Set[Address]], members:Set[Address]):Option[Map[ByteString, Set[Address]]] = {
 
-    val candidates = (if(rebalanceLogic.spareLeader) members.filterNot(_ == stateData.leader.getOrElse(null)) else members).toSeq
+    var  candidates = (if(rebalanceLogic.spareLeader) members.filterNot(_ == stateData.leader.getOrElse(null)) else members).toList
+    if (candidates.isEmpty) {
+      candidates = zkAddress :: candidates
+    }
     val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, candidates, requires _), members)
 
     log.info("[leader] rebalance planned as:{}", plan.map{case (key, members) => keyToPath(key) -> members})
