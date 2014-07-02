@@ -131,6 +131,19 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
 
     //watch over members changes
     val me = guarantee(s"/members/${keyToPath(zkAddress.toString)}", Some(Array[Byte]()), CreateMode.EPHEMERAL)
+    // Watch and recreate member node because it's possible for ephemeral node to be deleted while session is
+    // still alive (https://issues.apache.org/jira/browse/ZOOKEEPER-1740)
+    zkClient.getData.usingWatcher(new CuratorWatcher {
+      def process(event: WatchedEvent): Unit = {
+        log.info("[membership] self watch event: {}", event)
+        event.getType match {
+          case EventType.NodeDeleted =>
+            log.info("[membership] member node was deleted unexpectedly, recreate")
+            zkClient.getData.usingWatcher(this).forPath(guarantee(me, Some(Array[Byte]()), CreateMode.EPHEMERAL))
+          case _ =>
+        }
+      }
+    }).forPath(me)
 
     lazy val members = zkClient.getChildren.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
@@ -277,7 +290,8 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       val numOfNodes = zkClient.getChildren.forPath("/members").size
       //correction of https://github.scm.corp.ebay.com/Squbs/chnlsvc/pull/79
       //numOfNodes as participants should be 1 less than total count iff rebalanceLogic spares the leader
-      val (effects, onboards, dropoffs) = applyChanges(segmentsToPartitions, partitionsToMembers, origin, if(rebalanceLogic.spareLeader) numOfNodes - 1 else numOfNodes)
+      //numOfNodes should be 1 at least (if spareLeader is true and there is only one node as leader, let leader serve)
+      val (effects, onboards, dropoffs) = applyChanges(segmentsToPartitions, partitionsToMembers, origin, Math.max(1, if(rebalanceLogic.spareLeader) numOfNodes - 1 else numOfNodes))
       segmentsToPartitions += segment -> effects.keySet
 
       if(dropoffs.nonEmpty || onboards.nonEmpty) {
