@@ -16,11 +16,17 @@ import ConfigUtil._
 import scala.collection.concurrent.TrieMap
 import scala.util.{Try, Success, Failure}
 import scala.collection.mutable
+import java.util.concurrent.TimeUnit
 
 object UnicomplexBoot {
 
   final val extConfigDirKey = "squbs.external-config-dir"
   final val actorSystemNameKey = "squbs.actorsystem-name"
+
+  val startupTimeout: Timeout =
+    Try(System.getProperty("startup.timeout").toLong) map { millis =>
+      akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
+    } getOrElse (10 seconds)
 
   object StartupType extends Enumeration {
     type StartupType = Value
@@ -318,7 +324,7 @@ object UnicomplexBoot {
   def startServiceInfra(services: Seq[InitInfo], boot: UnicomplexBoot)(implicit actorSystem: ActorSystem) {
     import actorSystem.dispatcher
     val startTime = System.nanoTime
-    implicit val timeout = Timeout((boot.listeners.size * 5) seconds)
+    implicit val timeout = Timeout(boot.listeners.size * startupTimeout.duration)
     val ackFutures =
       for ((listenerName, config) <- boot.listeners) yield {
         Unicomplex(actorSystem).uniActor ? StartWebService(listenerName, config)
@@ -353,7 +359,7 @@ object UnicomplexBoot {
           else listenerMapping collect { case (entry, Some(listener)) => listener }
         })
 
-        implicit val timeout = Timeout(1 second)
+        implicit val timeout = startupTimeout
         listeners map { listener =>
           val routeInstance = RouteDefinition.startRoutes(actorSystem, listener) { routeClass.newInstance }
           val registrar = Unicomplex(actorSystem).serviceRegistry.registrar()(listener)
@@ -492,7 +498,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
         // Start all service routes
         import actorSystem.dispatcher
         val swf = servicesToStart.map(startRoutes(_, listenerAliases)).flatten.filter(_ != null)
-        val timeout = Timeout((swf.size * 5) seconds)
+        val timeout = Timeout(swf.size * startupTimeout.duration)
         Await.ready(Future.sequence(swf map (_._6)), timeout.duration)
 
         // Queue message on registrar which will then forwarded to Unicomplex when all services are processed.
@@ -505,7 +511,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     {
       // Tell Unicomplex we're done.
-      implicit val timeout = Timeout(60 seconds)
+      implicit val timeout = startupTimeout
       val stateFuture = Unicomplex(actorSystem).uniActor ? Activate
       Try(Await.result(stateFuture, timeout.duration)) match {
         case Success(Active) => println(s"[$actorSystemName] activated")
