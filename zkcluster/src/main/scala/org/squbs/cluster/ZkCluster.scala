@@ -131,6 +131,19 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
 
     //watch over members changes
     val me = guarantee(s"/members/${keyToPath(zkAddress.toString)}", Some(Array[Byte]()), CreateMode.EPHEMERAL)
+    // Watch and recreate member node because it's possible for ephemeral node to be deleted while session is
+    // still alive (https://issues.apache.org/jira/browse/ZOOKEEPER-1740)
+    zkClient.getData.usingWatcher(new CuratorWatcher {
+      def process(event: WatchedEvent): Unit = {
+        log.info("[membership] self watch event: {}", event)
+        event.getType match {
+          case EventType.NodeDeleted =>
+            log.info("[membership] member node was deleted unexpectedly, recreate")
+            zkClient.getData.usingWatcher(this).forPath(guarantee(me, Some(Array[Byte]()), CreateMode.EPHEMERAL))
+          case _ =>
+        }
+      }
+    }).forPath(me)
 
     lazy val members = zkClient.getChildren.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
