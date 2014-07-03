@@ -4,19 +4,17 @@ import akka.testkit.{ImplicitSender, TestKit}
 import org.scalatest._
 import scala.concurrent.duration._
 import org.scalatest.concurrent.AsyncAssertions
-import scala.io.Source
 import akka.actor.ActorSystem
 import scala.util.Try
 import org.squbs.unicomplex.dummyextensions.DummyExtension
 import com.typesafe.config.ConfigFactory
-import scala.util.Failure
-import scala.util.Success
 import org.squbs.lifecycle.GracefulStop
 import spray.can.Http
 import akka.io.IO
 import spray.http._
 import spray.http.HttpRequest
 import spray.http.HttpResponse
+import java.util.concurrent.TimeUnit
 
 /**
  * Created by zhuwang on 2/21/14.
@@ -54,7 +52,10 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
   import UnicomplexSpec._
 
-  implicit val timeout: akka.util.Timeout = 10 seconds
+  implicit val timeout: akka.util.Timeout =
+    Try(System.getProperty("test.timeout").toLong) map { millis =>
+      akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
+    } getOrElse (10 seconds)
 
   val port = system.settings.config getInt "default-listener.bind-port"
 
@@ -103,21 +104,21 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
     "start all services" in {
       assert(boot.services.size == 2)
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvc/msg/hello")))
-      within(10 seconds) {
+      within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("^hello$")
       }
 
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/ping")))
-      within(10 seconds) {
+      within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("Pong")
       }
 
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/pong")))
-      within(10 seconds) {
+      within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("Ping")
