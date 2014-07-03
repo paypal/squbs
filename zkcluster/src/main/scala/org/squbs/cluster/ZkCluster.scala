@@ -450,11 +450,9 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
   private[cluster] def rebalance(partitionsToMembers:Map[ByteString, Set[Address]], members:Set[Address]):Option[Map[ByteString, Set[Address]]] = {
 
-    var  candidates = (if(rebalanceLogic.spareLeader) members.filterNot(_ == stateData.leader.getOrElse(null)) else members).toList
-    if (candidates.isEmpty) {
-      candidates = zkAddress :: candidates
-    }
-    val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, candidates, requires _), members)
+    //spareLeader only when there're more than 1 VMs in the cluster
+    val candidates = if(rebalanceLogic.spareLeader && members.size > 1) members.filterNot{candidate => stateData.leader.exists(candidate == _)} else members
+    val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, candidates.toSeq, requires _), members)
 
     log.info("[leader] rebalance planned as:{}", plan.map{case (key, members) => keyToPath(key) -> members})
     implicit val timeout = Timeout(10000, TimeUnit.MILLISECONDS)
@@ -619,18 +617,24 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
     case Event(ZkMembersChanged(members), zkClusterData) =>
       log.info("[leader] membership updated:{}", members)
 
-      val dropoffs = zkClusterData.members.diff(members)
-      val filtered = if(dropoffs.nonEmpty)
-        zkClusterData.partitionsToMembers.mapValues{servants => servants.filterNot(dropoffs.contains(_))}
-      else
-        zkClusterData.partitionsToMembers
+      if(zkClusterData.members == members){
+        //corner case, in which members weren't really changed, avoid undesired rebalancing
+        stay
+      }
+      else {
+        val dropoffs = zkClusterData.members.diff(members)
+        val filtered = if (dropoffs.nonEmpty)
+          zkClusterData.partitionsToMembers.mapValues { servants => servants.filterNot(dropoffs.contains(_))}
+        else
+          zkClusterData.partitionsToMembers
 
-      rebalance(filtered, members) match {
-        case Some(rebalanced) =>
-          stay using zkClusterData.copy(members = members, partitionsToMembers = rebalanced)
-        case None =>
-          self ! ZkRebalanceRetry
-          stay using zkClusterData.copy(members = members)
+        rebalance(filtered, members) match {
+          case Some(rebalanced) =>
+            stay using zkClusterData.copy(members = members, partitionsToMembers = rebalanced)
+          case None =>
+            self ! ZkRebalanceRetry
+            stay using zkClusterData.copy(members = members)
+        }
       }
 
     case Event(origin @ ZkQueryPartition(partitionKey, notification, Some(requires), props, _), zkClusterData) =>
