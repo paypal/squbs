@@ -237,7 +237,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       override def process(event: WatchedEvent): Unit = {
         event.getType match {
           case EventType.NodeChildrenChanged =>
-            self ! ZkPartitionsChanged(segment, refresh(zkClient.getChildren.forPath(segmentZkPath), this))
+            self ! ZkPartitionsChanged(segment, refresh(zkClient.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath), this))
           case _ =>
         }
       }
@@ -247,7 +247,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       override def process(event: WatchedEvent): Unit = {
         event.getType match {
           case EventType.NodeChildrenChanged =>
-            self ! ZkPartitionsChanged(segment, refresh(zkClient.getChildren.forPath(segmentZkPath), this))
+            self ! ZkPartitionsChanged(segment, refresh(zkClient.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath), this))
           case _ =>
         }
       }
