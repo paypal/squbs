@@ -127,7 +127,7 @@ val response:Future[HttpResponseWrapper] = httpClient.options(uri: String)
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = httpClient.getEntity[R](uri: String)
 ```
-User need to implement the Json Serialize/Deserialize Protocol, please see json4s Marshalling/Unmarshalling Section.
+User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
 - R(Mandatory): Unmarshall Object
 
@@ -135,7 +135,7 @@ User need to implement the Json Serialize/Deserialize Protocol, please see json4
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = httpClient.postEntity[T, R](uri: String, content: Some[T])
 ```
-User need to implement the Json Serialize/Deserialize Protocol, please see json4s Marshalling/Unmarshalling Section.
+User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
 - T(Mandatory): Post Content
 - R(Mandatory): Unmarshall Object
@@ -143,7 +143,7 @@ User need to implement the Json Serialize/Deserialize Protocol, please see json4
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = httpClient.putEntity[T, R](uri: String, content: Some[T])
 ```
-User need to implement the Json Serialize/Deserialize Protocol, please see json4s Marshalling/Unmarshalling Section.
+User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
 - T(Mandatory): Put Content
 - R(Mandatory): Unmarshall Object
@@ -151,21 +151,21 @@ User need to implement the Json Serialize/Deserialize Protocol, please see json4
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = httpClient.headEntity[R](uri: String)
 ```
-User need to implement the Json Serialize/Deserialize Protocol, please see json4s Marshalling/Unmarshalling Section.
+User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
 - R(Mandatory): Unmarshall Object
 
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = httpClient.deleteEntity[R](uri: String)
 ```
-User need to implement the Json Serialize/Deserialize Protocol, please see json4s Marshalling/Unmarshalling Section.
+User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
 - R(Mandatory): Unmarshall Object
 
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = httpClient.optionsEntity[R](uri: String)
 ```
-User need to implement the Json Serialize/Deserialize Protocol, please see json4s Marshalling/Unmarshalling Section.
+User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
 - R(Mandatory): Unmarshall Object
 
