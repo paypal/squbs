@@ -26,11 +26,13 @@ trait IHttpClient {
 
   def name: String
 
-  def endpoint: String
+  def env: Option[String]
 
   def config: Option[Configuration]
 
   def pipelineDefinition: Option[PipelineDefinition]
+
+  val endpoint = RoutingRegistry.resolve(name, env).getOrElse("")
 }
 
 /**
@@ -48,7 +50,7 @@ trait HttpCallActorSupport extends RetrySupport {
     val serviceTimeout = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
     pipeline match {
       case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
-      case Failure(t@HttpClientMarkDownException(_)) => future {
+      case Failure(t@HttpClientMarkDownException(_, _)) => future {
         HttpResponseWrapper(HttpClientException.httpClientMarkDownError, Left(t))
       }
       case Failure(t) => future {
@@ -100,7 +102,7 @@ trait HttpCallSupport extends RetrySupport {
     val serviceTimeout = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
     pipeline match {
       case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
-      case Failure(t@HttpClientMarkDownException(_)) => future {
+      case Failure(t@HttpClientMarkDownException(_, _)) => future {
         HttpResponseWrapper(HttpClientException.httpClientMarkDownError, Left(t))
       }
       case Failure(t) => future {
@@ -149,7 +151,7 @@ trait HttpEntityCallActorSupport extends RetrySupport {
     val serviceTimeout = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
     pipeline match {
       case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
-      case Failure(t@HttpClientMarkDownException(_)) => future {
+      case Failure(t@HttpClientMarkDownException(_, _)) => future {
         HttpResponseEntityWrapper(HttpClientException.httpClientMarkDownError, Left(t), None)
       }
       case Failure(t) => future {
@@ -202,7 +204,7 @@ trait HttpEntityCallSupport extends RetrySupport {
     val serviceTimeout = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
     pipeline match {
       case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
-      case Failure(t@HttpClientMarkDownException(_)) => future {
+      case Failure(t@HttpClientMarkDownException(_, _)) => future {
         HttpResponseEntityWrapper(HttpClientException.httpClientMarkDownError, Left(t), None)
       }
       case Failure(t) => future {
@@ -261,7 +263,7 @@ trait RetrySupport {
 trait HttpClientSupport extends HttpCallSupport with HttpEntityCallSupport
 
 case class HttpClient(name: String,
-                      endpoint: String,
+                      env: Option[String] = None,
                       config: Option[Configuration] = None,
                       pipelineDefinition: Option[PipelineDefinition] = None) extends IHttpClient with HttpClientSupport {
 
@@ -285,26 +287,25 @@ object HttpClientStatus extends Enumeration {
 
 object HttpClientFactory {
 
-  val httpClientMap: TrieMap[String, HttpClient] = TrieMap[String, HttpClient]()
+  val httpClientMap: TrieMap[(String, Option[String]), HttpClient] = TrieMap[(String, Option[String]), HttpClient]()
 
-//  if (!JMX.isRegistered(HttpClientBean.HTTPCLIENTNFO)) JMX.register(HttpClientBean, HttpClientBean.HTTPCLIENTNFO)
-
-  def create(svcName: String): HttpClient = {
-    create(svcName, env = None)
+  def getOrCreate(name: String): HttpClient = {
+    getOrCreate(name, env = None)
   }
 
-  def create(svcName: String, env: String): HttpClient = {
-    create(svcName, env = Some(env))
+  def getOrCreate(name: String, env: String): HttpClient = {
+    getOrCreate(name, env = Some(env))
   }
 
-  def create(svcName: String, config: Configuration): HttpClient = {
-    create(svcName, config = Some(config))
-  }
-
-  def create(svcName: String, env: Option[String] = None, config: Option[Configuration] = None, pipeline: Option[PipelineDefinition] = None): HttpClient = {
-    httpClientMap.getOrElseUpdate(svcName, {
-      val endpoint = RoutingRegistry.resolve(svcName, env).getOrElse("")
-      HttpClient(svcName, endpoint, config, pipeline)
+  def getOrCreate(name: String, env: Option[String] = None, config: Option[Configuration] = None, pipelineDefinition: Option[PipelineDefinition] = None): HttpClient = {
+    httpClientMap.getOrElseUpdate((name, env), {
+      HttpClient(name, env, config, pipelineDefinition)
     })
+  }
+
+  def updateOrCreate(name: String, env: Option[String] = None, config: Option[Configuration] = None, pipelineDefinition: Option[PipelineDefinition] = None): HttpClient = {
+    val httpClient = HttpClient(name, env, config, pipelineDefinition)
+    httpClientMap.put((name, env), httpClient)
+    httpClient
   }
 }

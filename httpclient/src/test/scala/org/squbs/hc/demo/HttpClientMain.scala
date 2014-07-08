@@ -33,7 +33,7 @@ object HttpClientMain1 extends App {
   import system.dispatcher
   RoutingRegistry.register(new GoogleMapAPIRoutingDefinition)
 
-  val response = HttpClientFactory.create("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.getOrCreate("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
       println("Success, response entity is: " + res.entity.asString)
@@ -62,7 +62,7 @@ object HttpClientMain2 extends App {
   RoutingRegistry.register(new GoogleMapAPIRoutingDefinition)
   import org.squbs.hc.json.Json4sJacksonNoTypeHintsProtocol._
 
-  val response = HttpClientFactory.create("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.getOrCreate("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(HttpResponseEntityWrapper(StatusCodes.OK, Right(res), rawHttpResponse)) =>
       println("Success, response status is: " + res.status + ", elevation is: " + res.results.head.elevation + ", location.lat is: " + res.results.head.location.lat)
@@ -96,7 +96,7 @@ object HttpClientMain3 extends App {
     case Success(msg:CreateHttpClientSuccessMsg[IHttpClient]) =>
       val name = msg.hc.name
       println(s"Success, creating HttpClient: $name")
-      val response = HttpClientManager(system).httpClientManager ? HttpClientGetCallMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+      val response = HttpClientManager(system).httpClientManager ? HttpClientGetCallMsg("googlemap", httpMethod = HttpMethods.GET, uri = "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
       response onComplete {
         case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
           println("Success, response entity is: " + res.entity.asString)
@@ -139,7 +139,7 @@ object HttpClientMain4 extends App {
     case Success(msg:CreateHttpClientSuccessMsg[IHttpClient]) =>
       val name = msg.hc.name
       println(s"Success, creating HttpClient: $name")
-      val response = HttpClientManager(system).httpClientManager ? HttpClientGetCallMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+      val response = HttpClientManager(system).httpClientManager ? HttpClientGetCallMsg("googlemap", httpMethod = HttpMethods.GET, uri = "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
       response onComplete {
         case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
           val obj = HttpClientManager.unmarshal[GoogleApiResult[Elevation]](res)
@@ -189,7 +189,7 @@ class GoogleMapAPIActor5(implicit system: ActorSystem) extends Actor {
       HttpClientManager(system).httpClientManager ! CreateHttpClientMsg(name = "googlemap")
     case msg: CreateHttpClientSuccessMsg[IHttpClient] =>
       import org.squbs.hc.json.Json4sJacksonNoTypeHintsProtocol._
-      HttpClientManager(system).httpClientManager ! HttpClientGetCallMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+      HttpClientManager(system).httpClientManager ! HttpClientGetCallMsg("googlemap", httpMethod = HttpMethods.GET, uri = "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     case msg: CreateHttpClientFailureMsg =>
       println("Failure, the reason is: " + msg.e.getMessage)
       shutdown

@@ -1,14 +1,13 @@
 package org.squbs.hc.pipeline
 
-import spray.httpx.{UnsuccessfulResponseException, PipelineException, RequestBuilding}
+import spray.httpx.{UnsuccessfulResponseException, PipelineException}
 import spray.client.pipelining._
 import akka.actor.{ActorRef, ActorSystem}
-import spray.client.pipelining
 import spray.httpx.unmarshalling._
 import scala.concurrent.{ExecutionContext, Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.squbs.hc._
-import spray.http.{Uri, StatusCodes, HttpRequest, HttpResponse}
+import spray.http.{Uri, HttpRequest, HttpResponse}
 import org.squbs.hc.HttpResponseEntityWrapper
 import scala.util.Try
 import akka.pattern._
@@ -81,7 +80,7 @@ object PipelineManager {
       val pipeline = Await.result(futurePipeline, connTimeout)
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, HttpClientStatus.DOWN) =>
-          throw new HttpClientMarkDownException(client.name)
+          throw new HttpClientMarkDownException(client.name, client.env)
         case (Seq(), Seq(), _) =>
           pipeline ~> withWrapper
         case (Seq(), _: Seq[ResponseTransformer], _) =>
@@ -103,7 +102,7 @@ object PipelineManager {
     Try{
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, HttpClientStatus.DOWN) =>
-          throw new HttpClientMarkDownException(client.name)
+          throw new HttpClientMarkDownException(client.name, client.env)
         case (Seq(), Seq(), _) =>
           pipeline ~> withWrapper
         case (Seq(), _: Seq[ResponseTransformer], _) =>
@@ -126,7 +125,7 @@ object PipelineManager {
       val pipeline = Await.result(futurePipeline, connTimeout)
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, HttpClientStatus.DOWN) =>
-          throw new HttpClientMarkDownException(client.name)
+          throw new HttpClientMarkDownException(client.name, client.env)
         case (Seq(), Seq(), _) =>
           pipeline ~> unmarshalWithWrapper[T]
         case (Seq(), _: Seq[ResponseTransformer], _) =>
@@ -148,7 +147,7 @@ object PipelineManager {
     Try{
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, HttpClientStatus.DOWN) =>
-          throw new HttpClientMarkDownException(client.name)
+          throw new HttpClientMarkDownException(client.name, client.env)
         case (Seq(), Seq(), _) =>
           pipeline ~> unmarshalWithWrapper[T]
         case (Seq(), _: Seq[ResponseTransformer], _) =>

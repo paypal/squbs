@@ -2,15 +2,12 @@ package org.squbs.hc.actor
 
 import org.squbs.hc.pipeline.PipelineDefinition
 import spray.httpx.marshalling.Marshaller
-import spray.http.{HttpResponse, StatusCode, HttpMethod}
-import org.squbs.hc.config.Configuration
+import spray.http.{HttpMethod}
 import org.squbs.hc._
-import org.squbs.hc.routing.RoutingRegistry
 import org.squbs.hc.config.Configuration
 import org.squbs.hc.HttpClientExistException
 import scala.Some
 import org.squbs.hc.HttpClientNotExistException
-import scala.collection.concurrent.TrieMap
 
 /**
 * Created by hakuang on 6/18/2014.
@@ -28,9 +25,7 @@ object HttpClientMessage {
   case class CreateHttpClientMsg(name: String,
                                 env: Option[String] = None,
                                 config: Option[Configuration] = None,
-                                pipelineDefinition: Option[PipelineDefinition] = None) extends IHttpClient {
-    override def endpoint: String = RoutingRegistry.resolve(name, env).getOrElse("")
-  }
+                                pipelineDefinition: Option[PipelineDefinition] = None) extends IHttpClient
 
   /**
    * Success => UpdateHttpClientSuccessMsg(hc:IHttpClient)
@@ -43,19 +38,17 @@ object HttpClientMessage {
   case class UpdateHttpClientMsg(name: String,
                                 env: Option[String] = None,
                                 config: Option[Configuration] = None,
-                                pipelineDefinition: Option[PipelineDefinition] = None) extends IHttpClient {
-    override def endpoint: String = RoutingRegistry.resolve(name, env).getOrElse("")
-  }
+                                pipelineDefinition: Option[PipelineDefinition] = None) extends IHttpClient
 
   /**
    * Success => DeleteHttpClientSuccessMsg(hc:IHttpClient)
    * Failure => DeleteHttpClientFailureMsg(e:HttpClientNotExistException)
    * @param name
    */
-  case class DeleteHttpClientMsg(name: String)
+  case class DeleteHttpClientMsg(name: String, env: Option[String] = None)
 
   /**
-   * Success => DeleteAllHttpClientSuccessMsg(map:TrieMap[String, IHttpClient])
+   * Success => DeleteAllHttpClientSuccessMsg(map:TrieMap[(String, Option[String]), IHttpClient])
    */
   case object DeleteAllHttpClientMsg
                               
@@ -64,10 +57,10 @@ object HttpClientMessage {
    * Failure => GetHttpClientFailureMsg(e:HttpClientNotExistException)
    * @param name
    */
-  case class GetHttpClientMsg(name: String)
+  case class GetHttpClientMsg(name: String, env: Option[String] = None)
 
   /**
-   * Success => GetAllHttpClientSuccessMsg(map:TrieMap[String, IHttpClient])
+   * Success => GetAllHttpClientSuccessMsg(map:TrieMap[(String, Option[String], IHttpClient])
    */
   case object GetAllHttpClientMsg
 
@@ -76,14 +69,14 @@ object HttpClientMessage {
    * Failure => MarkDownHttpClientFailureMsg(e:HttpClientNotExistException)
    * @param name
    */
-  case class MarkDownHttpClientMsg(name: String)
+  case class MarkDownHttpClientMsg(name: String, env: Option[String] = None)
 
   /**
    * Success => MarkUpHttpClientSuccessMsg(hc:IHttpClient)
    * Failure => MarkUpHttpClientFailureMsg(e:HttpClientNotExistException)
    * @param name
    */
-  case class MarkUpHttpClientMsg(name: String)
+  case class MarkUpHttpClientMsg(name: String, env: Option[String] = None)
 
   /**
    *  Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
@@ -94,7 +87,7 @@ object HttpClientMessage {
    * @param httpMethod
    * @param uri
    */
-  case class HttpClientGetCallMsg(name: String, httpMethod: HttpMethod, uri: String)
+  case class HttpClientGetCallMsg(name: String, env: Option[String] = None, httpMethod: HttpMethod, uri: String)
 
   /**
    *  Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
@@ -107,15 +100,17 @@ object HttpClientMessage {
    * @param content
    * @tparam T
    */
-  case class HttpClientPostCallMsg[T: Marshaller](name: String, httpMethod: HttpMethod, uri: String, content: Some[T])
+  case class HttpClientPostCallMsg[T: Marshaller](name: String, env: Option[String] = None, httpMethod: HttpMethod, uri: String, content: Some[T])
 
+  type HCKEY = (String, Option[String])
+  
   class HttpClientSuccessMsg[T](content: T)
   case class CreateHttpClientSuccessMsg[IHttpClient](hc: IHttpClient) extends HttpClientSuccessMsg(hc)
   case class UpdateHttpClientSuccessMsg[IHttpClient](hc: IHttpClient) extends HttpClientSuccessMsg(hc)
   case class DeleteHttpClientSuccessMsg[IHttpClient](hc: IHttpClient) extends HttpClientSuccessMsg(hc)
   case class GetHttpClientSuccessMsg[IHttpClient](hc: IHttpClient) extends HttpClientSuccessMsg(hc)
-  case class GetAllHttpClientSuccessMsg[TrieMap[String, IHttpClient]](map: TrieMap[String, IHttpClient]) extends HttpClientSuccessMsg(map)
-  case class DeleteAllHttpClientSuccessMsg[TrieMap[String, IHttpClient]](map: TrieMap[String, IHttpClient]) extends HttpClientSuccessMsg(map)
+  case class GetAllHttpClientSuccessMsg[TrieMap[HCKEY, IHttpClient]](map: TrieMap[HCKEY, IHttpClient]) extends HttpClientSuccessMsg(map)
+  case class DeleteAllHttpClientSuccessMsg[TrieMap[HCKEY, IHttpClient]](map: TrieMap[HCKEY, IHttpClient]) extends HttpClientSuccessMsg(map)
   case class MarkUpHttpClientSuccessMsg[IHttpClient](hc: IHttpClient) extends HttpClientSuccessMsg(hc)
   case class MarkDownHttpClientSuccessMsg[IHttpClient](hc: IHttpClient) extends HttpClientSuccessMsg(hc)
 
@@ -129,14 +124,4 @@ object HttpClientMessage {
   case class HttpClientGetCallFailureMsg(e: HttpClientException) extends HttpClientFailureMsg(e)
   case class HttpClientPostCallFailureMsg(e: HttpClientException) extends HttpClientFailureMsg(e)
 
-  
-//  case class HttpClientEntityMsg[T: Marshaller, R: FromResponseUnmarshaller](name: String,
-//                                                                             uri: String,
-//                                                                             httpMethod: HttpMethod,
-//                                                                             content: Option[T],
-//                                                                             env: Option[String] = None,
-//                                                                             config: Option[Configuration] = None,
-//                                                                             pipelineDefinition: Option[PipelineDefinition] = None) extends IHttpClient {
-//    override def endpoint: String = RoutingRegistry.resolve(name, env).getOrElse("")
-//  }
 }

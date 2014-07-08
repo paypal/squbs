@@ -8,7 +8,7 @@ import org.squbs.hc.pipeline.EmptyPipelineDefinition
 import org.squbs.hc.config.ServiceConfiguration
 import org.squbs.hc.config.Configuration
 import org.squbs.hc.config.HostConfiguration
-import org.squbs.hc.{HttpClientFactory, IHttpClient, HttpClient}
+import org.squbs.hc.{HttpClientFactory, IHttpClient}
 import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
 import org.squbs.hc.actor.HttpClientManager
 

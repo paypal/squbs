@@ -1,8 +1,7 @@
 package org.squbs.hc
 
 import spray.httpx.unmarshalling._
-import spray.http.{StatusCodes, HttpResponse, StatusCode}
-import spray.http.StatusCodes.CustomStatusCode
+import spray.http.{HttpResponse, StatusCode}
 
 /**
  * Created by hakuang on 6/3/2014.

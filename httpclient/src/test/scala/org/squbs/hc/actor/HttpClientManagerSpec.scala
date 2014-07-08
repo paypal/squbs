@@ -22,6 +22,7 @@ import org.squbs.hc.actor.HttpClientMessage.UpdateHttpClientSuccessMsg
 import spray.http.{StatusCodes, HttpMethods}
 import akka.io.IO
 import spray.can.Http
+import org.squbs.hc.config.{HostConfiguration, ServiceConfiguration, Configuration}
 
 /**
  * Created by hakuang on 6/26/2014.
@@ -37,9 +38,6 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     RoutingRegistry.routingDefinitions.clear
     HttpClientManager.httpClientMap.clear
     HttpClientFactory.httpClientMap.clear
-//    val httpClientManager = HttpClientManager(system).httpClientManager
-//    implicit val timeout: Timeout = Timeout(2 seconds)
-//    httpClientManager ? DeleteAllHttpClientMsg
   }
 
   "httpClientMap" should "be emtpy before creating any httpclient" in {
@@ -81,19 +79,19 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
   "update an existing http client" should "be able to update" in {
     val httpClientManager = HttpClientManager(system).httpClientManager
     createGoogleMapHttpClient(httpClientManager, "googlemap")
-    httpClientManager ! UpdateHttpClientMsg("googlemap", Some("dev"))
+    httpClientManager ! UpdateHttpClientMsg("googlemap", config = Some(Configuration(svcConfig = ServiceConfiguration(maxRetryCount = 10), hostConfig = HostConfiguration())))
     val httpClient = expectMsgType[UpdateHttpClientSuccessMsg[IHttpClient]].hc
     httpClient.name should be ("googlemap")
-    httpClient.endpoint should be ("http://localhost/maps")
+    httpClient.endpoint should be ("http://maps.googleapis.com/maps")
     httpClient.status should be (HttpClientStatus.UP)
-    httpClient.config should be (None)
+    httpClient.config should be (Some(Configuration(svcConfig = ServiceConfiguration(maxRetryCount = 10), hostConfig = HostConfiguration())))
     httpClient.pipelineDefinition should be (None)
   }
 
   "update not an existing http client" should "return UpdateHttpClientFailureMsg(HttpClientNotExistException)" in {
     val httpClientManager = HttpClientManager(system).httpClientManager
     httpClientManager ! UpdateHttpClientMsg("googlemap", Some("dev"))
-    expectMsgType[UpdateHttpClientFailureMsg].e should be (HttpClientNotExistException("googlemap"))
+    expectMsgType[UpdateHttpClientFailureMsg].e should be (HttpClientNotExistException("googlemap", Some("dev")))
   }
 
   "delete an existing http client" should "return DeleteHttpClientSuccessMsg(IHttpClient)" in {
@@ -149,7 +147,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     import org.squbs.hc.json.Json4sJacksonNoTypeHintsProtocol._
     val httpClientManager = HttpClientManager(system).httpClientManager
     createGoogleMapHttpClient(httpClientManager, "googlemap")
-    httpClientManager ! HttpClientGetCallMsg("googlemap", HttpMethods.GET, "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    httpClientManager ! HttpClientGetCallMsg("googlemap", httpMethod = HttpMethods.GET, uri = "/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     val response = expectMsgType[HttpResponseWrapper]
     response.status should be (StatusCodes.OK)
     val Right(res) = response.content

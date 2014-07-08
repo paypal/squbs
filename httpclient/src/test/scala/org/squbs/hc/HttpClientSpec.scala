@@ -47,7 +47,7 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "HttpClient.create('googlemap').get(uri) with correct endpoint" should "get StatusCodes.OK" in {
-    val response = HttpClientFactory.create("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    val response = HttpClientFactory.getOrCreate("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
@@ -56,7 +56,7 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
 
   "HttpClient.create('googlemap').get(uri) with correct endpoint (sleep 10s)" should "get restablish the connection and return StatusCodes.OK" in {
     Thread.sleep(10000)
-    val response = HttpClientFactory.create("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    val response = HttpClientFactory.getOrCreate("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
@@ -64,7 +64,7 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "HttpClient.create('googlemaphttps').get(uri) with correct endpoint" should "get StatusCodes.OK" in {
-    val response = HttpClientFactory.create("googlemaphttps").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    val response = HttpClientFactory.getOrCreate("googlemaphttps").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
@@ -72,7 +72,7 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "HttpClient.create('googlemap').get(uri) with not existing uri" should "get StatusCodes.NotFound" in {
-    val client = HttpClientFactory.create("googlemap")
+    val client = HttpClientFactory.getOrCreate("googlemap")
     val response = client.get("/api/elev")
     client.markUP
     val result = Await.result(response, 3 seconds)
@@ -80,7 +80,7 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "Markdown HttpClient" should "throw out HttpClientException" in {
-    val client = HttpClientFactory.create("googlemap2")
+    val client = HttpClientFactory.getOrCreate("googlemap2")
     client.markDown
     val response = client.get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     val result = Await.result(response, 3 seconds)
@@ -90,7 +90,7 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "HttpClient.create('googlemap').getEntity(uri) with correct endpoint" should "get correct Unmarshaller value" in {
-    val response = HttpClientFactory.create("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    val response = HttpClientFactory.getOrCreate("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content should be (Right(GoogleApiResult[Elevation]("OK", List[Elevation](Elevation(Location(27.988056,86.925278), 8815.7158203125)))))
@@ -99,7 +99,7 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "HttpClient.create('googlemap').getEntity(uri) with correct endpoint" should "get correct Unmarshaller value onComplete" in {
-    val response = HttpClientFactory.create("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    val response = HttpClientFactory.getOrCreate("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     response onComplete {
       case Success(HttpResponseEntityWrapper(code, Right(r), rawResponse)) =>
         code should be (StatusCodes.OK)
@@ -109,7 +109,7 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "HttpClient.create('googlemaphttps').getEntity(uri) with correct endpoint" should "get correct Unmarshaller value" in {
-    val response = HttpClientFactory.create("googlemaphttps").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    val response = HttpClientFactory.getOrCreate("googlemaphttps").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content should be (Right(GoogleApiResult[Elevation]("OK", List[Elevation](Elevation(Location(27.988056,86.925278), 8815.7158203125)))))
@@ -118,13 +118,13 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   "HttpClient.create('googlemap').getEntity(uri) with wrong uri" should "get StatusCodes.NotFound" in {
-    val response = HttpClientFactory.create("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elev")
+    val response = HttpClientFactory.getOrCreate("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elev")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.NotFound)
   }
 
   "HttpClient.create('googlemapnotexisting').getEntity(uri) with not existing endpoint" should "throw out ConnectionAttemptFailedException" in {
-    val response = HttpClientFactory.create("googlemapnotexisting").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    val response = HttpClientFactory.getOrCreate("googlemapnotexisting").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     response onComplete {
       case Failure(e) =>
         e.isInstanceOf[ConnectionAttemptFailedException] should be (true)
