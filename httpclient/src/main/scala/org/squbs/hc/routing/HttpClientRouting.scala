@@ -35,7 +35,11 @@ object RoutingRegistry {
   }
 
   def resolve(svcName: String, env: Option[String] = None): Option[String] = {
-    routingDefinitions.find(_.resolve(svcName, env) != None) flatMap (_.resolve(svcName, env))
+    routingDefinitions.find(_.resolve(svcName, env) != None) flatMap (_.resolve(svcName, env)) match {
+      case Some(endpoint) => Some(endpoint)
+      case None if (svcName.startsWith("http://") || svcName.startsWith("https://")) => Some(svcName)
+      case _ => None
+    }
   }
 }
 

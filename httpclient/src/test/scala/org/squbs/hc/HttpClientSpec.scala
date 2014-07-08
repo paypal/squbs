@@ -15,6 +15,7 @@ import scala.util.Success
 import scala.util.Failure
 import scala.Some
 import org.squbs.hc.actor.HttpClientManager
+import org.squbs.hc.config.{HostConfiguration, ServiceConfiguration, Configuration}
 
 
 case class Elevation(location: Location, elevation: Double)
@@ -52,6 +53,28 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
     result.content.get.entity.data.nonEmpty should be (true)
+  }
+
+  "User could use third party endpoint as the service name directly" should "get StatusCodes.OK" in {
+    val response = HttpClientFactory.getOrCreate("http://maps.googleapis.com/maps").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (true)
+    result.content.get.entity.data.nonEmpty should be (true)
+  }
+
+  "Update HttpClient" should "get the updated value" in {
+    val httpClient = HttpClientFactory.getOrCreate("googlemap")
+    httpClient.name should be ("googlemap")
+    httpClient.env should be (None)
+    httpClient.config should be (None)
+    httpClient.pipelineDefinition should be (None)
+    val config = Configuration(ServiceConfiguration(10, 10 seconds, 10 seconds), HostConfiguration())
+    val updatedHttpClient = httpClient.update(config = Some(config))
+    updatedHttpClient.name should be ("googlemap")
+    updatedHttpClient.env should be (None)
+    updatedHttpClient.config should be (Some(config))
+    updatedHttpClient.pipelineDefinition should be (None)
   }
 
   "HttpClient.create('googlemap').get(uri) with correct endpoint (sleep 10s)" should "get restablish the connection and return StatusCodes.OK" in {

@@ -278,6 +278,12 @@ case class HttpClient(name: String,
   }
 
   def httpClient: IHttpClient = this
+
+  def update(config: Option[Configuration] = None, pipelineDefinition: Option[PipelineDefinition] = None): HttpClient = {
+    val httpClient = HttpClient(name, env, config, pipelineDefinition)
+    HttpClientFactory.httpClientMap.put((name,env),httpClient)
+    httpClient
+  }
 }
 
 object HttpClientStatus extends Enumeration {
@@ -303,9 +309,9 @@ object HttpClientFactory {
     })
   }
 
-  def updateOrCreate(name: String, env: Option[String] = None, config: Option[Configuration] = None, pipelineDefinition: Option[PipelineDefinition] = None): HttpClient = {
-    val httpClient = HttpClient(name, env, config, pipelineDefinition)
-    httpClientMap.put((name, env), httpClient)
-    httpClient
-  }
+//  def updateOrCreate(name: String, env: Option[String] = None, config: Option[Configuration] = None, pipelineDefinition: Option[PipelineDefinition] = None): HttpClient = {
+//    val httpClient = HttpClient(name, env, config, pipelineDefinition)
+//    httpClientMap.put((name, env), httpClient)
+//    httpClient
+//  }
 }

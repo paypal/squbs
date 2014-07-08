@@ -55,7 +55,7 @@ class JMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach with Before
   }
 
   "HttpClient with pipeline" should "show up the correct value of HttpClientBean" in {
-    HttpClientFactory.getOrCreate("hello3", pipeline = Some(RequestResponsePipeline))
+    HttpClientFactory.getOrCreate("hello3", pipelineDefinition = Some(RequestResponsePipeline))
     HttpClientFactory.getOrCreate("hello4")
     HttpClientBean.getInfo.size should be (2)
     findHttpClientBean(HttpClientBean.getInfo, "hello3") should be (HttpClientInfo("hello3", "http://www.ebay.com", "UP", 0, 1000, 1000, "AutoProxied", "org.squbs.hc.pipeline.impl.RequestAddHeaderHandler$$anonfun$processRequest$1","org.squbs.hc.pipeline.impl.ResponseAddHeaderHandler$$anonfun$processResponse$1"))

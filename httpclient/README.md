@@ -27,7 +27,7 @@ Add below dependencies on your build.sbt or related scala build file
 
 ### RoutingRegistry
 
-RoutingRegistry is used to generate different endpoint base on service name & env. User could registry multiple RoutingDefinition, it based on the sequence when user registry their RoutingDefinition, the latter one will take the priority if it could resolved. 
+RoutingRegistry is used to generate different endpoint base on service name & env. User could registry multiple RoutingDefinition, it based on the sequence when user registry their RoutingDefinition, the latter one will take the priority if it could resolved. If it cannot resolve, but the service name is start with "http://" or "https://", it will fallback to the svcName as the endpoint, this is simple to use base on the third party service endpoint no matter what kind of env, it will return the same endpoint.
 
 ```java
 
@@ -69,13 +69,11 @@ val httpClient: HttpClient = HttpClientFactory.getOrCreate(name: String, env: Op
 - config(Optional): Service Call Configuration
 - pipelineDefinition(Optional): Service Call Request/Response Pipeline
 
-#### Update Or Create HttpClient 
+#### Update
 
 ```java
-val httpClient: HttpClient = HttpClientFactory.updateOrCreate(name: String, env: Option[String] = None, config = Option[Configuration] = None, pipelineDefinition = Option[PipelineDefinition] = None)
+val updatedHttpClient: HttpClient = httpClient.update(config = Option[Configuration] = None, pipelineDefinition = Option[PipelineDefinition] = None)
 ```
-
-if name & env existing for the particular HttpClient, it will update the existing HttpClient with new config & pipeline, otherwise it will create a new HttpClient.
 
 #### Use HttpClient Make HTTP GET
 

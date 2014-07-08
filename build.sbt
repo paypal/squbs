@@ -13,7 +13,9 @@ lazy val unicomplex = project
 
 lazy val zkcluster = project dependsOn unicomplex
 
-lazy val httpclient = project dependsOn unicomplex
+//lazy val httpclient = project dependsOn unicomplex
+
+lazy val httpclient = project
 
 lazy val testkit = project dependsOn unicomplex
 
