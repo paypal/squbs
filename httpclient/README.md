@@ -13,9 +13,9 @@ Squbs Http Client provides the following additional features on top of spray cli
 6. Provide json4s native/jackson Marshalling/Unmarshalling.
 7. Provide markup/markdown feature for HttpClient
 8. Provide some basic pipeline handlers.	
-   1) RequestCredentialsHandler
-   2) RequestHeaderHandler
-   3) ResponseHeaderHandler
+   - RequestCredentialsHandler
+   - RequestHeaderHandler
+   - ResponseHeaderHandler
 
 ## How to Use
 
