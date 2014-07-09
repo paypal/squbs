@@ -29,16 +29,16 @@ case class HttpClientInfo @ConstructorProperties(
 
 @MXBean
 trait HttpClientMXBean {
-  def getInfo: java.util.List[HttpClientInfo]
+  def getHttpClient: java.util.List[HttpClientInfo]
 }
 
-object HttpClientBean extends HttpClientMXBean {
+class HttpClientBean extends HttpClientMXBean {
 
   val HTTPCLIENTNFO = "org.squbs.unicomplex:type=HttpClient"
 
   import scala.collection.JavaConversions._
 
-  override def getInfo: java.util.List[HttpClientInfo] = {
+  override def getHttpClient: java.util.List[HttpClientInfo] = {
     val httpClients = HttpClientFactory.httpClientMap
     val httpClientActors = HttpClientManager.httpClientMap
     (httpClientActors ++ httpClients).values.toList map {mapToHttpClientInfo(_)}
