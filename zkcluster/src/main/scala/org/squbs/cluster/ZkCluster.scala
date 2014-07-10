@@ -300,6 +300,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       initialize
 
     case ZkSegmentChanged(segment, change) =>
+      val invalidates = segmentsToPartitions.getOrElse(segment, Set.empty).diff(change)
       self ! ZkPartitionsChanged(segment, change.diff(segmentsToPartitions.getOrElse(segment, Set.empty)).foldLeft(partitionsToMembers){(memoize, partitionKey) =>
         watchOverPartition(segment, partitionKey, partitionWatchers(segment)) match {
           case Some(members) =>
@@ -307,7 +308,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
           case _ =>
             memoize
         }
-      })
+      } -- invalidates)
 
     case origin @ ZkPartitionsChanged(segment, change) => //partition changes found in zk
       log.debug("[partitions] partitions change detected from zk: {}", change.map{case (key, members) => keyToPath(key) -> members})
