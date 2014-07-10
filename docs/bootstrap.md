@@ -133,11 +133,7 @@ Router concepts, examples, and configuration, are documented in the
 
 ##Services
 
-Services extend from org.squbs.unicomplex.RouteDefinition trait and have to provide 2 components.
-
-1. The webContext - a String that uniquely identifies the web context of a request to be dispatched to this service.
-   This webContext must be a lowercase alphanumeric string without any slash ('/') character
-2. The route - A Spray route according to the
+Services extend from org.squbs.unicomplex.RouteDefinition trait, must not take any constructor arguments (zero-argument constructor) and have to provide the route member which is a Spray route according to the
    [Spray documentation](http://spray.io/documentation/1.3.1/spray-routing/key-concepts/routes/).
    
 Service metadata is declared in META-INF/squbs-meta.conf as shown in the following example.
@@ -148,12 +144,21 @@ cube-version = "0.0.2-SNAPSHOT"
 squbs-services = [
   {
     class-name = org.squbs.bottlesvc.BottleSvc
+    web-context = bottles
     
     # The listeners entry is optional, and defaults to 'default-listener'
     listeners = [ default-listener, my-listener ]
   }
 ]
 ```
+
+The class-name parameter identifies the route class. 
+
+The web-context is a string that uniquely identifies the web context of a request to be dispatched to this service. It **MUST NOT** start with a `/` character. It is allowed to be `""` for root context.
+
+Optionally, the listeners parameter declares a list of listeners to bind this service. Listener binding is discussed in the following section, below.
+
+
 ### Listener Binding
 
 A listener is declared in `application.conf` or `reference.conf` usually living in the project's `src/main/resources` directory. Listeners declare interfaces, ports, and security attributes, and name aliases, and are explained in [Configuration](configuration.md)
