@@ -49,8 +49,6 @@ object CustomTestKitSpec {
 
 class Service extends RouteDefinition with Directives {
 
-  val webContext = "test"
-
   def route = get {
     complete(StatusCodes.OK, "success")
   }

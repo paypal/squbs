@@ -15,7 +15,7 @@ object JMX {
   val systemStateName = "org.squbs.unicomplex:type=SystemState"
   val cubesName       = "org.squbs.unicomplex:type=Cubes"
   val cubeStateName   = "org.squbs.unicomplex:type=CubeState,name="
-  val contextsName    = "org.squbs.unicomplex:type=Contexts,name="
+  val listenersName    = "org.squbs.unicomplex:type=Listeners"
 
   implicit def string2objectName(name:String):ObjectName = new ObjectName(name)
 
@@ -62,11 +62,10 @@ case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", 
                                           @BeanProperty version: String,
                                           @BeanProperty supervisorPath: String)
 
-case class ContextInfo @ConstructorProperties(Array("context", "routeClass", "cubeFullName", "cubeVersion"))(
+case class ListenerInfo @ConstructorProperties(Array("listener", "context", "actorPath"))(
+                                          @BeanProperty listener: String,
                                           @BeanProperty context: String,
-                                          @BeanProperty routeClass: String,
-                                          @BeanProperty cubeFullName: String,
-                                          @BeanProperty cubeVersion: String)
+                                          @BeanProperty actorPath: String)
 
 @MXBean
 trait SystemStateMXBean {
@@ -88,8 +87,8 @@ trait CubeStateMXBean {
 }
 
 @MXBean
-trait ContextsMXBean {
-  def getContexts: java.util.List[ContextInfo]
+trait ListenerMXBean {
+  def getListeners: java.util.List[ListenerInfo]
 }
 
 
