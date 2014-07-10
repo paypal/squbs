@@ -10,10 +10,10 @@ import akka.util.Timeout
 import akka.pattern.ask
 import com.typesafe.config._
 import org.squbs.lifecycle.ExtensionLifecycle
-
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Await}
 import scala.util.{Try, Success, Failure}
@@ -25,6 +25,11 @@ object UnicomplexBoot {
 
   final val extConfigDirKey = "squbs.external-config-dir"
   final val actorSystemNameKey = "squbs.actorsystem-name"
+
+  val startupTimeout: Timeout =
+    Try(System.getProperty("startup.timeout").toLong) map { millis =>
+      akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
+    } getOrElse (10 seconds)
 
   object StartupType extends Enumeration {
     type StartupType = Value
@@ -466,7 +471,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     {
       // Tell Unicomplex we're done.
-      implicit val timeout = Timeout(60 seconds)
+      implicit val timeout = startupTimeout
       val stateFuture = Unicomplex(actorSystem).uniActor ? Activate
       Try(Await.result(stateFuture, timeout.duration)) match {
         case Success(Active) => println(s"[$actorSystemName] activated")
