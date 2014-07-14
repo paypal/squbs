@@ -88,6 +88,12 @@ case class ZkStopMonitorPartition(onDifference:Set[ActorPath] = Set.empty) //sto
 case class ZkPartitionDiff(diff:Map[ByteString, Seq[Address]], zkPaths:Map[ByteString, String])
 
 /**
+ * event of a partition removal
+ * @param partitionKey
+ */
+case class ZkPartitionRemoval(partitionKey:ByteString)
+
+/**
  * response for partition query
  * @param partitionKey
  * @param members

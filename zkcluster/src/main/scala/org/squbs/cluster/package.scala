@@ -34,9 +34,9 @@ package object cluster {
         val requires = size(partitionKey)
 
         servants.size match {
-          case size:Int if size < requires => //shortage, must be compensated
+          case size if size < requires => //shortage, must be compensated
             partitionKey -> (servants ++ members.filterNot(servants.contains(_)).take(requires - servants.size))
-          case size:Int if size > requires => //overflow, reduce the servants
+          case size if size > requires => //overflow, reduce the servants
             partitionKey -> servants.take(requires)
           case _ =>
             assign
@@ -146,27 +146,24 @@ package object cluster {
       Seq.empty[Address]
     else {
       val zkPath = zkSegmentationLogic.partitionZkPath(partitionKey)
-      val ages = zkClient.getChildren.forPath(zkPath).filterNot(_ == "$size")
-        .map(child =>
-        AddressFromURIString.parse(pathToKey(child)) -> zkClient.checkExists.forPath(s"$zkPath/$child").getCtime).toMap
+      val servants:Seq[String] = try{
+        zkClient.getChildren.forPath(zkPath)
+      }
+      catch {
+        case e:Exception => Seq.empty[String]
+      }
+
+      val ages:Map[Address, Long] = servants.filterNot(_ == "$size").map(child => try{
+          AddressFromURIString.parse(pathToKey(child)) -> zkClient.checkExists.forPath(s"$zkPath/$child").getCtime
+        }
+        catch{
+          case e:Exception =>
+            AddressFromURIString.parse(pathToKey(child)) -> -1L
+        }).filterNot(_._2 == -1L).toMap
       //this is to ensure that the partitions query result will always give members in the order of oldest to youngest
       //this should make data sync easier, the newly onboard member should always consult with the 1st member in the query result to sync with.
       members.toSeq.sortBy(ages.getOrElse(_, 0L))
     }
-  }
-
-  private[cluster] def applyChanges(segmentsToPartitions:Map[String, Set[ByteString]],
-                                    partitionsToMembers:Map[ByteString, Set[Address]],
-                                    changed:ZkPartitionsChanged) = {
-    val impacted = partitionsToMembers.filterKeys(segmentsToPartitions.getOrElse(changed.segment, Set.empty).contains(_)).keySet
-    val onboards = changed.partitions.keySet
-    val dropoffs = impacted.diff(changed.partitions.keySet)
-
-    //drop off members no longer in the partition
-    (partitionsToMembers.filterKeys(!dropoffs.contains(_))
-      .map(assign => assign._1 -> (if(changed.partitions.getOrElse(assign._1, Set.empty).nonEmpty) changed.partitions(assign._1) else assign._2)) ++ onboards.map(assign => assign -> changed.partitions(assign)),
-      onboards,
-      dropoffs)
   }
 
   private[cluster] def myAddress = InetAddress.getLocalHost.getCanonicalHostName match {

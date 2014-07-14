@@ -3,9 +3,10 @@ package org.squbs.cluster
 import java.io.File
 import java.net.InetAddress
 
-import akka.actor.Actor
+import akka.actor.{ActorRef, Actor}
 import com.google.common.base.Charsets
 import com.google.common.io.Files
+import org.apache.zookeeper.server.ZooKeeperServerMain
 import org.apache.zookeeper.server.quorum.QuorumPeerMain
 import org.slf4j.LoggerFactory
 import org.squbs.unicomplex.Unicomplex
@@ -13,15 +14,15 @@ import org.squbs.unicomplex.Unicomplex
 /**
  * Created by huzhou on 4/21/14.
  */
-class ZkActorForTestOnly extends Actor {
+class ZkActorForTestOnly(val externalConfigDir:String) {
 
   private val log = LoggerFactory.getLogger(this.getClass)
+  private var zkThread:Thread = null
 
-  override def preStart = {
+  def startup(port:Int = 2181) = {
 
-    val outputDir = Unicomplex(context.system).externalConfigDir
+    val outputDir = externalConfigDir
     val members = Seq("localhost")
-    val port = 2181
 
     System.setProperty("zookeeper.log.dir", outputDir);
     System.setProperty("Dzookeeper.root.logger", "info");
@@ -44,16 +45,38 @@ class ZkActorForTestOnly extends Actor {
     else {
       Files.write(id, new File(dataDir, "myid"), Charsets.UTF_8)
 
-      val cfg = zoo(members, dataDir.getAbsolutePath.replaceAll("\\\\","/"), txlogDir.getAbsolutePath.replaceAll("\\\\","/"), port = port)
+      val cfg = zoo(members, dataDir.getAbsolutePath.replaceAll("\\\\", "/"), txlogDir.getAbsolutePath.replaceAll("\\\\", "/"), port = port)
       log.warn("[zk] zoo.cfg:{}", cfg)
       Files.write(cfg, new File(outputDir, "zoo.cfg"), Charsets.UTF_8)
 
-      QuorumPeerMain.main(Array[String](new File(outputDir, "zoo.cfg").getAbsolutePath))
+      zkThread = new Thread(new ThreadGroup("zkclustergroup"), new Runnable(){
+        override def run = {
+          try {
+            val initializeAndRun = classOf[ZooKeeperServerMain].getDeclaredMethod("initializeAndRun", classOf[Array[String]])
+            initializeAndRun.setAccessible(true)
+            initializeAndRun.invoke(new ZooKeeperServerMain, Array[String](new File(outputDir, "zoo.cfg").getAbsolutePath))
+          }
+          catch {
+            case _: InterruptedException =>
+              println("zkcluster mock interruped")
+            case e: Exception =>
+              println("zkcluster mock got other exceptions:")
+              e.printStackTrace
+          }
+        }
+      })
+      zkThread.setDaemon(true)
+      zkThread.start
     }
   }
 
-  def receive:Receive = {
-    case _ =>
+  def postStop = {
+    try {
+      zkThread.interrupt
+    }
+    catch{
+      case e:Exception => println(e)
+    }
   }
 
   private[this] def me = InetAddress.getLocalHost
