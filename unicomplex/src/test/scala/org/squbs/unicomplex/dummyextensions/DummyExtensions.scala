@@ -1,7 +1,6 @@
 package org.squbs.unicomplex.dummyextensions
 
 import org.squbs.lifecycle.ExtensionLifecycle
-import com.typesafe.config.Config
 
 /**
  * Created by zhuwang on 3/11/14.
@@ -13,15 +12,15 @@ trait DummyExtension extends ExtensionLifecycle {
 
   def state: String
 
-  override def preInit(jarConfig: Seq[(String, Config)]) {
+  override def preInit() {
     _state += "preInit"
   }
 
-  override def init(jarConfig: Seq[(String, Config)]) {
+  override def init() {
     _state += "init"
   }
 
-  override def postInit(jarConfig: Seq[(String, Config)]) {
+  override def postInit() {
     _state += "postInit"
   }
 }

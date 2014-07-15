@@ -12,8 +12,6 @@ import spray.http.MediaTypes._
  */
 class PingPongSvc extends RouteDefinition{
 
-  val webContext = "pingpongsvc"
-
   def route = path("ping") {
     get {ctx =>
       context.actorOf(Props[PingPongClient]).tell("ping", ctx.responder)

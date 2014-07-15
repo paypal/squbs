@@ -2,48 +2,68 @@ package org.squbs.unicomplex
 
 
 import javax.net.ssl.SSLContext
-import scala.util.Try
-import akka.io.IO
+
 import akka.actor._
 import akka.agent.Agent
-import akka.pattern._
+import akka.io.IO
+import com.typesafe.config.Config
 import spray.can.Http
 import spray.can.server.ServerSettings
-import spray.http.{MediaType, MediaTypes}
+import spray.http.StatusCodes.NotFound
+import spray.http._
 import spray.io.ServerSSLEngineProvider
 import spray.routing._
-import Directives._
-import com.typesafe.config.Config
 
-case class Register(symName: String, alias: String, version: String, routeDef: RouteDefinition)
-case class Unregister(key: String)
+import scala.collection.mutable
+import scala.util.{Failure, Success}
 
-class ServiceRegistry(system: ActorSystem) {
+case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorRef)
 
-  implicit val executionContext = system.dispatcher
-  
-  type Registry = Map[String, Register] // Registers context against the Register record
+class ServiceRegistry {
 
-  private[unicomplex] val registrar = Agent[Map[String, ActorRef]](Map.empty)
-  private[unicomplex] val serviceActorContext = Agent[Map[String, ActorContext]](Map.empty)
-  private[unicomplex] val registry= Agent[Map[String, Registry]](Map.empty)
+  var listenerRoutes = Map.empty[String, Agent[Map[String, ActorRef]]]
+
+  class ListenerBean extends ListenerMXBean {
+
+    override def getListeners: java.util.List[ListenerInfo] = {
+      import scala.collection.JavaConversions._
+      listenerRoutes.flatMap { case (listenerName, agent) =>
+        agent() map { case (webContext, actor) =>
+            ListenerInfo(listenerName, webContext, actor.path.toStringWithoutAddress)
+        }
+      }.toSeq
+    }
+  }
+
+  private[unicomplex] def prepListeners(listenerNames: Iterable[String])(implicit context: ActorContext) {
+    import context.dispatcher
+    listenerRoutes = listenerNames.map { listener =>
+      listener -> Agent[Map[String, ActorRef]](Map.empty)
+    }.toMap
+
+    import JMX._
+    register(new ListenerBean, prefix + listenersName)
+  }
+
+  private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, actor: ActorRef) {
+    listeners foreach { listener =>
+      val agent = listenerRoutes(listener)
+      agent.send { _ + (webContext -> actor) }
+    }
+  }
 
   /**
    * Starts the web service. This should be called from the Unicomplex actor
    * upon seeing the first service registration.
    */
-  private[unicomplex] def startWebService(name: String, config: Config, notifySender: ActorRef)
+  private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
                                          (implicit context: ActorContext) = {
 
-    val route = Agent[Route]( path(Neutral) { reject } ) // Route for registrar and service pair
-    val registrarRef = context.actorOf(Props(classOf[Registrar], name, route), name + "-registrar")
-    registrar send { _ + (name -> registrarRef) }
-    registry send { _ + (name -> Map.empty) }
-    val serviceRef = context.actorOf(Props(classOf[WebSvcActor], name, route), name + "-service")
-    serviceRef ! notifySender // serviceRef needs to send the notifySender an ack when it is ready.
+    val listenerRef = context.actorOf(Props(classOf[ListenerActor], name, listenerRoutes(name)), name)
+    listenerRef ! notifySender // listener needs to send the notifySender an ack when it is ready.
 
     // create a new HttpServer using our handler tell it where to bind to
-    import ConfigUtil._
+    import org.squbs.unicomplex.ConfigUtil._
     val interface = if(config getBoolean "full-address") ConfigUtil.ipv4
       else config getString "bind-address"
     val port = config getInt "bind-port"
@@ -77,144 +97,133 @@ class ServiceRegistry(system: ActorSystem) {
         engine
       }
 
-      IO(Http) ! Http.Bind(serviceRef, interface, port, settings = Option(settings))
+      IO(Http) ! Http.Bind(listenerRef, interface, port, settings = Option(settings))
 
-    } else if (bindService) IO(Http) ! Http.Bind(serviceRef, interface, port) // Non-SSL
+    } else if (bindService) IO(Http) ! Http.Bind(listenerRef, interface, port) // Non-SSL
 
-    context.watch(registrarRef)
-    context.watch(serviceRef)
+    context.watch(listenerRef)
   }
 
   // In very rare cases, we block. Shutdown is one where we want to make sure it is stopped.
-  private[unicomplex] def stopWebService(name: String, httpListener: ActorRef)(implicit context: ActorContext) = {
+  private[unicomplex] def stopListener(name: String, httpListener: ActorRef)(implicit context: ActorContext) = {
     implicit val self = context.self
     implicit val system = context.system
-    val lRegistrar = registrar()
-    lRegistrar get name foreach { r =>
-      context.unwatch(r)
-      r ! PoisonPill
-    }
-    val empty = (lRegistrar - name).isEmpty
-    registrar send { _ - name }
+    listenerRoutes = listenerRoutes - name
     httpListener ! Http.Unbind
-    
-    if (empty) IO(Http) ! Http.CloseAll
+    if (listenerRoutes.isEmpty) {
+      IO(Http) ! Http.CloseAll
+
+      import JMX._
+      unregister(prefix + listenersName)
+    }
   }
 }
 
-/**
- * The Registrar receives Register and Unregister messages.
- */
-private[unicomplex] class Registrar(listenerName: String, route: Agent[Route]) extends Actor with Stash with ActorLogging {
-
-  val serviceRegistry = Unicomplex.serviceRegistry
-  import serviceRegistry._
-
-  class ContextsBean extends ContextsMXBean {
-
-    override def getContexts: java.util.List[ContextInfo] = {
-      import collection.JavaConversions._
-      registry()(listenerName).map { case (ctx, Register(symName, alias, version, routeDef)) =>
-        ContextInfo(ctx, routeDef.getClass.getName, symName, version)
-      } .toSeq
-    }
-  }
-
-  override def preStart() {
-    import JMX._
-    register(new ContextsBean, prefix + contextsName + listenerName)
-  }
-
-  override def postStop()  {
-    import JMX._
-    unregister(prefix + contextsName + listenerName)
-  }
-
-  private def updateRegistry(register: Register)(current: Map[String, Registry]): Map[String, Registry] = {
-    import register._
-    val registry = current(listenerName)
-    if (registry contains routeDef.webContext)
-      log.warning(s"""Web context "${routeDef.webContext}" already registered. Overriding!""")
-    val tmpRegistry = registry + (routeDef.webContext -> register)
-    current + (listenerName -> tmpRegistry)
-  }
-
-  // CalculateRoute MUST return a function and not a value
-  private def calculateRoute(tmpRegistry: Registry) = {
-    Try(
-      tmpRegistry map {
-        case (webContext, Register(_, _, _, routeDef)) => pathPrefix(webContext) {
-          routeDef.route
-        }
-      } reduceLeft (_ ~ _)) getOrElse path(Neutral) {
-      reject
-    }
-  }
-
-  private def alterRegistry (alterFn: (Map[String, Registry]) => Map[String, Registry])(message: String) {
-    val ackTarget = sender()
-    registry alter alterFn pipeTo self
-    context.become ({
-      case reg: Map[_, _] =>
-        val newRoute = calculateRoute(reg.asInstanceOf[Map[String, Registry]](listenerName))
-        route alter newRoute pipeTo ackTarget
-        log.info(message)
-        unstashAll()
-        context.unbecome()
-      case _ => stash()
-    }, discardOld = false)
-  }
-
-  def receive = {
-    case r: Register =>
-      alterRegistry {
-        updateRegistry(r)(_)
-      } (s"""Web context "${r.routeDef.webContext}" (${r.routeDef.getClass.getName}) registered.""")
-
-    case Unregister(webContext) =>
-      alterRegistry { r =>
-        val newR = r(listenerName) - webContext
-        r + (listenerName -> newR)
-      } (s"Web service route $webContext unregistered.")
-
-    case RoutesStarted => // Got all the service registrations for now.
-      Unicomplex() ! RoutesStarted // Just send the message onto Unicomplex after processing all registrations.
-  }
-}
-
-/**
- * The main service actor.
- */
-private[unicomplex] class WebSvcActor(listenerName: String, route: Agent[Route])
+private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
     extends Actor with HttpService with ActorLogging {
-
-  val serviceRegistry = Unicomplex.serviceRegistry
-  import serviceRegistry._
 
   // the HttpService trait defines only one abstract member, which
   // connects the services environment to the enclosing actor or test
   def actorRefFactory = context
 
+  val routeDef =
+    try {
+      val d = RouteDefinition.startRoutes { clazz.newInstance }
+      context.parent ! Initialized(Success(None))
+      d
+    } catch {
+      case e: Exception =>
+        log.error(s"Error instantiating route from ${clazz.getName}: $e", e)
+        context.parent ! Initialized(Failure(e))
+        context.stop(self)
+        null
+    }
+
+  def receive = {
+    case request =>
+      runRoute(pathPrefix(webContext) { routeDef.route }).apply(request)
+  }
+}
+
+private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String, ActorRef]]) extends Actor
+    with ActorLogging {
+
+  import context.dispatcher
+
+  val pendingRequests = mutable.Map.empty[ActorRef, (ActorRef, Cancellable)]
+  case class ReapRequest(responder: ActorRef)
+
+  import scala.concurrent.duration._
+  val requestTimeout = context.system.settings.config.getDuration("spray.can.server.reaping-cycle", MILLISECONDS).millis
+
+  def contextActor(request: HttpRequest) = {
+    val path = request.uri.path.toString()
+    val webContext =
+    if (path startsWith "/") {
+      val ctxEnd = path.indexOf('/', 1)
+      if (ctxEnd >= 1) path.substring(1, ctxEnd)
+      else path.substring(1)
+    } else {
+      val ctxEnd = path.indexOf('/')
+      if (ctxEnd >= 0) path.substring(0, ctxEnd)
+      else path
+    }
+    routeMap().get(webContext) orElse routeMap().get("")
+  }
 
   def receive = {
     // Notify the real sender for completion, but in lue of the parent
     case ref: ActorRef =>
-      // All RouteDefinitions should use this context.
-      serviceActorContext alter { _ + (listenerName -> context) } pipeTo self
-      context.become {
-        case m: Map[_, _] =>
-          log.debug(s"Updated serviceActorContext for listener $listenerName.")
-          ref.tell(Ack, context.parent)
-          context.become(wsReceive)
-      }
+      ref.tell(Ack, context.parent)
+      context.become(wsReceive)
   }
 
-  // this actor only runs our route, but you could add
-  // other things here, like request stream processing
-  // or timeout handling
-  def wsReceive: Receive = runRoute(route().apply(_))
-}
 
+  def wsReceive: Receive = {
+
+    case _: Http.Connected => sender() ! Http.Register(self)
+
+    case req: HttpRequest =>
+      contextActor(req) match {
+        case Some(actor) => actor forward req
+        case None => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
+      }
+
+    case reqStart: ChunkedRequestStart =>
+      contextActor(reqStart.request) match {
+        case Some(actor) =>
+          actor forward reqStart
+          val c = context.system.scheduler.scheduleOnce(requestTimeout, self, ReapRequest(sender()))
+          pendingRequests += sender() -> (actor, c)
+        case None => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
+      }
+
+    case chunk: MessageChunk =>
+      pendingRequests.get(sender()) match {
+        case Some((actor, c)) =>
+          actor forward chunk
+          c.cancel() // Cancel old timeout and start new one
+          val c2 = context.system.scheduler.scheduleOnce(requestTimeout, self, ReapRequest(sender()))
+          pendingRequests += sender() -> (actor, c2)
+        case None =>
+          log.warning("Received request chunk from unknown request. Possibly already timed out.")
+      }
+
+    case chunkEnd: ChunkedMessageEnd =>
+      pendingRequests.get(sender()) match {
+        case Some((actor, c)) =>
+          actor forward chunkEnd
+          c.cancel()
+          pendingRequests -= sender()
+        case None =>
+          log.warning("Received request chunk end from unknown request. Possibly already timed out.")
+      }
+
+    case ReapRequest(responder) => // TODO: Can we use the death watch on the responder instead of a timeout?
+      pendingRequests -= responder
+
+  }
+}
 
 object RouteDefinition {
 
@@ -222,8 +231,8 @@ object RouteDefinition {
     override def initialValue(): Option[ActorContext] = None
   }
 
-  def startRoutes[T](system: ActorSystem, listenerName: String)(fn: ()=>T): T = {
-    localContext.set(Unicomplex(system).serviceRegistry.serviceActorContext().get(listenerName))
+  def startRoutes[T](fn: ()=>T)(implicit context: ActorContext): T = {
+    localContext.set(Some(context))
     val r = fn()
     localContext.set(None)
     r
@@ -234,7 +243,6 @@ trait RouteDefinition {
   protected implicit final val context: ActorContext = RouteDefinition.localContext.get.get
   implicit final lazy val self = context.self
 
-  val webContext: String
   def route: Route
 }
 
