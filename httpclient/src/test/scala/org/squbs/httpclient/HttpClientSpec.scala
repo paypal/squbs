@@ -14,7 +14,6 @@ import spray.can.Http.ConnectionAttemptFailedException
 import scala.util.Success
 import scala.util.Failure
 import scala.Some
-import org.squbs.httpclient.actor.HttpClientManager
 import org.squbs.httpclient.config.{HostConfiguration, ServiceConfiguration, Configuration}
 
 
@@ -40,8 +39,7 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   }
 
   override def afterAll {
-    EndpointRegistry.routingDefinitions.clear
-    HttpClientManager.httpClientMap.clear
+    EndpointRegistry.endpointResolvers.clear
     HttpClientFactory.httpClientMap.clear
     IO(Http).ask(Http.CloseAll)(1.second).await
     system.shutdown()

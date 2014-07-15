@@ -16,7 +16,6 @@ import org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler
 import org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler
 import spray.http.HttpHeaders.RawHeader
 import scala.Some
-import org.squbs.httpclient.actor.HttpClientManager
 
 class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll with BeforeAndAfterEach{
 
@@ -30,8 +29,7 @@ class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll with Be
 
   override def afterEach = {
     HttpClientFactory.httpClientMap.clear
-    HttpClientManager.httpClientMap.clear
-    EndpointRegistry.routingDefinitions.clear
+    EndpointRegistry.endpointResolvers.clear
   }
 
   override def afterAll = {

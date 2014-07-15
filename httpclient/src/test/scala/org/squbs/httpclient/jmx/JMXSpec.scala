@@ -19,7 +19,6 @@ import akka.io.IO
 import spray.can.Http
 import akka.pattern._
 import spray.util._
-import org.squbs.httpclient.actor.HttpClientManager
 
 /**
  * Created by hakuang on 6/10/2014.
@@ -37,8 +36,7 @@ class JMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach with Before
   }
 
   override def afterEach = {
-    EndpointRegistry.routingDefinitions.clear
-    HttpClientManager.httpClientMap.clear
+    EndpointRegistry.endpointResolvers.clear
     HttpClientFactory.httpClientMap.clear
   }
 

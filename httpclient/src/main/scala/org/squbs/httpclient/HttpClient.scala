@@ -47,8 +47,6 @@ trait Client {
   def markDown = {
     status = Status.DOWN
   }
-
-//  def update(config: Option[Configuration] = None, pipeline: Option[Pipeline] = None): HttpClient
 }
 
 trait RetrySupport {

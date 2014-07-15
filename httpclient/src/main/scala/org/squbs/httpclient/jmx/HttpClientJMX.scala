@@ -10,7 +10,6 @@ import org.squbs.httpclient.config.Configuration
 import org.squbs.httpclient.config.HostConfiguration
 import org.squbs.httpclient.{HttpClientFactory, Client}
 import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
-import org.squbs.httpclient.actor.HttpClientManager
 
 /**
  * Created by hakuang on 6/9/2014.
@@ -40,8 +39,7 @@ class HttpClientBean extends HttpClientMXBean {
 
   override def getHttpClient: java.util.List[HttpClientInfo] = {
     val httpClients = HttpClientFactory.httpClientMap
-    val httpClientActors = HttpClientManager.httpClientMap.map {hc => hc._1 -> hc._2._1}
-    (httpClientActors ++ httpClients).values.toList map {mapToHttpClientInfo(_)}
+    httpClients.values.toList map {mapToHttpClientInfo(_)}
   }
 
   def mapToHttpClientInfo(httpClient: Client) = {

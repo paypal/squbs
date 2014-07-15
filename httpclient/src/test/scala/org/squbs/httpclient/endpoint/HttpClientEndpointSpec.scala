@@ -2,7 +2,6 @@ package org.squbs.httpclient.endpoint
 
 import org.scalatest.{BeforeAndAfterEach, Matchers, FlatSpec}
 import org.squbs.httpclient.{HttpClientFactory, HttpClientException}
-import org.squbs.httpclient.actor.HttpClientManager
 
 /**
  * Created by hakuang on 5/22/2014.
@@ -10,8 +9,7 @@ import org.squbs.httpclient.actor.HttpClientManager
 class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterEach{
 
   override def afterEach = {
-    EndpointRegistry.routingDefinitions.clear
-    HttpClientManager.httpClientMap.clear
+    EndpointRegistry.endpointResolvers.clear
     HttpClientFactory.httpClientMap.clear
   }
 
@@ -30,8 +28,8 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
 
   "RoutingRegistry" should "contain LocalhostRouting" in {
     EndpointRegistry.register(new LocalhostRouting)
-    EndpointRegistry.routingDefinitions.length should be (1)
-    EndpointRegistry.routingDefinitions.head.isInstanceOf[LocalhostRouting] should be (true)
+    EndpointRegistry.endpointResolvers.length should be (1)
+    EndpointRegistry.endpointResolvers.head.isInstanceOf[LocalhostRouting] should be (true)
   }
 
   "localhost routing" should "be return to the correct value" in {
@@ -62,9 +60,9 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
 
       override def name: String = "override"
     })
-    EndpointRegistry.routingDefinitions.length should be (2)
-    EndpointRegistry.routingDefinitions.head.isInstanceOf[LocalhostRouting] should be (false)
-    EndpointRegistry.routingDefinitions.head.asInstanceOf[EndpointResolver].name should be ("override")
+    EndpointRegistry.endpointResolvers.length should be (2)
+    EndpointRegistry.endpointResolvers.head.isInstanceOf[LocalhostRouting] should be (false)
+    EndpointRegistry.endpointResolvers.head.asInstanceOf[EndpointResolver].name should be ("override")
     EndpointRegistry.route("abcService") should not be (None)
     EndpointRegistry.route("abcService").get.name should be ("override")
     EndpointRegistry.resolve("abcService") should be (Some("http://localhost:8080/override"))
@@ -82,7 +80,7 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
 
       override def name: String = "unique"
     })
-    EndpointRegistry.routingDefinitions.length should be (2)
+    EndpointRegistry.endpointResolvers.length should be (2)
     EndpointRegistry.route("abcService") should not be (None)
     EndpointRegistry.route("abcService").get.name should be ("localhost")
     EndpointRegistry.route("unique") should not be (None)
@@ -104,11 +102,11 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
     })
     EndpointRegistry.register(new LocalhostRouting)
 
-    EndpointRegistry.routingDefinitions.length should be (2)
-    EndpointRegistry.routingDefinitions.head.isInstanceOf[LocalhostRouting] should be (true)
+    EndpointRegistry.endpointResolvers.length should be (2)
+    EndpointRegistry.endpointResolvers.head.isInstanceOf[LocalhostRouting] should be (true)
     EndpointRegistry.resolve("unique") should be (Some("http://localhost:8080/unique"))
     EndpointRegistry.unregister("localhost")
-    EndpointRegistry.routingDefinitions.length should be (1)
+    EndpointRegistry.endpointResolvers.length should be (1)
     EndpointRegistry.resolve("unique") should be (Some("http://www.ebay.com/unique"))
   }
 }
