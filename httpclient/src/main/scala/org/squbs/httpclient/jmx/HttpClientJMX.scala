@@ -33,8 +33,6 @@ trait HttpClientMXBean {
 
 class HttpClientBean extends HttpClientMXBean {
 
-  val HTTPCLIENTNFO = "org.squbs.unicomplex:type=HttpClient"
-
   import scala.collection.JavaConversions._
 
   override def getHttpClient: java.util.List[HttpClientInfo] = {

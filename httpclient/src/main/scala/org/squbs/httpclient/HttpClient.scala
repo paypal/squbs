@@ -1,7 +1,7 @@
 package org.squbs.httpclient
 
 import org.squbs.httpclient.endpoint.EndpointRegistry
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import spray.client.pipelining._
 import spray.httpx.unmarshalling._
 import spray.httpx.marshalling.Marshaller
