@@ -61,31 +61,31 @@ RoutingRegistry.register(new GoogleRoutingDefinition())
 #### Get Or Create HttpClient
 
 ```java
-val httpClient: HttpClient = HttpClientFactory.getOrCreate(name: String, env: Option[String] = None, config = Option[Configuration] = None, pipelineDefinition = Option[PipelineDefinition] = None)
+val client: HttpClient = HttpClientFactory.getOrCreate(name: String, env: Option[String] = None, config = Option[Configuration] = None, pipeline = Option[PipelineDefinition] = None)
 ```
 
 - name(Mandatory): Service Name
 - env(Optional): Service Call Environment
 - config(Optional): Service Call Configuration
-- pipelineDefinition(Optional): Service Call Request/Response Pipeline
+- pipeline(Optional): Service Call Request/Response Pipeline
 
 #### Update
 
 ```java
-val updatedHttpClient: HttpClient = httpClient.update(config = Option[Configuration] = None, pipelineDefinition = Option[PipelineDefinition] = None)
+val updatedHttpClient: HttpClient = client.update(config = Option[Configuration] = None, pipeline = Option[PipelineDefinition] = None)
 ```
 
 #### Use HttpClient Make HTTP GET
 
 ```java
-val response:Future[HttpResponseWrapper] = httpClient.get(uri: String)
+val response:Future[HttpResponseWrapper] = client.get(uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 
 #### Use HttpClient Make HTTP POST
 
 ```java
-val response:Future[HttpResponseWrapper] = httpClient.post[T](uri: String, content: Some[T])
+val response:Future[HttpResponseWrapper] = client.post[T](uri: String, content: Some[T])
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Post Content
@@ -93,7 +93,7 @@ val response:Future[HttpResponseWrapper] = httpClient.post[T](uri: String, conte
 #### Use HttpClient Make HTTP PUT
 
 ```java
-val response:Future[HttpResponseWrapper] = httpClient.put[T](uri: String, content: Some[T])
+val response:Future[HttpResponseWrapper] = client.put[T](uri: String, content: Some[T])
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Put Content
@@ -101,14 +101,14 @@ val response:Future[HttpResponseWrapper] = httpClient.put[T](uri: String, conten
 #### Use HttpClient Make HTTP HEAD
 
 ```java
-val response:Future[HttpResponseWrapper] = httpClient.head(uri: String)
+val response:Future[HttpResponseWrapper] = client.head(uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 
 #### Use HttpClient Make HTTP DELETE
 
 ```java
-val response:Future[HttpResponseWrapper] = httpClient.delete(uri: String)
+val response:Future[HttpResponseWrapper] = client.delete(uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 
@@ -116,14 +116,14 @@ val response:Future[HttpResponseWrapper] = httpClient.delete(uri: String)
 #### Use HttpClient Make HTTP Options
 
 ```java
-val response:Future[HttpResponseWrapper] = httpClient.options(uri: String)
+val response:Future[HttpResponseWrapper] = client.options(uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 
 #### Use HttpClient Make HTTP GET and return Unmarshall Object
 
 ```java
-val response: Future[HttpResponseEntityWrapper[R]] = httpClient.getEntity[R](uri: String)
+val response: Future[HttpResponseEntityWrapper[R]] = client.getEntity[R](uri: String)
 ```
 User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
@@ -131,7 +131,7 @@ User need to implement the Json Serialize/Deserialize Protocol, please see [json
 
 
 ```java
-val response: Future[HttpResponseEntityWrapper[R]] = httpClient.postEntity[T, R](uri: String, content: Some[T])
+val response: Future[HttpResponseEntityWrapper[R]] = client.postEntity[T, R](uri: String, content: Some[T])
 ```
 User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
@@ -139,7 +139,7 @@ User need to implement the Json Serialize/Deserialize Protocol, please see [json
 - R(Mandatory): Unmarshall Object
 
 ```java
-val response: Future[HttpResponseEntityWrapper[R]] = httpClient.putEntity[T, R](uri: String, content: Some[T])
+val response: Future[HttpResponseEntityWrapper[R]] = client.putEntity[T, R](uri: String, content: Some[T])
 ```
 User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
@@ -147,21 +147,21 @@ User need to implement the Json Serialize/Deserialize Protocol, please see [json
 - R(Mandatory): Unmarshall Object
 
 ```java
-val response: Future[HttpResponseEntityWrapper[R]] = httpClient.headEntity[R](uri: String)
+val response: Future[HttpResponseEntityWrapper[R]] = client.headEntity[R](uri: String)
 ```
 User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
 - R(Mandatory): Unmarshall Object
 
 ```java
-val response: Future[HttpResponseEntityWrapper[R]] = httpClient.deleteEntity[R](uri: String)
+val response: Future[HttpResponseEntityWrapper[R]] = client.deleteEntity[R](uri: String)
 ```
 User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
 - R(Mandatory): Unmarshall Object
 
 ```java
-val response: Future[HttpResponseEntityWrapper[R]] = httpClient.optionsEntity[R](uri: String)
+val response: Future[HttpResponseEntityWrapper[R]] = client.optionsEntity[R](uri: String)
 ```
 User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 - uri(Mandatory): Uri for Service Call
@@ -173,30 +173,30 @@ User need to implement the Json Serialize/Deserialize Protocol, please see [json
 
 ```java
 val httpClientManager: HttpClientManager = HttpClientManager(system).httpClientManager
-httpClientManager ! CreateHttpClientMsg(name: String, env: Option[String] = None, config: Option[Configuration] = None, pipelineDefinition: Option[PipelineDefinition] = None)
+httpClientManager ! CreateHttpClientMsg(name: String, env: Option[String] = None, config: Option[Configuration] = None, pipeline: Option[PipelineDefinition] = None)
 ``` 
 - name(Mandatory): Service Name
 - env(Optional): Service Call Environment
 - config(Optional): Service Call Configuration
-- pipelineDefinition(Optional): Service Call Request/Response Pipeline
+- pipeline(Optional): Service Call Request/Response Pipeline
 
 Response:
-- Success => CreateHttpClientSuccessMsg(hc:IHttpClient)
+- Success => CreateHttpClientSuccessMsg(client:IHttpClient)
 - Failure => CreateHttpClientFailureMsg(e:HttpClientExistException)
 
 #### Update HttpClient
 
 ```java
 val httpClientManager: HttpClientManager = HttpClientManager(system).httpClientManager
-httpClientManager ! UpdateHttpClientMsg(name: String, env: Option[String] = None, config: Option[Configuration] = None, pipelineDefinition: Option[PipelineDefinition] = None)
+httpClientManager ! UpdateHttpClientMsg(name: String, env: Option[String] = None, config: Option[Configuration] = None, pipeline: Option[PipelineDefinition] = None)
 ``` 
 - name(Mandatory): Service Name
 - env(Optional): Service Call Environment
 - config(Optional): Service Call Configuration
-- pipelineDefinition(Optional): Service Call Request/Response Pipeline
+- pipeline(Optional): Service Call Request/Response Pipeline
 
 Response:
-- Success => UpdateHttpClientSuccessMsg(hc:IHttpClient)
+- Success => UpdateHttpClientSuccessMsg(client:IHttpClient)
 - Failure => UpdateHttpClientFailureMsg(e:HttpClientNotExistException)
 
 #### Delete HttpClient
@@ -209,7 +209,7 @@ httpClientManager ! DeleteHttpClientMsg(name: String, env: Option[String] = None
 - env(Optional): Service Call Environment
 
 Response:
-- Success => DeleteHttpClientSuccessMsg(hc:IHttpClient)
+- Success => DeleteHttpClientSuccessMsg(client:IHttpClient)
 - Failure => DeleteHttpClientFailureMsg(e:HttpClientNotExistException)
 
 #### Delete All HttpClients
@@ -232,7 +232,7 @@ httpClientManager ! GetHttpClientMsg(name: String, env: Option[String] = None)
 - env(Optional): Service Call Environment
 
 Response:
-- Success => GetHttpClientSuccessMsg(hc:IHttpClient)
+- Success => GetHttpClientSuccessMsg(client:IHttpClient)
 - Failure => GetHttpClientFailureMsg(e:HttpClientNotExistException)
 
 #### Get All HttpClients
@@ -348,8 +348,8 @@ Squb HttpClient could be easy markup/markdown by the user.
 #### Service API to MarkDown/MarkUp
 
 ```java
-httpClient.markDown
-httpClient.markUp
+client.markDown
+client.markUp
 ```
 
 #### Service Message Based API to MarkDown/MarkUp
@@ -364,7 +364,7 @@ httpClientManager ! MarkDownHttpClientMsg(name: String, env: Option[String] = No
 - env(Optional): Service Call Environment
 
 Response:
-- Success => MarkDownHttpClientSuccessMsg(hc:IHttpClient)
+- Success => MarkDownHttpClientSuccessMsg(client:IHttpClient)
 - Failure => MarkDownHttpClientFailureMsg(e:HttpClientNotExistException)
 
 ##### MarkUp HttpClient
@@ -377,5 +377,5 @@ httpClientManager ! MarkUpHttpClientMsg(name: String, env: Option[String] = None
 - env(Optional): Service Call Environment
 
 Response:
-- Success => MarkUpHttpClientSuccessMsg(hc:IHttpClient)
+- Success => MarkUpHttpClientSuccessMsg(client:IHttpClient)
 - Failure => MarkUpHttpClientFailureMsg(e:HttpClientNotExistException)
