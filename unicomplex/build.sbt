@@ -1,5 +1,3 @@
-import de.johoop.jacoco4sbt._
-import JacocoPlugin._
 import org.scalastyle.sbt.ScalastylePlugin._
 import de.johoop.findbugs4sbt.FindBugs._
 
@@ -17,8 +15,6 @@ libraryDependencies ++= Seq(
   "io.spray" % "spray-testkit" % "1.3.1" % "test",
   "org.zeromq" % "jeromq" % "0.3.3"
 )
-
-jacoco.settings
 
 findbugsSettings
 

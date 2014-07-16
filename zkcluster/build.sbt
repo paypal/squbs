@@ -1,5 +1,3 @@
-import de.johoop.jacoco4sbt._
-import JacocoPlugin._
 import org.scalastyle.sbt.ScalastylePlugin._
 import de.johoop.findbugs4sbt.FindBugs._
 
@@ -20,8 +18,6 @@ libraryDependencies ++= Seq(
   "org.mockito" % "mockito-core" % "1.9.5" % "test",
   "log4j" % "log4j" % "1.2.17" % "test"
 )
-
-jacoco.settings
 
 findbugsSettings
 
