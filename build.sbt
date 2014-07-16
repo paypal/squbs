@@ -11,5 +11,3 @@ lazy val unicomplex = project
 lazy val zkcluster = project dependsOn unicomplex
 
 lazy val testkit = project dependsOn unicomplex
-
-instrumentSettings

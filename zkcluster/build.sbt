@@ -26,3 +26,5 @@ org.scalastyle.sbt.ScalastylePlugin.Settings
 parallelExecution in Test := false
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/zkcluster")
+
+instrumentSettings
