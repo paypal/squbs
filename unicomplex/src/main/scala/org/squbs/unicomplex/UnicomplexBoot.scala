@@ -60,18 +60,18 @@ object UnicomplexBoot {
   }
 
   def getFullConfig(addOnConfig: Option[Config]): Config = {
+    val baseConfig = ConfigFactory.load()
     // 1. See whether add-on config is there.
     addOnConfig match {
       case Some(config) =>
-        ConfigFactory.load(config)
+        ConfigFactory.load(config withFallback baseConfig)
       case None =>
-        val baseConfig = ConfigFactory.load()
         // Sorry, the configDir is used to read the file. So it cannot be read from this config file.
         val configDir = new File(baseConfig.getString(extConfigDirKey))
         val configFile = new File(configDir, "application")
         val parseOptions = ConfigParseOptions.defaults().setAllowMissing(true)
         val config = ConfigFactory.parseFileAnySyntax(configFile, parseOptions)
-        if (config.entrySet.isEmpty) baseConfig else ConfigFactory.load(config)
+        if (config.entrySet.isEmpty) baseConfig else ConfigFactory.load(config withFallback baseConfig)
     }
   }
 

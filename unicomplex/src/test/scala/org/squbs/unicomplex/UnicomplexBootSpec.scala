@@ -12,6 +12,8 @@ import org.squbs.unicomplex.UnicomplexBoot._
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import java.io.{File, PrintWriter}
 
+import scala.util.Try
+
 class UnicomplexBootSpec extends FunSpecLike with Matchers {
 
   describe ("The UnicomplexBootstrap") {
@@ -230,6 +232,16 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
       activeAliases map (_._1) should contain only ("secure-listener", "secure2-listener")
       activeListeners map (_._1) should contain only "secure-listener"
       missingListeners should contain only "local-listener"
+    }
+
+    it ("should merge the addOnConfig with original config") {
+      import scala.collection.JavaConversions._
+      val addOnConfig = ConfigFactory.parseMap(Map(
+        "configTest" -> Boolean.box(true)
+      ))
+      val finalConfig = UnicomplexBoot.getFullConfig(Some(addOnConfig))
+      Try(finalConfig.getConfig("squbs")).toOption should not be (None)
+      finalConfig.getBoolean("configTest") should be (true)
     }
   }
 }
