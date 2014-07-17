@@ -6,6 +6,8 @@ organization in ThisBuild := "org.squbs"
 
 publishArtifact := false
 
+addCommandAlias("coverage", "scoverage:test") 
+
 lazy val unicomplex = project
 
 lazy val zkcluster = project dependsOn unicomplex
