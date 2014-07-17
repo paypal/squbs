@@ -3,7 +3,7 @@ import JacocoPlugin._
 
 scalaVersion in ThisBuild := "2.10.3"
 
-version in ThisBuild := "0.2.1-SNAPSHOT"
+version in ThisBuild := "0.2.1"
 
 organization in ThisBuild := "org.squbs"
 
