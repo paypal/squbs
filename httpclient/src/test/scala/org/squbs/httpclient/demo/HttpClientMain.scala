@@ -1,7 +1,7 @@
 package org.squbs.httpclient.demo
 
 import akka.actor.ActorSystem
-import org.squbs.httpclient.endpoint.{EndpointRegistry, EndpointResolver}
+import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolver}
 import akka.io.IO
 import spray.can.Http
 import akka.pattern._
@@ -77,9 +77,9 @@ object HttpClientMain2 extends App {
 }
 
 class GoogleMapAPIEndpointResolver extends EndpointResolver {
-  override def resolve(svcName: String, env: Option[String]): Option[String] = {
+  override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = {
     if (svcName == name)
-      Some("http://maps.googleapis.com/maps")
+      Some(Endpoint("http://maps.googleapis.com/maps"))
     else
       None
   }

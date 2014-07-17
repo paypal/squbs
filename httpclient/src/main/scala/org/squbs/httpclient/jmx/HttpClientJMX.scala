@@ -2,60 +2,69 @@ package org.squbs.httpclient.jmx
 
 import java.beans.ConstructorProperties
 import scala.beans.BeanProperty
-import javax.management.{MXBean}
-import org.squbs.httpclient.endpoint.EndpointRegistry
+import javax.management.MXBean
+import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import org.squbs.httpclient.pipeline.EmptyPipeline
-import org.squbs.httpclient.config.ServiceConfiguration
-import org.squbs.httpclient.config.Configuration
-import org.squbs.httpclient.config.HostConfiguration
-import org.squbs.httpclient.{HttpClientFactory, Client}
+import org.squbs.httpclient.{ConfigurationSupport, HttpClientFactory, Client}
 import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
+import akka.actor.ActorSystem
+import spray.can.client.HostConnectorSettings
 
 /**
  * Created by hakuang on 6/9/2014.
  */
 case class HttpClientInfo @ConstructorProperties(
-  Array("serviceName", "endpoint", "status", "maxRetryCount", "serviceTimeout", "connectionTimeout", "connectionType", "requestPipeline", "responsePipeline"))(
-     @BeanProperty serviceName: String,
+  Array("name", "env", "endpoint", "status", "connectionType", "maxConnections", "maxRetries",
+        "maxRedirects", "requestTimeout", "connectingTimeout", "requestPipelines", "responsePipelines"))(
+     @BeanProperty name: String,
+     @BeanProperty env: String,
      @BeanProperty endpoint: String,
      @BeanProperty status: String,
-     @BeanProperty maxRetryCount: Int,
-     @BeanProperty serviceTimeout: Long,
-     @BeanProperty connectionTimeout: Long,
      @BeanProperty connectionType: String,
-     @BeanProperty requestPipeline: String,
-     @BeanProperty responsePipeline: String)
+     @BeanProperty maxConnections: Int,
+     @BeanProperty maxRetries: Int,
+     @BeanProperty maxRedirects: Int,
+     @BeanProperty requestTimeout: Long,
+     @BeanProperty connectingTimeout: Long,
+     @BeanProperty requestPipelines: String,
+     @BeanProperty responsePipelines: String)
 
 @MXBean
 trait HttpClientMXBean {
-  def getHttpClient: java.util.List[HttpClientInfo]
+  def getHttpClient(implicit actorSystem: ActorSystem): java.util.List[HttpClientInfo]
 }
 
-class HttpClientBean extends HttpClientMXBean {
+class HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
 
   import scala.collection.JavaConversions._
 
-  override def getHttpClient: java.util.List[HttpClientInfo] = {
+  override def getHttpClient(implicit actorSystem: ActorSystem): java.util.List[HttpClientInfo] = {
     val httpClients = HttpClientFactory.httpClientMap
     httpClients.values.toList map {mapToHttpClientInfo(_)}
   }
 
-  def mapToHttpClientInfo(httpClient: Client) = {
+  def mapToHttpClientInfo(httpClient: Client)(implicit actorSystem: ActorSystem) = {
     val name = httpClient.name
-    val endpoint = EndpointRegistry.resolve(name).getOrElse("")
+    val env  = httpClient.env.getOrElse("NONE")
+    val endpoint = EndpointRegistry.resolve(name).getOrElse(Endpoint("")).uri
     val status = httpClient.status.toString
-    val config = httpClient.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration()))
-    val svcConfig = config.svcConfig
-    val hostConfig = config.hostConfig
+    val configuration = config(httpClient)
     val pipelines = httpClient.pipeline.getOrElse(EmptyPipeline)
     val requestPipelines = pipelines.requestPipelines.map(_.getClass.getName).foldLeft[String]("")((result, each) => if (result == "") each else result + "=>" + each)
     val responsePipelines = pipelines.responsePipelines.map(_.getClass.getName).foldLeft[String]("")((result, each) => if (result == "") each else result + "=>" + each)
-    val connectionType = hostConfig.connectionType match {
+    val connectionType = configuration.connectionType match {
       case Direct => "Direct"
       case AutoProxied => "AutoProxied"
       case Proxied(host, port) => s"$host:$port"
     }
-    HttpClientInfo(name, endpoint, status, svcConfig.maxRetryCount, svcConfig.serviceTimeout.toMillis, svcConfig.connectionTimeout.toMillis, connectionType, requestPipelines, responsePipelines)
+    val hostSettings = configuration.hostSettings.getOrElse(HostConnectorSettings(actorSystem))
+    val maxConnections = hostSettings.maxConnections
+    val maxRetries = hostSettings.maxRetries
+    val maxRedirects = hostSettings.maxRedirects
+    val requestTimeout = hostSettings.connectionSettings.requestTimeout.toMillis
+    val connectingTimeout = hostSettings.connectionSettings.connectingTimeout.toMillis
+    HttpClientInfo(name, env, endpoint, status, connectionType, maxConnections, maxRetries, maxRedirects,
+                   requestTimeout, connectingTimeout, requestPipelines, responsePipelines)
   }
 }
 

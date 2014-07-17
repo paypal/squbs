@@ -2,6 +2,7 @@ package org.squbs.httpclient.endpoint
 
 import org.scalatest.{BeforeAndAfterEach, Matchers, FlatSpec}
 import org.squbs.httpclient.{HttpClientFactory, HttpClientException}
+import org.squbs.httpclient.endpoint.Endpoint
 
 /**
  * Created by hakuang on 5/22/2014.
@@ -14,11 +15,11 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
   }
 
   class LocalhostRouting extends EndpointResolver {
-    override def resolve(svcName: String, env: Option[String]): Option[String] = {
+    override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = {
       if (svcName == null && svcName.length <= 0) throw new HttpClientException(700, "Service name cannot be null")
       env match {
-        case None => Some("http://localhost:8080/" + svcName)
-        case Some(env) if env.toLowerCase == "dev" => Some("http://localhost:8080/" + svcName)
+        case None => Some(Endpoint("http://localhost:8080/" + svcName))
+        case Some(env) if env.toLowerCase == "dev" => Some(Endpoint("http://localhost:8080/" + svcName))
         case Some(env) => throw new HttpClientException(701, "LocalhostRouting cannot support " + env + " environment")
       }
     }
@@ -56,7 +57,7 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
   "Latter registry RoutingDefinition" should "have high priority" in {
     EndpointRegistry.register(new LocalhostRouting)
     EndpointRegistry.register(new EndpointResolver {
-      override def resolve(svcName: String, env: Option[String]): Option[String] = Some("http://localhost:8080/override")
+      override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = Some(Endpoint("http://localhost:8080/override"))
 
       override def name: String = "override"
     })
@@ -71,9 +72,9 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
   "It" should "fallback to the previous RoutingDefinition if latter one cannot be resolve" in {
     EndpointRegistry.register(new LocalhostRouting)
     EndpointRegistry.register(new EndpointResolver {
-      override def resolve(svcName: String, env: Option[String]): Option[String] = {
+      override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = {
         svcName match {
-          case "unique" => Some("http://www.ebay.com/unique")
+          case "unique" => Some(Endpoint("http://www.ebay.com/unique"))
           case _ => None
         }
       }
@@ -91,9 +92,9 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
 
   "unregister RoutingDefinition" should "have the correct behaviour" in {
     EndpointRegistry.register(new EndpointResolver {
-      override def resolve(svcName: String, env: Option[String]): Option[String] = {
+      override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = {
         svcName match {
-          case "unique" => Some("http://www.ebay.com/unique")
+          case "unique" => Some(Endpoint("http://www.ebay.com/unique"))
           case _ => None
         }
       }

@@ -11,7 +11,6 @@ import spray.http.{Uri, HttpRequest, HttpResponse}
 import org.squbs.httpclient.HttpResponseEntityWrapper
 import scala.util.Try
 import akka.pattern._
-import org.squbs.httpclient.config.{HostConfiguration, ServiceConfiguration, Configuration}
 import akka.util.Timeout
 import spray.can.Http
 import akka.io.IO
@@ -45,10 +44,10 @@ object EmptyPipeline extends Pipeline {
   override def requestPipelines: Seq[RequestTransformer] = Seq.empty[RequestTransformer]
 }
 
-object PipelineManager {
+trait PipelineManager extends ConfigurationSupport{
 
   private def pipelining(client: Client)(implicit actorSystem: ActorSystem) = {
-    implicit val connectionTimeout: Timeout = Timeout(client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis)
+    implicit val connectionTimeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
     import ExecutionContext.Implicits.global
     for (
       Http.HostConnectorInfo(connector, _) <-
@@ -57,24 +56,19 @@ object PipelineManager {
   }
 
   def hostConnectorSetup(client: Client)(implicit actorSystem: ActorSystem) = {
-    val uri = Uri(client.endpoint)
+    val uri = Uri(client.endpoint.get.uri)
     val host = uri.authority.host.toString
     val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
     val isSecure = uri.scheme.toLowerCase.equals("https")
     val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
-    client.config map {configuration =>
-      defaultHostConnectorSetup.copy(settings = configuration.hostConfig.hostSettings, connectionType = configuration.hostConfig.connectionType)
-    } match {
-      case None => defaultHostConnectorSetup
-      case Some(hostConnectorSetup) => hostConnectorSetup
-    }
+    defaultHostConnectorSetup.copy(settings = Some(hostSettings(client)), connectionType = config(client).connectionType)
   }
 
   def invokeToHttpResponse(client: Client)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseWrapper])] = {
     val pipelines = client.pipeline.getOrElse(EmptyPipeline)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines
-    val connTimeout = client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout
+    val connTimeout = hostSettings(client).connectionSettings.connectingTimeout
     Try{
       val futurePipeline = pipelining(client)
       val pipeline = Await.result(futurePipeline, connTimeout)
@@ -97,7 +91,7 @@ object PipelineManager {
     val pipelines = client.pipeline.getOrElse(EmptyPipeline)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines
-    implicit val connTimeout = Timeout(client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis)
+    implicit val connTimeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
     Try{
       (reqPipelines, resPipelines, client.status) match {
@@ -119,7 +113,7 @@ object PipelineManager {
     val pipelines = client.pipeline.getOrElse(EmptyPipeline)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines
-    val connTimeout = client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout
+    val connTimeout = hostSettings(client).connectionSettings.connectingTimeout
     Try{
       val futurePipeline = pipelining(client)
       val pipeline = Await.result(futurePipeline, connTimeout)
@@ -142,7 +136,7 @@ object PipelineManager {
     val pipelines = client.pipeline.getOrElse(EmptyPipeline)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines
-    implicit val connTimeout = Timeout(client.config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.connectionTimeout.toMillis)
+    implicit val connTimeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
     Try{
       (reqPipelines, resPipelines, client.status) match {

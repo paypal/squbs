@@ -1,6 +1,6 @@
 package org.squbs.httpclient
 
-import org.squbs.httpclient.endpoint.EndpointRegistry
+import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import akka.actor.ActorSystem
 import spray.client.pipelining._
 import spray.httpx.unmarshalling._
@@ -11,11 +11,13 @@ import scala.annotation.tailrec
 import org.squbs.httpclient.pipeline.{Pipeline, PipelineManager}
 import scala.util.Failure
 import scala.Some
-import org.squbs.httpclient.config.{HostConfiguration, ServiceConfiguration, Configuration}
+import org.squbs.httpclient.config.{Configuration}
 import scala.util.Success
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.Duration
 import spray.http.HttpRequest
+import org.slf4j.LoggerFactory
+import spray.can.client.HostConnectorSettings
 
 /**
  * Created by hakuang on 5/9/14.
@@ -34,11 +36,9 @@ trait Client {
 
   val env: Option[String]
 
-  val config: Option[Configuration]
-
   val pipeline: Option[Pipeline]
 
-  val endpoint = EndpointRegistry.resolve(name, env).getOrElse("")
+  val endpoint = EndpointRegistry.resolve(name, env)
 
   def markUP = {
     status = Status.UP
@@ -50,7 +50,10 @@ trait Client {
 }
 
 trait RetrySupport {
-  def retry[T](pipeline: HttpRequest => Future[T], httpRequest: HttpRequest, maxRetryCount: Int, serviceTimeout: Duration): Future[T] = {
+
+  val logger = LoggerFactory.getLogger(this.getClass)
+
+  def retry[T](pipeline: HttpRequest => Future[T], httpRequest: HttpRequest, maxRetries: Int, requestTimeout: Duration): Future[T] = {
 
     @tailrec
     def doRetry(times: Int): Future[T] = {
@@ -58,31 +61,60 @@ trait RetrySupport {
         httpRequest
       }
       Try {
-        Await.result(work, serviceTimeout)
+        Await.result(work, requestTimeout)
       } match {
         case Success(s) => work
         case Failure(throwable) if times == 0 => work
         case Failure(throwable) =>
-          println("Retry service [uri=" + httpRequest.uri.toString() + "] @ " + (maxRetryCount - times + 1) + " times")
+          logger.info("Retry service [uri=" + httpRequest.uri.toString() + "] @ " + (maxRetries - times + 1) + " times")
           doRetry(times - 1)
       }
     }
-    doRetry(maxRetryCount)
+    doRetry(maxRetries)
   }
 }
 
-trait HttpCallSupport extends RetrySupport {
+trait ConfigurationSupport {
+  def config(client: Client) = {
+    val endpoint = EndpointRegistry.resolve(client.name, client.env)
+    endpoint match {
+      case Some(endpoint) =>
+        val config = endpoint.properties.getOrElse(Endpoint.defaultConfigurationKey, Endpoint.defaultConfiguration)
+        if (config.isInstanceOf[Configuration]) {
+          config.asInstanceOf[Configuration]
+        } else {
+          throw HttpClientConfigurationTypeException(client.name, client.env)
+        }
+      case None =>
+        throw HttpClientEndpointNotExistException(client.name, client.env)
+    }
+  }
+
+  def hostSettings(client: Client)(implicit actorSystem: ActorSystem) = {
+    config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem))
+  }
+
+  implicit def toEndpoint(endpoint: Option[Endpoint]): String = {
+    endpoint match {
+      case Some(endpoint) => endpoint.uri
+      case None => throw new RuntimeException
+    }
+  }
+}
+
+trait HttpCallSupport extends RetrySupport with ConfigurationSupport with PipelineManager {
 
   import ExecutionContext.Implicits.global
 
   def client: Client
 
-  def handle(pipeline: Try[HttpRequest => Future[HttpResponseWrapper]], httpRequest: HttpRequest): Future[HttpResponseWrapper] = {
-    val config = client.config
-    val maxRetryCount = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.maxRetryCount
-    val serviceTimeout = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
+//  implicit val actorSystem = implicitly[ActorSystem]
+
+  def handle(pipeline: Try[HttpRequest => Future[HttpResponseWrapper]], httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+    val maxRetries = config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem)).maxRetries
+    val requestTimeout = config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem)).connectionSettings.requestTimeout
     pipeline match {
-      case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
+      case Success(res) => retry(res, httpRequest, maxRetries, requestTimeout)
       case Failure(t@HttpClientMarkDownException(_, _)) => future {
         HttpResponseWrapper(HttpClientException.httpClientMarkDownError, Left(t))
       }
@@ -93,43 +125,42 @@ trait HttpCallSupport extends RetrySupport {
   }
 
   def get(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(client), Get(client.endpoint + uri))
+    handle(invokeToHttpResponse(client), Get(client.endpoint + uri))
   }
 
   def post[T: Marshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(client), Post(client.endpoint + uri, content))
+    handle(invokeToHttpResponse(client), Post(client.endpoint + uri, content))
   }
 
   def put[T: Marshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(client), Put(client.endpoint + uri, content))
+    handle(invokeToHttpResponse(client), Put(client.endpoint + uri, content))
   }
 
   def head(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(client), Head(client.endpoint + uri))
+    handle(invokeToHttpResponse(client), Head(client.endpoint + uri))
   }
 
   def delete(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(client), Delete(client.endpoint + uri))
+    handle(invokeToHttpResponse(client), Delete(client.endpoint + uri))
   }
 
   def options(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(PipelineManager.invokeToHttpResponse(client), Options(client.endpoint + uri))
+    handle(invokeToHttpResponse(client), Options(client.endpoint + uri))
   }
 }
 
-trait HttpEntityCallSupport extends RetrySupport {
+trait HttpEntityCallSupport extends RetrySupport with ConfigurationSupport with PipelineManager {
 
   import ExecutionContext.Implicits.global
 
   def client: Client
 
   def handleEntity[T: FromResponseUnmarshaller](pipeline: Try[HttpRequest => Future[HttpResponseEntityWrapper[T]]],
-                                                httpRequest: HttpRequest): Future[HttpResponseEntityWrapper[T]] = {
-    val config = client.config
-    val maxRetryCount = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.maxRetryCount
-    val serviceTimeout = config.getOrElse(Configuration(ServiceConfiguration(), HostConfiguration())).svcConfig.serviceTimeout
+                                                httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[T]] = {
+    val maxRetries = config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem)).maxRetries
+    val requestTimeout = config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem)).connectionSettings.requestTimeout
     pipeline match {
-      case Success(res) => retry(res, httpRequest, maxRetryCount, serviceTimeout)
+      case Success(res) => retry(res, httpRequest, maxRetries, requestTimeout)
       case Failure(t@HttpClientMarkDownException(_, _)) => future {
         HttpResponseEntityWrapper(HttpClientException.httpClientMarkDownError, Left(t), None)
       }
@@ -140,27 +171,27 @@ trait HttpEntityCallSupport extends RetrySupport {
   }
 
   def getEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](client), Get(client.endpoint + uri))
+    handleEntity[R](invokeToEntity[R](client), Get(client.endpoint + uri))
   }
 
   def postEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](client), Post(client.endpoint + uri, content))
+    handleEntity[R](invokeToEntity[R](client), Post(client.endpoint + uri, content))
   }
 
   def putEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](client), Put(client.endpoint + uri, content))
+    handleEntity[R](invokeToEntity[R](client), Put(client.endpoint + uri, content))
   }
 
   def headEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](client), Head(client.endpoint + uri))
+    handleEntity[R](invokeToEntity[R](client), Head(client.endpoint + uri))
   }
 
   def deleteEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](client), Delete(client.endpoint + uri))
+    handleEntity[R](invokeToEntity[R](client), Delete(client.endpoint + uri))
   }
 
   def optionsEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](PipelineManager.invokeToEntity[R](client), Options(client.endpoint + uri))
+    handleEntity[R](invokeToEntity[R](client), Options(client.endpoint + uri))
   }
 }
 
@@ -168,35 +199,42 @@ trait HttpClientSupport extends HttpCallSupport with HttpEntityCallSupport
 
 case class HttpClient(name: String,
                       env: Option[String] = None,
-                      config: Option[Configuration] = None,
                       pipeline: Option[Pipeline] = None) extends Client with HttpClientSupport {
 
-  require(endpoint.toLowerCase.startsWith("http://") || endpoint.toLowerCase.startsWith("https://"), "endpoint should be start with http:// or https://")
+  require(endpoint != None, "endpoint should be resolved!")
+  require(endpoint.get.uri.toLowerCase.startsWith("http://") || endpoint.get.uri.toLowerCase.startsWith("https://"), "endpoint should be start with http:// or https://")
 
   def client: Client = this
 
-  def update(config: Option[Configuration] = None, pipeline: Option[Pipeline] = None): Client = {
-    val httpClient = HttpClient(name, env, config, pipeline)
+  def updatePipeline(pipeline: Option[Pipeline] = None): Client = {
+    val httpClient = HttpClient(name, env, pipeline)
     HttpClientFactory.httpClientMap.put((name,env),httpClient)
     httpClient
+  }
+
+  def updateConfig(config: Configuration): Client = {
+    EndpointRegistry.updateConfig(name, env, config)
+    this
   }
 }
 
 object HttpClientFactory {
 
+  val defaultEnv = Some("DEFAULT")
+
   val httpClientMap: TrieMap[(String, Option[String]), HttpClient] = TrieMap[(String, Option[String]), HttpClient]()
 
   def getOrCreate(name: String): HttpClient = {
-    getOrCreate(name, env = None)
+    getOrCreate(name, env = defaultEnv)
   }
 
   def getOrCreate(name: String, env: String): HttpClient = {
     getOrCreate(name, env = Some(env))
   }
 
-  def getOrCreate(name: String, env: Option[String] = None, config: Option[Configuration] = None, pipeline: Option[Pipeline] = None): HttpClient = {
+  def getOrCreate(name: String, env: Option[String] = defaultEnv, pipeline: Option[Pipeline] = None): HttpClient = {
     httpClientMap.getOrElseUpdate((name, env), {
-      HttpClient(name, env, config, pipeline)
+      HttpClient(name, env, pipeline)
     })
   }
 }
