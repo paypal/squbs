@@ -7,19 +7,19 @@ import spray.http.StatusCodes
  */
 class HttpClientException(code: Int, message: String) extends RuntimeException(message) with Serializable
 
-case class HttpClientMarkDownException(svcName: String, env: Option[String] = None)
+case class HttpClientMarkDownException(svcName: String, env: Option[String] = HttpClientFactory.defaultEnv)
   extends HttpClientException(900, s"HttpClient:($svcName,$env) has been markdown!")
 
-case class HttpClientExistException(svcName: String, env: Option[String] = None)
+case class HttpClientExistException(svcName: String, env: Option[String] = HttpClientFactory.defaultEnv)
   extends HttpClientException(901, s"HttpClient:($svcName,$env) has been registry!")
 
-case class HttpClientNotExistException(svcName: String, env: Option[String] = None)
+case class HttpClientNotExistException(svcName: String, env: Option[String] = HttpClientFactory.defaultEnv)
   extends HttpClientException(902, s"HttpClient:($svcName,$env) hasn't been registry!")
 
-case class HttpClientEndpointNotExistException(svcName: String, env: Option[String] = None)
+case class HttpClientEndpointNotExistException(svcName: String, env: Option[String] = HttpClientFactory.defaultEnv)
   extends HttpClientException(903, s"HttpClient:($svcName,$env) endpoint cannot be resolved!")
 
-case class HttpClientConfigurationTypeException(svcName: String, env: Option[String] = None)
+case class HttpClientConfigurationTypeException(svcName: String, env: Option[String] = HttpClientFactory.defaultEnv)
   extends HttpClientException(904, s"HttpClient:($svcName,$env) configuration type error, configuration type should be org.squbs.httpclient.config.Configuration")
 
 object HttpClientException {

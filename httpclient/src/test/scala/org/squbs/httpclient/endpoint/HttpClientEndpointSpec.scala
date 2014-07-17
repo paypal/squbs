@@ -37,7 +37,7 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
     EndpointRegistry.register(new LocalhostRouting)
     EndpointRegistry.route("abcService") should not be (None)
     EndpointRegistry.route("abcService").get.name should be ("localhost")
-    EndpointRegistry.route("abcService").get.resolve("abcService") should be (Some("http://localhost:8080/abcService"))
+    EndpointRegistry.route("abcService").get.resolve("abcService") should be (Some(Endpoint("http://localhost:8080/abcService")))
   }
 
   "localhost routing" should "be throw out HttpClientException if env isn't Dev" in {
@@ -51,7 +51,7 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
     EndpointRegistry.register(new LocalhostRouting)
     EndpointRegistry.route("abcService", Some("dev")) should not be (None)
     EndpointRegistry.route("abcService", Some("dev")).get.name should be ("localhost")
-    EndpointRegistry.resolve("abcService", Some("dev")) should be (Some("http://localhost:8080/abcService"))
+    EndpointRegistry.resolve("abcService", Some("dev")) should be (Some(Endpoint("http://localhost:8080/abcService")))
   }
 
   "Latter registry RoutingDefinition" should "have high priority" in {
@@ -63,10 +63,10 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
     })
     EndpointRegistry.endpointResolvers.length should be (2)
     EndpointRegistry.endpointResolvers.head.isInstanceOf[LocalhostRouting] should be (false)
-    EndpointRegistry.endpointResolvers.head.asInstanceOf[EndpointResolver].name should be ("override")
+    EndpointRegistry.endpointResolvers.head.name should be ("override")
     EndpointRegistry.route("abcService") should not be (None)
     EndpointRegistry.route("abcService").get.name should be ("override")
-    EndpointRegistry.resolve("abcService") should be (Some("http://localhost:8080/override"))
+    EndpointRegistry.resolve("abcService") should be (Some(Endpoint("http://localhost:8080/override")))
   }
 
   "It" should "fallback to the previous RoutingDefinition if latter one cannot be resolve" in {
@@ -86,8 +86,8 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
     EndpointRegistry.route("abcService").get.name should be ("localhost")
     EndpointRegistry.route("unique") should not be (None)
     EndpointRegistry.route("unique").get.name should be ("unique")
-    EndpointRegistry.resolve("abcService") should be (Some("http://localhost:8080/abcService"))
-    EndpointRegistry.resolve("unique") should be (Some("http://www.ebay.com/unique"))
+    EndpointRegistry.resolve("abcService") should be (Some(Endpoint("http://localhost:8080/abcService")))
+    EndpointRegistry.resolve("unique") should be (Some(Endpoint("http://www.ebay.com/unique")))
   }
 
   "unregister RoutingDefinition" should "have the correct behaviour" in {
@@ -105,9 +105,9 @@ class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterE
 
     EndpointRegistry.endpointResolvers.length should be (2)
     EndpointRegistry.endpointResolvers.head.isInstanceOf[LocalhostRouting] should be (true)
-    EndpointRegistry.resolve("unique") should be (Some("http://localhost:8080/unique"))
+    EndpointRegistry.resolve("unique") should be (Some(Endpoint("http://localhost:8080/unique")))
     EndpointRegistry.unregister("localhost")
     EndpointRegistry.endpointResolvers.length should be (1)
-    EndpointRegistry.resolve("unique") should be (Some("http://www.ebay.com/unique"))
+    EndpointRegistry.resolve("unique") should be (Some(Endpoint("http://www.ebay.com/unique")))
   }
 }

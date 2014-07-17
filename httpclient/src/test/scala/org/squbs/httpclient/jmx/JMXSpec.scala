@@ -63,10 +63,10 @@ class JMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach with Before
   "HttpClient with configuration" should "show up the correct value of HttpClientBean" in {
     val httpClient = HttpClientFactory.getOrCreate("hello5")
     httpClient.updateConfig(Configuration(hostSettings = Some(HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system))), connectionType = Proxied("www.ebay.com", 80)))
-//    HttpClientFactory.getOrCreate("hello6").markDown
-//    httpClientBean.getHttpClient.size should be (2)
+    HttpClientFactory.getOrCreate("hello6").markDown
+    httpClientBean.getHttpClient.size should be (2)
     findHttpClientBean(httpClientBean.getHttpClient, "hello5") should be (HttpClientInfo("hello5", "DEFAULT", "http://www.ebay.com", "UP", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
-//    findHttpClientBean(httpClientBean.getHttpClient, "hello6") should be (HttpClientInfo("hello6", "DEFAULT", "http://www.ebay.com", "DOWN", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
+    findHttpClientBean(httpClientBean.getHttpClient, "hello6") should be (HttpClientInfo("hello6", "DEFAULT", "http://www.ebay.com", "DOWN", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
   }
 
   def findHttpClientBean(beans: java.util.List[HttpClientInfo], name: String): HttpClientInfo = {

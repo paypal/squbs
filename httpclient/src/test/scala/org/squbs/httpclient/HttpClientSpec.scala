@@ -64,12 +64,12 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   "Update HttpClient" should "get the updated value" in {
     val httpClient = HttpClientFactory.getOrCreate("googlemap")
     httpClient.name should be ("googlemap")
-    httpClient.env should be (None)
+    httpClient.env should be (HttpClientFactory.defaultEnv)
     httpClient.pipeline should be (None)
     val config = Configuration()
     val updatedHttpClient = httpClient.updateConfig(config)
     updatedHttpClient.name should be ("googlemap")
-    updatedHttpClient.env should be (None)
+    updatedHttpClient.env should be (HttpClientFactory.defaultEnv)
     updatedHttpClient.pipeline should be (None)
   }
 
