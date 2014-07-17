@@ -20,8 +20,8 @@ findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
-parallelExecution in Test := true
-
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/unicomplex")
 
 instrumentSettings
+
+parallelExecution in ScoverageTest := false
