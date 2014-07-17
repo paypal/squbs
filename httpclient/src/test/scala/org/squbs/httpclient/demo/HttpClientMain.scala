@@ -14,6 +14,7 @@ import scala.Some
 import org.squbs.httpclient.HttpResponseEntityWrapper
 import scala.util.Success
 import org.squbs.httpclient.HttpResponseWrapper
+import org.squbs.httpclient.env.{Environment, Default}
 
 /**
  * Created by hakuang on 6/13/2014.
@@ -77,7 +78,7 @@ object HttpClientMain2 extends App {
 }
 
 class GoogleMapAPIEndpointResolver extends EndpointResolver {
-  override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = {
+  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == name)
       Some(Endpoint("http://maps.googleapis.com/maps"))
     else

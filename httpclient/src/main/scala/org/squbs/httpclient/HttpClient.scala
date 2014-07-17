@@ -18,6 +18,7 @@ import scala.concurrent.duration.Duration
 import spray.http.HttpRequest
 import org.slf4j.LoggerFactory
 import spray.can.client.HostConnectorSettings
+import org.squbs.httpclient.env.{EnvironmentRegistry, Default, Environment}
 
 /**
  * Created by hakuang on 5/9/14.
@@ -34,7 +35,7 @@ trait Client {
 
   val name: String
 
-  val env: Option[String]
+  val env: Environment
 
   val pipeline: Option[Pipeline]
 
@@ -108,8 +109,6 @@ trait HttpCallSupport extends RetrySupport with ConfigurationSupport with Pipeli
 
   def client: Client
 
-//  implicit val actorSystem = implicitly[ActorSystem]
-
   def handle(pipeline: Try[HttpRequest => Future[HttpResponseWrapper]], httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
     val maxRetries = config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem)).maxRetries
     val requestTimeout = config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem)).connectionSettings.requestTimeout
@@ -161,12 +160,10 @@ trait HttpEntityCallSupport extends RetrySupport with ConfigurationSupport with 
     val requestTimeout = config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem)).connectionSettings.requestTimeout
     pipeline match {
       case Success(res) => retry(res, httpRequest, maxRetries, requestTimeout)
-      case Failure(t@HttpClientMarkDownException(_, _)) => future {
-        HttpResponseEntityWrapper(HttpClientException.httpClientMarkDownError, Left(t), None)
-      }
-      case Failure(t) => future {
-        HttpResponseEntityWrapper(999, Left(t), None)
-      }
+      case Failure(t@HttpClientMarkDownException(_, _)) =>
+        future {HttpResponseEntityWrapper[T](HttpClientException.httpClientMarkDownError, Left(t), None)}
+      case Failure(t) =>
+        future {HttpResponseEntityWrapper[T](999, Left(t), None)}
     }
   }
 
@@ -198,7 +195,7 @@ trait HttpEntityCallSupport extends RetrySupport with ConfigurationSupport with 
 trait HttpClientSupport extends HttpCallSupport with HttpEntityCallSupport
 
 case class HttpClient(name: String,
-                      env: Option[String] = None,
+                      env: Environment = Default,
                       pipeline: Option[Pipeline] = None) extends Client with HttpClientSupport {
 
   require(endpoint != None, "endpoint should be resolved!")
@@ -220,21 +217,23 @@ case class HttpClient(name: String,
 
 object HttpClientFactory {
 
-  val defaultEnv = Some("DEFAULT")
-
-  val httpClientMap: TrieMap[(String, Option[String]), HttpClient] = TrieMap[(String, Option[String]), HttpClient]()
+  val httpClientMap: TrieMap[(String, Environment), HttpClient] = TrieMap[(String, Environment), HttpClient]()
 
   def getOrCreate(name: String): HttpClient = {
-    getOrCreate(name, env = defaultEnv)
+    getOrCreate(name, Default)
   }
 
-  def getOrCreate(name: String, env: String): HttpClient = {
-    getOrCreate(name, env = Some(env))
+  def getOrCreate(name: String, env: Environment): HttpClient = {
+    getOrCreate(name, env, None)
   }
 
-  def getOrCreate(name: String, env: Option[String] = defaultEnv, pipeline: Option[Pipeline] = None): HttpClient = {
-    httpClientMap.getOrElseUpdate((name, env), {
-      HttpClient(name, env, pipeline)
+  def getOrCreate(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None): HttpClient = {
+    val newEnv = env match {
+      case Default => EnvironmentRegistry.resolve(name)
+      case _ => env
+    }
+    httpClientMap.getOrElseUpdate((name, newEnv), {
+      HttpClient(name, newEnv, pipeline)
     })
   }
 }

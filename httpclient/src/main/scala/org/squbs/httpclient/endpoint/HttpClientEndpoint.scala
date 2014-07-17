@@ -3,6 +3,7 @@ package org.squbs.httpclient.endpoint
 import scala.collection.mutable.ListBuffer
 import org.slf4j.LoggerFactory
 import org.squbs.httpclient.config.Configuration
+import org.squbs.httpclient.env.{Default, Environment}
 
 /**
  * Created by hakuang on 5/9/2014.
@@ -20,7 +21,7 @@ trait EndpointResolver {
   
   def name: String
 
-  def resolve(svcName: String, env: Option[String] = None): Option[Endpoint]
+  def resolve(svcName: String, env: Environment = Default): Option[Endpoint]
 }
 
 object EndpointRegistry {
@@ -34,24 +35,24 @@ object EndpointRegistry {
       case None =>
         endpointResolvers.prepend(resolver)
       case Some(routing) =>
-        logger.info("Resolver:" + resolver.name + " has been registry, skip current endpoint resolver registry!")
+        logger.info("Endpoint Resolver:" + resolver.name + " has been registry, skip current endpoint resolver registry!")
     }
   }
 
   def unregister(name: String) = {
     endpointResolvers.find(_.name == name) match {
       case None =>
-        logger.warn("Resolver:" + name + " cannot be found, skip current endpoint resolver unregistry!")
-      case Some(route) =>
-        endpointResolvers.remove(endpointResolvers.indexOf(route))
+        logger.warn("Endpoint Resolver:" + name + " cannot be found, skip current endpoint resolver unregistry!")
+      case Some(resolver) =>
+        endpointResolvers.remove(endpointResolvers.indexOf(resolver))
     }                                      
   }
 
-  def route(svcName: String, env: Option[String] = None): Option[EndpointResolver] = {
+  def route(svcName: String, env: Environment = Default): Option[EndpointResolver] = {
     endpointResolvers.find(_.resolve(svcName, env) != None)
   }
 
-  def resolve(svcName: String, env: Option[String] = None): Option[Endpoint] = {
+  def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     endpointResolvers.find(_.resolve(svcName, env) != None) flatMap (_.resolve(svcName, env)) match {
       case Some(endpoint) =>
         Some(endpoint)
@@ -62,12 +63,12 @@ object EndpointRegistry {
     }
   }
 
-  def updateConfig(svcName: String, env: Option[String] = None, configuration: Configuration) = {
+  def updateConfig(svcName: String, env: Environment = Default, configuration: Configuration) = {
     route(svcName, env) match {
       case Some(existResolver) =>
         val position = endpointResolvers.indexOf(existResolver)
         endpointResolvers.update(position, new EndpointResolver {
-          override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = {
+          override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
             val endpoint = existResolver.resolve(svcName,env).get
             Some(Endpoint(endpoint.uri, endpoint.properties.updated(Endpoint.defaultConfigurationKey, configuration)))
           }

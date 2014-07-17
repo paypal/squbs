@@ -14,6 +14,8 @@ import akka.pattern._
 import akka.util.Timeout
 import spray.can.Http
 import akka.io.IO
+import javax.net.ssl.SSLContext
+import spray.io.ClientSSLEngineProvider
 
 /**
  * Created by hakuang on 5/1/2014.
@@ -47,6 +49,18 @@ object EmptyPipeline extends Pipeline {
 trait PipelineManager extends ConfigurationSupport{
 
   private def pipelining(client: Client)(implicit actorSystem: ActorSystem) = {
+
+    implicit def sslContext: SSLContext = {
+      config(client).sslContext match {
+        case Some(context) => context
+        case None          => SSLContext.getDefault
+      }
+    }
+
+    implicit val myClientEngineProvider = ClientSSLEngineProvider { engine =>
+      engine
+    }
+
     implicit val connectionTimeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
     import ExecutionContext.Implicits.global
     for (

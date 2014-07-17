@@ -15,6 +15,7 @@ import scala.util.Success
 import scala.util.Failure
 import scala.Some
 import org.squbs.httpclient.config.{Configuration}
+import org.squbs.httpclient.env._
 
 
 case class Elevation(location: Location, elevation: Double)
@@ -64,12 +65,12 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
   "Update HttpClient" should "get the updated value" in {
     val httpClient = HttpClientFactory.getOrCreate("googlemap")
     httpClient.name should be ("googlemap")
-    httpClient.env should be (HttpClientFactory.defaultEnv)
+    httpClient.env should be (Default)
     httpClient.pipeline should be (None)
     val config = Configuration()
     val updatedHttpClient = httpClient.updateConfig(config)
     updatedHttpClient.name should be ("googlemap")
-    updatedHttpClient.env should be (HttpClientFactory.defaultEnv)
+    updatedHttpClient.env should be (Default)
     updatedHttpClient.pipeline should be (None)
   }
 
@@ -153,7 +154,7 @@ class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
 }
 
 class GoogleMapEndpointResolver extends EndpointResolver {
-  override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = {
+  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == name)
       Some(Endpoint("http://maps.googleapis.com/maps"))
     else
@@ -164,7 +165,7 @@ class GoogleMapEndpointResolver extends EndpointResolver {
 }
 
 class GoogleMapHttpsEndpointResolver extends EndpointResolver {
-  override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = {
+  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == name)
       Some(Endpoint("https://maps.googleapis.com/maps"))
     else
@@ -175,7 +176,7 @@ class GoogleMapHttpsEndpointResolver extends EndpointResolver {
 }
 
 class GoogleMap2EndpointResolverMarkdown extends EndpointResolver {
-  override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = {
+  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == name)
       Some(Endpoint("http://maps.googleapis.com/maps"))
     else
@@ -186,7 +187,7 @@ class GoogleMap2EndpointResolverMarkdown extends EndpointResolver {
 }
 
 class GoogleMapNotExistingEndpointResolver extends EndpointResolver {
-  override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = {
+  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == name)
       Some(Endpoint("http://www.googlemapnotexisting.com"))
     else

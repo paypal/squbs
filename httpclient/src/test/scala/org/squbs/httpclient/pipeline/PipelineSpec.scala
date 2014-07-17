@@ -16,6 +16,7 @@ import org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler
 import org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler
 import spray.http.HttpHeaders.RawHeader
 import scala.Some
+import org.squbs.httpclient.env.{Default, Environment}
 
 class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll with BeforeAndAfterEach with PipelineManager{
 
@@ -112,7 +113,7 @@ object RequestResponsePipeline extends Pipeline {
 }
 
 class GoogleEndpointResolver extends EndpointResolver {
-  override def resolve(svcName: String, env: Option[String]): Option[Endpoint] = {
+  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == name)
       Some(Endpoint("http://maps.googleapis.com/maps"))
     else

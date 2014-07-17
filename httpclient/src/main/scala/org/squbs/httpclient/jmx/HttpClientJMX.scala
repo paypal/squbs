@@ -45,7 +45,7 @@ class HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
 
   def mapToHttpClientInfo(httpClient: Client)(implicit actorSystem: ActorSystem) = {
     val name = httpClient.name
-    val env  = httpClient.env.getOrElse("NONE")
+    val env  = httpClient.env.lowercaseName
     val endpoint = EndpointRegistry.resolve(name).getOrElse(Endpoint("")).uri
     val status = httpClient.status.toString
     val configuration = config(httpClient)
