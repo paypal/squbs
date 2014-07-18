@@ -89,6 +89,10 @@ trait ConfigurationSupport {
   def hostSettings(client: Client)(implicit actorSystem: ActorSystem) = {
     config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem))
   }
+
+  implicit def endpointToUri(endpoint: Option[Endpoint]): String = {
+    endpoint.getOrElse(Endpoint("")).uri
+  }
 }
 
 trait HttpCallSupport extends RetrySupport with ConfigurationSupport with PipelineManager {
