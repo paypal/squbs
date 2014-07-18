@@ -1,5 +1,3 @@
-import de.johoop.jacoco4sbt._
-import JacocoPlugin._
 import org.scalastyle.sbt.ScalastylePlugin._
 import de.johoop.findbugs4sbt.FindBugs._
 
@@ -18,12 +16,12 @@ libraryDependencies ++= Seq(
   "org.zeromq" % "jeromq" % "0.3.3"
 )
 
-jacoco.settings
-
 findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
-parallelExecution in Test := true
-
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/unicomplex")
+
+instrumentSettings
+
+parallelExecution in ScoverageTest := false
