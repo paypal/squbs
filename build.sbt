@@ -6,7 +6,9 @@ organization in ThisBuild := "org.squbs"
 
 publishArtifact := false
 
-addCommandAlias("coverage", "scoverage:test") 
+addCommandAlias("coverage", "scoverage:test")
+
+parallelExecution in ScoverageTest := false
 
 lazy val unicomplex = project
 
