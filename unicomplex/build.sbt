@@ -13,7 +13,8 @@ libraryDependencies ++= Seq(
   "io.spray" % "spray-http" % "1.3.1",
   "io.spray" % "spray-routing" % "1.3.1",
   "io.spray" % "spray-testkit" % "1.3.1" % "test",
-  "org.zeromq" % "jeromq" % "0.3.3"
+  "org.zeromq" % "jeromq" % "0.3.3",
+  "net.databinder.dispatch" %% "dispatch-core" % "0.11.0" % "test"
 )
 
 findbugsSettings
