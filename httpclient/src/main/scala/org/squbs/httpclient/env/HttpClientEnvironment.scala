@@ -13,19 +13,19 @@ abstract class Environment {
   def lowercaseName: String = name.toLowerCase
 }
 
-case object Default extends Environment{
+object Default extends Environment{
   override val name: String = "DEFAULT"
 }
 
-case object QA extends Environment {
+object QA extends Environment {
   override val name: String = "QA"
 }
 
-case object DEV extends Environment {
+object DEV extends Environment {
   override val name: String = "DEV"
 }
 
-case object PROD extends Environment {
+object PROD extends Environment {
   override val name: String = "PROD"
 }
 
@@ -61,12 +61,6 @@ object EnvironmentRegistry {
   }
 
   def resolve(svcName: String): Environment = {
-//    environmentResolvers.find(_.resolve(svcName) != None) flatMap (_.resolve(svcName)) match {
-//      case Some(env) =>
-//        env
-//      case None =>
-//        Default
-//    }
     environmentResolvers.find(_.resolve(svcName) != None) match {
       case Some(resolver) =>
         resolver.resolve(svcName).getOrElse(Default)

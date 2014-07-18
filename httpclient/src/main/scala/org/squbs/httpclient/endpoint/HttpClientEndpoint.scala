@@ -9,13 +9,7 @@ import org.squbs.httpclient.env.{Default, Environment}
  * Created by hakuang on 5/9/2014.
  */
 
-case class Endpoint(uri: String, properties: Map[String, Any] = Map(Endpoint.defaultConfiguration))
-
-object Endpoint {
-  val defaultConfigurationKey   = "org.squbs.httpclient.config.Configuration"
-  val defaultConfigurationValue = Configuration()
-  val defaultConfiguration      = defaultConfigurationKey -> defaultConfigurationValue
-}
+case class Endpoint(uri: String, config: Configuration = Configuration())
 
 trait EndpointResolver {
   
@@ -70,12 +64,12 @@ object EndpointRegistry {
         endpointResolvers.update(position, new EndpointResolver {
           override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
             val endpoint = existResolver.resolve(svcName,env).get
-            Some(Endpoint(endpoint.uri, endpoint.properties.updated(Endpoint.defaultConfigurationKey, configuration)))
+            Some(Endpoint(endpoint.uri, configuration))
           }
           override def name: String = existResolver.name
         })
       case None =>
-        logger.warn(s"There isn't any existing resolver which can resolve ($svcName, $env), ignore the update!")
+        logger.warn(s"There isn't any existing endpoint resolver which can resolve ($svcName, $env), ignore the update!")
     }
   }
 }

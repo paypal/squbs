@@ -101,28 +101,6 @@ trait PipelineManager extends ConfigurationSupport{
     }
   }
 
-  def invokeToHttpResponseWithoutSetup(client: Client, actorRef: ActorRef)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseWrapper])] = {
-    val pipelines = client.pipeline.getOrElse(EmptyPipeline)
-    val reqPipelines = pipelines.requestPipelines
-    val resPipelines = pipelines.responsePipelines
-    implicit val connTimeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
-    val pipeline = spray.client.pipelining.sendReceive(actorRef)
-    Try{
-      (reqPipelines, resPipelines, client.status) match {
-        case (_, _, Status.DOWN) =>
-          throw new HttpClientMarkDownException(client.name, client.env)
-        case (Seq(), Seq(), _) =>
-          pipeline ~> withWrapper
-        case (Seq(), _: Seq[ResponseTransformer], _) =>
-          pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> withWrapper
-        case (_: Seq[RequestTransformer], Seq(), _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> withWrapper
-        case (_: Seq[RequestTransformer], _: Seq[ResponseTransformer], _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> withWrapper
-      }
-    }
-  }
-
   def invokeToEntity[T: FromResponseUnmarshaller](client: Client)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseEntityWrapper[T]])] = {
     val pipelines = client.pipeline.getOrElse(EmptyPipeline)
     val reqPipelines = pipelines.requestPipelines
@@ -131,28 +109,6 @@ trait PipelineManager extends ConfigurationSupport{
     Try{
       val futurePipeline = pipelining(client)
       val pipeline = Await.result(futurePipeline, connTimeout)
-      (reqPipelines, resPipelines, client.status) match {
-        case (_, _, Status.DOWN) =>
-          throw new HttpClientMarkDownException(client.name, client.env)
-        case (Seq(), Seq(), _) =>
-          pipeline ~> unmarshalWithWrapper[T]
-        case (Seq(), _: Seq[ResponseTransformer], _) =>
-          pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> unmarshalWithWrapper[T]
-        case (_: Seq[RequestTransformer], Seq(), _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> unmarshalWithWrapper[T]
-        case (_: Seq[RequestTransformer], _: Seq[ResponseTransformer], _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> unmarshalWithWrapper[T]
-      }
-    }
-  }
-
-  def invokeToEntityWithoutSetup[T: FromResponseUnmarshaller](client: Client, actorRef: ActorRef)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseEntityWrapper[T]])] = {
-    val pipelines = client.pipeline.getOrElse(EmptyPipeline)
-    val reqPipelines = pipelines.requestPipelines
-    val resPipelines = pipelines.responsePipelines
-    implicit val connTimeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
-    val pipeline = spray.client.pipelining.sendReceive(actorRef)
-    Try{
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, Status.DOWN) =>
           throw new HttpClientMarkDownException(client.name, client.env)

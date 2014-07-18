@@ -80,12 +80,7 @@ trait ConfigurationSupport {
     val endpoint = EndpointRegistry.resolve(client.name, client.env)
     endpoint match {
       case Some(endpoint) =>
-        val config = endpoint.properties.getOrElse(Endpoint.defaultConfigurationKey, Endpoint.defaultConfiguration)
-        if (config.isInstanceOf[Configuration]) {
-          config.asInstanceOf[Configuration]
-        } else {
-          throw HttpClientConfigurationTypeException(client.name, client.env)
-        }
+        endpoint.config
       case None =>
         throw HttpClientEndpointNotExistException(client.name, client.env)
     }
@@ -93,13 +88,6 @@ trait ConfigurationSupport {
 
   def hostSettings(client: Client)(implicit actorSystem: ActorSystem) = {
     config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem))
-  }
-
-  implicit def toEndpoint(endpoint: Option[Endpoint]): String = {
-    endpoint match {
-      case Some(endpoint) => endpoint.uri
-      case None => throw new RuntimeException
-    }
   }
 }
 
@@ -110,8 +98,8 @@ trait HttpCallSupport extends RetrySupport with ConfigurationSupport with Pipeli
   def client: Client
 
   def handle(pipeline: Try[HttpRequest => Future[HttpResponseWrapper]], httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    val maxRetries = config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem)).maxRetries
-    val requestTimeout = config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem)).connectionSettings.requestTimeout
+    val maxRetries = hostSettings(client).maxRetries
+    val requestTimeout = hostSettings(client).connectionSettings.requestTimeout
     pipeline match {
       case Success(res) => retry(res, httpRequest, maxRetries, requestTimeout)
       case Failure(t@HttpClientMarkDownException(_, _)) => future {
@@ -156,8 +144,8 @@ trait HttpEntityCallSupport extends RetrySupport with ConfigurationSupport with 
 
   def handleEntity[T: FromResponseUnmarshaller](pipeline: Try[HttpRequest => Future[HttpResponseEntityWrapper[T]]],
                                                 httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[T]] = {
-    val maxRetries = config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem)).maxRetries
-    val requestTimeout = config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem)).connectionSettings.requestTimeout
+    val maxRetries = hostSettings(client).maxRetries
+    val requestTimeout = hostSettings(client).connectionSettings.requestTimeout
     pipeline match {
       case Success(res) => retry(res, httpRequest, maxRetries, requestTimeout)
       case Failure(t@HttpClientMarkDownException(_, _)) =>
