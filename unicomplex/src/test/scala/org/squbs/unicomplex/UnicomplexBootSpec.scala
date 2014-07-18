@@ -12,43 +12,45 @@ import org.squbs.unicomplex.UnicomplexBoot._
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import java.io.{File, PrintWriter}
 
+import scala.util.Try
+
 class UnicomplexBootSpec extends FunSpecLike with Matchers {
 
   describe ("The UnicomplexBootstrap") {
 
     it ("Should handle non-duplication in cube short names") {
-      val initInfoList = Seq(
-        InitInfo("don't care", "com.foo.foobar.bar", "bar", "1.0.0", Seq.empty, StartupType.ACTORS),
-        InitInfo("don't care", "com.foo.baz.foo", "foo", "1.0.0", Seq.empty, StartupType.SERVICES),
-        InitInfo("don't care", "com.foo.baz.foobar", "foobar", "1.0.0", Seq.empty, StartupType.ACTORS)
+      val cubeList = Seq(
+        Cube("don't care", "com.foo.foobar.bar", "bar", "1.0.0", Map.empty),
+        Cube("don't care", "com.foo.baz.foo", "foo", "1.0.0", Map.empty),
+        Cube("don't care", "com.foo.baz.foobar", "foobar", "1.0.0", Map.empty)
       )
 
-      val newList = resolveAliasConflicts(initInfoList)
-      newList should be theSameInstanceAs initInfoList
+      val newList = resolveAliasConflicts(cubeList)
+      newList should be theSameInstanceAs cubeList
 
     }
 
     it ("Should handle duplication in cube short names") {
-      val initInfoList = Seq(
-        InitInfo("don't care", "com.foo.foobar.bar", "bar", "1.0.0", Seq.empty, StartupType.ACTORS),
-        InitInfo("don't care", "com.foo.baz.bar", "bar", "1.0.0", Seq.empty, StartupType.SERVICES),
-        InitInfo("don't care", "com.foo.bar.bar", "bar", "1.0.0", Seq.empty, StartupType.ACTORS)
+      val cubeList = Seq(
+        Cube("don't care", "com.foo.foobar.bar", "bar", "1.0.0", Map.empty),
+        Cube("don't care", "com.foo.baz.bar", "bar", "1.0.0", Map.empty),
+        Cube("don't care", "com.foo.bar.bar", "bar", "1.0.0", Map.empty)
       )
-      val newList = resolveAliasConflicts(initInfoList)
-      newList should not be theSameInstanceAs (initInfoList)
+      val newList = resolveAliasConflicts(cubeList)
+      newList should not be theSameInstanceAs (cubeList)
       val newAliases = newList map (_.alias)
       val refAliases = Seq("foobar.bar", "baz.bar", "bar.bar")
       newAliases should be (refAliases)
     }
 
     it ("Should handle some duplication in cube names") {
-      val initInfoList = Seq(
-        InitInfo("don't care", "com.bar.baz.bar", "bar", "1.0.0", Seq.empty, StartupType.ACTORS),
-        InitInfo("don't care", "com.foo.baz.bar", "bar", "1.0.0", Seq.empty, StartupType.SERVICES),
-        InitInfo("don't care", "com.foo.bar.bar", "bar", "1.0.0", Seq.empty, StartupType.ACTORS)
+      val cubeList = Seq(
+        Cube("don't care", "com.bar.baz.bar", "bar", "1.0.0", Map.empty),
+        Cube("don't care", "com.foo.baz.bar", "bar", "1.0.0", Map.empty),
+        Cube("don't care", "com.foo.bar.bar", "bar", "1.0.0", Map.empty)
       )
-      val newList = resolveAliasConflicts(initInfoList)
-      newList should not be theSameInstanceAs (initInfoList)
+      val newList = resolveAliasConflicts(cubeList)
+      newList should not be theSameInstanceAs (cubeList)
       val newAliases = newList map (_.alias)
       val refAliases = Seq("bar.baz.bar", "foo.baz.bar", "bar.bar")
       newAliases should be (refAliases)
@@ -222,14 +224,24 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
           |}
         """.stripMargin
       val appConf = ConfigFactory.parseString(appConfDef)
-      val initInfoList = Seq(
-        InitInfo("don't care", "com.foo.bar", "foo", "1.0.0", Seq(route1), StartupType.SERVICES),
-        InitInfo("don't care", "com.foo.bar", "bar", "1.0.0", Seq(route2, route3), StartupType.SERVICES))
+      val cubeList = Seq(
+        Cube("don't care", "com.foo.bar", "foo", "1.0.0", Map(StartupType.SERVICES -> Seq(route1))),
+        Cube("don't care", "com.foo.bar", "bar", "1.0.0", Map(StartupType.SERVICES -> Seq(route2, route3))))
 
-      val (activeAliases, activeListeners, missingListeners) = findListeners(appConf, initInfoList)
+      val (activeAliases, activeListeners, missingListeners) = findListeners(appConf, cubeList)
       activeAliases map (_._1) should contain only ("secure-listener", "secure2-listener")
       activeListeners map (_._1) should contain only "secure-listener"
       missingListeners should contain only "local-listener"
+    }
+
+    it ("should merge the addOnConfig with original config") {
+      import scala.collection.JavaConversions._
+      val addOnConfig = ConfigFactory.parseMap(Map(
+        "configTest" -> Boolean.box(true)
+      ))
+      val finalConfig = UnicomplexBoot.getFullConfig(Some(addOnConfig))
+      Try(finalConfig.getConfig("squbs")).toOption should not be (None)
+      finalConfig.getBoolean("configTest") should be (true)
     }
   }
 }

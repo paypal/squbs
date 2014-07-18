@@ -133,12 +133,8 @@ Router concepts, examples, and configuration, are documented in the
 
 ##Services
 
-Services extend from org.squbs.unicomplex.RouteDefinition trait and have to provide 2 components.
-
-1. The webContext - a String that uniquely identifies the web context of a request to be dispatched to this service.
-   This webContext must be a lowercase alphanumeric string without any slash ('/') character
-2. The route - A Spray route according to the
-   [Spray documentation](http://spray.io/documentation/1.2.0/spray-routing/key-concepts/routes/).
+Services extend from org.squbs.unicomplex.RouteDefinition trait, must not take any constructor arguments (zero-argument constructor) and have to provide the route member which is a Spray route according to the
+   [Spray documentation](http://spray.io/documentation/1.3.1/spray-routing/key-concepts/routes/).
    
 Service metadata is declared in META-INF/squbs-meta.conf as shown in the following example.
 
@@ -148,6 +144,7 @@ cube-version = "0.0.2-SNAPSHOT"
 squbs-services = [
   {
     class-name = org.squbs.bottlesvc.BottleSvc
+    web-context = bottles
     
     # The listeners entry is optional, and defaults to 'default-listener'
     listeners = [ default-listener, my-listener ]
@@ -155,7 +152,24 @@ squbs-services = [
 ]
 ```
 
-Optionally, a service route can attach itself to a particular listener. If the listeners field is not provided, it will default to the `default-listener`. Listeners declare interfaces, ports, and security attributes, and are explained in [Configuration](configuration.md)
+The class-name parameter identifies the route class. 
+
+The web-context is a string that uniquely identifies the web context of a request to be dispatched to this service. It **MUST NOT** start with a `/` character. It is allowed to be `""` for root context.
+
+Optionally, the listeners parameter declares a list of listeners to bind this service. Listener binding is discussed in the following section, below.
+
+
+### Listener Binding
+
+A listener is declared in `application.conf` or `reference.conf` usually living in the project's `src/main/resources` directory. Listeners declare interfaces, ports, and security attributes, and name aliases, and are explained in [Configuration](configuration.md)
+
+A service route attaches itself to one or more listeners. The `listeners` attribute is a list of listeners or aliases the route should bind to. If listeners are not defined, it will default to the `default-listener`.
+
+The wildcard value `"*"` (note, it has to be quoted or will not be properly be interpreted) is a special case which translates to attaching this route to all active listeners. By itself, if will however not activate any listener if it is not already activated by a concrete attachment of a route. If the route should activate the default listener and attach to any other listener activated by other routes, the concrete attachment has to be specified separately as follows:
+
+```
+    listeners = [ default-listener, "*" ]
+```
 
 ##Extensions
 

@@ -1,5 +1,3 @@
-import de.johoop.jacoco4sbt._
-import JacocoPlugin._
 import org.scalastyle.sbt.ScalastylePlugin._
 import de.johoop.findbugs4sbt.FindBugs._
 
@@ -15,15 +13,16 @@ libraryDependencies ++= Seq(
   "io.spray" % "spray-http" % "1.3.1",
   "io.spray" % "spray-routing" % "1.3.1",
   "io.spray" % "spray-testkit" % "1.3.1" % "test",
-  "org.zeromq" % "jeromq" % "0.3.3"
+  "org.zeromq" % "jeromq" % "0.3.3",
+  "net.databinder.dispatch" %% "dispatch-core" % "0.11.0" % "test"
 )
-
-jacoco.settings
 
 findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
-parallelExecution in Test := true
-
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/unicomplex")
+
+instrumentSettings
+
+parallelExecution in ScoverageTest := false

@@ -4,6 +4,7 @@ import com.typesafe.config.ConfigFactory
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.{ImplicitSender, TestKit}
 import org.scalatest._
+import org.squbs.lifecycle.GracefulStop
 
 /**
  * Created by zhuwang on 6/10/2014.
@@ -41,7 +42,7 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
                         with SequentialNestedSuiteExecution{
 
   override def afterAll() {
-    system.shutdown
+    Unicomplex(system).uniActor ! GracefulStop
   }
 
   "CubeSupervisor" must {
@@ -76,7 +77,7 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
       systemState should be(Failed)
       val cubeAReport = cubes.values.find(_._1.name == "CubeA").flatMap(_._2)
       cubeAReport should not be (None)
-      assert(cubeAReport.get.state == Active)
+      cubeAReport.get.state should be (Active)
       val cubeBReport = cubes.values.find(_._1.name == "CubeB").flatMap(_._2)
       cubeBReport should not be (None)
       cubeBReport.get.state should be(Active)

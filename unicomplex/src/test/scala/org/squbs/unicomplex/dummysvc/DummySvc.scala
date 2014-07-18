@@ -15,7 +15,6 @@ import org.squbs.unicomplex.EchoMsg
  * Created by zhuwang on 2/21/14.
  */
 class DummySvc extends RouteDefinition{
-  val webContext = "dummysvc"
   def route = path("msg" / Segment) {param =>
     get {ctx =>
       context.actorOf(Props[DummyClient]).tell(EchoMsg(param), ctx.responder)

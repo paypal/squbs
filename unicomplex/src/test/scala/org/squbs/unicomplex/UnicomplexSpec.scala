@@ -1,17 +1,21 @@
 package org.squbs.unicomplex
 
-import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest._
-import scala.concurrent.duration._
-import org.scalatest.concurrent.AsyncAssertions
-import scala.io.Source
+import java.util.concurrent.TimeUnit
+
 import akka.actor.ActorSystem
-import scala.util.Try
-import org.squbs.unicomplex.dummyextensions.DummyExtension
+import akka.io.IO
+import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import scala.util.Failure
-import scala.util.Success
+import org.scalatest._
+import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
+import org.squbs.unicomplex.UnicomplexBoot.StartupType
+import org.squbs.unicomplex.dummyextensions.DummyExtension
+import spray.can.Http
+import spray.http._
+
+import scala.concurrent.duration._
+import scala.util.Try
 
 /**
  * Created by zhuwang on 2/21/14.
@@ -27,7 +31,7 @@ object UnicomplexSpec {
     "DummyExtensions.jar"
   ) map (dummyJarsDir + "/" + _)
 
-  import collection.JavaConversions._
+  import scala.collection.JavaConversions._
 
   val mapConfig = ConfigFactory.parseMap(
     Map(
@@ -47,32 +51,16 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
                              with WordSpecLike with Matchers with BeforeAndAfterAll
                              with AsyncAssertions {
 
-  import UnicomplexSpec._
+  import org.squbs.unicomplex.UnicomplexSpec._
 
-  implicit val timeout: akka.util.Timeout = 2.seconds
+  implicit val timeout: akka.util.Timeout =
+    Try(System.getProperty("test.timeout").toLong) map { millis =>
+      akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
+    } getOrElse (10 seconds)
 
   val port = system.settings.config getInt "default-listener.bind-port"
 
   implicit val executionContext = system.dispatcher
-
-  override def beforeAll() {
-    def svcReady = Try {
-      Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").getLines()
-      Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").getLines()
-      Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").getLines()
-    } match {
-      case Success(_) => true
-      case Failure(e) => e.printStackTrace(); false
-    }
-
-    var retry = 5
-    while (!svcReady && retry > 0) {
-      Thread.sleep(2000)
-      retry -= 1
-    }
-
-    if (retry == 0) throw new Exception("Starting service timeout in 5s")
-  }
   
   override def afterAll() {
     Unicomplex(system).uniActor ! GracefulStop
@@ -115,19 +103,35 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
     }
 
     "start all services" in {
-      assert(boot.services.size == 2)
+      val services = boot.cubes flatMap { cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty) }
+      assert(services.size == 2)
+      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvc/msg/hello")))
+      within(timeout.duration) {
+        val response = expectMsgType[HttpResponse]
+        response.status should be(StatusCodes.OK)
+        response.entity.asString should be("^hello$")
+      }
 
-      assert(Source.fromURL(s"http://127.0.0.1:$port/dummysvc/msg/hello").mkString equals "^hello$")
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/ping").mkString equals "Pong")
-      assert(Source.fromURL(s"http://127.0.0.1:$port/pingpongsvc/pong").mkString equals "Ping")
+      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/ping")))
+      within(timeout.duration) {
+        val response = expectMsgType[HttpResponse]
+        response.status should be(StatusCodes.OK)
+        response.entity.asString should be("Pong")
+      }
+
+      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/pong")))
+      within(timeout.duration) {
+        val response = expectMsgType[HttpResponse]
+        response.status should be(StatusCodes.OK)
+        response.entity.asString should be("Ping")
+      }
     }
 
     "preInit, init and postInit all extenstions" in {
-      assert(boot.extensions.size == 2)
-
-      assert(boot.extensions.forall(_._3.isInstanceOf[DummyExtension]))
-      assert(boot.extensions(0)._3.asInstanceOf[DummyExtension].state == "AstartpreInitinitpostInit")
-      assert(boot.extensions(1)._3.asInstanceOf[DummyExtension].state == "BstartpreInitinitpostInit")
+      boot.extensions.size should be (2)
+      boot.extensions.forall(_._3.isInstanceOf[DummyExtension]) should be (true)
+      boot.extensions(0)._3.asInstanceOf[DummyExtension].state should be ("AstartpreInitinitpostInit")
+      boot.extensions(1)._3.asInstanceOf[DummyExtension].state should be ("BstartpreInitinitpostInit")
     }
   }
 }

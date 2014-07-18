@@ -7,7 +7,6 @@
  */
 package org.squbs.lifecycle
 
-import com.typesafe.config.Config
 import org.squbs.unicomplex.UnicomplexBoot
 
 object ExtensionLifecycle {
@@ -28,11 +27,11 @@ trait ExtensionLifecycle {
 
   protected implicit val boot = ExtensionLifecycle.tlBoot.get.get
 
-  def preInit(jarConfig: Seq[(String, Config)]) {}
+  def preInit() {}
 
-  def init(jarConfig: Seq[(String, Config)]) {}
+  def init() {}
 
-  def postInit(jarConfig: Seq[(String, Config)]) {}
+  def postInit() {}
 
-  def shutdown(jarConfig: Seq[(String, Config)]) {}
+  def shutdown() {}
 }

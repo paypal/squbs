@@ -1,5 +1,3 @@
-import de.johoop.jacoco4sbt._
-import JacocoPlugin._
 import org.scalastyle.sbt.ScalastylePlugin._
 import de.johoop.findbugs4sbt.FindBugs._
 
@@ -21,12 +19,12 @@ libraryDependencies ++= Seq(
   "log4j" % "log4j" % "1.2.17" % "test"
 )
 
-jacoco.settings
-
 findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
-parallelExecution in Test := false
-
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/zkcluster")
+
+instrumentSettings
+
+parallelExecution in ScoverageTest := false
