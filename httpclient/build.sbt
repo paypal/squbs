@@ -1,5 +1,4 @@
-import de.johoop.jacoco4sbt._
-import JacocoPlugin._
+import org.scalastyle.sbt.ScalastylePlugin._
 import de.johoop.findbugs4sbt.FindBugs._
 
 name := "httpclient"
@@ -15,14 +14,14 @@ libraryDependencies ++= Seq(
   "org.json4s"                %% "json4s-jackson"               % "3.2.9"
 )
 
-jacoco.settings
-
 findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
 parallelExecution in Test := false
 
-parallelExecution in jacoco.Config := false
-
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/httpclient")
+
+instrumentSettings
+
+parallelExecution in ScoverageTest := false
