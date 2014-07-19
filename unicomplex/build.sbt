@@ -1,4 +1,3 @@
-import org.scalastyle.sbt.ScalastylePlugin._
 import de.johoop.findbugs4sbt.FindBugs._
 
 name := "unicomplex"
@@ -8,6 +7,7 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.1.0" % "test->*",
   "com.typesafe.akka" %% "akka-actor" % "2.3.2",
   "com.typesafe.akka" %% "akka-agent" % "2.3.2",
+  "com.typesafe.akka"   %% "akka-slf4j" % "2.3.2",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.2" % "test",
   "io.spray" % "spray-can" % "1.3.1",
   "io.spray" % "spray-http" % "1.3.1",
