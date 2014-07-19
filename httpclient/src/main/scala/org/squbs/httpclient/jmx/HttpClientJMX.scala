@@ -9,6 +9,7 @@ import org.squbs.httpclient.{ConfigurationSupport, HttpClientFactory, Client}
 import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
 import akka.actor.ActorSystem
 import spray.can.client.HostConnectorSettings
+import com.typesafe.config.ConfigFactory
 
 /**
  * Created by hakuang on 6/9/2014.
@@ -31,19 +32,19 @@ case class HttpClientInfo @ConstructorProperties(
 
 @MXBean
 trait HttpClientMXBean {
-  def getHttpClient(implicit actorSystem: ActorSystem): java.util.List[HttpClientInfo]
+  def getHttpClient: java.util.List[HttpClientInfo]
 }
 
 class HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
 
   import scala.collection.JavaConversions._
 
-  override def getHttpClient(implicit actorSystem: ActorSystem): java.util.List[HttpClientInfo] = {
+  override def getHttpClient: java.util.List[HttpClientInfo] = {
     val httpClients = HttpClientFactory.httpClientMap
     httpClients.values.toList map {mapToHttpClientInfo(_)}
   }
 
-  def mapToHttpClientInfo(httpClient: Client)(implicit actorSystem: ActorSystem) = {
+  def mapToHttpClientInfo(httpClient: Client) = {
     val name = httpClient.name
     val env  = httpClient.env.lowercaseName
     val endpoint = EndpointRegistry.resolve(name).getOrElse(Endpoint("")).uri
@@ -57,7 +58,7 @@ class HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
       case AutoProxied => "AutoProxied"
       case Proxied(host, port) => s"$host:$port"
     }
-    val hostSettings = configuration.hostSettings.getOrElse(HostConnectorSettings(actorSystem))
+    val hostSettings = configuration.hostSettings.getOrElse(HostConnectorSettings(ConfigFactory.load()))
     val maxConnections = hostSettings.maxConnections
     val maxRetries = hostSettings.maxRetries
     val maxRedirects = hostSettings.maxRedirects

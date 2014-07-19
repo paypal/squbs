@@ -50,6 +50,15 @@ trait PipelineManager extends ConfigurationSupport{
 
   private def pipelining(client: Client)(implicit actorSystem: ActorSystem) = {
 
+    implicit val connectionTimeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
+    import ExecutionContext.Implicits.global
+    for (
+      Http.HostConnectorInfo(connector, _) <-
+      IO(Http) ? hostConnectorSetup(client)
+    ) yield sendReceive(connector)
+  }
+
+  def hostConnectorSetup(client: Client)(implicit actorSystem: ActorSystem) = {
     implicit def sslContext: SSLContext = {
       config(client).sslContext match {
         case Some(context) => context
@@ -60,16 +69,6 @@ trait PipelineManager extends ConfigurationSupport{
     implicit val myClientEngineProvider = ClientSSLEngineProvider { engine =>
       engine
     }
-
-    implicit val connectionTimeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
-    import ExecutionContext.Implicits.global
-    for (
-      Http.HostConnectorInfo(connector, _) <-
-      IO(Http) ? hostConnectorSetup(client)
-    ) yield sendReceive(connector)
-  }
-
-  def hostConnectorSetup(client: Client)(implicit actorSystem: ActorSystem) = {
     val uri = Uri(client.endpoint.get.uri)
     val host = uri.authority.host.toString
     val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
