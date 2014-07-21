@@ -85,7 +85,7 @@ with AsyncAssertions {
 
       // locate the path to akka-actor jar in the file system and turn it into a stream of BodyPart-s
       //val actor_jar_path = System.getProperty("java.class.path").split(java.io.File.pathSeparator).filter(p => p.indexOf("akka-actor") != -1)(0)
-      val actor_jar_path = StreamTestSpec.getClass.getResource("/classpaths/StreamSvc/akka-actor_2.10-2.3.2.jar").getPath
+      val actor_jar_path = StreamTestSpec.getClass.getResource("/classpaths/StreamSvc/akka-actor_2.10-2.3.2.jar1").getPath
       val actorFile = new java.io.File (actor_jar_path)
       require(actorFile.exists() && actorFile.canRead)
       val fileLength = actorFile.length()
