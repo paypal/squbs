@@ -1,31 +1,33 @@
 package org.squbs.unicomplex
 
-import spray.routing.{Directives, Route}
-import spray.http.StatusCodes
-import org.scalatest.{Matchers, FlatSpec, BeforeAndAfterAll}
+import java.io.File
+import java.util.UUID
 
 import akka.actor.ActorSystem
-import java.io.File
-import org.squbs.lifecycle.GracefulStop
 import com.typesafe.config.ConfigFactory
-import java.util.UUID
-import dispatch._
-import scala.concurrent.Await
+import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs._
+import org.squbs.lifecycle.GracefulStop
+import spray.http.StatusCodes
+import spray.routing.{Directives, Route}
+
+import dispatch._
+
+import scala.concurrent.Await
 
 
 class MultiListenerSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
 
   import concurrent.duration._
   import concurrent.ExecutionContext.Implicits.global
-  val port1 = nextPort
-  val port2 = nextPort
+  val port1 = nextPort()
+  val port2 = nextPort()
   var boot: UnicomplexBoot = null
 
   it should "run up two listeners on different ports" in {
-    val req1 = url(s"http://localhost:${port1}/multi")
+    val req1 = url(s"http://localhost:$port1/multi")
     Await.result(Http(req1), 1 second).getStatusCode should be(200)
-    val req2 = url(s"http://localhost:${port2}/multi")
+    val req2 = url(s"http://localhost:$port2/multi")
     Await.result(Http(req2), 1 second).getStatusCode should be(200)
   }
 
@@ -45,7 +47,7 @@ class MultiListenerSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
           aliases = []
           bind-address = "0.0.0.0"
           full-address = false
-          bind-port = ${port1}
+          bind-port = $port1
           bind-service = true
           secure = false
           client-authn = false
@@ -56,7 +58,7 @@ class MultiListenerSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
           aliases = []
           bind-address = "0.0.0.0"
           full-address = false
-          bind-port =  ${port2}
+          bind-port =  $port2
           bind-service = true
           secure = false
           client-authn = false
@@ -76,7 +78,7 @@ class MultiListenerSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
 }
 
 class MultiListenerService extends RouteDefinition with Directives {
-  MultiListenerService.inc
+  MultiListenerService.inc()
 
 
   override def route: Route = get {
@@ -89,5 +91,5 @@ object MultiListenerService {
 
   def count = counter
 
-  def inc: Unit = counter = counter + 1
+  def inc(): Unit = counter = counter + 1
 }
