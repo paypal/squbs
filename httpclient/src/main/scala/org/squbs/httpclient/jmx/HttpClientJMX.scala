@@ -58,7 +58,7 @@ class HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
       case AutoProxied => "AutoProxied"
       case Proxied(host, port) => s"$host:$port"
     }
-    val hostSettings = configuration.hostSettings.getOrElse(HostConnectorSettings(ConfigFactory.load()))
+    val hostSettings = configuration.hostSettings
     val maxConnections = hostSettings.maxConnections
     val maxRetries = hostSettings.maxRetries
     val maxRedirects = hostSettings.maxRedirects

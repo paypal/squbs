@@ -17,7 +17,6 @@ import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.Duration
 import spray.http.HttpRequest
 import org.slf4j.LoggerFactory
-import spray.can.client.HostConnectorSettings
 import org.squbs.httpclient.env.{EnvironmentRegistry, Default, Environment}
 
 /**
@@ -87,7 +86,7 @@ trait ConfigurationSupport {
   }
 
   def hostSettings(client: Client)(implicit actorSystem: ActorSystem) = {
-    config(client).hostSettings.getOrElse(HostConnectorSettings(actorSystem))
+    config(client).hostSettings
   }
 
   implicit def endpointToUri(endpoint: Option[Endpoint]): String = {
