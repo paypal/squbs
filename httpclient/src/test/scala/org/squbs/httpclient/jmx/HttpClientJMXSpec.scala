@@ -26,7 +26,6 @@ import org.squbs.httpclient.env.{Default, Environment}
 class JMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach with BeforeAndAfterAll{
 
   private implicit val system = ActorSystem("JMXSpec")
-  private val httpClientBean = new HttpClientBean
 
   override def beforeEach = {
     EndpointRegistry.register(new EndpointResolver {
@@ -48,26 +47,26 @@ class JMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach with Before
   "HttpClient with svcName" should "show up the correct value of HttpClientBean" in {
     HttpClientFactory.getOrCreate("hello1")
     HttpClientFactory.getOrCreate("hello2")
-    httpClientBean.getHttpClient.size should be (2)
-    findHttpClientBean(httpClientBean.getHttpClient, "hello1") should be (HttpClientInfo("hello1", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
-    findHttpClientBean(httpClientBean.getHttpClient, "hello2") should be (HttpClientInfo("hello2", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
+    HttpClientBean.getHttpClientInfo.size should be (2)
+    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello1") should be (HttpClientInfo("hello1", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
+    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello2") should be (HttpClientInfo("hello2", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient with pipeline" should "show up the correct value of HttpClientBean" in {
     HttpClientFactory.getOrCreate("hello3", pipeline = Some(RequestResponsePipeline))
     HttpClientFactory.getOrCreate("hello4")
-    httpClientBean.getHttpClient.size should be (2)
-    findHttpClientBean(httpClientBean.getHttpClient, "hello3") should be (HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler$$anonfun$processRequest$1","org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler$$anonfun$processResponse$1"))
-    findHttpClientBean(httpClientBean.getHttpClient, "hello4") should be (HttpClientInfo("hello4", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
+    HttpClientBean.getHttpClientInfo.size should be (2)
+    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello3") should be (HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler$$anonfun$processRequest$1","org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler$$anonfun$processResponse$1"))
+    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello4") should be (HttpClientInfo("hello4", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient with configuration" should "show up the correct value of HttpClientBean" in {
     val httpClient = HttpClientFactory.getOrCreate("hello5")
     httpClient.updateConfig(Configuration(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80)))
     HttpClientFactory.getOrCreate("hello6").markDown
-    httpClientBean.getHttpClient.size should be (2)
-    findHttpClientBean(httpClientBean.getHttpClient, "hello5") should be (HttpClientInfo("hello5", "default", "http://www.ebay.com", "UP", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
-    findHttpClientBean(httpClientBean.getHttpClient, "hello6") should be (HttpClientInfo("hello6", "default", "http://www.ebay.com", "DOWN", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
+    HttpClientBean.getHttpClientInfo.size should be (2)
+    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello5") should be (HttpClientInfo("hello5", "default", "http://www.ebay.com", "UP", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
+    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello6") should be (HttpClientInfo("hello6", "default", "http://www.ebay.com", "DOWN", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
   }
 
   def findHttpClientBean(beans: java.util.List[HttpClientInfo], name: String): HttpClientInfo = {
