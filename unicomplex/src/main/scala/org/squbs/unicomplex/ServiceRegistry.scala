@@ -195,6 +195,7 @@ private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String
           actor forward reqStart
           val c = context.system.scheduler.scheduleOnce(requestTimeout, self, ReapRequest(sender()))
           pendingRequests += sender() -> (actor, c)
+          context.watch(sender())
         case None => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
       }
 
@@ -215,11 +216,17 @@ private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String
           actor forward chunkEnd
           c.cancel()
           pendingRequests -= sender()
+          context.unwatch(sender())
         case None =>
           log.warning("Received request chunk end from unknown request. Possibly already timed out.")
       }
 
-    case ReapRequest(responder) => // TODO: Can we use the death watch on the responder instead of a timeout?
+    case Terminated(responder) =>
+      log.info("Chunked input responder terminated.")
+      pendingRequests -= responder
+
+    case ReapRequest(responder) => // TODO: Can we use the death watch alone and no timeout?
+      log.info("Chunked input responder timed out.")
       pendingRequests -= responder
 
   }

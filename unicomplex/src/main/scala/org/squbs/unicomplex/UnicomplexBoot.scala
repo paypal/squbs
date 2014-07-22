@@ -250,7 +250,8 @@ object UnicomplexBoot {
       try {
         val routeClass = clazz asSubclass classOf[RouteDefinition]
         val props = Props(classOf[RouteActor], webContext, routeClass)
-        cubeSupervisor ! StartCubeService(webContext, listeners, props, webContext + "-route", initRequired = true)
+        val actorName = if (webContext.length > 0) webContext + "-route" else "root-route"
+        cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, initRequired = true)
         Some((symName, alias, version, clazz))
       } catch {
         case e: ClassCastException => None
@@ -262,7 +263,8 @@ object UnicomplexBoot {
       try {
         val actorClass = clazz asSubclass classOf[Actor]
         val props = Props(actorClass)
-        cubeSupervisor ! StartCubeService(webContext, listeners, props, webContext + "-handler", initRequired)
+        val actorName = if (webContext.length > 0) webContext + "-handler" else "root-handler"
+        cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, initRequired)
         Some((symName, alias, version, actorClass))
       } catch {
         case e: ClassCastException => None
