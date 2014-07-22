@@ -350,6 +350,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
       val result = Try {
 
+        import scala.concurrent.ExecutionContext.Implicits.global
         implicit val timeout = Timeout(5000, TimeUnit.MILLISECONDS)
         Await.result(Future.sequence(planned.foldLeft(Map.empty[Address, (Map[ByteString, String], Map[ByteString, String])]){(impacts, assign) =>
           val partitionKey = assign._1
