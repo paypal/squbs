@@ -26,6 +26,7 @@ case class GoogleApiResult[T](status: String, results: List[T])
 /**
  * Created by hakuang on 5/12/2014.
  */
+@Ignore
 class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
 
   private implicit val system = ActorSystem("HttpClientSpec")
