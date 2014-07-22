@@ -8,7 +8,7 @@
      </Match>
      
      <Match>
-     	<Bug pattern="SA_LOCAL_SELF_ASSIGNMENT_INSTEAD_OF_FIELD,SE_BAD_FIELD" />
+     	<Bug pattern="SA_LOCAL_SELF_ASSIGNMENT,SE_BAD_FIELD" />
      </Match>
      
      <!-- ConfigWeb project will be removed from Raptor and hence removing it from analysis -->

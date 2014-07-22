@@ -8,7 +8,7 @@
      </Match>
      
      <Match>
-     	<Bug pattern="SA_LOCAL_SELF_ASSIGNMENT_INSTEAD_OF_FIELD,RV_ABSOLUTE_VALUE_OF_HASHCODE" />
+     	<Bug pattern="SA_LOCAL_SELF_ASSIGNMENT,RV_ABSOLUTE_VALUE_OF_HASHCODE" />
      </Match>
      
      <!-- ConfigWeb project will be removed from Raptor and hence removing it from analysis -->
