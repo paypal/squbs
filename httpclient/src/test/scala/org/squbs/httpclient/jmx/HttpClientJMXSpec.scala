@@ -23,7 +23,7 @@ import org.squbs.httpclient.env.{Default, Environment}
 /**
  * Created by hakuang on 6/10/2014.
  */
-class JMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach with BeforeAndAfterAll{
+class HttpClientJMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach with BeforeAndAfterAll{
 
   private implicit val system = ActorSystem("JMXSpec")
 
