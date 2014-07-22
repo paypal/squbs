@@ -13,7 +13,7 @@ import org.apache.curator.framework.state.{ConnectionState, ConnectionStateListe
 import org.apache.curator.framework.api._
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
-import scala.concurrent.Await
+import scala.concurrent.{Future, Await}
 import scala.util.{Success, Try}
 import akka.actor._
 import akka.pattern.ask
@@ -351,7 +351,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       val result = Try {
 
         implicit val timeout = Timeout(5000, TimeUnit.MILLISECONDS)
-        planned.foldLeft(Map.empty[Address, (Map[ByteString, String], Map[ByteString, String])]){(impacts, assign) =>
+        Await.result(Future.sequence(planned.foldLeft(Map.empty[Address, (Map[ByteString, String], Map[ByteString, String])]){(impacts, assign) =>
           val partitionKey = assign._1
           val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address])
           val onboards = assign._2.diff(servants)
@@ -368,16 +368,14 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
             val impactOnMember = impacts.getOrElse(member, (Map.empty[ByteString, String], Map.empty[ByteString, String]))
             impacts.updated(member, impactOnMember.copy(_2 = impactOnMember._2.updated(partitionKey, zkPath)))
           }
-        }.foldLeft(true){(successful, impact) =>
-
-          log.debug("[partitions] {} - enforcing impact:{} onboards:{} and dropoffs:{}", impact._1, impact._2._1.keys.map(keyToPath(_)), impact._2._2.keys.map(keyToPath(_)))
-          successful && (addressee(impact._1) match {
-            case Left(me) => me.tell(ZkUpdatePartitions(impact._2._1, impact._2._2), me)
-              true
+        }.map{case (member, impact) =>
+          (addressee(member) match {
+            case Left(me) => me.tell(ZkUpdatePartitions(impact._1, impact._2), me)
+              Future(true)
             case Right(other) =>
-              Await.result(other ? ZkUpdatePartitions(impact._2._1, impact._2._2), timeout.duration).asInstanceOf[Boolean]
+              (other ? ZkUpdatePartitions(impact._1, impact._2)).mapTo[Boolean]
           })
-        }
+        }), timeout.duration).foldLeft(true){(successful, individual) => successful && individual}
       }
       log.debug("[partitions] rebalance plan done:{}", result)
       sender() ! result
