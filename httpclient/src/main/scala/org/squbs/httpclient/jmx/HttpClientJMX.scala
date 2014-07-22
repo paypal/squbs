@@ -2,14 +2,44 @@ package org.squbs.httpclient.jmx
 
 import java.beans.ConstructorProperties
 import scala.beans.BeanProperty
-import javax.management.MXBean
-import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
+import javax.management.{ObjectName, MXBean}
+import org.squbs.httpclient.endpoint.{EndpointResolver, Endpoint, EndpointRegistry}
 import org.squbs.httpclient.pipeline.EmptyPipeline
 import org.squbs.httpclient.{ConfigurationSupport, HttpClientFactory, Client}
 import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
-import akka.actor.ActorSystem
-import spray.can.client.HostConnectorSettings
-import com.typesafe.config.ConfigFactory
+import java.util
+import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
+import scala.collection.JavaConversions._
+import java.lang.management.ManagementFactory
+
+object HttpClientJMX {
+
+  implicit def string2ObjectName(name:String):ObjectName = new ObjectName(name)
+  
+  def registryBeans = {
+    registryHCBean
+    registryHCEndpointResolverBean
+    registryHCEnvResolverBean
+  }
+
+  def registryHCBean = {
+    if (!ManagementFactory.getPlatformMBeanServer.isRegistered(HttpClientBean.httpClientBean)){
+      ManagementFactory.getPlatformMBeanServer.registerMBean(HttpClientBean, HttpClientBean.httpClientBean)
+    }
+  }
+  
+  def registryHCEndpointResolverBean = {
+    if (!ManagementFactory.getPlatformMBeanServer.isRegistered(EndpointResolverBean.endpointResolverBean)){
+      ManagementFactory.getPlatformMBeanServer.registerMBean(EndpointResolverBean, EndpointResolverBean.endpointResolverBean)
+    }  
+  }
+
+  def registryHCEnvResolverBean = {
+    if (!ManagementFactory.getPlatformMBeanServer.isRegistered(EnvironmentResolverBean.environmentResolverBean)){
+      ManagementFactory.getPlatformMBeanServer.registerMBean(EnvironmentResolverBean, EnvironmentResolverBean.environmentResolverBean)
+    }
+  }
+}
 
 /**
  * Created by hakuang on 6/9/2014.
@@ -32,14 +62,14 @@ case class HttpClientInfo @ConstructorProperties(
 
 @MXBean
 trait HttpClientMXBean {
-  def getHttpClient: java.util.List[HttpClientInfo]
+  def getHttpClientInfo: java.util.List[HttpClientInfo]
 }
 
-class HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
+object HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
 
-  import scala.collection.JavaConversions._
+  val httpClientBean = "org.squbs.unicomplex:type=HttpClientInfo"
 
-  override def getHttpClient: java.util.List[HttpClientInfo] = {
+  override def getHttpClientInfo: java.util.List[HttpClientInfo] = {
     val httpClients = HttpClientFactory.httpClientMap
     httpClients.values.toList map {mapToHttpClientInfo(_)}
   }
@@ -66,6 +96,54 @@ class HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
     val connectingTimeout = hostSettings.connectionSettings.connectingTimeout.toMillis
     HttpClientInfo(name, env, endpoint, status, connectionType, maxConnections, maxRetries, maxRedirects,
                    requestTimeout, connectingTimeout, requestPipelines, responsePipelines)
+  }
+}
+
+case class EndpointResolverInfo @ConstructorProperties(
+  Array("position", "resolver"))(
+    @BeanProperty position: Int,
+    @BeanProperty resolver: String
+  )
+
+@MXBean
+trait EndpointResolverMXBean {
+  def getHttpClientEndpointResolverInfo: java.util.List[EndpointResolverInfo]
+}
+
+object EndpointResolverBean extends EndpointResolverMXBean {
+
+  val endpointResolverBean = "org.squbs.unicomplex:type=HttpClientEndpointResolverInfo"
+
+  override def getHttpClientEndpointResolverInfo: util.List[EndpointResolverInfo] = {
+    EndpointRegistry.endpointResolvers.zipWithIndex map {toEndpointResolverInfo(_)}
+  }
+
+  def toEndpointResolverInfo(resolverWithIndex: (EndpointResolver, Int)): EndpointResolverInfo = {
+    EndpointResolverInfo(resolverWithIndex._2, resolverWithIndex._1.getClass.getCanonicalName)
+  }
+}
+
+case class EnvironmentResolverInfo @ConstructorProperties(
+  Array("position", "resolver"))(
+    @BeanProperty position: Int,
+    @BeanProperty resolver: String
+  )
+
+@MXBean
+trait EnvironmentResolverMXBean {
+  def getHttpClientEnvironmentResolverInfo: java.util.List[EnvironmentResolverInfo]
+}
+
+object EnvironmentResolverBean extends EnvironmentResolverMXBean {
+
+  val environmentResolverBean = "org.squbs.unicomplex:type=HttpClientEnvironmentResolverInfo"
+
+  override def getHttpClientEnvironmentResolverInfo: util.List[EnvironmentResolverInfo] = {
+    EnvironmentRegistry.environmentResolvers.zipWithIndex map {toEnvironmentResolverInfo(_)}
+  }
+
+  def toEnvironmentResolverInfo(resolverWithIndex: (EnvironmentResolver, Int)): EnvironmentResolverInfo = {
+    EnvironmentResolverInfo(resolverWithIndex._2, resolverWithIndex._1.getClass.getCanonicalName)
   }
 }
 

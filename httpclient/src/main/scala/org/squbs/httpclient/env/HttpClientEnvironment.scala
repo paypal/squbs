@@ -46,7 +46,7 @@ object EnvironmentRegistry {
     environmentResolvers.find(_.name == resolver.name) match {
       case None =>
         environmentResolvers.prepend(resolver)
-      case Some(routing) =>
+      case Some(resolver) =>
         logger.info("Env Resolver:" + resolver.name + " has been registry, skip current env resolver registry!")
     }
   }

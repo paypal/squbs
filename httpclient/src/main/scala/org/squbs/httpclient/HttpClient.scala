@@ -18,6 +18,7 @@ import scala.concurrent.duration.Duration
 import spray.http.HttpRequest
 import org.slf4j.LoggerFactory
 import org.squbs.httpclient.env.{EnvironmentRegistry, Default, Environment}
+import org.squbs.httpclient.jmx.HttpClientJMX
 
 /**
  * Created by hakuang on 5/9/14.
@@ -207,6 +208,8 @@ case class HttpClient(name: String,
 }
 
 object HttpClientFactory {
+
+  HttpClientJMX.registryBeans
 
   val httpClientMap: TrieMap[(String, Environment), HttpClient] = TrieMap[(String, Environment), HttpClient]()
 
