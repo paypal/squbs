@@ -134,6 +134,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   lazy val serviceRegistry = new ServiceRegistry
 
+  // $COVERAGE-OFF$
   /**
    * MXBean for exposing Unicomplex state
    */
@@ -151,6 +152,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     override def getActivationMillis: Int = activationDuration
   }
+  // $COVERAGE-ON$
 
   class CubesBean extends CubesMXBean {
 
