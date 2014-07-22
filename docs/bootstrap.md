@@ -99,11 +99,14 @@ squbs-actors = [
     class-name = org.squbs.bottlecube.LyricsDispatcher
     name = lyrics
     with-router = false  # Optional, defaults to false
+    init-required = false # Optional
   }
 ]
 ```
 
-If an actor is configured with-router (with-router = true) and a non-default dispatcher, the intention is usually to
+The `init-required` parameter is used for actors that need to signal back their fully initialized status for the system to be considered initialized. Please refer to the [Startup Hooks](lifecycle.md#startup-hooks) section of the [Runtime Lifecycles & API](lifecycle.md) documentation for a full discussion of startup/initialization hooks.
+
+If an actor is configured `with-router` (with-router = true) and a non-default dispatcher, the intention is usually to
 schedule the actor (routee) on the non-default dispatcher. The router will assume the well known actor name, not the
 routee (your actor implementation). A dispatcher set on the router will only affect the router, not the routee. To
 affect the routee, you need to create a separate configuration for the routees (by appending "/*" to the name) and
@@ -133,9 +136,15 @@ Router concepts, examples, and configuration, are documented in the
 
 ##Services
 
-Services extend from org.squbs.unicomplex.RouteDefinition trait, must not take any constructor arguments (zero-argument constructor) and have to provide the route member which is a Spray route according to the
-   [Spray documentation](http://spray.io/documentation/1.3.1/spray-routing/key-concepts/routes/).
-   
+Each service entry point is bound to a unique web context which is the first path segment separated by `/` characters. For instance, the url `http://mysite.com/my-context/index` would match the context `"my-context"`, if registered. It can also match the root context if `"my-context"` is not registered.
+
+Service implementations can have two flavors:
+
+1. A spray-can style server request handler actor as documented at [http://spray.io/documentation/1.2.1/spray-can/http-server/](http://spray.io/documentation/1.2.1/spray-can/http-server/). The actor handles all but the `Connected` message and must not take any constructor arguments. The whole request or request part is passed on to this actor unchanged.
+
+2. A spray-routing style route definition. These are classes extending from the `org.squbs.unicomplex.RouteDefinition` trait, must not take any constructor arguments (zero-argument constructor) and have to provide the route member which is a Spray route according to the
+   [spray-routing documentation](http://spray.io/documentation/1.3.1/spray-routing/key-concepts/routes/). In contrast to the actor implementation, the path matching of the route matches the path **AFTER** the registered web context. For instance, a route definition registered under the web context `"my-context"` would match `/segment1/segment2` for the url `http://mysite.com/my-context/segment1/segment2` not including the web context string itself.
+      
 Service metadata is declared in META-INF/squbs-meta.conf as shown in the following example.
 
 ```
@@ -148,15 +157,20 @@ squbs-services = [
     
     # The listeners entry is optional, and defaults to 'default-listener'
     listeners = [ default-listener, my-listener ]
+    
+    init-required = false # Optional, only applies to actors
+
   }
 ]
 ```
 
-The class-name parameter identifies the route class. 
+The class-name parameter identifies either the actor or route class.
 
 The web-context is a string that uniquely identifies the web context of a request to be dispatched to this service. It **MUST NOT** start with a `/` character. It is allowed to be `""` for root context.
 
 Optionally, the listeners parameter declares a list of listeners to bind this service. Listener binding is discussed in the following section, below.
+
+Only actors can have another optional `init-required` parameter which allows the actor to feed back its state to the system. Please refer to the [Startup Hooks](lifecycle.md#startup-hooks) section of the [Runtime Lifecycles & API](lifecycle.md) documentation for a full discussion of startup/initialization hooks.
 
 
 ### Listener Binding

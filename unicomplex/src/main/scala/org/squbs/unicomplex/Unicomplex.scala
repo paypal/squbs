@@ -134,6 +134,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   lazy val serviceRegistry = new ServiceRegistry
 
+  // $COVERAGE-OFF$
   /**
    * MXBean for exposing Unicomplex state
    */
@@ -151,6 +152,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     override def getActivationMillis: Int = activationDuration
   }
+  // $COVERAGE-ON$
 
   class CubesBean extends CubesMXBean {
 
@@ -439,13 +441,13 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
   def startupReceive: Actor.Receive = {
 
-    case StartCubeActor(props, cubeName, initRequired) =>
-      val cubeActor = context.actorOf(props, cubeName)
+    case StartCubeActor(props, name, initRequired) =>
+      val cubeActor = context.actorOf(props, name)
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
 
-    case StartCubeService(webContext, listeners, props, cubeName, initRequired) =>
-      val cubeActor = context.actorOf(props, cubeName)
+    case StartCubeService(webContext, listeners, props, name, initRequired) =>
+      val cubeActor = context.actorOf(props, name)
       if (initRequired) initMap += cubeActor -> None
       Unicomplex() ! RegisterContext(listeners, webContext, cubeActor)
       log.info(s"Started service actor ${cubeActor.path} for context $webContext")
