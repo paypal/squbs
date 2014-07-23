@@ -1,6 +1,8 @@
 package org.squbs.unicomplex
 
+import java.lang.management.ManagementFactory
 import java.util.concurrent.TimeUnit
+import javax.management.ObjectName
 
 import akka.actor.ActorSystem
 import akka.io.IO
@@ -11,6 +13,7 @@ import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import org.squbs.unicomplex.dummyextensions.DummyExtension
+import org.squbs.util.availabilities.Ports
 import spray.can.Http
 import spray.http._
 
@@ -37,7 +40,8 @@ object UnicomplexSpec {
   val mapConfig = ConfigFactory.parseMap(
     Map(
       "squbs.actorsystem-name"    -> "unicomplexSpec",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true)
+      "squbs." + JMX.prefixConfig -> Boolean.box(true),
+      "default-listener.bind-port" -> Ports.available(lower = 18888, upper = 35000).toString
     )
   )
 
@@ -133,6 +137,25 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("pong")
       }
+    }
+
+    "check cube MXbean" in {
+      import JMX._
+      val mbeanServer = ManagementFactory.getPlatformMBeanServer
+      val cubesObjName = new ObjectName(prefix(system) + cubesName)
+      val attr = mbeanServer.getAttribute(cubesObjName, "Cubes")
+      attr shouldBe a [Array[javax.management.openmbean.CompositeData]]
+    }
+
+    "check cube state MXbean" in {
+      import JMX._
+      val cubeName = "DummyCube"
+      val mbeanServer = ManagementFactory.getPlatformMBeanServer
+      val cubesObjName = new ObjectName(prefix(system) + cubeStateName + cubeName)
+      val name = mbeanServer.getAttribute(cubesObjName, "Name")
+      val cubeState = mbeanServer.getAttribute(cubesObjName, "CubeState")
+      name should be (cubeName)
+      cubeState should be ("Active")
     }
 
     "preInit, init and postInit all extenstions" in {
