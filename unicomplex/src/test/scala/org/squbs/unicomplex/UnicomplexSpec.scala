@@ -28,6 +28,7 @@ object UnicomplexSpec {
     "DummyCube",
     "DummyCubeSvc",
     "DummySvc",
+    "DummySvcActor",
     "DummyExtensions.jar"
   ) map (dummyJarsDir + "/" + _)
 
@@ -104,7 +105,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
     "start all services" in {
       val services = boot.cubes flatMap { cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty) }
-      assert(services.size == 2)
+      assert(services.size == 3)
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvc/msg/hello")))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
@@ -124,6 +125,13 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("Ping")
+      }
+
+      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvcactor/ping")))
+      within(timeout.duration) {
+        val response = expectMsgType[HttpResponse]
+        response.status should be(StatusCodes.OK)
+        response.entity.asString should be("pong")
       }
     }
 
