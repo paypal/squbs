@@ -145,6 +145,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val cubesObjName = new ObjectName(prefix(system) + cubesName)
       val attr = mbeanServer.getAttribute(cubesObjName, "Cubes")
       attr shouldBe a [Array[javax.management.openmbean.CompositeData]]
+      // 5 cubes registered above.
       attr.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 5
     }
 
@@ -165,6 +166,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val listenersObjName = new ObjectName(prefix(system) + listenersName)
       val listeners = mbeanServer.getAttribute(listenersObjName, "Listeners")
       listeners shouldBe a [Array[javax.management.openmbean.CompositeData]]
+      // 3 services registered on one listener
       listeners.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 3
 
     }
