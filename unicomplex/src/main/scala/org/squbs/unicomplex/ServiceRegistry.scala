@@ -41,7 +41,7 @@ class ServiceRegistry {
       listener -> Agent[Map[String, ActorRef]](Map.empty)
     }.toMap
 
-    import JMX._
+    import org.squbs.unicomplex.JMX._
     register(new ListenerBean, prefix + listenersName)
   }
 
@@ -113,7 +113,7 @@ class ServiceRegistry {
     if (listenerRoutes.isEmpty) {
       IO(Http) ! Http.CloseAll
 
-      import JMX._
+      import org.squbs.unicomplex.JMX._
       unregister(prefix + listenersName)
     }
   }
@@ -148,13 +148,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String, ActorRef]]) extends Actor
     with ActorLogging {
 
-  import context.dispatcher
-
-  val pendingRequests = mutable.Map.empty[ActorRef, (ActorRef, Cancellable)]
-  case class ReapRequest(responder: ActorRef)
-
-  import scala.concurrent.duration._
-  val requestTimeout = context.system.settings.config.getDuration("spray.can.server.reaping-cycle", MILLISECONDS).millis
+  val pendingRequests = mutable.WeakHashMap.empty[ActorRef, ActorRef]
 
   def contextActor(request: HttpRequest) = {
     val path = request.uri.path.toString()
@@ -193,42 +187,29 @@ private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String
       contextActor(reqStart.request) match {
         case Some(actor) =>
           actor forward reqStart
-          val c = context.system.scheduler.scheduleOnce(requestTimeout, self, ReapRequest(sender()))
-          pendingRequests += sender() -> (actor, c)
+          pendingRequests += sender() -> actor
           context.watch(sender())
         case None => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
       }
 
     case chunk: MessageChunk =>
       pendingRequests.get(sender()) match {
-        case Some((actor, c)) =>
-          actor forward chunk
-          c.cancel() // Cancel old timeout and start new one
-          val c2 = context.system.scheduler.scheduleOnce(requestTimeout, self, ReapRequest(sender()))
-          pendingRequests += sender() -> (actor, c2)
-        case None =>
-          log.warning("Received request chunk from unknown request. Possibly already timed out.")
+        case Some(actor) => actor forward chunk
+        case None => log.warning("Received request chunk from unknown request. Possibly already timed out.")
       }
 
     case chunkEnd: ChunkedMessageEnd =>
       pendingRequests.get(sender()) match {
-        case Some((actor, c)) =>
+        case Some(actor) =>
           actor forward chunkEnd
-          c.cancel()
           pendingRequests -= sender()
           context.unwatch(sender())
-        case None =>
-          log.warning("Received request chunk end from unknown request. Possibly already timed out.")
+        case None => log.warning("Received request chunk end from unknown request. Possibly already timed out.")
       }
 
     case Terminated(responder) =>
       log.info("Chunked input responder terminated.")
       pendingRequests -= responder
-
-    case ReapRequest(responder) => // TODO: Can we use the death watch alone and no timeout?
-      log.info("Chunked input responder timed out.")
-      pendingRequests -= responder
-
   }
 }
 
