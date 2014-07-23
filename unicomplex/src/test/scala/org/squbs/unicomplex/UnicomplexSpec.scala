@@ -145,6 +145,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val cubesObjName = new ObjectName(prefix(system) + cubesName)
       val attr = mbeanServer.getAttribute(cubesObjName, "Cubes")
       attr shouldBe a [Array[javax.management.openmbean.CompositeData]]
+      attr.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 5
     }
 
     "check cube state MXbean" in {
@@ -156,6 +157,16 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val cubeState = mbeanServer.getAttribute(cubesObjName, "CubeState")
       name should be (cubeName)
       cubeState should be ("Active")
+    }
+
+    "check listener MXbean" in {
+      import JMX._
+      val mbeanServer = ManagementFactory.getPlatformMBeanServer
+      val listenersObjName = new ObjectName(prefix(system) + listenersName)
+      val listeners = mbeanServer.getAttribute(listenersObjName, "Listeners")
+      listeners shouldBe a [Array[javax.management.openmbean.CompositeData]]
+      listeners.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 3
+
     }
 
     "preInit, init and postInit all extenstions" in {
