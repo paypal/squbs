@@ -44,6 +44,8 @@ object HttpClientJMX {
 /**
  * Created by hakuang on 6/9/2014.
  */
+
+// $COVERAGE-OFF$
 case class HttpClientInfo @ConstructorProperties(
   Array("name", "env", "endpoint", "status", "connectionType", "maxConnections", "maxRetries",
         "maxRedirects", "requestTimeout", "connectingTimeout", "requestPipelines", "responsePipelines"))(
@@ -59,6 +61,8 @@ case class HttpClientInfo @ConstructorProperties(
      @BeanProperty connectingTimeout: Long,
      @BeanProperty requestPipelines: String,
      @BeanProperty responsePipelines: String)
+
+// $COVERAGE-ON$
 
 @MXBean
 trait HttpClientMXBean {
@@ -99,11 +103,14 @@ object HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
   }
 }
 
+// $COVERAGE-OFF$
 case class EndpointResolverInfo @ConstructorProperties(
   Array("position", "resolver"))(
     @BeanProperty position: Int,
     @BeanProperty resolver: String
   )
+
+// $COVERAGE-ON$
 
 @MXBean
 trait EndpointResolverMXBean {
@@ -123,11 +130,14 @@ object EndpointResolverBean extends EndpointResolverMXBean {
   }
 }
 
+// $COVERAGE-OFF$
 case class EnvironmentResolverInfo @ConstructorProperties(
   Array("position", "resolver"))(
     @BeanProperty position: Int,
     @BeanProperty resolver: String
   )
+
+// $COVERAGE-ON$
 
 @MXBean
 trait EnvironmentResolverMXBean {
