@@ -1,6 +1,6 @@
 package org.squbs.httpclient
 
-import org.scalatest.{Ignore, FlatSpec, Matchers, BeforeAndAfterAll}
+import org.scalatest.{FlatSpec, Matchers, BeforeAndAfterAll}
 import akka.actor.ActorSystem
 import org.squbs.httpclient.endpoint.{EndpointRegistry}
 import org.squbs.httpclient.dummy._
@@ -21,7 +21,6 @@ import spray.httpx.PipelineException
 /**
  * Created by hakuang on 7/22/2014.
  */
-@Ignore
 class HttpClientSpec extends FlatSpec with DummyService with Matchers with BeforeAndAfterAll{
 
   implicit val system = ActorSystem("HttpClientSpec")
@@ -35,11 +34,11 @@ class HttpClientSpec extends FlatSpec with DummyService with Matchers with Befor
   }
 
   override def afterAll {
-    HttpClientFactory.getOrCreate("DummyService").post[String]("/stop", Some(""))
+//    HttpClientFactory.getOrCreate("DummyService").post[String]("/stop", Some(""))
     EndpointRegistry.endpointResolvers.clear
     EnvironmentRegistry.environmentResolvers.clear
     HttpClientFactory.httpClientMap.clear
-    IO(Http).ask(Http.CloseAll)(3.second).await
+    IO(Http).ask(Http.CloseAll)(30.second).await
     system.shutdown()
   }
 
