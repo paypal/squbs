@@ -1,6 +1,6 @@
 package org.squbs.httpclient
 
-import org.scalatest.{FlatSpec, Matchers, BeforeAndAfterAll}
+import org.scalatest.{Ignore, FlatSpec, Matchers, BeforeAndAfterAll}
 import akka.actor.ActorSystem
 import org.squbs.httpclient.endpoint.{EndpointRegistry}
 import org.squbs.httpclient.dummy._
@@ -21,9 +21,10 @@ import spray.httpx.PipelineException
 /**
  * Created by hakuang on 7/22/2014.
  */
+@Ignore
 class HttpClientSpec extends FlatSpec with DummyService with Matchers with BeforeAndAfterAll{
 
-  implicit val system = ActorSystem("HttpClient2Spec")
+  implicit val system = ActorSystem("HttpClientSpec")
   import system.dispatcher
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
