@@ -666,23 +666,31 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
       }
 
     case Event(origin @ ZkQueryPartition(partitionKey, notification, Some(partitionSize), props, _), zkClusterData) =>
-      log.info("[leader] partition creation:{}", keyToPath(partitionKey))
 
       val zkPath = guarantee(partitionZkPath(partitionKey), Some(props), CreateMode.PERSISTENT)
-      guarantee(sizeOfParZkPath(partitionKey), Some(partitionSize), CreateMode.PERSISTENT)
-
-      rebalance(zkClusterData.partitionsToMembers + (partitionKey -> Set.empty), zkClusterData.members) match {
-        case Some(rebalanced) =>
-          try {
-            stay using zkClusterData.copy(partitionsToMembers = rebalanced)
-          }
-          finally{
-            sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, rebalanced.getOrElse(partitionKey, Set.empty)), zkPath, notification)
-          }
-        case None =>
-          //try handling this request once again
-          self forward origin
+      partitionsToMembers.get(partitionKey) match {
+        case Some(members) =>
+          logger.info("[leader] partition already exists:{} -> {}", keyToPath(partitionKey), members)
+          //when the partition already exists, use the snapshot partition view, waiting for further notification for members change
+          sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, members), zkPath, notification)
           stay
+        case None =>
+          log.info("[leader] partition creation:{}", keyToPath(partitionKey))
+          //partition is to be recovered
+          guarantee(sizeOfParZkPath(partitionKey), Some(partitionSize), CreateMode.PERSISTENT)
+          rebalance(zkClusterData.partitionsToMembers + (partitionKey -> Set.empty), zkClusterData.members) match {
+            case Some(rebalanced) =>
+              try {
+                stay using zkClusterData.copy(partitionsToMembers = rebalanced)
+              }
+              finally{
+                sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, rebalanced.getOrElse(partitionKey, Set.empty)), zkPath, notification)
+              }
+            case None =>
+              //try handling this request once again
+              self forward origin
+              stay
+          }
       }
 
     case Event(ZkQueryPartition(partitionKey, notification, None, _, _), zkClusterData) =>
@@ -710,6 +718,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
       stay
 
     case Event(ZkRebalanceRetry, zkClusterData) =>
+      log.info("[leader] rebalance retry after previous failure attempt")
       rebalance(zkClusterData.partitionsToMembers, zkClusterData.members) match {
         case Some(rebalanced) =>
           stay using zkClusterData.copy(partitionsToMembers = rebalanced)
@@ -759,7 +768,7 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Lo
     val zkAddress = external(system)
     logger.info("[zkcluster] connection to:{} and namespace:{} with segments:{} using address:{}", zkConnectionString, zkNamespace, zkSegments.toString, zkAddress)
 
-    new ZkCluster(system, zkAddress, zkConnectionString, zkNamespace, DefaultSegmentationLogic(zkSegments), rebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = zkSpareLeader))
+    new ZkCluster(system, zkAddress, zkConnectionString, zkNamespace, DefaultSegmentationLogic(zkSegments).asInstanceOf[SegmentationLogic], rebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = zkSpareLeader))
   }
 
   private[cluster] def external(system:ExtendedActorSystem):Address = Address("akka.tcp", system.name, ConfigUtil.ipv4, system.provider.getDefaultAddress.port.getOrElse(8086))
