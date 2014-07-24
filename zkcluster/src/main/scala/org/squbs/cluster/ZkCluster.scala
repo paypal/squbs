@@ -674,7 +674,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
           //when the partition already exists, use the snapshot partition view, waiting for further notification for members change
           sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, members), zkPath, notification)
           stay
-        case None =>
+        case _ =>
           log.info("[leader] partition creation:{}", keyToPath(partitionKey))
           //partition is to be recovered
           guarantee(sizeOfParZkPath(partitionKey), Some(expectedSize), CreateMode.PERSISTENT)
