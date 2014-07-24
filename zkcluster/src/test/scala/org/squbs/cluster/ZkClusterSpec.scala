@@ -62,7 +62,6 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
     //find zk process if it sticks
 
-
     preserve match {
       case None => conf.delete
       case Some(value) => Files.write(value, conf, Charsets.UTF_8)
@@ -104,7 +103,7 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
   "ZkClusterActor" should "create partition ondemand" in {
 
     val cluster = ZkCluster(system).zkClusterActor
-    val partitionKey = ByteString(s"pk-${System.nanoTime}")
+    val partitionKey = ByteString(s"pkc-${System.nanoTime}")
 
     cluster ! ZkQueryPartition(partitionKey)
     expectMsgType[ZkPartition].members.isEmpty should equal(true)
@@ -126,7 +125,7 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
     val extension = ZkCluster(system)
     val cluster = extension.zkClusterActor
-    val partitionKey = ByteString(s"pk-${System.nanoTime}")
+    val partitionKey = ByteString(s"pkm-${System.nanoTime}")
 
     cluster ! ZkQueryPartition(partitionKey, None, Some(1))
     expectMsgType[ZkPartition](timeout).members.size should equal(1)
@@ -144,7 +143,20 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
       expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq.empty[Address]))
     }
 
+    //this forces to trigger a rebalance
+    extension.zkClientWithNs.create.forPath(s"/members/${keyToPath("akka.tcp://zkclusternoneexist@127.0.0.1:8086")}")
+
+    cluster ! ZkQueryPartition(partitionKey, None, None)
+    expectMsgType[ZkPartition](timeout).members.size should equal(1)
+
     cluster ! ZkListPartitions(extension.zkAddress)
     expectMsgType[ZkPartitions] shouldNot equal(Seq.empty[ByteString])
+
+    //this forces to go to follower state
+    cluster ! ZkLeaderElected(Some(AddressFromURIString("akka.tcp://zkclusternoneexist@127.0.0.1:8086")))
+
+    //should still be able to answer cached partition query
+    cluster ! ZkQueryPartition(partitionKey, None, None)
+    expectMsgType[ZkPartition](timeout).members.size should equal(1)
   }
 }
