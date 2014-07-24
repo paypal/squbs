@@ -35,6 +35,7 @@ class HttpClientSpec extends FlatSpec with DummyService with Matchers with Befor
 
   override def afterAll {
 //    HttpClientFactory.getOrCreate("DummyService").post[String]("/stop", Some(""))
+    Thread.sleep(5000)
     EndpointRegistry.endpointResolvers.clear
     EnvironmentRegistry.environmentResolvers.clear
     HttpClientFactory.httpClientMap.clear
