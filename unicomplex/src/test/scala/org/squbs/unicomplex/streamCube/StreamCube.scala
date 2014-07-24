@@ -23,6 +23,7 @@ import spray.http.SetRequestTimeout
  * @param start
  * @author Yuri Finkelstein
  */
+//client: ActorRef, start: ChunkedRequestStart
 class StreamCube(client: ActorRef, start: ChunkedRequestStart) extends Actor with ActorLogging {
 
   import start.request._ //gives us uri and method
@@ -132,6 +133,13 @@ class StreamCube(client: ActorRef, start: ChunkedRequestStart) extends Actor wit
 
     case e: ChunkedMessageEnd =>
       log.debug(s"Got end of multipart request $method $uri")
+
+    case req: HttpRequest =>
+      println("unknown message")
+
+
+    case _ =>
+      println("unknown message")
   }
 
 }

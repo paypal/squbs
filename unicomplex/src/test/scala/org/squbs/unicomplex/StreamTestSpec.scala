@@ -107,6 +107,7 @@ with AsyncAssertions {
       log.debug(s"Submitting request ${req.toJson.prettyPrint}")
 
       val multipartFormData = MultipartFormData (BodyPart(marshalUnsafe(req), streamCube.PARTNAME_REQUEST) +: parts)
+
       val uploadResult = HttpDialog(connector)
         .send(Post(uri = "/streamsvc/file-upload", content = multipartFormData))
         .end
@@ -119,8 +120,9 @@ with AsyncAssertions {
       log.debug(s"file-upload result: $uploadResult")
       uploadResult.parts.size should be(parts.length)
       uploadResult.bytesReceived should be(fileLength)
-      //ChunkedRequestHandler.chunkCount should be (parts.length)
       //ChunkedRequestHandler.byteCount should be(fileLength)
+      //ChunkedRequestHandler.chunkCount should be (parts.length)
+
 
     }
   }
