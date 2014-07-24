@@ -6,6 +6,8 @@ import scala.util.{Failure, Success}
 import scala.concurrent.duration._
 import spray.http._
 import spray.http.HttpHeaders.RawHeader
+import java.net.InetAddress
+import org.squbs.util.availabilities.Ports
 
 
 /**
@@ -15,6 +17,14 @@ import spray.http.HttpHeaders.RawHeader
 case class Employee(id: Long, firstName: String, lastName: String, age: Int, male: Boolean)
 
 case class Team(description: String, members: List[Employee])
+
+object DummyService {
+  val dummyServiceIpAddress = InetAddress.getLocalHost.getHostAddress
+
+  val dummyServicePort = Ports.available(8888, 9999)
+
+  val dummyServiceEndpoint = s"http://$dummyServiceIpAddress:$dummyServicePort"
+}
 
 trait DummyService extends SimpleRoutingApp {
 
@@ -47,9 +57,10 @@ trait DummyService extends SimpleRoutingApp {
 
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
   import scala.concurrent.ExecutionContext.Implicits.global
+  import DummyService._
 
-  def startDummyService(implicit system: ActorSystem, port: Int = 9999) {
-    startServer(DummyServiceEndpointResolver.ipAddress, port = port) {
+  def startDummyService(implicit system: ActorSystem, port: Int = dummyServicePort) {
+    startServer(dummyServiceIpAddress, port = port) {
       pathSingleSlash {
         redirect("/view", StatusCodes.Found)
       } ~
