@@ -1,6 +1,8 @@
 package org.squbs.unicomplex
 
+import java.lang.management.ManagementFactory
 import java.util.concurrent.TimeUnit
+import javax.management.ObjectName
 
 import akka.actor.ActorSystem
 import akka.io.IO
@@ -11,6 +13,7 @@ import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import org.squbs.unicomplex.dummyextensions.DummyExtension
+import org.squbs.util.availabilities.Ports
 import spray.can.Http
 import spray.http._
 
@@ -28,6 +31,7 @@ object UnicomplexSpec {
     "DummyCube",
     "DummyCubeSvc",
     "DummySvc",
+    "DummySvcActor",
     "DummyExtensions.jar"
   ) map (dummyJarsDir + "/" + _)
 
@@ -36,7 +40,8 @@ object UnicomplexSpec {
   val mapConfig = ConfigFactory.parseMap(
     Map(
       "squbs.actorsystem-name"    -> "unicomplexSpec",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true)
+      "squbs." + JMX.prefixConfig -> Boolean.box(true),
+      "default-listener.bind-port" -> Ports.available(lower = 18888, upper = 35000).toString
     )
   )
 
@@ -104,7 +109,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
     "start all services" in {
       val services = boot.cubes flatMap { cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty) }
-      assert(services.size == 2)
+      assert(services.size == 3)
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvc/msg/hello")))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
@@ -125,6 +130,45 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("Ping")
       }
+
+      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvcactor/ping")))
+      within(timeout.duration) {
+        val response = expectMsgType[HttpResponse]
+        response.status should be(StatusCodes.OK)
+        response.entity.asString should be("pong")
+      }
+    }
+
+    "check cube MXbean" in {
+      import JMX._
+      val mbeanServer = ManagementFactory.getPlatformMBeanServer
+      val cubesObjName = new ObjectName(prefix(system) + cubesName)
+      val attr = mbeanServer.getAttribute(cubesObjName, "Cubes")
+      attr shouldBe a [Array[javax.management.openmbean.CompositeData]]
+      // 5 cubes registered above.
+      attr.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 5
+    }
+
+    "check cube state MXbean" in {
+      import JMX._
+      val cubeName = "DummyCube"
+      val mbeanServer = ManagementFactory.getPlatformMBeanServer
+      val cubesObjName = new ObjectName(prefix(system) + cubeStateName + cubeName)
+      val name = mbeanServer.getAttribute(cubesObjName, "Name")
+      val cubeState = mbeanServer.getAttribute(cubesObjName, "CubeState")
+      name should be (cubeName)
+      cubeState should be ("Active")
+    }
+
+    "check listener MXbean" in {
+      import JMX._
+      val mbeanServer = ManagementFactory.getPlatformMBeanServer
+      val listenersObjName = new ObjectName(prefix(system) + listenersName)
+      val listeners = mbeanServer.getAttribute(listenersObjName, "Listeners")
+      listeners shouldBe a [Array[javax.management.openmbean.CompositeData]]
+      // 3 services registered on one listener
+      listeners.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 3
+
     }
 
     "preInit, init and postInit all extenstions" in {

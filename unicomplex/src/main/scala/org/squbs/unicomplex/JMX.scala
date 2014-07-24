@@ -56,6 +56,7 @@ object JMX {
   def get(objName: ObjectName, attr: String) = ManagementFactory.getPlatformMBeanServer.getAttribute(objName, attr)
 }
 
+// $COVERAGE-OFF$
 case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", "supervisorPath"))(
                                           @BeanProperty name: String,
                                           @BeanProperty fullName: String,
@@ -66,7 +67,8 @@ case class ListenerInfo @ConstructorProperties(Array("listener", "context", "act
                                           @BeanProperty listener: String,
                                           @BeanProperty context: String,
                                           @BeanProperty actorPath: String)
-
+// $COVERAGE-ON$
+                                          
 @MXBean
 trait SystemStateMXBean {
   def getSystemState: String

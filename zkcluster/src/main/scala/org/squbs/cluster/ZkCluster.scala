@@ -467,7 +467,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
   private[cluster] def partitionManager = context.actorSelection("../zkPartitions")
 
-  private[cluster] def requires(partitionKey:ByteString):Int = try{
+  private[cluster] def getSize(partitionKey:ByteString):Int = try{
     bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
   }
   catch{
@@ -478,7 +478,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
     //spareLeader only when there're more than 1 VMs in the cluster
     val candidates = if(rebalanceLogic.spareLeader && members.size > 1) members.filterNot{candidate => stateData.leader.exists(candidate == _)} else members
-    val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, candidates.toSeq, requires _), members)
+    val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, candidates.toSeq, getSize _), members)
 
     log.info("[leader] rebalance planned as:{}", plan.map{case (key, members) => keyToPath(key) -> members})
     implicit val timeout = Timeout(10000, TimeUnit.MILLISECONDS)
@@ -663,11 +663,11 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
         }
       }
 
-    case Event(origin @ ZkQueryPartition(partitionKey, notification, Some(requires), props, _), zkClusterData) =>
+    case Event(origin @ ZkQueryPartition(partitionKey, notification, Some(partitionSize), props, _), zkClusterData) =>
       log.info("[leader] partition creation:{}", keyToPath(partitionKey))
 
       val zkPath = guarantee(partitionZkPath(partitionKey), Some(props), CreateMode.PERSISTENT)
-      guarantee(sizeOfParZkPath(partitionKey), Some(requires), CreateMode.PERSISTENT)
+      guarantee(sizeOfParZkPath(partitionKey), Some(partitionSize), CreateMode.PERSISTENT)
 
       rebalance(zkClusterData.partitionsToMembers + (partitionKey -> Set.empty), zkClusterData.members) match {
         case Some(rebalanced) =>

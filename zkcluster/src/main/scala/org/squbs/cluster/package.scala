@@ -31,13 +31,13 @@ package object cluster {
       partitionsToMembers.map(assign => {
         val partitionKey = assign._1
         val servants = assign._2
-        val requires = size(partitionKey)
+        val partitionSize = size(partitionKey)
 
         servants.size match {
-          case size if size < requires => //shortage, must be compensated
-            partitionKey -> (servants ++ members.filterNot(servants.contains(_)).take(requires - servants.size))
-          case size if size > requires => //overflow, reduce the servants
-            partitionKey -> servants.take(requires)
+          case size if size < partitionSize => //shortage, must be compensated
+            partitionKey -> (servants ++ members.filterNot(servants.contains(_)).take(partitionSize - servants.size))
+          case size if size > partitionSize => //overflow, reduce the servants
+            partitionKey -> servants.take(partitionSize)
           case _ =>
             assign
         }
