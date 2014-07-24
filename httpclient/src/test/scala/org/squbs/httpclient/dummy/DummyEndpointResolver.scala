@@ -3,15 +3,18 @@ package org.squbs.httpclient.dummy
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointResolver}
 import org.squbs.httpclient.env.{DEV, Default, Environment}
 import org.squbs.httpclient.HttpClientException
+import java.net.InetAddress
 
 /**
  * Created by hakuang on 7/22/2014.
  */
 object DummyServiceEndpointResolver extends EndpointResolver{
 
+  val ipAddress = InetAddress.getLocalHost.getHostAddress
+
   override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
     svcName match {
-      case name => Some(Endpoint("http://localhost:9999"))
+      case name => Some(Endpoint(s"http://$ipAddress:9999"))
       case _    => None
     }
   }

@@ -17,6 +17,7 @@ import org.squbs.httpclient.endpoint.Endpoint
 import org.squbs.httpclient.dummy.Employee
 import scala.Some
 import spray.httpx.PipelineException
+import DummyServiceEndpointResolver._
 
 /**
  * Created by hakuang on 7/22/2014.
@@ -35,7 +36,6 @@ class HttpClientSpec extends FlatSpec with DummyService with Matchers with Befor
 
   override def afterAll {
 //    HttpClientFactory.getOrCreate("DummyService").post[String]("/stop", Some(""))
-    Thread.sleep(5000)
     EndpointRegistry.endpointResolvers.clear
     EnvironmentRegistry.environmentResolvers.clear
     HttpClientFactory.httpClientMap.clear
@@ -144,7 +144,7 @@ class HttpClientSpec extends FlatSpec with DummyService with Matchers with Befor
   }
 
   "HttpClient could be use endpoint as service name directly without registry endpoint resolvers, major target for third party service call" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("http://localhost:9999").get("/view")
+    val response = HttpClientFactory.getOrCreate(s"http://$ipAddress:9999").get("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
@@ -156,9 +156,9 @@ class HttpClientSpec extends FlatSpec with DummyService with Matchers with Befor
     val httpClient = HttpClientFactory.getOrCreate("DummyService")
     val newConfig = Configuration(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 11))
     httpClient.updateConfig(newConfig)
-    EndpointRegistry.resolve("DummyService") should be (Some(Endpoint("http://localhost:9999", newConfig)))
+    EndpointRegistry.resolve("DummyService") should be (Some(Endpoint(s"http://$ipAddress:9999", newConfig)))
     httpClient.updateConfig(Configuration())
-    EndpointRegistry.resolve("DummyService") should be (Some(Endpoint("http://localhost:9999")))
+    EndpointRegistry.resolve("DummyService") should be (Some(Endpoint(s"http://$ipAddress:9999")))
   }
 
   "HttpClient update pipeline" should "get the correct behaviour" in {

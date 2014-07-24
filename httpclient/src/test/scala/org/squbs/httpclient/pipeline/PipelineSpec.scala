@@ -1,6 +1,6 @@
 package org.squbs.httpclient.pipeline
 
-import org.scalatest.{Ignore, BeforeAndAfterAll, Matchers, FlatSpec}
+import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpec}
 import org.squbs.httpclient.{HttpClientFactory}
 import akka.actor.ActorSystem
 import akka.io.IO
@@ -15,8 +15,8 @@ import spray.http.HttpRequest
 import spray.http.HttpHeaders.RawHeader
 import scala.Some
 import org.squbs.httpclient.endpoint.EndpointRegistry
+import DummyServiceEndpointResolver._
 
-@Ignore
 class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeAndAfterAll with PipelineManager{
 
   implicit val system = ActorSystem("PipelineSpec")
@@ -26,15 +26,14 @@ class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeA
   override def beforeAll = {
     EndpointRegistry.register(DummyServiceEndpointResolver)
     startDummyService(system)
-//    DummyServiceMain.main(Array.empty)
   }
 
   override def afterAll = {
-    HttpClientFactory.getOrCreate("DummyService").post[String]("/stop", Some(""))
+//    HttpClientFactory.getOrCreate("DummyService").post[String]("/stop", Some(""))
     HttpClientFactory.httpClientMap.clear
     EnvironmentRegistry.environmentResolvers.clear
     EndpointRegistry.endpointResolvers.clear
-    IO(Http).ask(Http.CloseAll)(3.second).await
+    IO(Http).ask(Http.CloseAll)(30.second).await
     system.shutdown()
   }
 
@@ -42,7 +41,7 @@ class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeA
     val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyRequestPipeline))
     val sendReceive = invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val request = HttpRequest(uri = Uri(s"http://$ipAddress:9999/view"))
     val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
     response.content.get.headers contains (RawHeader("res-req1-name", "res-req1-value"))
@@ -52,7 +51,7 @@ class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeA
     val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyResponsePipeline))
     val sendReceive = invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val request = HttpRequest(uri = Uri(s"http://$ipAddress:9999/view"))
     val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
     response.content.get.headers contains (RawHeader("res1-name", "res1-value"))
@@ -62,7 +61,7 @@ class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeA
     val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyRequestResponsePipeline))
     val sendReceive = invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val request = HttpRequest(uri = Uri(s"http://$ipAddress:9999/view"))
     val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
     response.content.get.headers contains (RawHeader("res-req2-name", "res-req2-value"))
@@ -73,7 +72,7 @@ class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeA
     val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyRequestPipeline))
     val sendReceive = invokeToEntity[Team](httpClient)
     sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val request = HttpRequest(uri = Uri(s"http://$ipAddress:9999/view"))
     val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
     response.rawHttpResponse.get.headers contains (RawHeader("res-req1-name", "res-req1-value"))
@@ -83,7 +82,7 @@ class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeA
     val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyResponsePipeline))
     val sendReceive = invokeToEntity[Team](httpClient)
     sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val request = HttpRequest(uri = Uri(s"http://$ipAddress:9999/view"))
     val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
     response.rawHttpResponse.get.headers contains (RawHeader("res1-name", "res1-value"))
@@ -93,7 +92,7 @@ class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeA
     val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyRequestResponsePipeline))
     val sendReceive = invokeToEntity[Team](httpClient)
     sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val request = HttpRequest(uri = Uri(s"http://$ipAddress:9999/view"))
     val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
     response.rawHttpResponse.get.headers contains (RawHeader("res-req2-name", "res-req2-value"))

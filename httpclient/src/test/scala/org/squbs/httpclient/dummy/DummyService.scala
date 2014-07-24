@@ -49,7 +49,7 @@ trait DummyService extends SimpleRoutingApp {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   def startDummyService(implicit system: ActorSystem, port: Int = 9999) {
-    startServer("localhost", port = port) {
+    startServer(DummyServiceEndpointResolver.ipAddress, port = port) {
       pathSingleSlash {
         redirect("/view", StatusCodes.Found)
       } ~
