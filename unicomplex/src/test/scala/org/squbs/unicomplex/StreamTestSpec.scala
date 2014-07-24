@@ -23,6 +23,7 @@ import spray.can.Http
 import akka.actor._
 import akka.io.IO
 import akka.event.Logging
+import org.squbs.unicomplex.streamSvc.ChunkedRequestHandler
 
 
 /**
@@ -118,6 +119,8 @@ with AsyncAssertions {
       log.debug(s"file-upload result: $uploadResult")
       uploadResult.parts.size should be(parts.length)
       uploadResult.bytesReceived should be(fileLength)
+      //ChunkedRequestHandler.chunkCount should be (parts.length)
+      //ChunkedRequestHandler.byteCount should be(fileLength)
 
     }
   }
