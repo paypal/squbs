@@ -110,7 +110,7 @@ trait DummyService extends SimpleRoutingApp {
               }
             }
         }
-    }(system, null, bindingTimeout = 3 seconds).onComplete {
+    }(system, null, bindingTimeout = 30 seconds).onComplete {
       case Success(b) =>
         println(s"Successfully bound to ${b.localAddress}")
       case Failure(ex) =>
