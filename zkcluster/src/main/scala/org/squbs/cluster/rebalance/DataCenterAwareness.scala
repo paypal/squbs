@@ -1,5 +1,7 @@
 package org.squbs.cluster
 
+import com.typesafe.scalalogging.slf4j.Logging
+
 import scala.annotation.tailrec
 import scala.collection.immutable
 import java.net._
@@ -30,7 +32,7 @@ object DefaultCorrelation {
 
 }
 
-class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlation[C]) extends RoutingLogic {
+class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlation[C]) extends RoutingLogic with Logging {
 
   val fallback = RoundRobinRoutingLogic()
 
@@ -43,7 +45,9 @@ class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlat
         true
     }
 
-    fallback.select(message, if(candidates.nonEmpty) candidates else routees)
+    val selected = fallback.select(message, if(candidates.nonEmpty) candidates else routees)
+    logger.info("[correlate rr] selects {} out of {} among {}", selected, candidates, routees)
+    selected
   }
 }
 
