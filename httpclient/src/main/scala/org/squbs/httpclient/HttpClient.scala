@@ -41,7 +41,7 @@ trait Client {
 
   val endpoint = EndpointRegistry.resolve(name, env)
 
-  def markUP = {
+  def markUp = {
     status = Status.UP
   }
 

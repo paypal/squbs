@@ -13,19 +13,19 @@ abstract class Environment {
   def lowercaseName: String = name.toLowerCase
 }
 
-object Default extends Environment{
+case object Default extends Environment{
   override val name: String = "DEFAULT"
 }
 
-object QA extends Environment {
+case object QA extends Environment {
   override val name: String = "QA"
 }
 
-object DEV extends Environment {
+case object DEV extends Environment {
   override val name: String = "DEV"
 }
 
-object PROD extends Environment {
+case object PROD extends Environment {
   override val name: String = "PROD"
 }
 
