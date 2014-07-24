@@ -669,7 +669,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
       val zkPath = guarantee(partitionZkPath(partitionKey), Some(props), CreateMode.PERSISTENT)
       partitionsToMembers.get(partitionKey) match {
-        case Some(members) =>
+        case Some(members) if members.size == partitionSize =>
           logger.info("[leader] partition already exists:{} -> {}", keyToPath(partitionKey), members)
           //when the partition already exists, use the snapshot partition view, waiting for further notification for members change
           sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, members), zkPath, notification)
