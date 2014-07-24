@@ -665,11 +665,11 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
         }
       }
 
-    case Event(origin @ ZkQueryPartition(partitionKey, notification, Some(partitionSize), props, _), zkClusterData) =>
+    case Event(origin @ ZkQueryPartition(partitionKey, notification, Some(expectedSize), props, _), zkClusterData) =>
 
       val zkPath = guarantee(partitionZkPath(partitionKey), Some(props), CreateMode.PERSISTENT)
       partitionsToMembers.get(partitionKey) match {
-        case Some(members) =>
+        case Some(members) if members.nonEmpty && members.size == expectedSize =>
           logger.info("[leader] partition already exists:{} -> {}", keyToPath(partitionKey), members)
           //when the partition already exists, use the snapshot partition view, waiting for further notification for members change
           sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, members), zkPath, notification)
@@ -677,7 +677,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
         case None =>
           log.info("[leader] partition creation:{}", keyToPath(partitionKey))
           //partition is to be recovered
-          guarantee(sizeOfParZkPath(partitionKey), Some(partitionSize), CreateMode.PERSISTENT)
+          guarantee(sizeOfParZkPath(partitionKey), Some(expectedSize), CreateMode.PERSISTENT)
           rebalance(zkClusterData.partitionsToMembers + (partitionKey -> Set.empty), zkClusterData.members) match {
             case Some(rebalanced) =>
               try {
