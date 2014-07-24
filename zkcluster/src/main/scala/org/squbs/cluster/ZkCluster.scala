@@ -13,7 +13,7 @@ import org.apache.curator.framework.state.{ConnectionState, ConnectionStateListe
 import org.apache.curator.framework.api._
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
-import scala.concurrent.Await
+import scala.concurrent.{Future, Await}
 import scala.util.{Success, Try}
 import akka.actor._
 import akka.pattern.ask
@@ -66,9 +66,9 @@ class ZkCluster(system: ActorSystem,
 
   val segmentsSize = zkClientWithNs.getChildren.forPath("/segments").size()
   if (segmentsSize != segmentationLogic.segmentsSize) {
-      0.until(segmentationLogic.segmentsSize).foreach(s => {
-        guarantee(s"/segments/segment-$s", Some(Array[Byte]()), CreateMode.PERSISTENT)
-      })
+    0.until(segmentationLogic.segmentsSize).foreach(s => {
+      guarantee(s"/segments/segment-$s", Some(Array[Byte]()), CreateMode.PERSISTENT)
+    })
   }
 
   //all interactions with the zk cluster extension should be through the zkClusterActor below
@@ -98,8 +98,7 @@ private[cluster] case class ZkMembersChanged(members: Set[Address])
 private[cluster] case class ZkRebalance(partitionsToMembers: Map[ByteString, Set[Address]])
 private[cluster] case class ZkSegmentChanged(segment:String, partitions:Set[ByteString])
 private[cluster] case class ZkPartitionsChanged(segment:String, partitions: Map[ByteString, Set[Address]])
-private[cluster] case class ZkPartitionOnboard(partitionKey: ByteString, zkPath: String)
-private[cluster] case class ZkPartitionDropoff(partitionKey: ByteString, zkPath: String)
+private[cluster] case class ZkUpdatePartitions(onboards:Map[ByteString, String], dropoffs:Map[ByteString, String])
 private[cluster] case object ZkAcquireLeadership
 
 /**
@@ -176,7 +175,7 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
     initialize
   }
 
-    override def postStop = {
+  override def postStop = {
     //stop the leader latch to quit the competition
     zkLeaderLatch.close
   }
@@ -233,7 +232,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
   def watchOverPartition(segment:String, partitionKey:ByteString, partitionWatcher:CuratorWatcher):Option[Set[Address]] = {
     val segmentZkPath = s"/segments/${keyToPath(segment)}"
-    
+
     try {
       Some(zkClient.getChildren.usingWatcher(partitionWatcher).forPath(s"$segmentZkPath/${keyToPath(partitionKey)}")
         .filterNot(_ == "$size")
@@ -350,32 +349,34 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
           Right(context.actorSelection(self.path.toStringWithAddress(address)))
 
       val result = Try {
-        planned.foldLeft(true){(result, assign) => {
+
+        import scala.concurrent.ExecutionContext.Implicits.global
+        implicit val timeout = Timeout(5000, TimeUnit.MILLISECONDS)
+        Await.result(Future.sequence(planned.foldLeft(Map.empty[Address, (Map[ByteString, String], Map[ByteString, String])]){(impacts, assign) =>
           val partitionKey = assign._1
           val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address])
           val onboards = assign._2.diff(servants)
           val dropoffs = servants.diff(assign._2)
           val zkPath = partitionZkPath(partitionKey)
-
           log.debug("[partitions] {} - onboards:{} and dropoffs:{}", keyToPath(partitionKey), onboards, dropoffs)
-          implicit val timeout = Timeout(3000, TimeUnit.MILLISECONDS)
 
-          onboards.foldLeft(result) { (successful, it) =>
-            successful && (addressee(it) match {
-              case Left(me) => me.tell(ZkPartitionOnboard(partitionKey, zkPath), me)
-                true
-              case Right(other) =>
-                Await.result(other ? ZkPartitionOnboard(partitionKey, zkPath), timeout.duration).asInstanceOf[Boolean]
-            })
-          } && dropoffs.foldLeft(result) { (successful, it) =>
-            successful && (addressee(it) match {
-              case Left(me) => me.tell(ZkPartitionDropoff(partitionKey, zkPath), me)
-                true
-              case Right(other) =>
-                Await.result(other ? ZkPartitionDropoff(partitionKey, zkPath), timeout.duration).asInstanceOf[Boolean]
-            })
+          val halfway = onboards.foldLeft(impacts){(impacts, member) =>
+            val impactOnMember = impacts.getOrElse(member, (Map.empty[ByteString, String], Map.empty[ByteString, String]))
+            impacts.updated(member, impactOnMember.copy(_1 = impactOnMember._1.updated(partitionKey, zkPath)))
           }
-        }}
+
+          dropoffs.foldLeft(halfway){(impacts, member) =>
+            val impactOnMember = impacts.getOrElse(member, (Map.empty[ByteString, String], Map.empty[ByteString, String]))
+            impacts.updated(member, impactOnMember.copy(_2 = impactOnMember._2.updated(partitionKey, zkPath)))
+          }
+        }.map{case (member, impact) =>
+          (addressee(member) match {
+            case Left(me) => me.tell(ZkUpdatePartitions(impact._1, impact._2), me)
+              Future(true)
+            case Right(other) =>
+              (other ? ZkUpdatePartitions(impact._1, impact._2)).mapTo[Boolean]
+          })
+        }), timeout.duration).foldLeft(true){(successful, individual) => successful && individual}
       }
       log.debug("[partitions] rebalance plan done:{}", result)
       sender() ! result
@@ -402,16 +403,17 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       log.debug("[partitions] stop monitor partitioning from:{}", sender().path)
       notifyOnDifference = notifyOnDifference -- stopOnDifference
 
-    case ZkPartitionOnboard(partitionKey, zkPath) => //partition assignment handling
-      log.debug("[partitions] assignment:{} with zkPath:{} replying to:{}", keyToPath(partitionKey), zkPath, sender().path)
-      guarantee(zkPath, None)
-      //mark acceptance
-      guarantee(s"$zkPath/${keyToPath(zkAddress.toString)}", Some(Array[Byte]()), CreateMode.EPHEMERAL)
-      sender() ! true
-
-    case ZkPartitionDropoff(partitionKey, zkPath) =>
-      log.debug("[partitions] release:{} with zkPath:{} replying to:{}", keyToPath(partitionKey), zkPath, sender().path)
-      safelyDiscard(s"$zkPath/${keyToPath(zkAddress.toString)}")
+    case ZkUpdatePartitions(onboards, dropoffs) =>
+      onboards.foreach{case (partitionKey, zkPath) =>
+        log.debug("[partitions] assignment:{} with zkPath:{} replying to:{}", keyToPath(partitionKey), zkPath, sender().path)
+        guarantee(zkPath, None)
+        //mark acceptance
+        guarantee(s"$zkPath/${keyToPath(zkAddress.toString)}", Some(Array[Byte]()), CreateMode.EPHEMERAL)
+      }
+      dropoffs.foreach{case (partitionKey, zkPath) =>
+        log.debug("[partitions] release:{} with zkPath:{} replying to:{}", keyToPath(partitionKey), zkPath, sender().path)
+        safelyDiscard(s"$zkPath/${keyToPath(zkAddress.toString)}")
+      }
       sender() ! true
   }
 
@@ -426,10 +428,10 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
     //any change inbetween will be silently ignored, as we know leader will rebalance and trigger another event to reach the expected size eventually
     //NOTE, the size must be tested with `EQUAL` other than `LESS OR EQUAL`, due to a corner case, where onboard members happen ahead of dropoff members in a shift (no size change)
     val onboards = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).size == Math.min(try{
-          bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
-        } catch {
-          case _ => 0 //in case the $size node is being removed
-        }, numOfNodes) &&
+      bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
+    } catch {
+      case _:Throwable => 0 //in case the $size node is being removed
+    }, numOfNodes) &&
       partitionsToMembers.getOrElse(partitionKey, Set.empty) != changed.partitions.getOrElse(partitionKey, Set.empty)
     }
     val dropoffs = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}.filter(impacted.contains(_))
@@ -467,21 +469,21 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
   private[cluster] def partitionManager = context.actorSelection("../zkPartitions")
 
-  private[cluster] def getSize(partitionKey:ByteString):Int = try{
+  private[cluster] def partitionSize(partitionKey:ByteString):Int = try{
     bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
   }
   catch{
-    case _ => 0
+    case _:Throwable => 0
   }
 
   private[cluster] def rebalance(partitionsToMembers:Map[ByteString, Set[Address]], members:Set[Address]):Option[Map[ByteString, Set[Address]]] = {
 
     //spareLeader only when there're more than 1 VMs in the cluster
     val candidates = if(rebalanceLogic.spareLeader && members.size > 1) members.filterNot{candidate => stateData.leader.exists(candidate == _)} else members
-    val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, candidates.toSeq, getSize _), members)
+    val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, candidates.toSeq, partitionSize _), members)
 
     log.info("[leader] rebalance planned as:{}", plan.map{case (key, members) => keyToPath(key) -> members})
-    implicit val timeout = Timeout(10000, TimeUnit.MILLISECONDS)
+    implicit val timeout = Timeout(15000, TimeUnit.MILLISECONDS)
     Await.result(partitionManager ? ZkRebalance(plan), timeout.duration) match {
       case Success(true) =>
         log.info("[leader] rebalance successfully done")
@@ -664,23 +666,31 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
       }
 
     case Event(origin @ ZkQueryPartition(partitionKey, notification, Some(partitionSize), props, _), zkClusterData) =>
-      log.info("[leader] partition creation:{}", keyToPath(partitionKey))
 
       val zkPath = guarantee(partitionZkPath(partitionKey), Some(props), CreateMode.PERSISTENT)
-      guarantee(sizeOfParZkPath(partitionKey), Some(partitionSize), CreateMode.PERSISTENT)
-
-      rebalance(zkClusterData.partitionsToMembers + (partitionKey -> Set.empty), zkClusterData.members) match {
-        case Some(rebalanced) =>
-          try {
-            stay using zkClusterData.copy(partitionsToMembers = rebalanced)
-          }
-          finally{
-            sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, rebalanced.getOrElse(partitionKey, Set.empty)), zkPath, notification)
-          }
-        case None =>
-          //try handling this request once again
-          self forward origin
+      partitionsToMembers.get(partitionKey) match {
+        case Some(members) =>
+          logger.info("[leader] partition already exists:{} -> {}", keyToPath(partitionKey), members)
+          //when the partition already exists, use the snapshot partition view, waiting for further notification for members change
+          sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, members), zkPath, notification)
           stay
+        case None =>
+          log.info("[leader] partition creation:{}", keyToPath(partitionKey))
+          //partition is to be recovered
+          guarantee(sizeOfParZkPath(partitionKey), Some(partitionSize), CreateMode.PERSISTENT)
+          rebalance(zkClusterData.partitionsToMembers + (partitionKey -> Set.empty), zkClusterData.members) match {
+            case Some(rebalanced) =>
+              try {
+                stay using zkClusterData.copy(partitionsToMembers = rebalanced)
+              }
+              finally{
+                sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, rebalanced.getOrElse(partitionKey, Set.empty)), zkPath, notification)
+              }
+            case None =>
+              //try handling this request once again
+              self forward origin
+              stay
+          }
       }
 
     case Event(ZkQueryPartition(partitionKey, notification, None, _, _), zkClusterData) =>
@@ -708,6 +718,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
       stay
 
     case Event(ZkRebalanceRetry, zkClusterData) =>
+      log.info("[leader] rebalance retry after previous failure attempt")
       rebalance(zkClusterData.partitionsToMembers, zkClusterData.members) match {
         case Some(rebalanced) =>
           stay using zkClusterData.copy(partitionsToMembers = rebalanced)
@@ -757,7 +768,7 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Lo
     val zkAddress = external(system)
     logger.info("[zkcluster] connection to:{} and namespace:{} with segments:{} using address:{}", zkConnectionString, zkNamespace, zkSegments.toString, zkAddress)
 
-    new ZkCluster(system, zkAddress, zkConnectionString, zkNamespace, DefaultSegmentationLogic(zkSegments), rebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = zkSpareLeader))
+    new ZkCluster(system, zkAddress, zkConnectionString, zkNamespace, DefaultSegmentationLogic(zkSegments).asInstanceOf[SegmentationLogic], rebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = zkSpareLeader))
   }
 
   private[cluster] def external(system:ExtendedActorSystem):Address = Address("akka.tcp", system.name, ConfigUtil.ipv4, system.provider.getDefaultAddress.port.getOrElse(8086))
