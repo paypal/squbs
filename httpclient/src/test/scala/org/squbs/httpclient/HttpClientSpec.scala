@@ -21,7 +21,7 @@ import spray.httpx.PipelineException
 /**
  * Created by hakuang on 7/22/2014.
  */
-class HttpClient2Spec extends FlatSpec with DummyService with Matchers with BeforeAndAfterAll{
+class HttpClientSpec extends FlatSpec with DummyService with Matchers with BeforeAndAfterAll{
 
   implicit val system = ActorSystem("HttpClient2Spec")
   import system.dispatcher
