@@ -38,5 +38,6 @@ class ChunkedRequestHandler extends Actor with ActorLogging {
 
     case chunkEnd: ChunkedMessageEnd =>
       sender() ! HttpResponse(OK, s"Received $chunkCount chunks and $byteCount bytes.")
+      context.stop(self)
   }
 }
