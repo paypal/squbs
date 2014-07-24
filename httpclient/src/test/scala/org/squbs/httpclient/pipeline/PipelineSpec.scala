@@ -1,6 +1,6 @@
 package org.squbs.httpclient.pipeline
 
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpec}
+import org.scalatest.{Ignore, BeforeAndAfterAll, Matchers, FlatSpec}
 import org.squbs.httpclient.{HttpClientFactory}
 import akka.actor.ActorSystem
 import akka.io.IO
@@ -16,6 +16,7 @@ import spray.http.HttpHeaders.RawHeader
 import scala.Some
 import org.squbs.httpclient.endpoint.EndpointRegistry
 
+@Ignore
 class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeAndAfterAll with PipelineManager{
 
   implicit val system = ActorSystem("PipelineSpec")
