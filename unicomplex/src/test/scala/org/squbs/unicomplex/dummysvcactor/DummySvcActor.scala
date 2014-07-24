@@ -21,8 +21,8 @@ class DummySvcActor extends Actor with ActorLogging {
 
 class ChunkedRequestHandler extends Actor with ActorLogging {
 
-  var chunkCount = 0
-  var byteCount = 0
+  var chunkCount = 0L
+  var byteCount = 0L
 
   def receivedChunk(data: HttpData) {
     if (data.length > 0) {
