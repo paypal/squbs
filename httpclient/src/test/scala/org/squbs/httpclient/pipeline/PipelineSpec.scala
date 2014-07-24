@@ -1,9 +1,7 @@
 package org.squbs.httpclient.pipeline
 
-import org.scalatest.{BeforeAndAfterEach, BeforeAndAfterAll, Matchers, FlatSpec}
-import spray.client.pipelining._
+import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpec}
 import org.squbs.httpclient.{HttpClientFactory}
-import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolver}
 import akka.actor.ActorSystem
 import akka.io.IO
 import spray.can.Http
@@ -11,118 +9,93 @@ import scala.concurrent.duration._
 import akka.pattern._
 import spray.util._
 import spray.http._
+import org.squbs.httpclient.env.{EnvironmentRegistry}
+import org.squbs.httpclient.dummy._
 import spray.http.HttpRequest
-import org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler
-import org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler
 import spray.http.HttpHeaders.RawHeader
 import scala.Some
-import org.squbs.httpclient.env.{Default, Environment}
+import org.squbs.httpclient.endpoint.EndpointRegistry
 
-class PipelineSpec extends FlatSpec with Matchers with BeforeAndAfterAll with BeforeAndAfterEach with PipelineManager{
+class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeAndAfterAll with PipelineManager{
 
-  private implicit val system = ActorSystem("PipelineSpec")
+  implicit val system = ActorSystem("PipelineSpec")
   import system.dispatcher
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
-  override def beforeEach = {
-    EndpointRegistry.register(new GoogleEndpointResolver())
-  }
-
-  override def afterEach = {
-    HttpClientFactory.httpClientMap.clear
-    EndpointRegistry.endpointResolvers.clear
+  override def beforeAll = {
+    EndpointRegistry.register(DummyServiceEndpointResolver)
+    startDummyService(system)
+//    DummyServiceMain.main(Array.empty)
   }
 
   override def afterAll = {
-    IO(Http).ask(Http.CloseAll)(1.second).await
+    HttpClientFactory.getOrCreate("DummyService").post[String]("/stop", Some(""))
+    HttpClientFactory.httpClientMap.clear
+    EnvironmentRegistry.environmentResolvers.clear
+    EndpointRegistry.endpointResolvers.clear
+    IO(Http).ask(Http.CloseAll)(3.second).await
     system.shutdown()
   }
 
   "Request Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("googlemap", pipeline = Some(RequestPipeline))
+    val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyRequestPipeline))
     val sendReceive = invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
-    val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
-    val response = sendReceive.get(reqeust).await
+    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
+    response.content.get.headers contains (RawHeader("res-req1-name", "res-req1-value"))
   }
 
   "Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("googlemap", pipeline = Some(ResponsePipeline))
+    val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyResponsePipeline))
     val sendReceive = invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
-    val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
-    val response = sendReceive.get(reqeust).await
+    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
-    response.content.get.headers contains (RawHeader("response-name", "response-value"))
+    response.content.get.headers contains (RawHeader("res1-name", "res1-value"))
   }
 
   "Request-Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("googlemap", pipeline = Some(RequestResponsePipeline))
+    val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyRequestResponsePipeline))
     val sendReceive = invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
-    val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
-    val response = sendReceive.get(reqeust).await
+    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
-    response.content.get.headers contains (RawHeader("response1-name", "response1-value"))
+    response.content.get.headers contains (RawHeader("res-req2-name", "res-req2-value"))
+    response.content.get.headers contains (RawHeader("res2-name", "res2-value"))
   }
 
   "Request Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("googlemap", pipeline = Some(RequestPipeline))
-    val sendReceive = invokeToEntity[GoogleApiResult[Elevation]](httpClient)
+    val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyRequestPipeline))
+    val sendReceive = invokeToEntity[Team](httpClient)
     sendReceive.isSuccess should be (true)
-    val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
-    val response = sendReceive.get(reqeust).await
+    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
+    response.rawHttpResponse.get.headers contains (RawHeader("res-req1-name", "res-req1-value"))
   }
 
   "Response Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("googlemap", pipeline = Some(ResponsePipeline))
-    val sendReceive = invokeToEntity[GoogleApiResult[Elevation]](httpClient)
+    val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyResponsePipeline))
+    val sendReceive = invokeToEntity[Team](httpClient)
     sendReceive.isSuccess should be (true)
-    val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
-    val response = sendReceive.get(reqeust).await
+    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
-    response.rawHttpResponse.get.headers contains (RawHeader("response-name", "response-value"))
+    response.rawHttpResponse.get.headers contains (RawHeader("res1-name", "res1-value"))
   }
 
   "Request-Response Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("googlemap", pipeline = Some(RequestResponsePipeline))
-    val sendReceive = invokeToEntity[GoogleApiResult[Elevation]](httpClient)
+    val httpClient = HttpClientFactory.getOrCreate("DummyService", pipeline = Some(DummyRequestResponsePipeline))
+    val sendReceive = invokeToEntity[Team](httpClient)
     sendReceive.isSuccess should be (true)
-    val reqeust = HttpRequest(uri = Uri("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
-    val response = sendReceive.get(reqeust).await
+    val request = HttpRequest(uri = Uri("http://localhost:9999/view"))
+    val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
-    response.rawHttpResponse.get.headers contains (RawHeader("response1-name", "response1-value"))
+    response.rawHttpResponse.get.headers contains (RawHeader("res-req2-name", "res-req2-value"))
+    response.rawHttpResponse.get.headers contains (RawHeader("res2-name", "res2-value"))
   }
 }
-
-object RequestPipeline extends Pipeline {
-  override def requestPipelines: Seq[RequestTransformer] = Seq[RequestTransformer](RequestAddHeaderHandler(RawHeader("request-name", "request-value")).processRequest)
-  override def responsePipelines: Seq[ResponseTransformer] = Seq.empty[ResponseTransformer]
-}
-
-object ResponsePipeline extends Pipeline {
-  override def requestPipelines: Seq[RequestTransformer] = Seq.empty[RequestTransformer]
-  override def responsePipelines: Seq[ResponseTransformer] = Seq[ResponseTransformer](ResponseAddHeaderHandler(RawHeader("response-name", "response-value")).processResponse)
-}
-
-object RequestResponsePipeline extends Pipeline {
-  override def requestPipelines: Seq[RequestTransformer] = Seq[RequestTransformer](RequestAddHeaderHandler(RawHeader("request1-name", "request1-value")).processRequest)
-  override def responsePipelines: Seq[ResponseTransformer] = Seq[ResponseTransformer](ResponseAddHeaderHandler(RawHeader("response1-name", "response1-value")).processResponse)
-}
-
-class GoogleEndpointResolver extends EndpointResolver {
-  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-    if (svcName == name)
-      Some(Endpoint("http://maps.googleapis.com/maps"))
-    else
-      None
-  }
-
-  override def name: String = "googlemap"
-}
-
-case class Elevation(location: Location, elevation: Double)
-case class Location(lat: Double, lng: Double)
-case class GoogleApiResult[T](status: String, results: List[T])

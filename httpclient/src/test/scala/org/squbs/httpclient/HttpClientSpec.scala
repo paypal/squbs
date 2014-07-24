@@ -1,199 +1,207 @@
 package org.squbs.httpclient
 
-import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolver}
-import spray.http.StatusCodes
-import spray.can.Http
-import akka.io.IO
-import scala.concurrent.duration._
+import org.scalatest.{FlatSpec, Matchers, BeforeAndAfterAll}
 import akka.actor.ActorSystem
-import akka.pattern.ask
+import org.squbs.httpclient.endpoint.{EndpointRegistry}
+import org.squbs.httpclient.dummy._
+import org.squbs.httpclient.env.EnvironmentRegistry
+import akka.io.IO
+import spray.can.Http
+import akka.pattern._
+import scala.concurrent.duration._
 import spray.util._
-import org.scalatest._
 import scala.concurrent.Await
-import spray.can.Http.ConnectionAttemptFailedException
-import scala.util.Success
-import scala.util.Failure
+import spray.http.StatusCodes
+import org.squbs.httpclient.config.Configuration
+import org.squbs.httpclient.endpoint.Endpoint
+import org.squbs.httpclient.dummy.Employee
 import scala.Some
-import org.squbs.httpclient.config.{Configuration}
-import org.squbs.httpclient.env._
-
-
-case class Elevation(location: Location, elevation: Double)
-case class Location(lat: Double, lng: Double)
-case class GoogleApiResult[T](status: String, results: List[T])
-
+import spray.httpx.PipelineException
 
 /**
- * Created by hakuang on 5/12/2014.
+ * Created by hakuang on 7/22/2014.
  */
-@Ignore
-class HttpClientSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
+class HttpClientSpec extends FlatSpec with DummyService with Matchers with BeforeAndAfterAll{
 
-  private implicit val system = ActorSystem("HttpClientSpec")
+  implicit val system = ActorSystem("HttpClient2Spec")
   import system.dispatcher
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
+
   override def beforeAll {
-    EndpointRegistry.register(new GoogleMapEndpointResolver())
-    EndpointRegistry.register(new GoogleMapHttpsEndpointResolver())
-    EndpointRegistry.register(new GoogleMap2EndpointResolverMarkdown())
-    EndpointRegistry.register(new GoogleMapNotExistingEndpointResolver())
+    EndpointRegistry.register(DummyServiceEndpointResolver)
+    startDummyService(system)
   }
 
   override def afterAll {
+    HttpClientFactory.getOrCreate("DummyService").post[String]("/stop", Some(""))
     EndpointRegistry.endpointResolvers.clear
+    EnvironmentRegistry.environmentResolvers.clear
     HttpClientFactory.httpClientMap.clear
-    IO(Http).ask(Http.CloseAll)(1.second).await
+    IO(Http).ask(Http.CloseAll)(3.second).await
     system.shutdown()
   }
 
-  "HttpClientFactory.getOrCreate('googlemap').get(uri) with correct endpoint" should "get StatusCodes.OK" in {
-    val response = HttpClientFactory.getOrCreate("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  "HttpClient with correct Endpoint calling get" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").get("/view")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (true)
+    result.content.get.entity.data.nonEmpty should be (true)
+    result.content.get.entity.data.asString should be (fullTeamJson)
+  }
+
+  "HttpClient with correct Endpoint calling getEntity" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").getEntity[Team]("/view")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.content should be (Right(fullTeam))
+    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
+  }
+
+  "HttpClient with correct Endpoint calling head" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").head("/view")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (false)
+  }
+
+  "HttpClient with correct Endpoint calling headEntity" should "get the correct response" in {
+    a[PipelineException] should be thrownBy {
+      val response = HttpClientFactory.getOrCreate("DummyService").headEntity[Team]("/view")
+      Await.result(response, 3 seconds)
+    }
+  }
+
+  "HttpClient with correct Endpoint calling options" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").options("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
     result.content.get.entity.data.nonEmpty should be (true)
   }
 
-  "User could use third party endpoint as the service name directly" should "get StatusCodes.OK" in {
-    val response = HttpClientFactory.getOrCreate("http://maps.googleapis.com/maps").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  "HttpClient with correct Endpoint calling optionsEntity" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").optionsEntity[Team]("/view")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.content should be (Right(fullTeam))
+    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
+  }
+
+  "HttpClient with correct Endpoint calling delete" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").delete("/del/4")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
     result.content.get.entity.data.nonEmpty should be (true)
+    result.content.get.entity.data.asString should be (fullTeamWithDelJson)
   }
 
-  "Update HttpClient" should "get the updated value" in {
-    val httpClient = HttpClientFactory.getOrCreate("googlemap")
-    httpClient.name should be ("googlemap")
-    httpClient.env should be (Default)
-    httpClient.pipeline should be (None)
-    val config = Configuration()
-    val updatedHttpClient = httpClient.updateConfig(config)
-    updatedHttpClient.name should be ("googlemap")
-    updatedHttpClient.env should be (Default)
-    updatedHttpClient.pipeline should be (None)
+  "HttpClient with correct Endpoint calling deleteEntity" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").deleteEntity[Team]("/del/4")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.content should be (Right(fullTeamWithDel))
+    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
   }
 
-  "HttpClientFactory.getOrCreate('googlemap').get(uri) with correct endpoint (sleep 10s)" should "get restablish the connection and return StatusCodes.OK" in {
+  "HttpClient with correct Endpoint calling post" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").post[Employee]("/add", Some(newTeamMember))
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (true)
+    result.content.get.entity.data.nonEmpty should be (true)
+    result.content.get.entity.data.asString should be (fullTeamWithAddJson)
+  }
+
+  "HttpClient with correct Endpoint calling postEnitty" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").postEntity[Employee, Team]("/add", Some(newTeamMember))
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.status should be (StatusCodes.OK)
+    result.content should be (Right(fullTeamWithAdd))
+    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
+  }
+
+  "HttpClient with correct Endpoint calling put" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").put[Employee]("/add", Some(newTeamMember))
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (true)
+    result.content.get.entity.data.nonEmpty should be (true)
+    result.content.get.entity.data.asString should be (fullTeamWithAddJson)
+  }
+
+  "HttpClient with correct Endpoint calling putEnitty" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").putEntity[Employee, Team]("/add", Some(newTeamMember))
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.status should be (StatusCodes.OK)
+    result.content should be (Right(fullTeamWithAdd))
+    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
+  }
+
+  "HttpClient could be use endpoint as service name directly without registry endpoint resolvers, major target for third party service call" should "get the correct response" in {
+    val response = HttpClientFactory.getOrCreate("http://localhost:9999").get("/view")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (true)
+    result.content.get.entity.data.nonEmpty should be (true)
+    result.content.get.entity.data.asString should be (fullTeamJson)
+  }
+
+  "HttpClient update configuration" should "get the correct behaviour" in {
+    val httpClient = HttpClientFactory.getOrCreate("DummyService")
+    val newConfig = Configuration(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 11))
+    httpClient.updateConfig(newConfig)
+    EndpointRegistry.resolve("DummyService") should be (Some(Endpoint("http://localhost:9999", newConfig)))
+    httpClient.updateConfig(Configuration())
+    EndpointRegistry.resolve("DummyService") should be (Some(Endpoint("http://localhost:9999")))
+  }
+
+  "HttpClient update pipeline" should "get the correct behaviour" in {
+    val httpClient = HttpClientFactory.getOrCreate("DummyService")
+    httpClient.updatePipeline(Some(DummyRequestPipeline)).pipeline should be (Some(DummyRequestPipeline))
+    httpClient.updatePipeline(None).pipeline should be (None)
+  }
+
+  "HttpClient with the correct endpoint sleep 10s" should "restablish the connection and get response" in {
     Thread.sleep(10000)
-    val response = HttpClientFactory.getOrCreate("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    val response = HttpClientFactory.getOrCreate("DummyService").get("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
     result.content.get.entity.data.nonEmpty should be (true)
+    result.content.get.entity.data.asString should be (fullTeamJson)
   }
 
-  "HttpClientFactory.getOrCreate('googlemaphttps').get(uri) with correct endpoint" should "get StatusCodes.OK" in {
-    val response = HttpClientFactory.getOrCreate("googlemaphttps").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
-    val result = Await.result(response, 3 seconds)
-    result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-  }
-
-  "HttpClientFactory.getOrCreate('googlemap').get(uri) with not existing uri" should "get StatusCodes.NotFound" in {
-    val client = HttpClientFactory.getOrCreate("googlemap")
-    val response = client.get("/api/elev")
-    client.markUP
+  "HttpClient with correct endpoint calling get with not existing uri" should "get StatusCodes.NotFound" in {
+    val response = HttpClientFactory.getOrCreate("DummyService").get("/notExisting")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.NotFound)
   }
 
-  "Markdown HttpClient" should "throw out HttpClientException" in {
-    val client = HttpClientFactory.getOrCreate("googlemap2")
-    client.markDown
-    val response = client.get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  "HttpClient with not existing endpoint" should "get StatusCodes.NotFound" in {
+    val response = HttpClientFactory.getOrCreate("NotExistingService").get("/notExisting")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.NotFound)
+  }
+
+  "MarkDown/MarkUp HttpClient" should "have the correct behaviour" in {
+    val httpClient = HttpClientFactory.getOrCreate("DummyService")
+    httpClient.markDown
+    val response = httpClient.get("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (HttpClientException.httpClientMarkDownError)
     result.content.isLeft should be (true)
-    result.content should be (Left(HttpClientMarkDownException("googlemap2")))
+    result.content should be (Left(HttpClientMarkDownException("DummyService")))
+    httpClient.markUp
+    val updatedResponse = httpClient.get("/view")
+    val updatedResult = Await.result(updatedResponse, 3 seconds)
+    updatedResult.status should be (StatusCodes.OK)
+    updatedResult.content.get.entity.nonEmpty should be (true)
+    updatedResult.content.get.entity.data.nonEmpty should be (true)
+    updatedResult.content.get.entity.data.asString should be (fullTeamJson)
   }
-
-  "HttpClientFactory.getOrCreate('googlemap').getEntity(uri) with correct endpoint" should "get correct Unmarshaller value" in {
-    val response = HttpClientFactory.getOrCreate("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
-    val result = Await.result(response, 3 seconds)
-    result.status should be (StatusCodes.OK)
-    result.content should be (Right(GoogleApiResult[Elevation]("OK", List[Elevation](Elevation(Location(27.988056,86.925278), 8815.7158203125)))))
-    result.rawHttpResponse.get.entity.nonEmpty should be (true)
-    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
-  }
-
-  "HttpClientFactory.getOrCreate('googlemap').getEntity(uri) with correct endpoint" should "get correct Unmarshaller value onComplete" in {
-    val response = HttpClientFactory.getOrCreate("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
-    response onComplete {
-      case Success(HttpResponseEntityWrapper(code, Right(r), rawResponse)) =>
-        code should be (StatusCodes.OK)
-        r.isInstanceOf[GoogleApiResult[Elevation]] should be (true)
-        r.asInstanceOf[GoogleApiResult[Elevation]] should be (GoogleApiResult[Elevation]("OK", List[Elevation](Elevation(Location(27.988056,86.925278), 8815.7158203125))))
-    }
-  }
-
-  "HttpClientFactory.getOrCreate('googlemaphttps').getEntity(uri) with correct endpoint" should "get correct Unmarshaller value" in {
-    val response = HttpClientFactory.getOrCreate("googlemaphttps").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
-    val result = Await.result(response, 3 seconds)
-    result.status should be (StatusCodes.OK)
-    result.content should be (Right(GoogleApiResult[Elevation]("OK", List[Elevation](Elevation(Location(27.988056,86.925278), 8815.7158203125)))))
-    result.rawHttpResponse.get.entity.nonEmpty should be (true)
-    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
-  }
-
-  "HttpClientFactory.getOrCreate('googlemap').getEntity(uri) with wrong uri" should "get StatusCodes.NotFound" in {
-    val response = HttpClientFactory.getOrCreate("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elev")
-    val result = Await.result(response, 3 seconds)
-    result.status should be (StatusCodes.NotFound)
-  }
-
-  "HttpClientFactory.getOrCreate('googlemapnotexisting').getEntity(uri) with not existing endpoint" should "throw out ConnectionAttemptFailedException" in {
-    val response = HttpClientFactory.getOrCreate("googlemapnotexisting").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
-    response onComplete {
-      case Failure(e) =>
-        e.isInstanceOf[ConnectionAttemptFailedException] should be (true)
-        e.getMessage should be ("Connection attempt to www.googlemapnotexisting.com:80 failed")
-    }
-  }
-}
-
-class GoogleMapEndpointResolver extends EndpointResolver {
-  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-    if (svcName == name)
-      Some(Endpoint("http://maps.googleapis.com/maps"))
-    else
-      None
-  }
-
-  override def name: String = "googlemap"
-}
-
-class GoogleMapHttpsEndpointResolver extends EndpointResolver {
-  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-    if (svcName == name)
-      Some(Endpoint("https://maps.googleapis.com/maps"))
-    else
-      None
-  }
-
-  override def name: String = "googlemaphttps"
-}
-
-class GoogleMap2EndpointResolverMarkdown extends EndpointResolver {
-  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-    if (svcName == name)
-      Some(Endpoint("http://maps.googleapis.com/maps"))
-    else
-      None
-  }
-
-  override def name: String = "googlemap2"
-}
-
-class GoogleMapNotExistingEndpointResolver extends EndpointResolver {
-  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-    if (svcName == name)
-      Some(Endpoint("http://www.googlemapnotexisting.com"))
-    else
-      None
-  }
-
-  override def name: String = "googlemapnotexisting"
 }

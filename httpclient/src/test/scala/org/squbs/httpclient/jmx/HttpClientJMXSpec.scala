@@ -2,30 +2,27 @@ package org.squbs.httpclient.jmx
 
 import org.scalatest._
 import org.squbs.httpclient.{HttpClientFactory}
-import org.squbs.httpclient.endpoint.{Endpoint, EndpointResolver, EndpointRegistry}
+import org.squbs.httpclient.endpoint.{EndpointResolver, EndpointRegistry}
 import akka.actor.ActorSystem
-import org.squbs.httpclient.pipeline.Pipeline
-import spray.client.pipelining._
 import scala.concurrent.duration._
 import org.squbs.httpclient.config.Configuration
-import org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler
-import org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler
-import spray.http.HttpHeaders.RawHeader
-import spray.can.Http.ClientConnectionType.Proxied
-import scala.Some
 import akka.io.IO
 import spray.can.Http
 import akka.pattern._
 import spray.util._
 import spray.can.client.{ClientConnectionSettings, HostConnectorSettings}
-import org.squbs.httpclient.env.{Default, Environment}
+import org.squbs.httpclient.env._
+import org.squbs.httpclient.endpoint.Endpoint
+import spray.can.Http.ClientConnectionType.Proxied
+import scala.Some
+import org.squbs.httpclient.dummy.{DummyProdEnvironmentResolver, DummyServiceEndpointResolver, DummyRequestResponsePipeline}
 
 /**
  * Created by hakuang on 6/10/2014.
  */
 class HttpClientJMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach with BeforeAndAfterAll{
 
-  private implicit val system = ActorSystem("JMXSpec")
+  private implicit val system = ActorSystem("HttpClientJMXSpec")
 
   override def beforeEach = {
     EndpointRegistry.register(new EndpointResolver {
@@ -36,6 +33,7 @@ class HttpClientJMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach w
 
   override def afterEach = {
     EndpointRegistry.endpointResolvers.clear
+    EnvironmentRegistry.environmentResolvers.clear
     HttpClientFactory.httpClientMap.clear
   }
 
@@ -53,7 +51,7 @@ class HttpClientJMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach w
   }
 
   "HttpClient with pipeline" should "show up the correct value of HttpClientBean" in {
-    HttpClientFactory.getOrCreate("hello3", pipeline = Some(RequestResponsePipeline))
+    HttpClientFactory.getOrCreate("hello3", pipeline = Some(DummyRequestResponsePipeline))
     HttpClientFactory.getOrCreate("hello4")
     HttpClientBean.getHttpClientInfo.size should be (2)
     findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello3") should be (HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler$$anonfun$processRequest$1","org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler$$anonfun$processResponse$1"))
@@ -69,13 +67,25 @@ class HttpClientJMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach w
     findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello6") should be (HttpClientInfo("hello6", "default", "http://www.ebay.com", "DOWN", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
   }
 
+  "HttpClient Endpoint Resolver Info" should "show up the correct value of EndpointResolverBean" in {
+    EndpointRegistry.register(DummyServiceEndpointResolver)
+    EndpointResolverBean.getHttpClientEndpointResolverInfo.size should be (2)
+    EndpointResolverBean.getHttpClientEndpointResolverInfo.get(0).position should be (0)
+    EndpointRegistry.resolve("DummyService") should be (Some(Endpoint("http://localhost:9999")))
+    EndpointResolverBean.getHttpClientEndpointResolverInfo.get(0).resolver should be ("org.squbs.httpclient.dummy.DummyServiceEndpointResolver$")
+  }
+
+  "HttpClient Environment Resolver Info" should "show up the correct value of EnvironmentResolverBean" in {
+    EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo.size should be (0)
+    EnvironmentRegistry.register(DummyProdEnvironmentResolver)
+    EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo.size should be (1)
+    EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo.get(0).position should be (0)
+    EnvironmentRegistry.resolve("abc") should be (PROD)
+    EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo.get(0).resolver should be ("org.squbs.httpclient.dummy.DummyProdEnvironmentResolver$")
+  }
+
   def findHttpClientBean(beans: java.util.List[HttpClientInfo], name: String): HttpClientInfo = {
     import scala.collection.JavaConversions._
     beans.toList.find(_.name == name).get
   }
-}
-
-object RequestResponsePipeline extends Pipeline {
-  override def requestPipelines: Seq[RequestTransformer] = Seq[RequestTransformer](RequestAddHeaderHandler(RawHeader("request1-name", "request1-value")).processRequest)
-  override def responsePipelines: Seq[ResponseTransformer] = Seq[ResponseTransformer](ResponseAddHeaderHandler(RawHeader("response1-name", "response1-value")).processResponse)
 }
