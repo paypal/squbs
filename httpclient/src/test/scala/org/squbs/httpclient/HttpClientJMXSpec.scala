@@ -1,11 +1,9 @@
-package org.squbs.httpclient.jmx
+package org.squbs.httpclient
 
 import org.scalatest._
-import org.squbs.httpclient.{HttpClientFactory}
 import org.squbs.httpclient.endpoint.{EndpointResolver, EndpointRegistry}
 import akka.actor.ActorSystem
 import scala.concurrent.duration._
-import org.squbs.httpclient.config.Configuration
 import akka.io.IO
 import spray.can.Http
 import akka.pattern._

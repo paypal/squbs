@@ -21,7 +21,7 @@ case class HttpClientEndpointNotExistException(svcName: String, env: Environment
   extends HttpClientException(903, s"HttpClient:($svcName,$env) endpoint cannot be resolved!")
 
 case class HttpClientConfigurationTypeException(svcName: String, env: Environment = Default)
-  extends HttpClientException(904, s"HttpClient:($svcName,$env) configuration type error, configuration type should be org.squbs.httpclient.config.Configuration")
+  extends HttpClientException(904, s"HttpClient:($svcName,$env) configuration type error, configuration type should be org.squbs.httpclient.Configuration")
 
 object HttpClientException {
   val httpClientMarkDownError = StatusCodes.registerCustom(900, "HttpClient has been markdown!", "HttpClient has been markdown!", false, false)

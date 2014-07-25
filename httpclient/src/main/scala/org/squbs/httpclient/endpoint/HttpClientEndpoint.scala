@@ -2,14 +2,21 @@ package org.squbs.httpclient.endpoint
 
 import scala.collection.mutable.ListBuffer
 import org.slf4j.LoggerFactory
-import org.squbs.httpclient.config.Configuration
 import org.squbs.httpclient.env.{Default, Environment}
+import org.squbs.httpclient.Configuration
 
 /**
  * Created by hakuang on 5/9/2014.
  */
 
 case class Endpoint(uri: String, config: Configuration = Configuration())
+
+object Endpoint {
+
+  def check(endpoint: String) = {
+    require(endpoint.toLowerCase.startsWith("http://") || endpoint.toLowerCase.startsWith("https://"), "service should be start with http:// or https://")
+  }
+}
 
 trait EndpointResolver {
   

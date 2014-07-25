@@ -2,7 +2,7 @@ package org.squbs.httpclient.pipeline
 
 import spray.httpx.{UnsuccessfulResponseException, PipelineException}
 import spray.client.pipelining._
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorSystem}
 import spray.httpx.unmarshalling._
 import scala.concurrent.{ExecutionContext, Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global

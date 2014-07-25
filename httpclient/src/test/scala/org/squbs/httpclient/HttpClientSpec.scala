@@ -12,7 +12,6 @@ import scala.concurrent.duration._
 import spray.util._
 import scala.concurrent.Await
 import spray.http.StatusCodes
-import org.squbs.httpclient.config.Configuration
 import org.squbs.httpclient.endpoint.Endpoint
 import org.squbs.httpclient.dummy.Employee
 import scala.Some

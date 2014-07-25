@@ -117,14 +117,10 @@ httpClient.markUp
 
 #### Use HttpClient Make HTTP Call
 
-get:
-
 ```java
 val response:Future[HttpResponseWrapper] = client.get(uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
-
-post:
 
 ```java
 val response:Future[HttpResponseWrapper] = client.post[T](uri: String, content: Some[T])
@@ -132,30 +128,21 @@ val response:Future[HttpResponseWrapper] = client.post[T](uri: String, content: 
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Post Content
 
-put:
-
 ```java
 val response:Future[HttpResponseWrapper] = client.put[T](uri: String, content: Some[T])
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Put Content
 
-head:
-
 ```java
 val response:Future[HttpResponseWrapper] = client.head(uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 
-delete:
-
 ```java
 val response:Future[HttpResponseWrapper] = client.delete(uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
-
-
-options:
 
 ```java
 val response:Future[HttpResponseWrapper] = client.options(uri: String)
@@ -166,15 +153,11 @@ val response:Future[HttpResponseWrapper] = client.options(uri: String)
 
 User need to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
 
-getEntity:
-
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = client.getEntity[R](uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 - R(Mandatory): Unmarshall Object
-
-postEntity:
 
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = client.postEntity[T, R](uri: String, content: Some[T])
@@ -183,8 +166,6 @@ val response: Future[HttpResponseEntityWrapper[R]] = client.postEntity[T, R](uri
 - T(Mandatory): Post Content
 - R(Mandatory): Unmarshall Object
 
-putEntity:
-
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = client.putEntity[T, R](uri: String, content: Some[T])
 ```
@@ -192,23 +173,17 @@ val response: Future[HttpResponseEntityWrapper[R]] = client.putEntity[T, R](uri:
 - T(Mandatory): Put Content
 - R(Mandatory): Unmarshall Object
 
-headEntity:
-
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = client.headEntity[R](uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 - R(Mandatory): Unmarshall Object
 
-deleteEntity:
-
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = client.deleteEntity[R](uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 - R(Mandatory): Unmarshall Object
-
-optionsEntity:
 
 ```java
 val response: Future[HttpResponseEntityWrapper[R]] = client.optionsEntity[R](uri: String)
@@ -220,8 +195,6 @@ val response: Future[HttpResponseEntityWrapper[R]] = client.optionsEntity[R](uri
 ### Pipeline
 
 Pipeline provide a way for user to provide request/response pipeline when calling service.
-
-e.g.
  
 ```java
 object DummyRequestResponsePipeline extends Pipeline {

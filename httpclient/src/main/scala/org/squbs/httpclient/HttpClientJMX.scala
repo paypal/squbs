@@ -1,11 +1,10 @@
-package org.squbs.httpclient.jmx
+package org.squbs.httpclient
 
 import java.beans.ConstructorProperties
 import scala.beans.BeanProperty
 import javax.management.{ObjectName, MXBean}
 import org.squbs.httpclient.endpoint.{EndpointResolver, Endpoint, EndpointRegistry}
 import org.squbs.httpclient.pipeline.EmptyPipeline
-import org.squbs.httpclient.{ConfigurationSupport, HttpClientFactory, Client}
 import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
 import java.util
 import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
@@ -81,7 +80,7 @@ object HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
   def mapToHttpClientInfo(httpClient: Client) = {
     val name = httpClient.name
     val env  = httpClient.env.lowercaseName
-    val endpoint = EndpointRegistry.resolve(name).getOrElse(Endpoint("")).uri
+    val endpoint = EndpointRegistry.resolve(name, httpClient.env).getOrElse(Endpoint("")).uri
     val status = httpClient.status.toString
     val configuration = config(httpClient)
     val pipelines = httpClient.pipeline.getOrElse(EmptyPipeline)
