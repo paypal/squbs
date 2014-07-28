@@ -1,6 +1,7 @@
 package org.squbs.unicomplex
 
 import java.io.{FileInputStream, InputStreamReader, Reader, File}
+import java.util.concurrent.TimeUnit
 import java.util.{TimerTask, Timer}
 import java.util.jar.JarFile
 
@@ -9,19 +10,22 @@ import akka.routing.FromConfig
 import akka.util.Timeout
 import akka.pattern.ask
 import com.typesafe.config._
-import org.squbs.lifecycle.ExtensionLifecycle
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
-import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Await}
 import scala.util.{Try, Success, Failure}
+
+import org.slf4j.LoggerFactory
+import org.squbs.lifecycle.ExtensionLifecycle
 
 import ConfigUtil._
 import UnicomplexBoot.Cube
 
 object UnicomplexBoot {
+
+  private lazy val log = LoggerFactory.getLogger(this.getClass)
 
   final val extConfigDirKey = "squbs.external-config-dir"
   final val actorSystemNameKey = "squbs.actorsystem-name"
@@ -60,18 +64,18 @@ object UnicomplexBoot {
   }
 
   def getFullConfig(addOnConfig: Option[Config]): Config = {
+    val baseConfig = ConfigFactory.load()
     // 1. See whether add-on config is there.
     addOnConfig match {
       case Some(config) =>
-        ConfigFactory.load(config)
+        ConfigFactory.load(config withFallback baseConfig)
       case None =>
-        val baseConfig = ConfigFactory.load()
         // Sorry, the configDir is used to read the file. So it cannot be read from this config file.
         val configDir = new File(baseConfig.getString(extConfigDirKey))
         val configFile = new File(configDir, "application")
         val parseOptions = ConfigParseOptions.defaults().setAllowMissing(true)
         val config = ConfigFactory.parseFileAnySyntax(configFile, parseOptions)
-        if (config.entrySet.isEmpty) baseConfig else ConfigFactory.load(config)
+        if (config.entrySet.isEmpty) baseConfig else ConfigFactory.load(config withFallback baseConfig)
     }
   }
 
@@ -87,7 +91,7 @@ object UnicomplexBoot {
 
     // Read listener and alias information.
     val (activeAliases, activeListeners, missingAliases) = findListeners(boot.config, cubeList)
-    missingAliases foreach { name => System.err.println(s"Requested listener $name not found!") }
+    missingAliases foreach { name => log.warn(s"Requested listener $name not found!") }
     boot.copy(cubes = cubeList, jarConfigs = jarConfigs, jarNames = jarNames,
       listeners = activeListeners, listenerAliases = activeAliases)
   }
@@ -132,7 +136,7 @@ object UnicomplexBoot {
 
     } catch {
       case e: Exception =>
-        println(s"${e.getClass.getName} reading configuration from $jarName : $fileName.\n ${e.getMessage}")
+        log.info(s"${e.getClass.getName} reading configuration from $jarName : $fileName.\n ${e.getMessage}")
         None
     } finally {
       configReader match {
@@ -214,7 +218,7 @@ object UnicomplexBoot {
     val cubeSupervisor = actorSystem.actorOf(Props[CubeSupervisor], alias)
     Unicomplex(actorSystem).uniActor ! CubeRegistration(alias, symName, version, cubeSupervisor)
 
-    def startActor(actorConfig: Config): (String, String, String, Class[_]) = {
+    def startActor(actorConfig: Config): Option[(String, String, String, Class[_])] = {
       val className = actorConfig getString "class-name"
       val name = actorConfig getOptionalString "name" getOrElse (className substring (className.lastIndexOf('.') + 1))
       val withRouter = actorConfig getOptionalBoolean "with-router" getOrElse false
@@ -229,65 +233,94 @@ object UnicomplexBoot {
 
         // Send the props to be started by the cube.
         cubeSupervisor ! StartCubeActor(props, name, initRequired)
-        (symName, alias, version, clazz)
+        Some((symName, alias, version, clazz))
       } catch {
         case e: Exception =>
           val t = getRootCause(e)
-          println(s"Can't load actor: $className.\n" +
+          log.warn(s"Can't load actor: $className.\n" +
             s"Cube: $symName $version\n" +
             s"Path: $jarPath\n" +
             s"${t.getClass.getName}: ${t.getMessage}")
           t.printStackTrace()
-          null
+          None
       }
     }
 
-    def startRoute(routeConfig: Config): (String, String, String, Class[_]) =
+    def startServiceRoute(clazz: Class[_], webContext: String, listeners: Seq[String]) = {
       try {
-        val clazz = Class.forName(routeConfig.getString("class-name"), true, getClass.getClassLoader)
-        val routeClass = clazz.asSubclass(classOf[RouteDefinition])
-        val webContext = routeConfig.getString("web-context")
-        val listeners = routeConfig.getOptionalStringList("listeners").fold(Seq("default-listener"))({ list =>
-
-          val listenerMapping = list collect {
-            case entry if entry != "*" => (entry, aliases get entry)
-          }
-
-          listenerMapping foreach {
-            // Make sure we report any missing listeners
-            case (entry, None) =>
-              System.err.println(s"WARN: Listener $entry required by $symName is not configured. Ignoring.")
-            case _ =>
-          }
-
-          if (list contains "*") aliases.values.toSeq.distinct
-          else listenerMapping collect { case (entry, Some(listener)) => listener }
-        })
-
+        val routeClass = clazz asSubclass classOf[RouteDefinition]
         val props = Props(classOf[RouteActor], webContext, routeClass)
-
-        cubeSupervisor ! StartCubeService(webContext, listeners, props, webContext + "-route", initRequired = true)
-        (symName, alias, version, clazz)
+        val actorName = if (webContext.length > 0) webContext + "-route" else "root-route"
+        cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, initRequired = true)
+        Some((symName, alias, version, clazz))
       } catch {
+        case e: ClassCastException => None
+      }
+    }
+
+    def startServiceActor(clazz: Class[_], webContext: String, listeners: Seq[String],
+                          initRequired: Boolean) = {
+      try {
+        val actorClass = clazz asSubclass classOf[Actor]
+        val props = Props(actorClass)
+        val actorName = if (webContext.length > 0) webContext + "-handler" else "root-handler"
+        cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, initRequired)
+        Some((symName, alias, version, actorClass))
+      } catch {
+        case e: ClassCastException => None
+      }
+    }
+
+    def startService(serviceConfig: Config): Option[(String, String, String, Class[_])] =
+    try {
+      val className = serviceConfig.getString("class-name")
+      val clazz = Class.forName(serviceConfig.getString("class-name"), true, getClass.getClassLoader)
+
+      val webContext = serviceConfig.getString("web-context")
+
+      val listeners = serviceConfig.getOptionalStringList("listeners").fold(Seq("default-listener"))({ list =>
+
+        val listenerMapping = list collect {
+          case entry if entry != "*" => (entry, aliases get entry)
+        }
+
+        listenerMapping foreach {
+          // Make sure we report any missing listeners
+          case (entry, None) =>
+            log.warn(s"Listener $entry required by $symName is not configured. Ignoring.")
+          case _ =>
+        }
+
+        if (list contains "*") aliases.values.toSeq.distinct
+        else listenerMapping collect { case (entry, Some(listener)) => listener }
+      })
+
+      val service = startServiceRoute(clazz, webContext, listeners) orElse startServiceActor(
+        clazz, webContext, listeners, serviceConfig getOptionalBoolean "init-required" getOrElse false)
+
+      if (service == None) throw new ClassCastException(s"Class $className is neither a RouteDefinition nor an Actor.")
+      service
+
+    } catch {
         case e: Exception =>
           val t = getRootCause(e)
-          println(s"Can't load route definition $routeConfig.\n" +
+          log.warn(s"Can't load service definition $serviceConfig.\n" +
             s"Cube: $symName $version\n" +
             s"Path: $jarPath\n" +
             s"${t.getClass.getName}: ${t.getMessage}")
           t.printStackTrace()
-          null
+          None
       }
 
     val actorConfigs = components.getOrElse(StartupType.ACTORS, Seq.empty)
     val routeConfigs = components.getOrElse(StartupType.SERVICES, Seq.empty)
 
     val actorInfo = actorConfigs map startActor
-    val routeInfo = routeConfigs map startRoute
+    val routeInfo = routeConfigs map startService
 
     cubeSupervisor ! Started // Tell the cube all actors to be started are started.
-    println(s"Started cube $symName $version")
-    actorInfo ++ routeInfo
+    log.info(s"Started cube $symName $version")
+    (actorInfo ++ routeInfo) collect { case Some(component) => component }
   }
 
   def configuredListeners(config: Config): Map[String, Config] = {
@@ -299,7 +332,7 @@ object UnicomplexBoot {
     val listenerMap = mutable.Map.empty[String, Config]
     listeners foreach { case (name, cfg) =>
         listenerMap.get(name) match {
-          case Some(_) => System.err.println(s"WARN: Duplicate listener $name already declared. Ignoring.")
+          case Some(_) => log.warn(s"Duplicate listener $name already declared. Ignoring.")
           case None => listenerMap += name -> cfg
         }
     }
@@ -321,8 +354,7 @@ object UnicomplexBoot {
     } {
       aliasMap.get(alias) match {
         case Some(l) =>
-          System.err.println(s"WARN: Duplicate alias $alias for listener $listener already declared for listener $l. " +
-            "Ignoring.")
+          log.warn(s"Duplicate alias $alias for listener $listener already declared for listener $l. Ignoring.")
         case None => aliasMap += alias -> listener
       }
     }
@@ -359,7 +391,7 @@ object UnicomplexBoot {
     Await.ready(Future.sequence(ackFutures), timeout.duration)
 
     val elapsed = (System.nanoTime - startTime) / 1000000
-    println(s"Web Service started in $elapsed milliseconds")
+    log.info(s"Web Service started in $elapsed milliseconds")
   }
 
   private[unicomplex] def getRootCause(e: Exception) = {
@@ -411,13 +443,13 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
     } .sortBy (_._2)
 
     // preInit extensions
-    val extensions = initSeq map (preInitExtension _).tupled filter (_ != null)
+    val extensions = initSeq map (preInitExtension _).tupled collect { case Some(extension) => extension }
 
     // Init extensions
     extensions foreach {
       case (symName, version, extLifecycle) =>
         extLifecycle.init()
-        println(s"Started extension ${extLifecycle.getClass.getName} in $symName $version")
+        log.info(s"Started extension ${extLifecycle.getClass.getName} in $symName $version")
     }
 
     copy(extensions = extensions)
@@ -462,7 +494,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
     uniActor ! Started
 
     // Start all actors
-    val actors = cubes.map(startComponents(_, listenerAliases)).flatten.filter(_ != null)
+    val actors = cubes.map(startComponents(_, listenerAliases)).flatten
 
     // Start the service infrastructure if services are enabled and registered.
     if (startServices) startServiceInfra(this)
@@ -474,8 +506,8 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
       implicit val timeout = startupTimeout
       val stateFuture = Unicomplex(actorSystem).uniActor ? Activate
       Try(Await.result(stateFuture, timeout.duration)) match {
-        case Success(Active) => println(s"[$actorSystemName] activated")
-        case _ => println(s"WARN:[$actorSystemName] initialization failed.")
+        case Success(Active) => log.info(s"[$actorSystemName] activated")
+        case _ => log.warn(s"[$actorSystemName] initialization failed.")
       }
     }
 
@@ -503,15 +535,15 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
         Future {
           extensions.reverse foreach { case (symName, version, extLifecycle) =>
             extLifecycle.shutdown()
-            println(s"Shutting down extension ${extLifecycle.getClass.getName} in $symName $version")
+            log.info(s"Shutting down extension ${extLifecycle.getClass.getName} in $symName $version")
           }
         } onComplete {
           case Success(result) =>
-            println(s"ActorSystem ${actorSystem.name} shutdown complete")
+            log.info(s"ActorSystem ${actorSystem.name} shutdown complete")
             if (stopJVM) System.exit(0)
 
           case Failure(e) =>
-            println(s"Error occurred during shutdown extensions: $e")
+            log.error(s"Error occurred during shutdown extensions: $e")
             if (stopJVM) System.exit(-1)
         }
       }
@@ -519,21 +551,21 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
   }
 
   def preInitExtension(seqNo: Int, className: String, symName: String, version: String, jarPath: String):
-                      (String, String, ExtensionLifecycle) = {
+                      Option[(String, String, ExtensionLifecycle)] = {
     try {
       val clazz = Class.forName(className, true, getClass.getClassLoader)
       val extLifecycle = ExtensionLifecycle(this) { clazz.asSubclass(classOf[ExtensionLifecycle]).newInstance }
       extLifecycle.preInit()
-      (symName, version, extLifecycle)
+      Some((symName, version, extLifecycle))
     } catch {
       case e: Exception =>
         val t = getRootCause(e)
-        println(s"Can't load extension $className.\n" +
+        log.warn(s"Can't load extension $className.\n" +
           s"Cube: $symName $version\n" +
           s"Path: $jarPath\n" +
           s"${t.getClass.getName}: ${t.getMessage}")
         t.printStackTrace()
-        null
+        None
     }
   }
 }
