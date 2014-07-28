@@ -37,7 +37,7 @@ trait Client {
 
   val pipeline: Option[Pipeline]
 
-  val endpoint = EndpointRegistry.resolve(name, env)
+  var endpoint = EndpointRegistry.resolve(name, env)
 
   def markUp = {
     status = Status.UP
@@ -75,8 +75,7 @@ trait RetrySupport {
 
 trait ConfigurationSupport {
   def config(client: Client) = {
-    val endpoint = EndpointRegistry.resolve(client.name, client.env)
-    endpoint match {
+    client.endpoint match {
       case Some(endpoint) =>
         endpoint.config
       case None =>
@@ -193,14 +192,14 @@ case class HttpClient(name: String,
 
   def client: Client = this
 
-  def updatePipeline(pipeline: Option[Pipeline] = None): Client = {
-    val httpClient = HttpClient(name, env, pipeline)
-    HttpClientFactory.httpClientMap.put((name,env),httpClient)
-    httpClient
-  }
+//  def updatePipeline(pipeline: Option[Pipeline] = None): Client = {
+//    val httpClient = HttpClient(name, env, pipeline)
+//    HttpClientFactory.httpClientMap.put((name,env),httpClient)
+//    httpClient
+//  }
 
   def updateConfig(config: Configuration): Client = {
-    EndpointRegistry.updateConfig(name, env, config)
+    EndpointRegistry.updateConfig(this, config)
     this
   }
 }
