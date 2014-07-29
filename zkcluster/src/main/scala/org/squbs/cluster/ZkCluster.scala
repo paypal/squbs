@@ -287,7 +287,9 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
     partitionWatchers += segment -> partitionWatcher
 
-    self ! ZkPartitionsChanged(segment, partitionsToMembers)
+    if (partitionsToMembers.nonEmpty) {
+      self ! ZkPartitionsChanged(segment, partitionsToMembers)
+    }
 
     partitionsToMembers.keySet
   }
