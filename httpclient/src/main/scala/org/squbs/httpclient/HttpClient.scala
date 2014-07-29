@@ -11,14 +11,12 @@ import scala.annotation.tailrec
 import org.squbs.httpclient.pipeline.{Pipeline, PipelineManager}
 import scala.util.Failure
 import scala.Some
-import org.squbs.httpclient.config.{Configuration}
 import scala.util.Success
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.Duration
 import spray.http.HttpRequest
 import org.slf4j.LoggerFactory
 import org.squbs.httpclient.env.{EnvironmentRegistry, Default, Environment}
-import org.squbs.httpclient.jmx.HttpClientJMX
 
 /**
  * Created by hakuang on 5/9/14.
@@ -39,7 +37,7 @@ trait Client {
 
   val pipeline: Option[Pipeline]
 
-  val endpoint = EndpointRegistry.resolve(name, env)
+  var endpoint = EndpointRegistry.resolve(name, env)
 
   def markUp = {
     status = Status.UP
@@ -77,8 +75,7 @@ trait RetrySupport {
 
 trait ConfigurationSupport {
   def config(client: Client) = {
-    val endpoint = EndpointRegistry.resolve(client.name, client.env)
-    endpoint match {
+    client.endpoint match {
       case Some(endpoint) =>
         endpoint.config
       case None =>
@@ -191,18 +188,18 @@ case class HttpClient(name: String,
                       pipeline: Option[Pipeline] = None) extends Client with HttpClientSupport {
 
   require(endpoint != None, "endpoint should be resolved!")
-  require(endpoint.get.uri.toLowerCase.startsWith("http://") || endpoint.get.uri.toLowerCase.startsWith("https://"), "endpoint should be start with http:// or https://")
+  Endpoint.check(endpoint.get.uri)
 
   def client: Client = this
 
-  def updatePipeline(pipeline: Option[Pipeline] = None): Client = {
-    val httpClient = HttpClient(name, env, pipeline)
-    HttpClientFactory.httpClientMap.put((name,env),httpClient)
-    httpClient
-  }
+//  def updatePipeline(pipeline: Option[Pipeline] = None): Client = {
+//    val httpClient = HttpClient(name, env, pipeline)
+//    HttpClientFactory.httpClientMap.put((name,env),httpClient)
+//    httpClient
+//  }
 
   def updateConfig(config: Configuration): Client = {
-    EndpointRegistry.updateConfig(name, env, config)
+    EndpointRegistry.updateConfig(this, config)
     this
   }
 }

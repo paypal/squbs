@@ -1,11 +1,9 @@
-package org.squbs.httpclient.jmx
+package org.squbs.httpclient
 
 import org.scalatest._
-import org.squbs.httpclient.{HttpClientFactory}
 import org.squbs.httpclient.endpoint.{EndpointResolver, EndpointRegistry}
 import akka.actor.ActorSystem
 import scala.concurrent.duration._
-import org.squbs.httpclient.config.Configuration
 import akka.io.IO
 import spray.can.Http
 import akka.pattern._
@@ -15,7 +13,8 @@ import org.squbs.httpclient.env._
 import org.squbs.httpclient.endpoint.Endpoint
 import spray.can.Http.ClientConnectionType.Proxied
 import scala.Some
-import org.squbs.httpclient.dummy.{DummyProdEnvironmentResolver, DummyServiceEndpointResolver, DummyRequestResponsePipeline}
+import org.squbs.httpclient.dummy.{DummyService, DummyProdEnvironmentResolver, DummyServiceEndpointResolver, DummyRequestResponsePipeline}
+import DummyService._
 
 /**
  * Created by hakuang on 6/10/2014.
@@ -71,7 +70,7 @@ class HttpClientJMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach w
     EndpointRegistry.register(DummyServiceEndpointResolver)
     EndpointResolverBean.getHttpClientEndpointResolverInfo.size should be (2)
     EndpointResolverBean.getHttpClientEndpointResolverInfo.get(0).position should be (0)
-    EndpointRegistry.resolve("DummyService") should be (Some(Endpoint("http://localhost:9999")))
+    EndpointRegistry.resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
     EndpointResolverBean.getHttpClientEndpointResolverInfo.get(0).resolver should be ("org.squbs.httpclient.dummy.DummyServiceEndpointResolver$")
   }
 

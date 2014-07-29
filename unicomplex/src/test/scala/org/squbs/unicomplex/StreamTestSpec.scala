@@ -7,17 +7,14 @@ import org.scalatest.concurrent.AsyncAssertions
 import scala.util.Try
 import java.util.concurrent.TimeUnit
 import org.squbs._
-import spray.httpx.marshalling._
 import spray.client.HttpDialog
 import scala.Some
 import akka.pattern._
 import scala.concurrent.duration._
 import org.squbs.lifecycle.GracefulStop
-import org.squbs.unicomplex.streamCube._
 import spray.json._
 import spray.client.pipelining._
 import spray.http._
-import spray.httpx.unmarshalling._
 import spray.util._
 import spray.can.Http
 import akka.actor._
@@ -92,35 +89,21 @@ with AsyncAssertions {
       val fileLength = actorFile.length()
       log.debug (s"akka-actor file=$actorFile size=$fileLength")
       val chunks = HttpData (actorFile).toChunkStream(65000)
-      val parts = chunks.zipWithIndex.flatMap { case (httpData, index) => Seq(BodyPart(HttpEntity(httpData), s"${streamCube.PARTNAME_SEGMENT}$index"))} toSeq
+      val parts = chunks.zipWithIndex.flatMap { case (httpData, index) => Seq(BodyPart(HttpEntity(httpData), s"segment-$index"))} toSeq
 
 
-      val req = streamCube.Create ("/a/b/123", 10.days.fromNow.time.toMillis,
-        Some(List(
-          SetAttrs (Map("a1"->AttributeValue("v1"), "a2"->AttributeValue("v2")))
-        )),
-        Some(List(
-          ModifyMetadata ("0", List(SetAttrs (Map("sa1"->AttributeValue("sv1"), "sa2"->AttributeValue("sv2")))), Some(false)),
-          ModifyMetadata ("1", List(SetAttrs (Map("sa21"->AttributeValue("sv21"), "sa22"->AttributeValue("sv22")))), Some(false))
-        )))
+      val multipartFormData = MultipartFormData ( parts)
 
-      log.debug(s"Submitting request ${req.toJson.prettyPrint}")
-
-      val multipartFormData = MultipartFormData (BodyPart(marshalUnsafe(req), streamCube.PARTNAME_REQUEST) +: parts)
       val uploadResult = HttpDialog(connector)
         .send(Post(uri = "/streamsvc/file-upload", content = multipartFormData))
         .end
-        .map(_.entity.as[streamCube.CreateResult] match {
-        case Right (res) => res
-        case Left (err) => throw new RuntimeException (err.toString)
-      })
         .await(timeout)
 
       log.debug(s"file-upload result: $uploadResult")
-      uploadResult.parts.size should be(parts.length)
-      uploadResult.bytesReceived should be(fileLength)
-      //ChunkedRequestHandler.chunkCount should be (parts.length)
-      //ChunkedRequestHandler.byteCount should be(fileLength)
+
+      ChunkedRequestHandler.byteCount should be(fileLength)
+      ChunkedRequestHandler.chunkCount should be (parts.length)
+
 
     }
   }

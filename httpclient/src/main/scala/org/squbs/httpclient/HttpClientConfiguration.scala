@@ -1,4 +1,4 @@
-package org.squbs.httpclient.config
+package org.squbs.httpclient
 
 import spray.can.client.HostConnectorSettings
 import spray.can.Http.ClientConnectionType

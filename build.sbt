@@ -8,6 +8,10 @@ publishArtifact := false
 
 addCommandAlias("coverage", "scoverage:test")
 
+ScoverageKeys.minimumCoverage := 70
+
+ScoverageKeys.failOnMinimumCoverage := true
+
 parallelExecution in ScoverageTest := false
 
 lazy val unicomplex = project
@@ -15,6 +19,6 @@ lazy val unicomplex = project
 lazy val zkcluster = project dependsOn unicomplex
 
 
-lazy val httpclient = project
+lazy val httpclient = project dependsOn unicomplex
 
 lazy val testkit = project dependsOn unicomplex
