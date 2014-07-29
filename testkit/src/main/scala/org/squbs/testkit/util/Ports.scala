@@ -1,10 +1,8 @@
-package org.squbs.util.availabilities
+package org.squbs.testkit.util
 
 import java.net.{DatagramSocket, ServerSocket}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
-
-import scala.annotation.tailrec
 
 /**
  * Created by huzhou on 6/26/14.

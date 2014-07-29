@@ -3,7 +3,6 @@ package org.squbs.unicomplex
 import java.lang.management.ManagementFactory
 import java.util.concurrent.TimeUnit
 import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.io.IO
 import akka.testkit.{ImplicitSender, TestKit}
@@ -13,10 +12,8 @@ import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import org.squbs.unicomplex.dummyextensions.DummyExtension
-import org.squbs.util.availabilities.Ports
 import spray.can.Http
 import spray.http._
-
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -41,7 +38,7 @@ object UnicomplexSpec {
     Map(
       "squbs.actorsystem-name"    -> "unicomplexSpec",
       "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-port" -> Ports.available(lower = 18888, upper = 35000).toString
+      "default-listener.bind-port" -> org.squbs.nextPort.toString
     )
   )
 
