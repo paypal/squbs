@@ -7,8 +7,7 @@ import scala.concurrent.duration._
 import spray.http._
 import spray.http.HttpHeaders.RawHeader
 import java.net.InetAddress
-import org.squbs.util.availabilities.Ports
-
+import org.squbs.testkit.util.Ports
 
 /**
 * Created by hakuang on 7/10/2014.
