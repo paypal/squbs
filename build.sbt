@@ -21,3 +21,5 @@ lazy val zkcluster = project dependsOn unicomplex
 lazy val httpclient = project dependsOn (unicomplex, testkit)
 
 lazy val testkit = project dependsOn unicomplex
+
+lazy val pattern = project dependsOn testkit

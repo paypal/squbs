@@ -1,7 +1,7 @@
 package org.squbs.pattern
 
 import org.zeromq.ZMQ
-import org.squbs._
+import org.squbs.testkit.util.Ports
 import akka.actor.{ActorContext, Props, ActorSystem}
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.ByteString
@@ -18,7 +18,7 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with Implicit
 
   test("test router/dealer socket"){
 
-    val port = nextPort
+    val port = Ports.available(2888, 5000)
     val routerActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.ROUTER, None, None, None)))
 
     routerActor ! Identity("zmq-router")
@@ -37,7 +37,7 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with Implicit
 
   test("test pub/sub socket"){
 
-    val port = nextPort
+    val port = Ports.available(2888, 5000)
     val pubActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.PUB, None, None, None)))
 
     pubActor ! Identity("zmq-pub")
@@ -60,7 +60,7 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with Implicit
 
   test("test push/pull socket"){
 
-    val port = nextPort
+    val port = Ports.available(2888, 5000)
     val pushActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.PUSH, None, None, None)))
 
     pushActor ! Identity("zmq-push")
@@ -82,7 +82,7 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with Implicit
 
   test("test pair/pair socket"){
 
-    val port = nextPort
+    val port = Ports.available(2888, 5000)
     val oneActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.PAIR, Some((zEnvelop:ZEnvelop, context:ActorContext) => {
       self ! "got it"
     }), None, None)))
@@ -105,7 +105,7 @@ class ZSocketActorSpec extends TestKit(ActorSystem("testZSocket")) with Implicit
 
   test("test req/rep socket"){
 
-    val port = nextPort
+    val port = Ports.available(2888, 5000)
     val reqActor = system.actorOf(Props(ZSocketOnAkka(ZMQ.REQ, Some((zEnvelop:ZEnvelop, context:ActorContext) => {
       self ! "got it"
     }), None, None)))

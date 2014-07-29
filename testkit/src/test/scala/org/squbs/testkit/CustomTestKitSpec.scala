@@ -10,6 +10,7 @@ import dispatch._
 import scala.concurrent.Await
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Seconds, Span}
+import org.squbs.testkit.util.Ports
 
 class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatSpecLike with Matchers with Eventually {
 
@@ -31,7 +32,7 @@ object CustomTestKitSpec {
 
   import collection.JavaConversions._
 
-  val port = 8888
+  val port = Ports.available(3888, 5000)
 
   val testConfig = ConfigFactory.parseMap(
     Map(

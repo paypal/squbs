@@ -14,8 +14,7 @@ import scala.annotation.tailrec
  * The aggregator is to be mixed into an actor for the aggregator behavior.
  */
 trait Aggregator {
-  this: Actor ⇒
-
+  this: Actor =>
   private var processing = false
   private val expectList = WorkList.empty[Actor.Receive]
   private val addBuffer = WorkList.empty[Actor.Receive]
@@ -57,7 +56,7 @@ trait Aggregator {
    * Receive function for handling the aggregations.
    */
   def receive: Actor.Receive = {
-    case msg if handleMessage(msg) ⇒ // already dealt with in handleMessage
+    case msg if handleMessage(msg) => // already dealt with in handleMessage
   }
 
   /**
@@ -68,9 +67,9 @@ trait Aggregator {
   def handleMessage(msg: Any): Boolean = {
     processing = true
     try {
-      expectList process { fn ⇒
+      expectList process { fn =>
         var processed = true
-        fn.applyOrElse(msg, (_: Any) ⇒ processed = false)
+        fn.applyOrElse(msg, (_: Any) => processed = false)
         processed
       }
     } finally {
@@ -157,7 +156,7 @@ class WorkList[T] {
    * @param processFn The processing function, returns true if processing succeeds.
    * @return true if an entry has been processed, false if no entries are processed successfully.
    */
-  def process(processFn: T ⇒ Boolean): Boolean = {
+  def process(processFn: T => Boolean): Boolean = {
 
     @tailrec
     def process(parent: Entry[T], entry: Entry[T]): Boolean = {
