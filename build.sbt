@@ -14,12 +14,12 @@ ScoverageKeys.failOnMinimumCoverage := true
 
 parallelExecution in ScoverageTest := false
 
-lazy val unicomplex = project
+lazy val `squbs-unicomplex` = project
 
-lazy val zkcluster = project dependsOn unicomplex
+lazy val `squbs-zkcluster` = project dependsOn `squbs-unicomplex`
 
-lazy val httpclient = project dependsOn (unicomplex, testkit)
+lazy val `squbs-httpclient` = project dependsOn (`squbs-unicomplex`, `squbs-testkit`)
 
-lazy val testkit = project dependsOn unicomplex
+lazy val `squbs-testkit` = project dependsOn `squbs-unicomplex`
 
-lazy val pattern = project dependsOn testkit
+lazy val `squbs-pattern` = project dependsOn `squbs-testkit`
