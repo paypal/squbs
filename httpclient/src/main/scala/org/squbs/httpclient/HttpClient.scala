@@ -192,14 +192,9 @@ case class HttpClient(name: String,
 
   def client: Client = this
 
-//  def updatePipeline(pipeline: Option[Pipeline] = None): Client = {
-//    val httpClient = HttpClient(name, env, pipeline)
-//    HttpClientFactory.httpClientMap.put((name,env),httpClient)
-//    httpClient
-//  }
-
-  def updateConfig(config: Configuration): Client = {
-    EndpointRegistry.updateConfig(this, config)
+  def updateConfig(config: Configuration): HttpClient = {
+    endpoint = Some(Endpoint(endpoint.get.uri, config))
+    HttpClientFactory.httpClientMap.put((name, env), this)
     this
   }
 }

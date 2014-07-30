@@ -20,7 +20,7 @@ import spray.httpx.RequestBuilding.Delete
 import spray.httpx.RequestBuilding.Head
 import spray.httpx.RequestBuilding.Get
 import org.squbs.httpclient.env.Environment
-import org.squbs.httpclient.endpoint.EndpointRegistry
+import org.squbs.httpclient.endpoint.{Endpoint}
 import org.squbs.httpclient.HttpClientManagerMessage._
 import org.squbs.httpclient.HttpClientActorMessage._
 import scala.util.Failure
@@ -212,7 +212,10 @@ class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport wi
     case UpdateConfig(conf) =>
       HttpClientManager.httpClientMap.get(client.name, client.env) match {
         case Some(_) =>
-          EndpointRegistry.updateConfig(client, conf)
+          client.endpoint = client.endpoint match {
+            case Some(endpoint) => Some(Endpoint(endpoint.uri, conf))
+            case None => None
+          }
           HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
           sender ! UpdateHttpClientSuccess
         case None    =>
