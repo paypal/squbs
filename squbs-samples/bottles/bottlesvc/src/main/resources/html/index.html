@@ -1,0 +1,22 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Bottle Events</title>
+</head>
+<body style="font-family:Verdana,Arial,sans-serif;">
+<h3 style="color:red;">Kudos to <a href="http://99-bottles-of-beer.net/" target="_">http://99-bottles-of-beer.net/</a></h3>
+<div id="eventDisplay" style="color:blue;">Waiting</div>
+<script>
+var target = document.getElementById("eventDisplay");
+var source = new EventSource('/bottles/events');
+source.addEventListener('lyric', function(e) {
+	var lyric = e.data.split('\n').join('<br/>');
+	target.innerHTML = lyric;
+}, false);
+source.addEventListener('streamEnd', function(e) {
+	source.close();
+}, false);
+</script>
+</body>
+</html>
