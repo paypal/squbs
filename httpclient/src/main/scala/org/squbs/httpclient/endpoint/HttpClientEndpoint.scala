@@ -74,18 +74,10 @@ object EndpointRegistry {
   def updateConfig(client: Client, configuration: Configuration) = {
     val serviceName = client.name
     val serviceEnv = client.env
-    route(serviceName, serviceEnv) match {
-      case Some(existResolver) =>
-        val position = endpointResolvers.indexOf(existResolver)
-        endpointResolvers.update(position, new EndpointResolver {
-          override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-            val endpoint = existResolver.resolve(svcName,env).get
-            val newEndpoint = Some(Endpoint(endpoint.uri, configuration))
-            client.endpoint = newEndpoint
-            newEndpoint
-          }
-          override def name: String = existResolver.name
-        })
+    client.endpoint match {
+      case Some(endpoint) =>
+        val newEndpoint = Some(Endpoint(endpoint.uri, configuration))
+        client.endpoint = newEndpoint
       case None =>
         logger.warn(s"There isn't any existing endpoint resolver which can resolve ($serviceName, $serviceEnv), ignore the update!")
     }
