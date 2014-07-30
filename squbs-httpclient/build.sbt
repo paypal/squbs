@@ -1,7 +1,7 @@
 import org.scalastyle.sbt.ScalastylePlugin._
 import de.johoop.findbugs4sbt.FindBugs._
 
-name := "httpclient"
+name := "squbs-httpclient"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka"         %% "akka-actor"                   % "2.3.2",

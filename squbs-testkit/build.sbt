@@ -1,4 +1,4 @@
-name := "testkit"
+name := "squbs-testkit"
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.1.0",

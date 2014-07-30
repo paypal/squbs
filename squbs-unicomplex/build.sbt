@@ -1,6 +1,6 @@
 import de.johoop.findbugs4sbt.FindBugs._
 
-name := "pattern"
+name := "squbs-unicomplex"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
@@ -21,12 +21,12 @@ libraryDependencies ++= Seq(
 
 findbugsSettings
 
-// findbugsExcludeFilters := Some(scala.xml.XML.loadFile (baseDirectory.value / "findbugsExclude.xml"))
+findbugsExcludeFilters := Some(scala.xml.XML.loadFile (baseDirectory.value / "findbugsExclude.xml"))
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
-// (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/pattern")
+(testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/unicomplex")
 
 instrumentSettings
 
-// parallelExecution in ScoverageTest := false
+parallelExecution in ScoverageTest := false
