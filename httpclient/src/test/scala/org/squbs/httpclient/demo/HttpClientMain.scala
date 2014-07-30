@@ -23,7 +23,7 @@ import org.squbs.httpclient.env.{Environment, Default}
 /**
  * Traditional API using get
  */
-object HttpClientMain1 extends App {
+object HttpClientMain1 extends App with HttpClientTestKit {
 
   private implicit val system = ActorSystem("HttpClientMain1")
   import system.dispatcher
@@ -33,25 +33,20 @@ object HttpClientMain1 extends App {
   response onComplete {
     case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
       println("Success, response entity is: " + res.entity.asString)
-      shutdown
+      shutdownActorSystem
     case Success(HttpResponseWrapper(code, _)) =>
       println("Success, the status code is: " + code)
-      shutdown
+      shutdownActorSystem
     case Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
-      shutdown
-  }
-
-  def shutdown() {
-    IO(Http).ask(Http.CloseAll)(1.second).await
-    system.shutdown()
+      shutdownActorSystem
   }
 }
 
 /**
  * Traditional API using getEntity
  */
-object HttpClientMain2 extends App {
+object HttpClientMain2 extends App with HttpClientTestKit{
 
   private implicit val system = ActorSystem("HttpClientMain2")
   import system.dispatcher
@@ -62,18 +57,13 @@ object HttpClientMain2 extends App {
   response onComplete {
     case Success(HttpResponseEntityWrapper(StatusCodes.OK, Right(res), rawHttpResponse)) =>
       println("Success, response status is: " + res.status + ", elevation is: " + res.results.head.elevation + ", location.lat is: " + res.results.head.location.lat)
-      shutdown
+      shutdownActorSystem
     case Success(HttpResponseEntityWrapper(code, _, _)) =>
       println("Success, the status code is: " + code)
-      shutdown
+      shutdownActorSystem
     case Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
-      shutdown
-  }
-
-  def shutdown() {
-    IO(Http).ask(Http.CloseAll)(1.second).await
-    system.shutdown()
+      shutdownActorSystem
   }
 }
 

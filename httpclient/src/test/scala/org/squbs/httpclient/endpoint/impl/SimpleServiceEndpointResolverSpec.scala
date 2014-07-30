@@ -2,13 +2,17 @@ package org.squbs.httpclient.endpoint.impl
 
 import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpec}
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
-import org.squbs.httpclient.Configuration
+import org.squbs.httpclient.{HttpClientTestKit, Configuration}
 import javax.net.ssl.SSLContext
 
 /**
  * Created by hakuang on 7/23/2014.
  */
-class SimpleServiceEndpointResolverSpec extends FlatSpec with Matchers with BeforeAndAfterAll{
+class SimpleServiceEndpointResolverSpec extends FlatSpec with HttpClientTestKit with Matchers with BeforeAndAfterAll{
+
+  override def afterAll = {
+    clearHttpClient
+  }
 
   "SimpleServiceEndpintResolver" should "have the correct behaviour" in {
     val simpleResolver = SimpleServiceEndpointResolver("simple", Map[String, Configuration](

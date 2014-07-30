@@ -21,7 +21,7 @@ import DummyService._
 /**
  * Created by hakuang on 7/22/2014.
  */
-class HttpClientSpec extends FlatSpec with DummyService with Matchers with BeforeAndAfterAll{
+class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
 
   implicit val system = ActorSystem("HttpClientSpec")
   import system.dispatcher
@@ -34,12 +34,8 @@ class HttpClientSpec extends FlatSpec with DummyService with Matchers with Befor
   }
 
   override def afterAll {
-//    HttpClientFactory.getOrCreate("DummyService").post[String]("/stop", Some(""))
-    EndpointRegistry.endpointResolvers.clear
-    EnvironmentRegistry.environmentResolvers.clear
-    HttpClientFactory.httpClientMap.clear
-    IO(Http).ask(Http.CloseAll)(30.second).await
-    system.shutdown()
+    clearHttpClient
+    shutdownActorSystem
   }
 
   "HttpClient with correct Endpoint calling get" should "get the correct response" in {

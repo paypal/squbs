@@ -2,10 +2,9 @@ package org.squbs.httpclient.pipeline
 
 import spray.httpx.{UnsuccessfulResponseException, PipelineException}
 import spray.client.pipelining._
-import akka.actor.{ActorSystem}
+import akka.actor.{ActorRef, ActorSystem}
 import spray.httpx.unmarshalling._
 import scala.concurrent.{ExecutionContext, Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
 import org.squbs.httpclient._
 import spray.http.{Uri, HttpRequest, HttpResponse}
 import org.squbs.httpclient.HttpResponseEntityWrapper
@@ -48,10 +47,11 @@ object EmptyPipeline extends Pipeline {
 
 trait PipelineManager extends ConfigurationSupport{
 
+  import ExecutionContext.Implicits.global
+
   private def pipelining(client: Client)(implicit actorSystem: ActorSystem) = {
 
     implicit val connectionTimeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
-    import ExecutionContext.Implicits.global
     for (
       Http.HostConnectorInfo(connector, _) <-
       IO(Http) ? hostConnectorSetup(client)
@@ -85,6 +85,28 @@ trait PipelineManager extends ConfigurationSupport{
     Try{
       val futurePipeline = pipelining(client)
       val pipeline = Await.result(futurePipeline, connTimeout)
+      (reqPipelines, resPipelines, client.status) match {
+        case (_, _, Status.DOWN) =>
+          throw new HttpClientMarkDownException(client.name, client.env)
+        case (Seq(), Seq(), _) =>
+          pipeline ~> withWrapper
+        case (Seq(), _: Seq[ResponseTransformer], _) =>
+          pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> withWrapper
+        case (_: Seq[RequestTransformer], Seq(), _) =>
+          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> withWrapper
+        case (_: Seq[RequestTransformer], _: Seq[ResponseTransformer], _) =>
+          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> withWrapper
+      }
+    }
+  }
+
+  def invokeToHttpResponseWithoutSetup(client: Client, actorRef: ActorRef)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseWrapper])] = {
+    val pipelines = client.pipeline.getOrElse(EmptyPipeline)
+    val reqPipelines = pipelines.requestPipelines
+    val resPipelines = pipelines.responsePipelines
+    implicit val timeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
+    val pipeline = spray.client.pipelining.sendReceive(actorRef)
+    Try{
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, Status.DOWN) =>
           throw new HttpClientMarkDownException(client.name, client.env)

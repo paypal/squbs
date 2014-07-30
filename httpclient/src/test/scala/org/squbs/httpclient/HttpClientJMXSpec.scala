@@ -19,7 +19,7 @@ import DummyService._
 /**
  * Created by hakuang on 6/10/2014.
  */
-class HttpClientJMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach with BeforeAndAfterAll{
+class HttpClientJMXSpec extends FlatSpec with HttpClientTestKit with Matchers with BeforeAndAfterEach with BeforeAndAfterAll{
 
   private implicit val system = ActorSystem("HttpClientJMXSpec")
 
@@ -31,14 +31,11 @@ class HttpClientJMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach w
   }
 
   override def afterEach = {
-    EndpointRegistry.endpointResolvers.clear
-    EnvironmentRegistry.environmentResolvers.clear
-    HttpClientFactory.httpClientMap.clear
+    clearHttpClient
   }
 
   override def afterAll() {
-    IO(Http).ask(Http.CloseAll)(1.second).await
-    system.shutdown()
+    shutdownActorSystem
   }
 
   "HttpClient with svcName" should "show up the correct value of HttpClientBean" in {

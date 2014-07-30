@@ -10,6 +10,8 @@ import java.util
 import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
 import scala.collection.JavaConversions._
 import java.lang.management.ManagementFactory
+import akka.actor.ActorRef
+import org.squbs.httpclient.HttpClientManager
 
 object HttpClientJMX {
 
@@ -73,8 +75,9 @@ object HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
   val httpClientBean = "org.squbs.unicomplex:type=HttpClientInfo"
 
   override def getHttpClientInfo: java.util.List[HttpClientInfo] = {
-    val httpClients = HttpClientFactory.httpClientMap
-    httpClients.values.toList map {mapToHttpClientInfo(_)}
+    val httpClientsFromFactory = HttpClientFactory.httpClientMap.values
+    val httpClientsFromManager = HttpClientManager.httpClientMap.values map {value: (Client, ActorRef) => value._1}
+    (httpClientsFromFactory ++ httpClientsFromManager).toList map {mapToHttpClientInfo(_)}
   }
 
   def mapToHttpClientInfo(httpClient: Client) = {

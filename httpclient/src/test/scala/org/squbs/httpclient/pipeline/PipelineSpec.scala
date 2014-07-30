@@ -1,7 +1,7 @@
 package org.squbs.httpclient.pipeline
 
 import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpec}
-import org.squbs.httpclient.{HttpClientFactory}
+import org.squbs.httpclient.{HttpClientTestKit, HttpClientFactory}
 import akka.actor.ActorSystem
 import akka.io.IO
 import spray.can.Http
@@ -17,7 +17,7 @@ import scala.Some
 import org.squbs.httpclient.endpoint.EndpointRegistry
 import DummyService._
 
-class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeAndAfterAll with PipelineManager{
+class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll with PipelineManager{
 
   implicit val system = ActorSystem("PipelineSpec")
   import system.dispatcher
@@ -29,12 +29,8 @@ class PipelineSpec extends FlatSpec with DummyService with Matchers with BeforeA
   }
 
   override def afterAll = {
-//    HttpClientFactory.getOrCreate("DummyService").post[String]("/stop", Some(""))
-    HttpClientFactory.httpClientMap.clear
-    EnvironmentRegistry.environmentResolvers.clear
-    EndpointRegistry.endpointResolvers.clear
-    IO(Http).ask(Http.CloseAll)(30.second).await
-    system.shutdown()
+    clearHttpClient
+    shutdownActorSystem
   }
 
   "Request Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {

@@ -1,7 +1,7 @@
 package org.squbs.httpclient.endpoint
 
 import org.scalatest.{BeforeAndAfterEach, Matchers, FlatSpec}
-import org.squbs.httpclient.{HttpClientFactory, HttpClientException}
+import org.squbs.httpclient.{HttpClientTestKit, HttpClientFactory, HttpClientException}
 import org.squbs.httpclient.env._
 import scala.Some
 import org.squbs.httpclient.dummy.{DummyLocalhostResolver}
@@ -9,12 +9,10 @@ import org.squbs.httpclient.dummy.{DummyLocalhostResolver}
 /**
  * Created by hakuang on 5/22/2014.
  */
-class HttpClientEndpointSpec extends FlatSpec with Matchers with BeforeAndAfterEach{
+class HttpClientEndpointSpec extends FlatSpec with HttpClientTestKit with Matchers with BeforeAndAfterEach{
 
   override def afterEach = {
-    EndpointRegistry.endpointResolvers.clear
-    EnvironmentRegistry.environmentResolvers.clear
-    HttpClientFactory.httpClientMap.clear
+    clearHttpClient
   }
 
   "EndpointRegistry" should "contain DummyLocalhostResolver" in {
