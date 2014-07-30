@@ -67,7 +67,7 @@ class MultiListenerSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
       """.stripMargin)
     boot = UnicomplexBoot(config)
       .createUsing { (name, config) => ActorSystem(name, config)}
-      .scanComponents(Seq(new File("unicomplex/src/test/resources/classpaths/MultiListeners").getAbsolutePath))
+      .scanComponents(Seq(new File("squbs-unicomplex/src/test/resources/classpaths/MultiListeners").getAbsolutePath))
       .initExtensions
       .start()
   }

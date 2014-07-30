@@ -27,7 +27,7 @@ import org.squbs.unicomplex.streamSvc.ChunkedRequestHandler
  * Created by junjshi on 14-7-18.
  */
 object StreamTestSpec {
-  val dummyJarsDir = "unicomplex/src/test/resources/classpaths"
+  val dummyJarsDir = "squbs-unicomplex/src/test/resources/classpaths"
 
   val classPaths = Array(
     "StreamCube",

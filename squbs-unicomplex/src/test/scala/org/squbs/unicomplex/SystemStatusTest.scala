@@ -11,7 +11,7 @@ import org.squbs.lifecycle.GracefulStop
  */
 object SystemStatusTest {
 
-  val dummyJarsDir = "unicomplex/src/test/resources/classpaths"
+  val dummyJarsDir = "squbs-unicomplex/src/test/resources/classpaths"
 
   val classPaths = Array(
     "InitBlockCube",
