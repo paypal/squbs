@@ -93,6 +93,13 @@ private[cluster] case class ZkClusterData(leader: Option[Address],
                                           segmentsToPartitions: Map[String, Set[ByteString]],
                                           partitionsToMembers: Map[ByteString, Set[Address]])
 
+private[cluster] object ZkClusterData {
+
+  def apply(leader:Option[Address],
+            members: Set[Address],
+            init:(Map[String, Set[ByteString]], Map[ByteString, Set[Address]])) = new ZkClusterData(leader, members, init._1, init._2)
+}
+
 private[cluster] case class ZkLeaderElected(address: Option[Address])
 private[cluster] case class ZkMembersChanged(members: Set[Address])
 private[cluster] case class ZkRebalance(partitionsToMembers: Map[ByteString, Set[Address]])
@@ -541,9 +548,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
     (segmentsToPartitions.mapValues(_.map(partition => ByteString(partition)).toSet), partitionsToMembers)
   }
 
-  private[this] val (segmentsToPartitions, partitionsToMembers) = init
-
-  startWith(ZkClusterUninitialized, ZkClusterData(None, Set.empty, segmentsToPartitions, partitionsToMembers))
+  startWith(ZkClusterUninitialized, ZkClusterData(None, Set.empty, init))
 
   when(ZkClusterUninitialized)(mandatory orElse {
 
@@ -668,7 +673,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
     case Event(origin @ ZkQueryPartition(partitionKey, notification, Some(expectedSize), props, _), zkClusterData) =>
 
       val zkPath = guarantee(partitionZkPath(partitionKey), Some(props), CreateMode.PERSISTENT)
-      partitionsToMembers.get(partitionKey) match {
+      zkClusterData.partitionsToMembers.get(partitionKey) match {
         case Some(members) if members.nonEmpty && members.size == expectedSize =>
           logger.info("[leader] partition already exists:{} -> {}", keyToPath(partitionKey), members)
           //when the partition already exists, use the snapshot partition view, waiting for further notification for members change
