@@ -678,7 +678,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
           log.info("[leader] partition creation:{}", keyToPath(partitionKey))
           //partition is to be recovered
           guarantee(sizeOfParZkPath(partitionKey), Some(expectedSize), CreateMode.PERSISTENT)
-          rebalance(zkClusterData.partitionsToMembers + (partitionKey -> Set.empty), zkClusterData.members) match {
+          rebalance(zkClusterData.partitionsToMembers + (partitionKey -> zkClusterData.partitionsToMembers.getOrElse(partitionKey, Set.empty)), zkClusterData.members) match {
             case Some(rebalanced) =>
               try {
                 stay using zkClusterData.copy(partitionsToMembers = rebalanced)
