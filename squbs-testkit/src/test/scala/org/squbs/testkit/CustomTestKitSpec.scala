@@ -44,7 +44,7 @@ object CustomTestKitSpec {
   )
 
   lazy val boot = UnicomplexBoot(testConfig)
-    .scanComponents(Seq(new File("testkit/src/test/resources/CustomTestKitTest").getAbsolutePath))
+    .scanComponents(Seq(new File("squbs-testkit/src/test/resources/CustomTestKitTest").getAbsolutePath))
     .start()
 }
 
