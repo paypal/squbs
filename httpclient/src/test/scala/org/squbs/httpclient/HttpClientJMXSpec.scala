@@ -63,7 +63,7 @@ class HttpClientJMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach w
     HttpClientFactory.getOrCreate("hello6").markDown
     HttpClientBean.getHttpClientInfo.size should be (2)
     findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello5") should be (HttpClientInfo("hello5", "default", "http://www.ebay.com", "UP", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
-    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello6") should be (HttpClientInfo("hello6", "default", "http://www.ebay.com", "DOWN", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
+    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello6") should be (HttpClientInfo("hello6", "default", "http://www.ebay.com", "DOWN", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient Endpoint Resolver Info" should "show up the correct value of EndpointResolverBean" in {
