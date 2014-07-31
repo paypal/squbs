@@ -6,9 +6,9 @@ import spray.can.Http
 import akka.io.IO
 import org.squbs.httpclient.pipeline.PipelineManager
 import akka.pattern._
-import akka.util.Timeout
+import akka.util.{Timeout}
 import spray.httpx.unmarshalling._
-import spray.httpx.{PipelineException, UnsuccessfulResponseException}
+import spray.httpx.{BaseJson4sSupport, PipelineException, UnsuccessfulResponseException}
 import spray.httpx.marshalling.Marshaller
 import scala.collection.concurrent.TrieMap
 import scala.concurrent._
@@ -124,19 +124,19 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
       context.become(receiveGetConnection(HttpMethods.GET, uri, client, sender()))
     case HttpClientActorMessage.Delete(uri) =>
       IO(Http) ! hostConnectorSetup(client)
-      context.become(receiveGetConnection(HttpMethods.GET, uri, client, sender()))
+      context.become(receiveGetConnection(HttpMethods.DELETE, uri, client, sender()))
     case HttpClientActorMessage.Head(uri) =>
       IO(Http) ! hostConnectorSetup(client)
-      context.become(receiveGetConnection(HttpMethods.GET, uri, client, sender()))
+      context.become(receiveGetConnection(HttpMethods.HEAD, uri, client, sender()))
     case HttpClientActorMessage.Options(uri) =>
       IO(Http) ! hostConnectorSetup(client)
-      context.become(receiveGetConnection(HttpMethods.GET, uri, client, sender()))
-    case HttpClientActorMessage.Put(uri, content) =>
+      context.become(receiveGetConnection(HttpMethods.OPTIONS, uri, client, sender()))
+    case HttpClientActorMessage.Put(uri, content, json4sSupport) =>
       IO(Http) ! hostConnectorSetup(client)
-      context.become(receivePostConnection(HttpMethods.GET, uri, content, client, sender()))
-    case HttpClientActorMessage.Post(uri, content) =>
+      context.become(receivePostConnection(HttpMethods.PUT, uri, content, client, sender(), json4sSupport))
+    case HttpClientActorMessage.Post(uri, content, json4sSupport) =>
       IO(Http) ! hostConnectorSetup(client)
-      context.become(receivePostConnection(HttpMethods.GET, uri, content, client, sender()))
+      context.become(receivePostConnection(HttpMethods.POST, uri, content, client, sender(), json4sSupport))
 
   }
 
@@ -155,18 +155,14 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
       }
   }
 
-  implicit val TMarshaller = tMarshaller(ContentTypes.`application/octet-stream`)
-
-  def tMarshaller(contentType: ContentType): Marshaller[Any] =
-    Marshaller.of[Any](contentType) {
-      (value, _, ctx) ⇒
-      // we marshal to the ContentType given as argument to the method, not the one established by content-negotiation,
-      // since the former is the one belonging to the byte array
-        ctx.marshalTo(HttpEntity(contentType, value.asInstanceOf[String]))
-    }
-
-  def receivePostConnection[T](httpMethod: HttpMethod, uri: String, content: Some[T], client: Client, actorRef: ActorRef): Actor.Receive = {
+  def receivePostConnection[T <: AnyRef](httpMethod: HttpMethod, 
+                                         uri: String, 
+                                         content: Some[T], 
+                                         client: Client, 
+                                         actorRef: ActorRef, 
+                                         json4sSupport: BaseJson4sSupport): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
+      implicit val marshaller = json4sSupport.json4sMarshaller[T]
       implicit val timeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
       httpMethod match {
         case HttpMethods.POST =>
@@ -184,17 +180,17 @@ class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport wi
   private[HttpClientActor] val httpClientCallerActor = context.actorOf(Props(new HttpClientCallerActor(client)))
 
   override def receive: Actor.Receive = {
-    case msg @ HttpClientActorMessage.Get(uri) =>
+    case msg: HttpClientActorMessage.Get =>
       httpClientCallerActor.forward(msg)
-    case msg @ HttpClientActorMessage.Delete(uri) =>
+    case msg: HttpClientActorMessage.Delete =>
       httpClientCallerActor.forward(msg)
-    case msg @ HttpClientActorMessage.Head(uri) =>
+    case msg: HttpClientActorMessage.Head =>
       httpClientCallerActor.forward(msg)
-    case msg @ HttpClientActorMessage.Options(uri) =>
+    case msg: HttpClientActorMessage.Options =>
       httpClientCallerActor.forward(msg)
-    case msg @ HttpClientActorMessage.Put(uri, content) =>
+    case msg@ HttpClientActorMessage.Put(uri, content, json4sSupport) =>
       httpClientCallerActor.forward(msg)
-    case msg @ HttpClientActorMessage.Post(uri, content) =>
+    case msg@ HttpClientActorMessage.Post(uri, content, json4sSupport) =>
       httpClientCallerActor.forward(msg)
     case MarkDown =>
       client.markDown

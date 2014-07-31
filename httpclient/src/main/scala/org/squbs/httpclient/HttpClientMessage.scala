@@ -1,9 +1,9 @@
 package org.squbs.httpclient
 
 import org.squbs.httpclient.pipeline.Pipeline
-import spray.httpx.marshalling.Marshaller
 import scala.Some
 import org.squbs.httpclient.env.{Default, Environment}
+import spray.httpx.BaseJson4sSupport
 
 /**
 * Created by hakuang on 6/18/2014.
@@ -45,7 +45,7 @@ object HttpClientManagerMessage {
   case class Get(name: String, env: Environment = Default)
 
   /**
-   * Success => TrieMap[(String, Environment), (Client, ActorRef)])
+   * Success => TrieMap[(String, Environment), (Client, ActorRef)]
    */
   case object GetAll
 }
@@ -111,21 +111,26 @@ object HttpClientActorMessage {
    */
   case class Delete(uri: String)
 
+
   /**
-   * Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
+    * Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
    * Failure => HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
    * @param uri
    * @param content
+   * @param json4sSupport
    * @tparam T
    */
-  case class Post[T: Marshaller](uri: String, content: Some[T])
+//  case class Post[T: Marshaller](uri: String, content: Some[T], support: BaseJson4sSupport)
+  case class Post[T <: AnyRef](uri: String, content: Some[T], json4sSupport: BaseJson4sSupport = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol)
 
   /**
    * Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
    * Failure => HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
    * @param uri
    * @param content
+   * @param json4sSupport
    * @tparam T
    */
-  case class Put[T: Marshaller](uri: String, content: Some[T])
+//  case class Put[T: Marshaller](uri: String, content: Some[T], support: BaseJson4sSupport)
+  case class Put[T <: AnyRef](uri: String, content: Some[T], json4sSupport: BaseJson4sSupport = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol)
 }

@@ -4,7 +4,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akka.actor.{ActorRef, ActorSystem}
 import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
-import org.squbs.httpclient.dummy.{DummyService, DummyServiceEndpointResolver}
+import org.squbs.httpclient.dummy.{Employee, DummyService, DummyServiceEndpointResolver}
 import org.squbs.httpclient.HttpClientManagerMessage._
 import scala.collection.concurrent.TrieMap
 import org.squbs.httpclient.env.{Default, Environment}
@@ -12,6 +12,8 @@ import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.HttpClientManagerMessage.Create
 import org.squbs.httpclient.HttpClientManagerMessage.Delete
 import scala.Some
+import spray.http.StatusCodes
+import spray.util._
 
 /**
  * Created by hakuang on 7/29/2014.
@@ -63,7 +65,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     HttpClientManager.httpClientMap should be (TrieMap.empty)
   }
 
-  "delete not a existing httpclient" should "return HttpClientNotExistException" in {
+  "delete a not existing httpclient" should "return HttpClientNotExistException" in {
     val httpClientManager = HttpClientManager(system).httpClientManager
     httpClientManager ! Delete("DummyService")
     val existException = expectMsgType[HttpClientNotExistException]
@@ -86,6 +88,98 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     httpClientManager ! Get("DummyService")
     expectMsgType[ActorRef]
     deleteHttpClient("DummyService")
+  }
+
+  "get a not existing httpclient" should "return HttpClientNotExistException" in {
+    val httpClientManager = HttpClientManager(system).httpClientManager
+    httpClientManager ! Get("DummyService")
+    val existException = expectMsgType[HttpClientNotExistException]
+    existException should be (HttpClientNotExistException("DummyService"))
+  }
+
+  "get all existing httpclient" should "return TrieMap[(String, Environment), (Client, ActorRef)]" in {
+    createHttpClient("DummyService")
+    createHttpClient("http://localhost:8080/test")
+    HttpClientManager.httpClientMap.size should be (2)
+    val httpClientManager = HttpClientManager(system).httpClientManager
+    httpClientManager ! GetAll
+    type HttpClientMap = TrieMap[(String, Environment), (Client, ActorRef)]
+    val httpClientMap = expectMsgType[HttpClientMap]
+    httpClientMap.size should be (2)
+    httpClientMap.contains(("DummyService", Default)) should be (true)
+    httpClientMap.contains(("http://localhost:8080/test", Default)) should be (true)
+    deleteHttpClient("DummyService")
+    deleteHttpClient("http://localhost:8080/test")
+  }
+
+  "HttpClientActor with correct endpoint send Get message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Get("/view")
+    val result = expectMsgType[HttpResponseWrapper]
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (true)
+    result.content.get.entity.data.nonEmpty should be (true)
+    result.content.get.entity.data.asString should be (fullTeamJson)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
+  "HttpClientActor with correct endpoint send Head message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Head("/view")
+    val result = expectMsgType[HttpResponseWrapper]
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (false)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
+  "HttpClientActor with correct endpoint send Options message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Options("/view")
+    val result = expectMsgType[HttpResponseWrapper]
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (true)
+    result.content.get.entity.data.nonEmpty should be (true)
+    result.content.get.entity.data.asString should be (fullTeamJson)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
+  "HttpClientActor with correct endpoint send Delete message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Delete("/del/4")
+    val result = expectMsgType[HttpResponseWrapper]
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (true)
+    result.content.get.entity.data.nonEmpty should be (true)
+    result.content.get.entity.data.asString should be (fullTeamWithDelJson)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
+  "HttpClientActor with correct endpoint send Post message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Post[Employee]("/add", Some(newTeamMember))
+    val result = expectMsgType[HttpResponseWrapper]
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (true)
+    result.content.get.entity.data.nonEmpty should be (true)
+    result.content.get.entity.data.asString should be (fullTeamWithAddJson)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
+  "HttpClientActor with correct endpoint send Put message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", Some(newTeamMember))
+    val result = expectMsgType[HttpResponseWrapper]
+    result.status should be (StatusCodes.OK)
+    result.content.get.entity.nonEmpty should be (true)
+    result.content.get.entity.data.nonEmpty should be (true)
+    result.content.get.entity.data.asString should be (fullTeamWithAddJson)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
   def createHttpClient(name: String) = {

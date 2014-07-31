@@ -4,10 +4,6 @@ import org.scalatest.{FlatSpec, Matchers, BeforeAndAfterAll}
 import akka.actor.ActorSystem
 import org.squbs.httpclient.endpoint.{EndpointRegistry}
 import org.squbs.httpclient.dummy._
-import org.squbs.httpclient.env.EnvironmentRegistry
-import akka.io.IO
-import spray.can.Http
-import akka.pattern._
 import scala.concurrent.duration._
 import spray.util._
 import scala.concurrent.Await
@@ -154,12 +150,6 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     EndpointRegistry.resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
     updatedHttpClient.endpoint should be (Some(Endpoint(dummyServiceEndpoint, newConfig)))
   }
-
-//  "HttpClient update pipeline" should "get the correct behaviour" in {
-//    val httpClient = HttpClientFactory.getOrCreate("DummyService")
-//    httpClient.updatePipeline(Some(DummyRequestPipeline)).pipeline should be (Some(DummyRequestPipeline))
-//    httpClient.updatePipeline(None).pipeline should be (None)
-//  }
 
   "HttpClient with the correct endpoint sleep 10s" should "restablish the connection and get response" in {
     Thread.sleep(10000)
