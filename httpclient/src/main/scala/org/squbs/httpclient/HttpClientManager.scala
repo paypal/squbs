@@ -13,16 +13,8 @@ import spray.httpx.marshalling.Marshaller
 import scala.collection.concurrent.TrieMap
 import scala.concurrent._
 import scala.util.Try
-import spray.httpx.RequestBuilding.Options
-import spray.httpx.RequestBuilding.Put
-import spray.httpx.RequestBuilding.Post
-import spray.httpx.RequestBuilding.Delete
-import spray.httpx.RequestBuilding.Head
-import spray.httpx.RequestBuilding.Get
 import org.squbs.httpclient.env.Environment
-import org.squbs.httpclient.endpoint.{Endpoint}
-import org.squbs.httpclient.HttpClientManagerMessage._
-import org.squbs.httpclient.HttpClientActorMessage._
+import org.squbs.httpclient.endpoint.Endpoint
 import scala.util.Failure
 import scala.Some
 import spray.http.HttpResponse
@@ -71,6 +63,7 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
 trait HttpCallActorSupport extends RetrySupport with ConfigurationSupport with PipelineManager {
 
   import ExecutionContext.Implicits.global
+  import spray.httpx.RequestBuilding._
 
   def handle(client: Client,
              pipeline: Try[HttpRequest => Future[HttpResponseWrapper]],
@@ -186,6 +179,8 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
 
 class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport with ActorLogging {
 
+  import org.squbs.httpclient.HttpClientActorMessage._
+
   private[HttpClientActor] val httpClientCallerActor = context.actorOf(Props(new HttpClientCallerActor(client)))
 
   override def receive: Actor.Receive = {
@@ -204,12 +199,12 @@ class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport wi
     case MarkDown =>
       client.markDown
       HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
-      sender ! MarkDownHttpClientSuccess
+      sender ! MarkDownSuccess
     case MarkUp =>
       client.markUp
       HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
-      sender ! MarkUpHttpClientSuccess
-    case UpdateConfig(conf) =>
+      sender ! MarkUpSuccess
+    case Update(conf) =>
       HttpClientManager.httpClientMap.get(client.name, client.env) match {
         case Some(_) =>
           client.endpoint = client.endpoint match {
@@ -217,7 +212,7 @@ class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport wi
             case None => None
           }
           HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
-          sender ! UpdateHttpClientSuccess
+          sender ! UpdateSuccess
         case None    =>
           sender ! HttpClientNotExistException(client.name, client.env)
       }
@@ -225,15 +220,17 @@ class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport wi
       context.stop(httpClientCallerActor)
       context.stop(self)
       HttpClientManager.httpClientMap.remove((client.name, client.env))
-      sender ! CloseHttpClientSuccess
+      sender ! CloseSuccess
   }
 }
 
 class HttpClientManager extends Actor {
 
+  import org.squbs.httpclient.HttpClientManagerMessage._
+
   import HttpClientManager.httpClientMap
   override def receive: Receive = {
-    case client @ CreateHttpClient(name, env, pipeline) =>
+    case client @ Create(name, env, pipeline) =>
       httpClientMap.get((name, env)) match {
         case Some(_) =>
           sender ! HttpClientExistException(name, env)
@@ -242,25 +239,25 @@ class HttpClientManager extends Actor {
           httpClientMap.put((name, env), (client, httpClientActor))
           sender ! httpClientActor
       }
-    case DeleteHttpClient(name, env) =>
+    case Delete(name, env) =>
       httpClientMap.get((name, env)) match {
         case Some(_) =>
           httpClientMap.remove((name, env))
-          sender ! DeleteHttpClientSuccess
+          sender ! DeleteSuccess
         case None    =>
           sender ! HttpClientNotExistException(name, env)
       }
-    case DeleteAllHttpClient =>
+    case DeleteAll =>
       httpClientMap.clear
-      sender ! DeleteAllHttpClientSuccess
-    case GetHttpClient(name, env) =>
+      sender ! DeleteAllSuccess
+    case Get(name, env) =>
       httpClientMap.get((name, env)) match {
         case Some((c, r)) =>
           sender ! r
         case None     =>
           sender ! HttpClientNotExistException(name, env)
       }
-    case GetAllHttpClient =>
+    case GetAll =>
       sender ! httpClientMap
   }
 

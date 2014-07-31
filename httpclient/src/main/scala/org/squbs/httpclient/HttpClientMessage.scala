@@ -17,24 +17,24 @@ object HttpClientManagerMessage {
    * @param env
    * @param pipeline
    */
-  case class CreateHttpClient(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None) extends Client
+  case class Create(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None) extends Client
 
   /**
-   * Success => DeleteHttpClientSuccess
+   * Success => DeleteSuccess
    * Failure => HttpClientNotExistException
    * @param name
    * @param env
    */
-  case class DeleteHttpClient(name: String, env: Environment = Default)
+  case class Delete(name: String, env: Environment = Default)
 
-  case object DeleteHttpClientSuccess
+  case object DeleteSuccess
 
   /**
-   * Success => DeleteAllHttpClientSuccess
+   * Success => DeleteAllSuccess
    */
-  case object DeleteAllHttpClient
+  case object DeleteAll
 
-  case object DeleteAllHttpClientSuccess
+  case object DeleteAllSuccess
 
   /**
    * Success => HttpClientActor
@@ -42,46 +42,46 @@ object HttpClientManagerMessage {
    * @param name
    * @param env
    */
-  case class GetHttpClient(name: String, env: Environment = Default)
+  case class Get(name: String, env: Environment = Default)
 
   /**
    * Success => TrieMap[(String, Environment), (Client, ActorRef)])
    */
-  case object GetAllHttpClient
+  case object GetAll
 }
 
 object HttpClientActorMessage {
 
   /**
-   * Success => UpdateHttpClientSuccess
+   * Success => UpdateSuccess
    * Failure => HttpClientNotExistException
    * @param config
    */
-  case class UpdateConfig(config: Configuration)
+  case class Update(config: Configuration)
 
-  case object UpdateHttpClientSuccess
+  case object UpdateSuccess
 
   /**
-   * Success => MarkDownHttpClientSuccess
+   * Success => MarkDownSuccess
    */
   case object MarkDown
 
-  case object MarkDownHttpClientSuccess
+  case object MarkDownSuccess
 
   /**
-   * Success => MarkUpHttpClientSuccess
+   * Success => MarkUpSuccess
    */
   case object MarkUp
 
-  case object MarkUpHttpClientSuccess
+  case object MarkUpSuccess
 
 
   /**
-   * Success => CloseHttpClientSuccess
+   * Success => CloseSuccess
     */
   case object Close
 
-  case object CloseHttpClientSuccess
+  case object CloseSuccess
 
   /**
    * Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
