@@ -21,7 +21,7 @@ class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatS
 
   it should "return OK" in {
     eventually {
-      val req = url(s"http://localhost:${CustomTestKitSpec.port}/test")
+      val req = url(s"http://127.0.0.1:${CustomTestKitSpec.port}/test")
       val result = Await.result(Http(req OK as.String), 20 second)
       result should include("success")
     }
@@ -44,7 +44,7 @@ object CustomTestKitSpec {
   )
 
   lazy val boot = UnicomplexBoot(testConfig)
-    .scanComponents(Seq(new File("testkit/src/test/resources/CustomTestKitTest").getAbsolutePath))
+    .scanComponents(Seq(new File("squbs-testkit/src/test/resources/CustomTestKitTest").getAbsolutePath))
     .start()
 }
 

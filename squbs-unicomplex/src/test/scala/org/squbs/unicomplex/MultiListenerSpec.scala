@@ -25,9 +25,9 @@ class MultiListenerSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
   var boot: UnicomplexBoot = null
 
   it should "run up two listeners on different ports" in {
-    val req1 = url(s"http://localhost:$port1/multi")
+    val req1 = url(s"http://127.0.0.1:$port1/multi")
     Await.result(Http(req1), 1 second).getStatusCode should be(200)
-    val req2 = url(s"http://localhost:$port2/multi")
+    val req2 = url(s"http://127.0.0.1:$port2/multi")
     Await.result(Http(req2), 1 second).getStatusCode should be(200)
   }
 

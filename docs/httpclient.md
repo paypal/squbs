@@ -95,12 +95,7 @@ Update Configuration:
 
 ```java
 val updatedHttpClient: HttpClient = client.updateConfig(config: Configuration)
-```
-
-Update Pipeline:
-
-```java
-val updatedHttpClient: HttpClient = client.updatePipeline(pipeline: Option[Pipeline] = None)
+val response: Future[HttpResponseWrapper] = updateHttpClient.get(uri)
 ```
 
 #### MarkDown
@@ -118,34 +113,34 @@ httpClient.markUp
 #### Use HttpClient Make HTTP Call
 
 ```java
-val response:Future[HttpResponseWrapper] = client.get(uri: String)
+val response: Future[HttpResponseWrapper] = client.get(uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 
 ```java
-val response:Future[HttpResponseWrapper] = client.post[T](uri: String, content: Some[T])
+val response: Future[HttpResponseWrapper] = client.post[T](uri: String, content: Some[T])
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Post Content
 
 ```java
-val response:Future[HttpResponseWrapper] = client.put[T](uri: String, content: Some[T])
+val response: Future[HttpResponseWrapper] = client.put[T](uri: String, content: Some[T])
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Put Content
 
 ```java
-val response:Future[HttpResponseWrapper] = client.head(uri: String)
+val response: Future[HttpResponseWrapper] = client.head(uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 
 ```java
-val response:Future[HttpResponseWrapper] = client.delete(uri: String)
+val response: Future[HttpResponseWrapper] = client.delete(uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 
 ```java
-val response:Future[HttpResponseWrapper] = client.options(uri: String)
+val response: Future[HttpResponseWrapper] = client.options(uri: String)
 ```
 - uri(Mandatory): Uri for Service Call
 
@@ -256,7 +251,7 @@ HttpClientInfoMXBean:
 - responsePipelines
 
 ```java
-val httpClients = HttpClientBean.getHttpClientInfo
+val httpClients: java.util.List[HttpClientInfo] = HttpClientBean.getHttpClientInfo
 ```
 
 EndpointresolverMXBean:
@@ -264,7 +259,7 @@ EndpointresolverMXBean:
 - resolver
 
 ```java
-val endpointResolvers = EndpointResolverBean.getHttpClientEndpointResolverInfo
+val endpointResolvers: java.util.List[EndpointResolverInfo] = EndpointResolverBean.getHttpClientEndpointResolverInfo
 ```
 
 EnvironmentResolverBean:
@@ -272,5 +267,5 @@ EnvironmentResolverBean:
 - resolver
 
 ```java
-val environmentResolvers = EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo
+val environmentResolvers: java.util.List[EnvironmentResolverInfo] = EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo
 ```

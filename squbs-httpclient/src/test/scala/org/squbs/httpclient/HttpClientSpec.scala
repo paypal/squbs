@@ -154,17 +154,10 @@ class HttpClientSpec extends FlatSpec with DummyService with Matchers with Befor
   "HttpClient update configuration" should "get the correct behaviour" in {
     val httpClient = HttpClientFactory.getOrCreate("DummyService")
     val newConfig = Configuration(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 11))
-    httpClient.updateConfig(newConfig)
-    EndpointRegistry.resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint, newConfig)))
-    httpClient.updateConfig(Configuration())
+    val updatedHttpClient = httpClient.updateConfig(newConfig)
     EndpointRegistry.resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
+    updatedHttpClient.endpoint should be (Some(Endpoint(dummyServiceEndpoint, newConfig)))
   }
-
-//  "HttpClient update pipeline" should "get the correct behaviour" in {
-//    val httpClient = HttpClientFactory.getOrCreate("DummyService")
-//    httpClient.updatePipeline(Some(DummyRequestPipeline)).pipeline should be (Some(DummyRequestPipeline))
-//    httpClient.updatePipeline(None).pipeline should be (None)
-//  }
 
   "HttpClient with the correct endpoint sleep 10s" should "restablish the connection and get response" in {
     Thread.sleep(10000)

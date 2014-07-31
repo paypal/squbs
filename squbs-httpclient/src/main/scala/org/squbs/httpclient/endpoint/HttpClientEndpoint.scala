@@ -3,7 +3,7 @@ package org.squbs.httpclient.endpoint
 import scala.collection.mutable.ListBuffer
 import org.slf4j.LoggerFactory
 import org.squbs.httpclient.env.{Default, Environment}
-import org.squbs.httpclient.{Client, Configuration}
+import org.squbs.httpclient.{Configuration}
 
 /**
  * Created by hakuang on 5/9/2014.
@@ -68,26 +68,6 @@ object EndpointRegistry {
         Some(Endpoint(svcName))
       case _ =>
         None
-    }
-  }
-
-  def updateConfig(client: Client, configuration: Configuration) = {
-    val serviceName = client.name
-    val serviceEnv = client.env
-    route(serviceName, serviceEnv) match {
-      case Some(existResolver) =>
-        val position = endpointResolvers.indexOf(existResolver)
-        endpointResolvers.update(position, new EndpointResolver {
-          override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-            val endpoint = existResolver.resolve(svcName,env).get
-            val newEndpoint = Some(Endpoint(endpoint.uri, configuration))
-            client.endpoint = newEndpoint
-            newEndpoint
-          }
-          override def name: String = existResolver.name
-        })
-      case None =>
-        logger.warn(s"There isn't any existing endpoint resolver which can resolve ($serviceName, $serviceEnv), ignore the update!")
     }
   }
 }

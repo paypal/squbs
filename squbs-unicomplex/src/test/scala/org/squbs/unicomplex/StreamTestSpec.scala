@@ -85,6 +85,9 @@ with AsyncAssertions {
       //val actor_jar_path = System.getProperty("java.class.path").split(java.io.File.pathSeparator).filter(p => p.indexOf("akka-actor") != -1)(0)
       val actor_jar_path = StreamTestSpec.getClass.getResource("/classpaths/StreamSvc/akka-actor_2.10-2.3.2.jar1").getPath
       val actorFile = new java.io.File (actor_jar_path)
+      println("stream file path:"+actor_jar_path)
+      println("Exists:"+actorFile.exists())
+      println("Can Read:"+actorFile.canRead)
       require(actorFile.exists() && actorFile.canRead)
       val fileLength = actorFile.length()
       log.debug (s"akka-actor file=$actorFile size=$fileLength")
