@@ -154,7 +154,7 @@ class HttpClientSpec extends FlatSpec with DummyService with Matchers with Befor
   "HttpClient update configuration" should "get the correct behaviour" in {
     val httpClient = HttpClientFactory.getOrCreate("DummyService")
     val newConfig = Configuration(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 11))
-    val updatedHttpClient = httpClient.updateConfig(newConfig)
+    val updatedHttpClient = httpClient.withConfig(newConfig)
     EndpointRegistry.resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
     updatedHttpClient.endpoint should be (Some(Endpoint(dummyServiceEndpoint, newConfig)))
   }

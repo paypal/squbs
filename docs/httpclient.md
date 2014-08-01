@@ -25,7 +25,7 @@ Squbs Http Client provides the following additional features on top of spray cli
 
 Add below dependencies on your build.sbt or related scala build file
 
-"org.squbs" %% "httpclient" % "0.5.0"
+"org.squbs" %% "httpclient" % squbsVersion
 
 ### EndpointRegistry
 
@@ -94,20 +94,20 @@ val client: HttpClient = HttpClientFactory.getOrCreate(name: String, env: Enviro
 Update Configuration:
 
 ```java
-val updatedHttpClient: HttpClient = client.updateConfig(config: Configuration)
-val response: Future[HttpResponseWrapper] = updateHttpClient.get(uri)
+val client: HttpClient = HttpClientFactory.getOrCreate(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None).withConfig(config: Configuration)
+val response: Future[HttpResponseWrapper] = client.get(uri: String)
 ```
 
 #### MarkDown
 
 ```java
-httpClient.markDown
+client.markDown
 ```
 
 #### MarkUp
 
 ```java
-httpClient.markUp
+client.markUp
 ```
 
 #### Use HttpClient Make HTTP Call
