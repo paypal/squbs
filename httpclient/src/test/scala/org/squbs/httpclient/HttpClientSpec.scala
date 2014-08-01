@@ -20,7 +20,6 @@ import DummyService._
 class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
 
   implicit val system = ActorSystem("HttpClientSpec")
-  import system.dispatcher
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
 

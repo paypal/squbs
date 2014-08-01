@@ -38,24 +38,38 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
 
   override def lookup(): ExtensionId[_ <: Extension] = HttpClientManager
 
-  def unmarshalWithWrapper[T: FromResponseUnmarshaller](response: HttpResponse): HttpResponseEntityWrapper[T] = {
-    if (response.status.isSuccess)
-      response.as[T] match {
-        case Right(value) ⇒ HttpResponseEntityWrapper[T](response.status, Right(value), Some(response))
-        case Left(error) ⇒ HttpResponseEntityWrapper[T](response.status, Left(throw new PipelineException(error.toString)), Some(response))
-      }
-    else HttpResponseEntityWrapper[T](response.status, Left(new UnsuccessfulResponseException(response)), Some(response))
-  }
+//  def unmarshalWithWrapper[T: FromResponseUnmarshaller](response: HttpResponse): HttpResponseEntityWrapper[T] = {
+//    if (response.status.isSuccess)
+//      response.as[T] match {
+//        case Right(value) ⇒ HttpResponseEntityWrapper[T](response.status, Right(value), Some(response))
+//        case Left(error) ⇒ HttpResponseEntityWrapper[T](response.status, Left(throw new PipelineException(error.toString)), Some(response))
+//      }
+//    else HttpResponseEntityWrapper[T](response.status, Left(new UnsuccessfulResponseException(response)), Some(response))
+//  }
+//
+//  def unmarshal[T: FromResponseUnmarshaller](response: HttpResponse): Either[Throwable, T] = {
+//    if (response.status.isSuccess)
+//      response.as[T] match {
+//        case Right(value) ⇒ Right(value)
+//        case Left(error) ⇒ Left(throw new PipelineException(error.toString))
+//      }
+//    else Left(new UnsuccessfulResponseException(response))
+//  }
 
-  def unmarshal[T: FromResponseUnmarshaller](response: HttpResponse): Either[Throwable, T] = {
-    if (response.status.isSuccess)
-      response.as[T] match {
-        case Right(value) ⇒ Right(value)
-        case Left(error) ⇒ Left(throw new PipelineException(error.toString))
-      }
-    else Left(new UnsuccessfulResponseException(response))
+  implicit class HttpResponseUnmarshal(val response: HttpResponse) extends AnyVal {
+
+    def unmarshalTo[T: FromResponseUnmarshaller]: Either[Throwable, T] = {
+      if (response.status.isSuccess)
+        response.as[T] match {
+          case Right(value) ⇒ Right(value)
+          case Left(error) ⇒ Left(throw new PipelineException(error.toString))
+        }
+      else Left(new UnsuccessfulResponseException(response))
+    }
   }
 }
+
+
 
 /**
  * Without setup HttpConnection

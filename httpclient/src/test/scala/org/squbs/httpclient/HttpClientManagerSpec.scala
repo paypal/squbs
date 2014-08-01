@@ -4,7 +4,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akka.actor.{ActorRef, ActorSystem}
 import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
-import org.squbs.httpclient.dummy.{Employee, DummyService, DummyServiceEndpointResolver}
+import org.squbs.httpclient.dummy.{Team, Employee, DummyService, DummyServiceEndpointResolver}
 import org.squbs.httpclient.HttpClientManagerMessage._
 import scala.collection.concurrent.TrieMap
 import org.squbs.httpclient.env.{Default, Environment}
@@ -19,6 +19,8 @@ import spray.util._
  * Created by hakuang on 7/29/2014.
  */
 class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")) with FlatSpecLike with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll with DummyService{
+
+  import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
   override def beforeAll {
     EndpointRegistry.register(DummyServiceEndpointResolver)
@@ -124,6 +126,18 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
+  "HttpClientActor with correct endpoint send Get message and unmarshall HttpResponse" should "get the correct response" in {
+    import HttpClientManager._
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Get("/view")
+    val result = expectMsgType[HttpResponseWrapper]
+    result.status should be (StatusCodes.OK)
+    val httpResponse = result.content.get
+    httpResponse.unmarshalTo[Team] should be (Right(fullTeam))
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
   "HttpClientActor with correct endpoint send Head message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Head("/view")
@@ -146,6 +160,18 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
+  "HttpClientActor with correct endpoint send Options message nad unmarshall HttpResponse" should "get the correct response" in {
+    import HttpClientManager._
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Options("/view")
+    val result = expectMsgType[HttpResponseWrapper]
+    result.status should be (StatusCodes.OK)
+    val httpResponse = result.content.get
+    httpResponse.unmarshalTo[Team] should be (Right(fullTeam))
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
   "HttpClientActor with correct endpoint send Delete message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Delete("/del/4")
@@ -154,6 +180,18 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     result.content.get.entity.nonEmpty should be (true)
     result.content.get.entity.data.nonEmpty should be (true)
     result.content.get.entity.data.asString should be (fullTeamWithDelJson)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
+  "HttpClientActor with correct endpoint send Delete message and unmarshal HttpResponse" should "get the correct response" in {
+    import HttpClientManager._
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Delete("/del/4")
+    val result = expectMsgType[HttpResponseWrapper]
+    result.status should be (StatusCodes.OK)
+    val httpResponse = result.content.get
+    httpResponse.unmarshalTo[Team] should be (Right(fullTeamWithDel))
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
@@ -170,6 +208,18 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
+  "HttpClientActor with correct endpoint send Post message and unmarshal HttpResponse" should "get the correct response" in {
+    import HttpClientManager._
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Post[Employee]("/add", Some(newTeamMember))
+    val result = expectMsgType[HttpResponseWrapper]
+    result.status should be (StatusCodes.OK)
+    val httpResponse = result.content.get
+    httpResponse.unmarshalTo[Team] should be (Right(fullTeamWithAdd))
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
   "HttpClientActor with correct endpoint send Put message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", Some(newTeamMember))
@@ -178,6 +228,18 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     result.content.get.entity.nonEmpty should be (true)
     result.content.get.entity.data.nonEmpty should be (true)
     result.content.get.entity.data.asString should be (fullTeamWithAddJson)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
+  "HttpClientActor with correct endpoint send Put message and unmarshal HttpResponse" should "get the correct response" in {
+    import HttpClientManager._
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", Some(newTeamMember))
+    val result = expectMsgType[HttpResponseWrapper]
+    result.status should be (StatusCodes.OK)
+    val httpResponse = result.content.get
+    httpResponse.unmarshalTo[Team] should be (Right(fullTeamWithAdd))
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
