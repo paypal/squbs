@@ -192,7 +192,7 @@ case class HttpClient(name: String,
 
   def client: Client = this
 
-  def updateConfig(config: Configuration): HttpClient = {
+  def withConfig(config: Configuration): HttpClient = {
     endpoint = Some(Endpoint(endpoint.get.uri, config))
     HttpClientFactory.httpClientMap.put((name, env), this)
     this

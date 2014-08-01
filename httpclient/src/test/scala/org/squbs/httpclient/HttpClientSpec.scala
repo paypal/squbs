@@ -146,7 +146,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   "HttpClient update configuration" should "get the correct behaviour" in {
     val httpClient = HttpClientFactory.getOrCreate("DummyService")
     val newConfig = Configuration(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 11))
-    val updatedHttpClient = httpClient.updateConfig(newConfig)
+    val updatedHttpClient = httpClient.withConfig(newConfig)
     EndpointRegistry.resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
     updatedHttpClient.endpoint should be (Some(Endpoint(dummyServiceEndpoint, newConfig)))
   }
@@ -188,5 +188,13 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     updatedResult.content.get.entity.nonEmpty should be (true)
     updatedResult.content.get.entity.data.nonEmpty should be (true)
     updatedResult.content.get.entity.data.asString should be (fullTeamJson)
+  }
+
+  "Change the endpoint to None" should "throw out HttpClientEndpointNotExistException" in {
+    val httpClient = HttpClientFactory.getOrCreate("DummyService")
+    httpClient.endpoint = None
+    a[HttpClientEndpointNotExistException] should be thrownBy {
+      httpClient.get("/view")
+    }
   }
 }

@@ -56,7 +56,7 @@ class HttpClientJMXSpec extends FlatSpec with HttpClientTestKit with Matchers wi
 
   "HttpClient with configuration" should "show up the correct value of HttpClientBean" in {
     val httpClient = HttpClientFactory.getOrCreate("hello5")
-    httpClient.updateConfig(Configuration(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80)))
+    httpClient.withConfig(Configuration(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80)))
     HttpClientFactory.getOrCreate("hello6").markDown
     HttpClientBean.getHttpClientInfo.size should be (2)
     findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello5") should be (HttpClientInfo("hello5", "default", "http://www.ebay.com", "UP", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
