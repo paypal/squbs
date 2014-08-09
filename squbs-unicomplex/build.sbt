@@ -14,8 +14,7 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-routing" % "1.3.1",
   "io.spray" %% "spray-testkit" % "1.3.1" % "test",
   "io.spray" %% "spray-client"  % "1.3.1" % "test",
-  "io.spray" %% "spray-json"    % "1.2.6" % "test",
-  "net.databinder.dispatch" %% "dispatch-core" % "0.11.0" % "test"
+  "io.spray" %% "spray-json"    % "1.2.6" % "test"
 )
 
 findbugsSettings

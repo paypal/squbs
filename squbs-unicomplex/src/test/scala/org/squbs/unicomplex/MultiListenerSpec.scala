@@ -21,30 +21,31 @@ import java.io.File
 import java.util.UUID
 
 import akka.actor.ActorSystem
+import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs._
 import org.squbs.lifecycle.GracefulStop
+import spray.client.pipelining._
 import spray.http.StatusCodes
 import spray.routing.{Directives, Route}
 
-import dispatch._
-
 import scala.concurrent.Await
 
-class MultiListenerSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
+class MultiListenerSpec extends TestKit(ActorSystem("MultiListenerSpec"))
+    with FlatSpecLike with BeforeAndAfterAll with Matchers {
 
-  import concurrent.duration._
-  import concurrent.ExecutionContext.Implicits.global
+  import system.dispatcher
+  import scala.concurrent.duration._
+
   val port1 = nextPort()
   val port2 = nextPort()
   var boot: UnicomplexBoot = null
 
   it should "run up two listeners on different ports" in {
-    val req1 = url(s"http://127.0.0.1:$port1/multi")
-    Await.result(Http(req1), 1 second).getStatusCode should be(200)
-    val req2 = url(s"http://127.0.0.1:$port2/multi")
-    Await.result(Http(req2), 1 second).getStatusCode should be(200)
+    val pipeline = sendReceive
+    Await.result(pipeline(Get(s"http://127.0.0.1:$port1/multi")), 1 second).status.intValue should be (200)
+    Await.result(pipeline(Get(s"http://127.0.0.1:$port2/multi")), 1 second).status.intValue should be (200)
   }
 
   it should "only have started the application once" in {

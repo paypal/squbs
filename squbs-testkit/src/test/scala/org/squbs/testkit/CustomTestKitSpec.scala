@@ -41,7 +41,7 @@ class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatS
   it should "return OK" in {
     val pipeline = sendReceive
     val result = Await.result(pipeline(Get(s"http://127.0.0.1:${CustomTestKitSpec.port}/test")), 20 second)
-    result.entity.asString should include("success")
+    result.entity.asString should include ("success")
   }
 }
 
