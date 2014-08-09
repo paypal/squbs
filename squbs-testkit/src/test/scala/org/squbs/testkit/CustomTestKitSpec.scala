@@ -17,37 +17,37 @@
  */
 package org.squbs.testkit
 
-import org.squbs.unicomplex.{JMX, UnicomplexBoot, RouteDefinition}
-import spray.routing.Directives
-import spray.http.StatusCodes
 import java.io.File
+
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{Matchers, FlatSpecLike}
-import dispatch._
-import scala.concurrent.Await
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Seconds, Span}
+import org.scalatest.{FlatSpecLike, Matchers}
 import org.squbs.testkit.util.Ports
+import org.squbs.unicomplex.{JMX, RouteDefinition, UnicomplexBoot}
+import spray.client.pipelining._
+import spray.http.StatusCodes
+import spray.routing.Directives
+
+import scala.concurrent.Await
 
 class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatSpecLike with Matchers with Eventually {
 
   override implicit val patienceConfig = new PatienceConfig(timeout = Span(3, Seconds))
 
+  import system.dispatcher
   import scala.concurrent.duration._
-  import scala.concurrent.ExecutionContext.Implicits.global
 
   it should "return OK" in {
-    eventually {
-      val req = url(s"http://127.0.0.1:${CustomTestKitSpec.port}/test")
-      val result = Await.result(Http(req OK as.String), 20 second)
-      result should include("success")
-    }
+    val pipeline = sendReceive
+    val result = Await.result(pipeline(Get(s"http://127.0.0.1:${CustomTestKitSpec.port}/test")), 20 second)
+    result.entity.asString should include("success")
   }
 }
 
 object CustomTestKitSpec {
 
-  import collection.JavaConversions._
+  import scala.collection.JavaConversions._
 
   val port = Ports.available(3888, 5000)
 
