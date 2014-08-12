@@ -91,8 +91,8 @@ httpClientManager ! Create(name: String, env: Environment = Default, pipeline: O
 - pipeline(Optional): Service Call Request/Response Pipeline
 
 response:
--Success: HttpClientActor Reference
--Failure: HttpClientExistException
+- Success: HttpClientActor Reference
+- Failure: HttpClientExistException
 
 ![Create HttpClient Message Flow](../docs/img/create-httpclient.png)
 
@@ -106,8 +106,8 @@ httpClientManager ! Get(name: String, env: Environment = Default)
 - env(Optional): Service Call Environment, by default is Default
 
 response:
--Success: HttpClientActor Reference
--Failure: HttpClientNotExistException
+- Success: HttpClientActor Reference
+- Failure: HttpClientNotExistException
 
 ![Get HttpClient Message Flow](../docs/img/get-httpclient.png)
 
@@ -121,8 +121,8 @@ httpClientManager ! Delete(name: String, env: Environment = Default)
 - env(Optional): Service Call Environment, by default is Default
 
 response:
--Success: DeleteSuccess
--Failure: HttpClientNotExistException
+- Success: DeleteSuccess
+- Failure: HttpClientNotExistException
 
 ![Delete HttpClient Message Flow](../docs/img/delete-httpclient.png)
 
@@ -134,7 +134,7 @@ httpClientManager ! DeleteAll
 ```
 
 response:
--Success: DeleteAllSuccess
+- Success: DeleteAllSuccess
 
 ![Delete All HttpClients Message Flow](../docs/img/deleteall-httpclients.png)
 
@@ -147,7 +147,7 @@ httpClientManager ! GetAll
 ```
 
 response:
--Success: TrieMap[(String, Environment), (Client, ActorRef)]
+- Success: TrieMap[(String, Environment), (Client, ActorRef)]
 
 ![Get All HttpClients Message Flow](../docs/img/getall-httpclients.png)
 
@@ -160,7 +160,7 @@ httpClientActorRef ! Update(config: Configuration)
 - config(Mandatory): new Configuration
 
 response:
--Success: UpdateSuccess
+- Success: UpdateSuccess
 
 ![Update HttpClient Configuration Message Flow](../docs/img/update-httpclient-configuration.png)
 
@@ -171,7 +171,7 @@ response:
 httpClientActorRef ! MarkDown
 ```
 response:
--Success: MarkDownSuccess
+- Success: MarkDownSuccess
 
 ![MarkDown HttpClient Message Flow](../docs/img/markdown-httpclient.png)
 
@@ -182,7 +182,7 @@ response:
 httpClientActorRef ! MarkUp
 ```
 response:
--Success: MarkUpSuccess
+- Success: MarkUpSuccess
 
 ![MarkUp HttpClient Message Flow](../docs/img/markup-httpclient.png)
 
@@ -193,7 +193,7 @@ response:
 httpClientActorRef ! Close
 ```
 response:
--Success: CloseSuccess
+- Success: CloseSuccess
 
 ![Close HttpClient Message Flow](../docs/img/close-httpclient.png)
 
@@ -206,8 +206,8 @@ httpClientActorRef ! Get(uri)
 - uri(Mandatory): Uri for Service Call
 
 response:
--Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
--Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
+- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
 
 ![HttpClient Get Call Message Flow](../docs/img/httpclient-call-get.png)
 
@@ -218,8 +218,8 @@ httpClientActorRef ! Head(uri)
 - uri(Mandatory): Uri for Service Call
 
 response:
--Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
--Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
+- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
 
 ![HttpClient Head Call Message Flow](../docs/img/httpclient-call-head.png)
 
@@ -230,8 +230,8 @@ httpClientActorRef ! Options(uri)
 - uri(Mandatory): Uri for Service Call
 
 response:
--Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
--Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
+- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
 
 ![HttpClient Options Call Message Flow](../docs/img/httpclient-call-options.png)
 
@@ -242,8 +242,8 @@ httpClientActorRef ! Delete(uri)
 - uri(Mandatory): Uri for Service Call
 
 response:
--Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
--Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
+- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
 
 ![HttpClient Delete Call Message Flow](../docs/img/httpclient-call-delete.png)
 
@@ -256,8 +256,8 @@ httpClientActorRef ! Put[T](uri: String, content: Some[T], json4sSupport: BaseJs
 - json4sSupport(Optional): By Default is org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
 
 response:
--Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
--Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
+- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
 
 ![HttpClient Put Call Message Flow](../docs/img/httpclient-call-put.png)
 
@@ -270,8 +270,8 @@ httpClientActorRef ! Post[T](uri: String, content: Some[T], json4sSupport: BaseJ
 - json4sSupport(Optional): By Default is org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
 
 response:
--Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
--Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
+- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
 
 ![HttpClient Post Call Message Flow](../docs/img/httpclient-call-post.png)
 
