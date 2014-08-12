@@ -229,12 +229,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   def shutdownBehavior: Receive = {
     case StopTimeout(timeout) => if (shutdownTimeout < timeout) shutdownTimeout = timeout
 
-    case GracefulStop =>
+    case GracefulStop => import JMX._
       log.info(s"got GracefulStop from ${sender().path}.")
       updateSystemState(Stopping)
       if (servicesStarted) {
           serviceListeners foreach {
             case (name, Some((_, httpListener))) => serviceRegistry.stopListener(name, httpListener)
+              JMX.unregister(prefix + serverStats + name)
             case _ =>
           }
           servicesStarted = false
@@ -271,7 +272,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     case StartListener(name, config) => // Sent from Bootstrap to start the web service infrastructure.
       val serviceRef = serviceRegistry.startListener(name, config, notifySender = sender())
       context.become ({
-        case b: Http.Bound =>
+        case b: Http.Bound => import JMX._
+          JMX.register(new SeverStats(name, sender), prefix + serverStats + name)
           serviceListeners = serviceListeners + (name -> Some((serviceRef, sender())))
           if (serviceListeners.size == serviceRegistry.listenerRoutes.size) {
             listenersBound = true
