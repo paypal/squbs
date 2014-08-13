@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module org.jetbrains.idea.maven.project.MavenProjectsManager.isMavenModule="true" type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="scala" name="Scala">
+      <configuration>
+        <option name="compilerLibraryLevel" value="Project" />
+        <option name="compilerLibraryName" value="Maven: org.scala-lang:scala-compiler-bundle:2.10.3" />
+        <option name="maximumHeapSize" value="1024" />
+        <option name="vmOptions" value="-Xms64m" />
+      </configuration>
+    </facet>
+  </component>
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_6" inherit-compiler-output="false">
+    <output url="file://$MODULE_DIR$/target/classes" />
+    <output-test url="file://$MODULE_DIR$/target/test-classes" />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/src/main/scala" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/main/resources" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/test/scala" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/src/test/resources" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Maven: org.scala-lang:scala-library:2.10.3" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.scalatest:scalatest_2.10:1.9.1" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.scala-lang:scala-actors:2.10.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.scala-lang:scala-reflect:2.10.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.specs2:specs2_2.10:1.14" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.specs2:specs2-scalaz-core_2.10:7.0.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.specs2:specs2-scalaz-concurrent_2.10:7.0.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.specs2:scalaz-effect_2.10:7.0.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.specs2:scalaz-core_2.10:7.0.0" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe.akka:akka-actor_2.10:2.2.3" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe:config:1.0.2" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe.akka:akka-agent_2.10:2.2.3" level="project" />
+    <orderEntry type="library" name="Maven: org.scala-stm:scala-stm_2.10:0.7" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: com.typesafe.akka:akka-testkit_2.10:2.2.3" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-can:1.2.0" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-io:1.2.0" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-util:1.2.0" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-http:1.2.0" level="project" />
+    <orderEntry type="library" name="Maven: org.parboiled:parboiled-scala_2.10:1.1.6" level="project" />
+    <orderEntry type="library" name="Maven: org.parboiled:parboiled-core:1.1.6" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-routing:1.2.0" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-httpx:1.2.0" level="project" />
+    <orderEntry type="library" name="Maven: org.jvnet.mimepull:mimepull:1.9.3" level="project" />
+    <orderEntry type="library" name="Maven: com.chuusai:shapeless_2.10:1.2.4" level="project" />
+    <orderEntry type="library" name="Maven: io.spray:spray-testkit:1.2.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: junit:junit:4.8.1" level="project" />
+  </component>
+</module>
+
