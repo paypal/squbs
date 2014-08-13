@@ -18,25 +18,18 @@
 package org.squbs.httpclient.pipeline
 
 import akka.actor.ActorSystem
-import akka.io.IO
-import akka.pattern._
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.httpclient.{HttpClientTestKit, HttpClientFactory}
 import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.EndpointRegistry
-import org.squbs.httpclient.env.EnvironmentRegistry
-import spray.can.Http
 import spray.http.HttpHeaders.RawHeader
 import spray.http._
 import spray.util._
 
-import scala.concurrent.duration._
-
 class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll with PipelineManager{
 
   implicit val system = ActorSystem("PipelineSpec")
-  import system.dispatcher
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
   override def beforeAll = {

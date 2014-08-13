@@ -17,8 +17,7 @@
  */
 package org.squbs.httpclient.env
 
-import org.squbs.httpclient.endpoint.EndpointRegistry
-import org.squbs.httpclient.{HttpClientTestKit, HttpClientFactory}
+import org.squbs.httpclient.{HttpClientTestKit}
 import org.squbs.httpclient.dummy.{DummyProdEnvironmentResolver, DummyPriorityEnvironmentResolver}
 import org.scalatest._
 

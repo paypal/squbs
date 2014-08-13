@@ -20,7 +20,7 @@ package org.squbs.httpclient.endpoint
 import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 import org.squbs.httpclient.dummy.DummyLocalhostResolver
 import org.squbs.httpclient.env._
-import org.squbs.httpclient.{HttpClientTestKit, HttpClientException, HttpClientFactory}
+import org.squbs.httpclient.{HttpClientTestKit, HttpClientException}
 
 class HttpClientEndpointSpec extends FlatSpec with HttpClientTestKit with Matchers with BeforeAndAfterEach{
 

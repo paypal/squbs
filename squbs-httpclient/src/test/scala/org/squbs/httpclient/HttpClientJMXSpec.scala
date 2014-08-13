@@ -18,17 +18,13 @@
 package org.squbs.httpclient
 
 import akka.actor.ActorSystem
-import akka.io.IO
-import akka.pattern._
 import org.scalatest._
 import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy.{DummyProdEnvironmentResolver, DummyRequestResponsePipeline, DummyServiceEndpointResolver}
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolver}
 import org.squbs.httpclient.env._
-import spray.can.Http
 import spray.can.Http.ClientConnectionType.Proxied
 import spray.can.client.{ClientConnectionSettings, HostConnectorSettings}
-import spray.util._
 
 import scala.concurrent.duration._
 

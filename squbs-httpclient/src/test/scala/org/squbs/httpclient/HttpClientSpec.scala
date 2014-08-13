@@ -18,14 +18,10 @@
 package org.squbs.httpclient
 
 import akka.actor.ActorSystem
-import akka.io.IO
-import akka.pattern._
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
-import org.squbs.httpclient.env.EnvironmentRegistry
-import spray.can.Http
 import spray.http.StatusCodes
 import spray.httpx.PipelineException
 import spray.util._

@@ -18,16 +18,10 @@
 package org.squbs.httpclient.demo
 
 import akka.actor.ActorSystem
-import akka.io.IO
-import akka.pattern._
 import org.squbs.httpclient._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolver}
 import org.squbs.httpclient.env.{Default, Environment}
-import spray.can.Http
 import spray.http.StatusCodes
-import spray.util._
-
-import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 /**
