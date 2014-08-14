@@ -1,3 +1,20 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the CONTRIBUTING file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.unicomplex
 
 import java.util
@@ -212,12 +229,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   def shutdownBehavior: Receive = {
     case StopTimeout(timeout) => if (shutdownTimeout < timeout) shutdownTimeout = timeout
 
-    case GracefulStop =>
+    case GracefulStop => import JMX._
       log.info(s"got GracefulStop from ${sender().path}.")
       updateSystemState(Stopping)
       if (servicesStarted) {
           serviceListeners foreach {
             case (name, Some((_, httpListener))) => serviceRegistry.stopListener(name, httpListener)
+              JMX.unregister(prefix + serverStats + name)
             case _ =>
           }
           servicesStarted = false
@@ -254,7 +272,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     case StartListener(name, config) => // Sent from Bootstrap to start the web service infrastructure.
       val serviceRef = serviceRegistry.startListener(name, config, notifySender = sender())
       context.become ({
-        case b: Http.Bound =>
+        case b: Http.Bound => import JMX._
+          JMX.register(new SeverStats(name, sender), prefix + serverStats + name)
           serviceListeners = serviceListeners + (name -> Some((serviceRef, sender())))
           if (serviceListeners.size == serviceRegistry.listenerRoutes.size) {
             listenersBound = true
@@ -402,11 +421,11 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
-  val name = self.path.elements.last
+  val cubeName = self.path.elements.last
 
   class CubeStateBean extends CubeStateMXBean {
 
-    override def getName: String = name
+    override def getName: String = cubeName
 
     override def getCubeState: String = cubeState.toString
   }
@@ -414,12 +433,12 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   override def preStart() {
     import org.squbs.unicomplex.JMX._
     val cubeStateMXBean = new CubeStateBean
-    register(cubeStateMXBean, prefix + cubeStateName + name)
+    register(cubeStateMXBean, prefix + cubeStateName + cubeName)
   }
 
   override def postStop() {
     import org.squbs.unicomplex.JMX._
-    unregister(prefix + cubeStateName + name)
+    unregister(prefix + cubeStateName + cubeName)
   }
 
   override val supervisorStrategy =

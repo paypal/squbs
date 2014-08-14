@@ -15,27 +15,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.unicomplex.cubeB
+package org.squbs.unicomplex.initblock
 
-import akka.actor.{Actor, ActorLogging}
-import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
-import org.squbs.unicomplex.Initialized
-import org.squbs.unicomplex.Unicomplex.InitReport
-
+import org.squbs.unicomplex.Unicomplex._
 import scala.util.Try
+import org.squbs.lifecycle.{GracefulStopHelper, GracefulStop}
+import akka.actor.{Actor, ActorLogging}
 
-class InitCubeActorB extends Actor with ActorLogging with GracefulStopHelper  {
+class InitBlockActor extends Actor with ActorLogging with GracefulStopHelper{
 
   // do initialization
   def init: InitReport = {
     log.info("initializing")
     Try {
       // do some tasks
-      Some("InitCubeActorB")
+      throw new Exception("Init blocked")
     }
   }
 
-  context.parent ! (Initialized(init))
+  // never send the the report
+  //context.parent ! Initialized(init)
 
   def receive = {
     case GracefulStop => defaultLeafActorStop
