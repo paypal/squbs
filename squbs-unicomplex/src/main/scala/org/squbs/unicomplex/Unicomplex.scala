@@ -428,6 +428,8 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     override def getName: String = cubeName
 
     override def getCubeState: String = cubeState.toString
+
+    override def getWellKnownActors: String = context.children.mkString(",")
   }
 
   override def preStart() {

@@ -166,9 +166,19 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val mbeanServer = ManagementFactory.getPlatformMBeanServer
       val cubesObjName = new ObjectName(prefix(system) + cubeStateName + cubeName)
       val name = mbeanServer.getAttribute(cubesObjName, "Name")
-      val cubeState = mbeanServer.getAttribute(cubesObjName, "CubeState")
       name should be (cubeName)
+
+      val cubeState = mbeanServer.getAttribute(cubesObjName, "CubeState")
       cubeState should be ("Active")
+
+      val WellKnownActors = mbeanServer.getAttribute(cubesObjName, "WellKnownActors").asInstanceOf[String]
+      println(WellKnownActors)
+      val b1 = WellKnownActors.contains("Actor[akka://unicomplexSpec/user/DummyCube/Prepender#")
+      b1 should be (true)
+      val b2 =WellKnownActors.contains("Actor[akka://unicomplexSpec/user/DummyCube/Appender#")
+      b2 should be (true)
+
+
     }
 
     "check listener MXbean" in {
