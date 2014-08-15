@@ -109,6 +109,7 @@ trait CubesMXBean {
 trait CubeStateMXBean {
   def getName: String
   def getCubeState: String
+  def getWellKnownActors : String
 }
 
 @MXBean
