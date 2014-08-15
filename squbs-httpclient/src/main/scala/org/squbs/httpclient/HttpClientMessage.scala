@@ -21,6 +21,7 @@ import org.squbs.httpclient.pipeline.Pipeline
 import scala.Some
 import org.squbs.httpclient.env.{Default, Environment}
 import spray.httpx.BaseJson4sSupport
+import akka.pattern.CircuitBreaker
 
 /**
 * Created by hakuang on 6/18/2014.
@@ -34,7 +35,9 @@ object HttpClientManagerMessage {
    * @param env
    * @param pipeline
    */
-  case class Create(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None) extends Client
+  case class Create(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None) extends Client {
+    override val cb: CircuitBreaker = ???
+  }
 
   /**
    * Success => DeleteSuccess

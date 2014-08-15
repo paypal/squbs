@@ -55,24 +55,6 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
 
   override def lookup(): ExtensionId[_ <: Extension] = HttpClientManager
 
-//  def unmarshalWithWrapper[T: FromResponseUnmarshaller](response: HttpResponse): HttpResponseEntityWrapper[T] = {
-//    if (response.status.isSuccess)
-//      response.as[T] match {
-//        case Right(value) ⇒ HttpResponseEntityWrapper[T](response.status, Right(value), Some(response))
-//        case Left(error) ⇒ HttpResponseEntityWrapper[T](response.status, Left(throw new PipelineException(error.toString)), Some(response))
-//      }
-//    else HttpResponseEntityWrapper[T](response.status, Left(new UnsuccessfulResponseException(response)), Some(response))
-//  }
-//
-//  def unmarshal[T: FromResponseUnmarshaller](response: HttpResponse): Either[Throwable, T] = {
-//    if (response.status.isSuccess)
-//      response.as[T] match {
-//        case Right(value) ⇒ Right(value)
-//        case Left(error) ⇒ Left(throw new PipelineException(error.toString))
-//      }
-//    else Left(new UnsuccessfulResponseException(response))
-//  }
-
   implicit class HttpResponseUnmarshal(val response: HttpResponse) extends AnyVal {
 
     def unmarshalTo[T: FromResponseUnmarshaller]: Either[Throwable, T] = {
@@ -90,7 +72,7 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
 /**
  * Without setup HttpConnection
  */
-trait HttpCallActorSupport extends RetrySupport with ConfigurationSupport with PipelineManager {
+trait HttpCallActorSupport extends ConfigurationSupport with PipelineManager {
 
   import ExecutionContext.Implicits.global
   import spray.httpx.RequestBuilding._
@@ -98,10 +80,18 @@ trait HttpCallActorSupport extends RetrySupport with ConfigurationSupport with P
   def handle(client: Client,
              pipeline: Try[HttpRequest => Future[HttpResponseWrapper]],
              httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    val maxRetries = hostSettings(client).maxRetries
-    val requestTimeout = hostSettings(client).connectionSettings.requestTimeout
     pipeline match {
-      case Success(res) => retry(res, httpRequest, maxRetries, requestTimeout)
+      case Success(res) =>
+        val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponseWrapper](res(httpRequest))
+        client.endpoint.get.config.circuitBreakerConfig.fallbackHttpResponse match {
+          case Some(response) =>
+            val fallbackResponse = future {
+              HttpResponseWrapper(response.status, Right(response))
+            }
+            runCircuitBreaker fallbackTo fallbackResponse
+          case None           =>
+            runCircuitBreaker
+        }
       case Failure(t@HttpClientMarkDownException(_, _)) => future {
         HttpResponseWrapper(HttpClientException.httpClientMarkDownError, Left(t))
       }

@@ -28,6 +28,8 @@ import spray.util._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import akka.pattern.CircuitBreakerOpenException
+import scala.util.{Success, Failure}
 
 class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
 
