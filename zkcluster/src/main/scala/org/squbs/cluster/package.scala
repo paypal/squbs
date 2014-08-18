@@ -30,7 +30,7 @@ package object cluster {
 
       partitionsToMembers.map(assign => {
         val partitionKey = assign._1
-        val servants = assign._2
+        val servants = assign._2.filter(members.contains(_))//bugfix, when follower takes over leadership, its partitionsToMembers map could have obsolete members in it;
         val requires = size(partitionKey)
 
         servants.size match {
