@@ -44,7 +44,7 @@ package object cluster {
 
       partitionsToMembers.map(assign => {
         val partitionKey = assign._1
-        val servants = assign._2
+        val servants = assign._2.filter(members.contains(_))
         val partitionSize = size(partitionKey)
 
         servants.size match {
