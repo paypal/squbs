@@ -31,12 +31,10 @@ object HttpClientManagerMessage {
 
   /**
    * Success => HttpClientActor
-   * Failure => HttpClientExistException
    * @param name
    * @param env
-   * @param pipeline
    */
-  case class Create(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None) extends Client {
+  case class GetOrCreate(name: String, env: Environment = Default) extends Client {
     override val cb: CircuitBreaker = {
       //TODO
       import scala.concurrent.ExecutionContext.Implicits.global
@@ -60,14 +58,6 @@ object HttpClientManagerMessage {
   case object DeleteAll
 
   case object DeleteAllSuccess
-
-  /**
-   * Success => HttpClientActor
-   * Failure => HttpClientNotExistException
-   * @param name
-   * @param env
-   */
-  case class Get(name: String, env: Environment = Default)
 
   /**
    * Success => TrieMap[(String, Environment), (Client, ActorRef)]

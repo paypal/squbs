@@ -26,7 +26,7 @@ import org.squbs.httpclient.HttpClientManagerMessage._
 import scala.collection.concurrent.TrieMap
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.dummy.DummyService._
-import org.squbs.httpclient.HttpClientManagerMessage.Create
+import org.squbs.httpclient.HttpClientManagerMessage.GetOrCreate
 import org.squbs.httpclient.HttpClientManagerMessage.Delete
 import scala.Some
 import spray.http.StatusCodes
@@ -66,12 +66,15 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     deleteHttpClient("DummyService")
   }
 
-  "create an existing httpclient" should "return HttpClientExistException" in {
+  "get an existing httpclient" should "return ActorRef of HttpClientActor" in {
     createHttpClient("DummyService")
-    val httpClientManager = HttpClientManager(system).httpClientManager
-    httpClientManager ! Create("DummyService")
-    val existException = expectMsgType[HttpClientExistException]
-    existException should be (HttpClientExistException("DummyService"))
+    HttpClientManager.httpClientMap.get(("DummyService", Default)) should not be (None)
+    val client = HttpClientManager.httpClientMap.get(("DummyService", Default)).get._1
+    client.name should be ("DummyService")
+    client.env should be (Default)
+    client.status should be (Status.UP)
+    client.endpoint.config.pipeline should be (None)
+    client.endpoint should be (Endpoint(dummyServiceEndpoint))
     deleteHttpClient("DummyService")
   }
 
@@ -96,21 +99,6 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     httpClientManager ! DeleteAll
     expectMsg(DeleteAllSuccess)
     HttpClientManager.httpClientMap should be (TrieMap.empty)
-  }
-
-  "get an existing httpclient" should "return ActorRef of HttpClientActor" in {
-    createHttpClient("DummyService")
-    val httpClientManager = HttpClientManager(system).httpClientManager
-    httpClientManager ! Get("DummyService")
-    expectMsgType[ActorRef]
-    deleteHttpClient("DummyService")
-  }
-
-  "get a not existing httpclient" should "return HttpClientNotExistException" in {
-    val httpClientManager = HttpClientManager(system).httpClientManager
-    httpClientManager ! Get("DummyService")
-    val existException = expectMsgType[HttpClientNotExistException]
-    existException should be (HttpClientNotExistException("DummyService"))
   }
 
   "get all existing httpclient" should "return TrieMap[(String, Environment), (Client, ActorRef)]" in {
@@ -260,7 +248,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
 
   def createHttpClient(name: String) = {
     val httpClientManager = HttpClientManager(system).httpClientManager
-    httpClientManager ! Create(name)
+    httpClientManager ! GetOrCreate(name)
     expectMsgType[ActorRef]
   }
 

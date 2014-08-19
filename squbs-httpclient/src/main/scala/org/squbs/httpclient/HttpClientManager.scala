@@ -243,10 +243,10 @@ class HttpClientManager extends Actor {
 
   import HttpClientManager.httpClientMap
   override def receive: Receive = {
-    case client @ Create(name, env, pipeline) =>
+    case client @ GetOrCreate(name, env) =>
       httpClientMap.get((name, env)) match {
-        case Some(_) =>
-          sender ! HttpClientExistException(name, env)
+        case Some((_, httpClientActor)) =>
+          sender ! httpClientActor
         case None    =>
           val httpClientActor = context.actorOf(Props(new HttpClientActor(client)))
           httpClientMap.put((name, env), (client, httpClientActor))
@@ -263,13 +263,6 @@ class HttpClientManager extends Actor {
     case DeleteAll =>
       httpClientMap.clear
       sender ! DeleteAllSuccess
-    case Get(name, env) =>
-      httpClientMap.get((name, env)) match {
-        case Some((c, r)) =>
-          sender ! r
-        case None     =>
-          sender ! HttpClientNotExistException(name, env)
-      }
     case GetAll =>
       sender ! httpClientMap
   }
