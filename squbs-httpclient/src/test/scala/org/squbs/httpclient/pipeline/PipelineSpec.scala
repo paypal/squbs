@@ -43,7 +43,7 @@ class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit wit
   }
 
   "Request Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestPipeline)))
+    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestPipeline)))
     val sendReceive = invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
     val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
@@ -53,7 +53,7 @@ class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit wit
   }
 
   "Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyResponsePipeline)))
+    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyResponsePipeline)))
     val sendReceive = invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
     val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
@@ -63,7 +63,7 @@ class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit wit
   }
 
   "Request-Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
+    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
     val sendReceive = invokeToHttpResponse(httpClient)
     sendReceive.isSuccess should be (true)
     val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
@@ -74,7 +74,7 @@ class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit wit
   }
 
   "Request Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestPipeline)))
+    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestPipeline)))
     val sendReceive = invokeToEntity[Team](httpClient)
     sendReceive.isSuccess should be (true)
     val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
@@ -84,7 +84,7 @@ class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit wit
   }
 
   "Response Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyResponsePipeline)))
+    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyResponsePipeline)))
     val sendReceive = invokeToEntity[Team](httpClient)
     sendReceive.isSuccess should be (true)
     val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
@@ -94,7 +94,7 @@ class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit wit
   }
 
   "Request-Response Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
+    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
     val sendReceive = invokeToEntity[Team](httpClient)
     sendReceive.isSuccess should be (true)
     val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))

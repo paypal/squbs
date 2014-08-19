@@ -26,7 +26,7 @@ import org.squbs.httpclient.HttpClientManagerMessage._
 import scala.collection.concurrent.TrieMap
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.dummy.DummyService._
-import org.squbs.httpclient.HttpClientManagerMessage.GetOrCreate
+import org.squbs.httpclient.HttpClientManagerMessage.Get
 import org.squbs.httpclient.HttpClientManagerMessage.Delete
 import scala.Some
 import spray.http.StatusCodes
@@ -248,7 +248,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
 
   def createHttpClient(name: String) = {
     val httpClientManager = HttpClientManager(system).httpClientManager
-    httpClientManager ! GetOrCreate(name)
+    httpClientManager ! Get(name)
     expectMsgType[ActorRef]
   }
 

@@ -243,7 +243,7 @@ class HttpClientManager extends Actor {
 
   import HttpClientManager.httpClientMap
   override def receive: Receive = {
-    case client @ GetOrCreate(name, env) =>
+    case client @ Get(name, env) =>
       httpClientMap.get((name, env)) match {
         case Some((_, httpClientActor)) =>
           sender ! httpClientActor

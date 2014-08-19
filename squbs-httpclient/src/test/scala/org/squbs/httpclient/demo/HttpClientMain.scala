@@ -33,7 +33,7 @@ object HttpClientMain1 extends App with HttpClientTestKit {
   import system.dispatcher
   EndpointRegistry.register(new GoogleMapAPIEndpointResolver)
 
-  val response = HttpClientFactory.getOrCreate("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.get("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
       println("Success, response entity is: " + res.entity.asString)
@@ -57,7 +57,7 @@ object HttpClientMain2 extends App with HttpClientTestKit{
   EndpointRegistry.register(new GoogleMapAPIEndpointResolver)
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
-  val response = HttpClientFactory.getOrCreate("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.get("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(HttpResponseEntityWrapper(StatusCodes.OK, Right(res), rawHttpResponse)) =>
       println("Success, response status is: " + res.status + ", elevation is: " + res.results.head.elevation + ", location.lat is: " + res.results.head.location.lat)

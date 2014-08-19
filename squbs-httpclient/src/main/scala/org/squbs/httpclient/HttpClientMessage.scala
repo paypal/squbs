@@ -34,7 +34,7 @@ object HttpClientManagerMessage {
    * @param name
    * @param env
    */
-  case class GetOrCreate(name: String, env: Environment = Default) extends Client {
+  case class Get(name: String, env: Environment = Default) extends Client {
     override val cb: CircuitBreaker = {
       //TODO
       import scala.concurrent.ExecutionContext.Implicits.global

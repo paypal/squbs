@@ -68,8 +68,6 @@ trait Client {
 
   val env: Environment
 
-//  val pipeline: Option[Pipeline]
-
   var endpoint = {
     val serviceEndpoint = EndpointRegistry.resolve(name, env)
     serviceEndpoint match {
@@ -240,11 +238,11 @@ object HttpClientFactory {
 
   val httpClientMap: TrieMap[(String, Environment), HttpClient] = TrieMap[(String, Environment), HttpClient]()
 
-  def getOrCreate(name: String)(implicit system: ActorSystem): HttpClient = {
-    getOrCreate(name, Default)
+  def get(name: String)(implicit system: ActorSystem): HttpClient = {
+    get(name, Default)
   }
 
-  def getOrCreate(name: String, env: Environment = Default)(implicit system: ActorSystem): HttpClient = {
+  def get(name: String, env: Environment = Default)(implicit system: ActorSystem): HttpClient = {
     val newEnv = env match {
       case Default => EnvironmentRegistry.resolve(name)
       case _ => env

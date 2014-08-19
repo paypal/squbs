@@ -48,7 +48,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient with correct Endpoint calling get" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").get("/view")
+    val response = HttpClientFactory.get("DummyService").get("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
@@ -57,7 +57,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient with correct Endpoint calling getEntity" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").getEntity[Team]("/view")
+    val response = HttpClientFactory.get("DummyService").getEntity[Team]("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content should be (Right(fullTeam))
@@ -65,7 +65,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient with correct Endpoint calling head" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").head("/view")
+    val response = HttpClientFactory.get("DummyService").head("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (false)
@@ -73,13 +73,13 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
 
   "HttpClient with correct Endpoint calling headEntity" should "get the correct response" in {
     a[PipelineException] should be thrownBy {
-      val response = HttpClientFactory.getOrCreate("DummyService").headEntity[Team]("/view")
+      val response = HttpClientFactory.get("DummyService").headEntity[Team]("/view")
       Await.result(response, 3 seconds)
     }
   }
 
   "HttpClient with correct Endpoint calling options" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").options("/view")
+    val response = HttpClientFactory.get("DummyService").options("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
@@ -87,7 +87,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient with correct Endpoint calling optionsEntity" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").optionsEntity[Team]("/view")
+    val response = HttpClientFactory.get("DummyService").optionsEntity[Team]("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content should be (Right(fullTeam))
@@ -95,7 +95,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient with correct Endpoint calling delete" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").delete("/del/4")
+    val response = HttpClientFactory.get("DummyService").delete("/del/4")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
@@ -104,7 +104,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient with correct Endpoint calling deleteEntity" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").deleteEntity[Team]("/del/4")
+    val response = HttpClientFactory.get("DummyService").deleteEntity[Team]("/del/4")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content should be (Right(fullTeamWithDel))
@@ -112,7 +112,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient with correct Endpoint calling post" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").post[Employee]("/add", Some(newTeamMember))
+    val response = HttpClientFactory.get("DummyService").post[Employee]("/add", Some(newTeamMember))
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
@@ -121,7 +121,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient with correct Endpoint calling postEnitty" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").postEntity[Employee, Team]("/add", Some(newTeamMember))
+    val response = HttpClientFactory.get("DummyService").postEntity[Employee, Team]("/add", Some(newTeamMember))
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.status should be (StatusCodes.OK)
@@ -130,7 +130,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient with correct Endpoint calling put" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").put[Employee]("/add", Some(newTeamMember))
+    val response = HttpClientFactory.get("DummyService").put[Employee]("/add", Some(newTeamMember))
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
@@ -139,7 +139,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient with correct Endpoint calling putEnitty" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").putEntity[Employee, Team]("/add", Some(newTeamMember))
+    val response = HttpClientFactory.get("DummyService").putEntity[Employee, Team]("/add", Some(newTeamMember))
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.status should be (StatusCodes.OK)
@@ -148,7 +148,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient could be use endpoint as service name directly without registry endpoint resolvers, major target for third party service call" should "get the correct response" in {
-    val response = HttpClientFactory.getOrCreate(dummyServiceEndpoint).get("/view")
+    val response = HttpClientFactory.get(dummyServiceEndpoint).get("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
@@ -157,7 +157,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient update configuration" should "get the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("DummyService")
+    val httpClient = HttpClientFactory.get("DummyService")
     val newConfig = Configuration(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 11))
     val updatedHttpClient = httpClient.withConfig(newConfig)
     EndpointRegistry.resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
@@ -166,7 +166,7 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
 
   "HttpClient with the correct endpoint sleep 10s" should "restablish the connection and get response" in {
     Thread.sleep(10000)
-    val response = HttpClientFactory.getOrCreate("DummyService").get("/view")
+    val response = HttpClientFactory.get("DummyService").get("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.content.get.entity.nonEmpty should be (true)
@@ -175,19 +175,19 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
   }
 
   "HttpClient with correct endpoint calling get with not existing uri" should "get StatusCodes.NotFound" in {
-    val response = HttpClientFactory.getOrCreate("DummyService").get("/notExisting")
+    val response = HttpClientFactory.get("DummyService").get("/notExisting")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.NotFound)
   }
 
   "HttpClient with not existing endpoint" should "get StatusCodes.NotFound" in {
-    val response = HttpClientFactory.getOrCreate("NotExistingService").get("/notExisting")
+    val response = HttpClientFactory.get("NotExistingService").get("/notExisting")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.NotFound)
   }
 
   "MarkDown/MarkUp HttpClient" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.getOrCreate("DummyService")
+    val httpClient = HttpClientFactory.get("DummyService")
     httpClient.markDown
     val response = httpClient.get("/view")
     val result = Await.result(response, 3 seconds)

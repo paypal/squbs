@@ -27,7 +27,7 @@ object CircuitBreakerMain extends App{
 
     override def name: String = "DummyService"
   })
-  val httpClient = HttpClientFactory.getOrCreate("DummyService").withConfig(Configuration().copy(circuitBreakerConfig = CircuitBreakerConfiguration().copy(callTimeout = 1 second)))
+  val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(circuitBreakerConfig = CircuitBreakerConfiguration().copy(callTimeout = 1 second)))
   while(true){
     Thread.sleep(2000)
     httpClient.get("/view") onComplete {
