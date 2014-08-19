@@ -23,8 +23,10 @@ import javax.net.ssl.SSLContext
 import com.typesafe.config.ConfigFactory
 import scala.concurrent.duration._
 import spray.http.HttpResponse
+import org.squbs.httpclient.pipeline.Pipeline
 
-case class Configuration(hostSettings: HostConnectorSettings = Configuration.defaultHostSettings,
+case class Configuration(pipeline: Option[Pipeline] = None,
+                         hostSettings: HostConnectorSettings = Configuration.defaultHostSettings,
                          connectionType: ClientConnectionType = ClientConnectionType.AutoProxied,
                          sslContext: Option[SSLContext] = None,
                          circuitBreakerConfig: CircuitBreakerConfiguration = CircuitBreakerConfiguration())

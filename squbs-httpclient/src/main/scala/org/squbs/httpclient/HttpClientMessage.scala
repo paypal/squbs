@@ -22,6 +22,7 @@ import scala.Some
 import org.squbs.httpclient.env.{Default, Environment}
 import spray.httpx.BaseJson4sSupport
 import akka.pattern.CircuitBreaker
+import scala.concurrent.duration._
 
 /**
 * Created by hakuang on 6/18/2014.
@@ -36,7 +37,11 @@ object HttpClientManagerMessage {
    * @param pipeline
    */
   case class Create(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None) extends Client {
-    override val cb: CircuitBreaker = ???
+    override val cb: CircuitBreaker = {
+      //TODO
+      import scala.concurrent.ExecutionContext.Implicits.global
+      new CircuitBreaker(null, 5, 10 seconds, 60 seconds)
+    }
   }
 
   /**

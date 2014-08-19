@@ -20,7 +20,7 @@ package org.squbs.httpclient
 import java.beans.ConstructorProperties
 import scala.beans.BeanProperty
 import javax.management.{ObjectName, MXBean}
-import org.squbs.httpclient.endpoint.{EndpointResolver, Endpoint, EndpointRegistry}
+import org.squbs.httpclient.endpoint.{EndpointResolver, EndpointRegistry}
 import org.squbs.httpclient.pipeline.EmptyPipeline
 import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
 import java.util
@@ -99,10 +99,10 @@ object HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
   def mapToHttpClientInfo(httpClient: Client) = {
     val name = httpClient.name
     val env  = httpClient.env.lowercaseName
-    val endpoint = EndpointRegistry.resolve(name, httpClient.env).getOrElse(Endpoint("")).uri
+    val endpoint = httpClient.endpoint.uri
     val status = httpClient.status.toString
-    val configuration = config(httpClient)
-    val pipelines = httpClient.pipeline.getOrElse(EmptyPipeline)
+    val configuration = httpClient.endpoint.config
+    val pipelines = configuration.pipeline.getOrElse(EmptyPipeline)
     val requestPipelines = pipelines.requestPipelines.map(_.getClass.getName).foldLeft[String]("")((result, each) => if (result == "") each else result + "=>" + each)
     val responsePipelines = pipelines.responsePipelines.map(_.getClass.getName).foldLeft[String]("")((result, each) => if (result == "") each else result + "=>" + each)
     val connectionType = configuration.connectionType match {

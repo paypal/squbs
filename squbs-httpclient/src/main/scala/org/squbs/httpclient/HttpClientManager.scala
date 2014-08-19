@@ -83,7 +83,7 @@ trait HttpCallActorSupport extends ConfigurationSupport with PipelineManager {
     pipeline match {
       case Success(res) =>
         val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponseWrapper](res(httpRequest))
-        client.endpoint.get.config.circuitBreakerConfig.fallbackHttpResponse match {
+        client.endpoint.config.circuitBreakerConfig.fallbackHttpResponse match {
           case Some(response) =>
             val fallbackResponse = future {
               HttpResponseWrapper(response.status, Right(response))
@@ -162,7 +162,7 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
 
   def receiveGetConnection(httpMethod: HttpMethod, uri: String, client: Client, actorRef: ActorRef): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
-      implicit val timeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
+      implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
       httpMethod match {
         case HttpMethods.GET =>
           get(client, connector, uri).pipeTo(actorRef)
@@ -183,7 +183,7 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
                                          json4sSupport: BaseJson4sSupport): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
       implicit val marshaller = json4sSupport.json4sMarshaller[T]
-      implicit val timeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
+      implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
       httpMethod match {
         case HttpMethods.POST =>
           post[T](client, connector, uri, content).pipeTo(actorRef)
@@ -223,10 +223,7 @@ class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport wi
     case Update(conf) =>
       HttpClientManager.httpClientMap.get(client.name, client.env) match {
         case Some(_) =>
-          client.endpoint = client.endpoint match {
-            case Some(endpoint) => Some(Endpoint(endpoint.uri, conf))
-            case None => None
-          }
+          client.endpoint = Endpoint(client.endpoint.uri, conf)
           HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
           sender ! UpdateSuccess
         case None    =>

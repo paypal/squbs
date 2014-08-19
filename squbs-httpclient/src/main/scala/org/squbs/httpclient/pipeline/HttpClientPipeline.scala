@@ -65,7 +65,7 @@ trait PipelineManager extends ConfigurationSupport{
 
   private def pipelining(client: Client)(implicit actorSystem: ActorSystem) = {
 
-    implicit val connectionTimeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
+    implicit val connectionTimeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
     for (
       Http.HostConnectorInfo(connector, _) <-
       IO(Http) ? hostConnectorSetup(client)
@@ -74,7 +74,7 @@ trait PipelineManager extends ConfigurationSupport{
 
   def hostConnectorSetup(client: Client)(implicit actorSystem: ActorSystem) = {
     implicit def sslContext: SSLContext = {
-      config(client).sslContext match {
+      client.endpoint.config.sslContext match {
         case Some(context) => context
         case None          => SSLContext.getDefault
       }
@@ -83,19 +83,19 @@ trait PipelineManager extends ConfigurationSupport{
     implicit val myClientEngineProvider = ClientSSLEngineProvider { engine =>
       engine
     }
-    val uri = Uri(client.endpoint.get.uri)
+    val uri = Uri(client.endpoint.uri)
     val host = uri.authority.host.toString
     val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
     val isSecure = uri.scheme.toLowerCase.equals("https")
     val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
-    defaultHostConnectorSetup.copy(settings = Some(hostSettings(client)), connectionType = config(client).connectionType)
+    defaultHostConnectorSetup.copy(settings = Some(client.endpoint.config.hostSettings), connectionType = client.endpoint.config.connectionType)
   }
 
   def invokeToHttpResponse(client: Client)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseWrapper])] = {
-    val pipelines = client.pipeline.getOrElse(EmptyPipeline)
+    val pipelines = client.endpoint.config.pipeline.getOrElse(EmptyPipeline)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines
-    val connTimeout = hostSettings(client).connectionSettings.connectingTimeout
+    val connTimeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout
     Try{
       val futurePipeline = pipelining(client)
       val pipeline = Await.result(futurePipeline, connTimeout)
@@ -115,10 +115,10 @@ trait PipelineManager extends ConfigurationSupport{
   }
 
   def invokeToHttpResponseWithoutSetup(client: Client, actorRef: ActorRef)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseWrapper])] = {
-    val pipelines = client.pipeline.getOrElse(EmptyPipeline)
+    val pipelines = client.endpoint.config.pipeline.getOrElse(EmptyPipeline)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines
-    implicit val timeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
+    implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
     Try{
       (reqPipelines, resPipelines, client.status) match {
@@ -137,10 +137,10 @@ trait PipelineManager extends ConfigurationSupport{
   }
 
   def invokeToEntity[T: FromResponseUnmarshaller](client: Client)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseEntityWrapper[T]])] = {
-    val pipelines = client.pipeline.getOrElse(EmptyPipeline)
+    val pipelines = client.endpoint.config.pipeline.getOrElse(EmptyPipeline)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines
-    val connTimeout = hostSettings(client).connectionSettings.connectingTimeout
+    val connTimeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout
     Try{
       val futurePipeline = pipelining(client)
       val pipeline = Await.result(futurePipeline, connTimeout)

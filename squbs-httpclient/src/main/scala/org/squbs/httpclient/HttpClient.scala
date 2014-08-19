@@ -52,25 +52,31 @@ trait Client {
 
   val cb: CircuitBreaker
 
-  cb.onClose{
-    cbStatus = CircuitBreakerStatus.Closed
-  }
-
-  cb.onOpen{
-    cbStatus = CircuitBreakerStatus.Open
-  }
-
-  cb.onHalfOpen{
-    cbStatus = CircuitBreakerStatus.HalfOpen
-  }
+//  cb.onClose{
+//    cbStatus = CircuitBreakerStatus.Closed
+//  }
+//
+//  cb.onOpen{
+//    cbStatus = CircuitBreakerStatus.Open
+//  }
+//
+//  cb.onHalfOpen{
+//    cbStatus = CircuitBreakerStatus.HalfOpen
+//  }
 
   val name: String
 
   val env: Environment
 
-  val pipeline: Option[Pipeline]
+//  val pipeline: Option[Pipeline]
 
-  var endpoint = EndpointRegistry.resolve(name, env)
+  var endpoint = {
+    val serviceEndpoint = EndpointRegistry.resolve(name, env)
+    serviceEndpoint match {
+      case Some(se) => se
+      case None     => throw HttpClientEndpointNotExistException(name, env)
+    }
+  }
 
   def markUp = {
     status = Status.UP
@@ -82,21 +88,9 @@ trait Client {
 }
 
 trait ConfigurationSupport {
-  def config(client: Client) = {
-    client.endpoint match {
-      case Some(endpoint) =>
-        endpoint.config
-      case None =>
-        throw HttpClientEndpointNotExistException(client.name, client.env)
-    }
-  }
 
-  def hostSettings(client: Client)(implicit actorSystem: ActorSystem) = {
-    config(client).hostSettings
-  }
-
-  implicit def endpointToUri(endpoint: Option[Endpoint]): String = {
-    endpoint.getOrElse(Endpoint("")).uri
+  implicit def endpointToUri(endpoint: Endpoint): String = {
+    endpoint.uri
   }
 }
 
@@ -110,7 +104,7 @@ trait HttpCallSupport extends ConfigurationSupport with PipelineManager {
     pipeline match {
       case Success(res) =>
         val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponseWrapper](res(httpRequest))
-        client.endpoint.get.config.circuitBreakerConfig.fallbackHttpResponse match {
+        client.endpoint.config.circuitBreakerConfig.fallbackHttpResponse match {
           case Some(response) =>
             val fallbackResponse = future {
               HttpResponseWrapper(response.status, Right(response))
@@ -164,7 +158,7 @@ trait HttpEntityCallSupport extends ConfigurationSupport with PipelineManager {
     pipeline match {
       case Success(res) =>
         val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponseEntityWrapper[T]](res(httpRequest))
-        client.endpoint.get.config.circuitBreakerConfig.fallbackHttpResponse match {
+        client.endpoint.config.circuitBreakerConfig.fallbackHttpResponse match {
           case Some(response) =>
             val fallbackResponse = future {
               if (response.status.isSuccess)
@@ -214,28 +208,28 @@ trait HttpClientSupport extends HttpCallSupport with HttpEntityCallSupport
 
 case class HttpClient(name: String,
                       env: Environment = Default,
-                      pipeline: Option[Pipeline] = None,
                       cb: CircuitBreaker) extends Client with HttpClientSupport {
 
   require(endpoint != None, "endpoint should be resolved!")
-  Endpoint.check(endpoint.get.uri)
+  Endpoint.check(endpoint.uri)
 
   def client: Client = this
 
   def withConfig(config: Configuration): HttpClient = {
-    endpoint = Some(Endpoint(endpoint.get.uri, config))
+    endpoint = Endpoint(endpoint.uri, config)
     HttpClientFactory.httpClientMap.put((name, env), this)
     this
   }
 
   def withFallback(response: HttpResponse): HttpClient = {
-    val oldConfig = endpoint.get.config
+    val oldConfig = endpoint.config
     val cbConfig = oldConfig.circuitBreakerConfig.copy(fallbackHttpResponse = Some(response))
     val newConfig = oldConfig.copy(circuitBreakerConfig = cbConfig)
-    endpoint = Some(Endpoint(endpoint.get.uri, newConfig))
+    endpoint = Endpoint(endpoint.uri, newConfig)
     HttpClientFactory.httpClientMap.put((name, env), this)
     this
   }
+
 }
 
 object HttpClientFactory {
@@ -250,11 +244,7 @@ object HttpClientFactory {
     getOrCreate(name, Default)
   }
 
-  def getOrCreate(name: String, env: Environment)(implicit system: ActorSystem): HttpClient = {
-    getOrCreate(name, env, None)
-  }
-
-  def getOrCreate(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None)(implicit system: ActorSystem): HttpClient = {
+  def getOrCreate(name: String, env: Environment = Default)(implicit system: ActorSystem): HttpClient = {
     val newEnv = env match {
       case Default => EnvironmentRegistry.resolve(name)
       case _ => env
@@ -267,7 +257,7 @@ object HttpClientFactory {
           case Some(endpoint) =>
             val cbConfig = endpoint.config.circuitBreakerConfig
             val cb = new CircuitBreaker(system.scheduler, cbConfig.maxFailures, cbConfig.callTimeout, cbConfig.resetTimeout)
-            val httpClient = HttpClient(name, newEnv, pipeline, cb)
+            val httpClient = HttpClient(name, newEnv, cb)
             httpClientMap.put((name, env), httpClient)
             httpClient
           case None           =>

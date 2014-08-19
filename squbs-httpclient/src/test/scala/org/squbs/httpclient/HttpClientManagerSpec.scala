@@ -61,8 +61,8 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     client.name should be ("DummyService")
     client.env should be (Default)
     client.status should be (Status.UP)
-    client.pipeline should be (None)
-    client.endpoint should be (Some(Endpoint(dummyServiceEndpoint)))
+    client.endpoint.config.pipeline should be (None)
+    client.endpoint should be (Endpoint(dummyServiceEndpoint))
     deleteHttpClient("DummyService")
   }
 

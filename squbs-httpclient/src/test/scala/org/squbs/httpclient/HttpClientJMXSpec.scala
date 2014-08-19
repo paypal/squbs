@@ -56,7 +56,7 @@ class HttpClientJMXSpec extends FlatSpec with Matchers with HttpClientTestKit wi
   }
 
   "HttpClient with pipeline" should "show up the correct value of HttpClientBean" in {
-    HttpClientFactory.getOrCreate("hello3", pipeline = Some(DummyRequestResponsePipeline))
+    HttpClientFactory.getOrCreate("hello3").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
     HttpClientFactory.getOrCreate("hello4")
     HttpClientBean.getHttpClientInfo.size should be (2)
     findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello3") should be (HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler$$anonfun$processRequest$1","org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler$$anonfun$processResponse$1"))
