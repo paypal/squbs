@@ -1,5 +1,11 @@
 #Bootstrapping squbs
-squbs is provided with a default bootstrap class developers can just use to call from the command line. The class to start is `org.squbs.unicomplex.Bootstrap`. Given normal circumstances, bootstrapping detail are irrelevant. However, one may need to programmatically bootstrap squbs in different ways. This is especially common in test cases needing custom configuration and needing to run in parallel. Please see [Testing](testing.md) for more information. The syntax for bootstrapping squbs is as follows:
+
+squbs comes with a default bootstrap class `org.squbs.unicomplex.Bootstrap`. This can be started from IDEs, command line, sbt, or even Maven. Bootstrap scans the classpath and finds META-INF/squbs-meta.&lt;ext&gt; in each classpath entry.
+If squbs metadata is available, the jar is treated as squbs cube or extension and initialized according to the
+metadata declarations. The bootstrap then first initializes extensions, cubes, then service routes last regardless of
+their sequence in the classpath.
+
+Given normal circumstances, bootstrapping detail are of not much significance. However, one may need to programmatically bootstrap squbs in different ways. This is especially common in test cases needing custom configuration and needing to run in parallel. Please see [Testing](testing.md) for more information. The syntax for bootstrapping squbs is as follows:
 
 **Option 1)** Start with user-defined configuration
 
@@ -41,7 +47,7 @@ Lets take a look at each component.
 
 #Configuration Resolution
 
-squbs chooses exactly one application configuration and merges it with the aggregated reference.conf. The application configuration being merged are chosen from the following order.
+squbs chooses one application configuration and merges it with the aggregated application.conf and reference.conf in the classpath. The application configuration being merged are chosen from the following order.
 
 1. If a configuration is provided when creating the boot object, this configuration is chosen. This is the `customConfig` field from the example above.
 
@@ -198,14 +204,6 @@ specifying:
 in the extension declaration. If the sequence is not specified, it defaults to Int.maxValue. This means it will start
 after all extensions that provide a sequence number. If there is more than one extension not specifying the sequence,
 the order between them is indeterministic.
-
-##Bootstrapping
-
-Bootstrapping squbs is done by starting the org.squbs.unicomplex.Bootstrap object from the Java command line, IDE, sbt,
-or even maven. Bootstrap scans the classpath and finds META-INF/squbs-meta.&lt;ext&gt; in each classpath entry.
-If squbs metadata is available, the jar is treated as squbs cube or extension and initialized according to the
-metadata declarations. The bootstrap then first initializes extensions, cubes, then service routes last regardless of
-their sequence in the classpath.
 
 #Shutting Down squbs
 

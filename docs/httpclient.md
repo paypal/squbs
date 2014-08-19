@@ -131,7 +131,7 @@ client.markDown
 client.markUp
 ```
 
-#### Use HttpClient Make HTTP Call
+#### Use HttpClient to make HTTP Call
 
 ```java
 val response: Future[HttpResponseWrapper] = client.get(uri: String)
