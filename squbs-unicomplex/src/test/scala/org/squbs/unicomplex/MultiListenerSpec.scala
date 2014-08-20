@@ -52,6 +52,12 @@ class MultiListenerSpec extends TestKit(ActorSystem("MultiListenerSpec"))
     MultiListenerService.count should be(1)
   }
 
+  it should "register the JMXBean for spray status" in {
+    import JMX._
+    get(prefix(boot.actorSystem) + serverStats + "default-listener", "TotalConnections") should not be (-1)
+    get(prefix(boot.actorSystem) + serverStats + "second-listener", "TotalRequests") should not be (-1)
+  }
+
   override protected def beforeAll(): Unit = {
     val config = ConfigFactory.parseString(
       s"""

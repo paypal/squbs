@@ -45,6 +45,7 @@ object UnicomplexBoot {
   private lazy val log = LoggerFactory.getLogger(this.getClass)
 
   final val extConfigDirKey = "squbs.external-config-dir"
+  final val extConfigNameKey = "squbs.external-config-files"
   final val actorSystemNameKey = "squbs.actorsystem-name"
 
   val startupTimeout: Timeout =
@@ -89,10 +90,15 @@ object UnicomplexBoot {
       case None =>
         // Sorry, the configDir is used to read the file. So it cannot be read from this config file.
         val configDir = new File(baseConfig.getString(extConfigDirKey))
-        val configFile = new File(configDir, "application")
+        import collection.JavaConversions._
+        var configNames = baseConfig.getStringList(extConfigNameKey)
+        configNames.add("application")
         val parseOptions = ConfigParseOptions.defaults().setAllowMissing(true)
-        val config = ConfigFactory.parseFileAnySyntax(configFile, parseOptions)
-        if (config.entrySet.isEmpty) baseConfig else ConfigFactory.load(config withFallback baseConfig)
+        val addConfigs = configNames map {
+        	name => ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
+        }
+        if (addConfigs.isEmpty) baseConfig
+        else ConfigFactory.load((addConfigs :\ baseConfig) (_ withFallback _))
     }
   }
 

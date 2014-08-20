@@ -21,9 +21,14 @@ import java.lang.management.ManagementFactory
 import javax.management.{MXBean, ObjectName}
 import java.util.Date
 import java.beans.ConstructorProperties
+import spray.can.Http
+import spray.can.server.Stats
+
 import scala.beans.BeanProperty
-import akka.actor.{ActorSystem, ActorContext}
+import akka.actor.{ActorRef, ActorSystem, ActorContext}
 import scala.collection.concurrent.TrieMap
+import scala.concurrent.Await
+import scala.util.Try
 
 object JMX {
 
@@ -33,6 +38,7 @@ object JMX {
   val cubesName       = "org.squbs.unicomplex:type=Cubes"
   val cubeStateName   = "org.squbs.unicomplex:type=CubeState,name="
   val listenersName    = "org.squbs.unicomplex:type=Listeners"
+  val serverStats = "org.squbs.unicomplex:type=serverStats,listener="
 
   implicit def string2objectName(name:String):ObjectName = new ObjectName(name)
 
@@ -103,6 +109,7 @@ trait CubesMXBean {
 trait CubeStateMXBean {
   def getName: String
   def getCubeState: String
+  def getWellKnownActors : String
 }
 
 @MXBean
@@ -110,4 +117,44 @@ trait ListenerMXBean {
   def getListeners: java.util.List[ListenerInfo]
 }
 
+@MXBean
+trait ServerStatsMXBean {
+  def getListenerName: String
+  def getUptime: String
+  def getTotalRequests: Long
+  def getOpenRequests: Long
+  def getMaxOpenRequests: Long
+  def getTotalConnections: Long
+  def getOpenConnections: Long
+  def getMaxOpenConnections: Long
+  def getRequestsTimedOut: Long
+}
 
+class SeverStats(name: String, httpListener: ActorRef) extends ServerStatsMXBean {
+  import akka.pattern._
+  import scala.concurrent.duration._
+  import spray.util._
+
+  override def getListenerName: String = name
+
+  override def getTotalConnections: Long = status.map(_.totalConnections) getOrElse -1
+
+  override def getRequestsTimedOut: Long = status.map(_.requestTimeouts) getOrElse -1
+
+  override def getOpenRequests: Long = status.map(_.openRequests) getOrElse -1
+
+  override def getUptime: String = status.map(_.uptime.formatHMS) getOrElse "00:00:00.000"
+
+  override def getMaxOpenRequests: Long = status.map(_.maxOpenRequests) getOrElse -1
+
+  override def getOpenConnections: Long = status.map(_.openConnections) getOrElse -1
+
+  override def getMaxOpenConnections: Long = status.map(_.maxOpenConnections) getOrElse -1
+
+  override def getTotalRequests: Long = status.map(_.totalRequests) getOrElse -1
+
+  private def status: Option[Stats] = {
+    val statsFuture = httpListener.ask(Http.GetStats)(1 second).mapTo[Stats]
+    Try(Await.result(statsFuture, 1 second)).toOption
+  }
+}
