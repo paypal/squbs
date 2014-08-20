@@ -279,7 +279,7 @@ object UnicomplexBoot {
                           initRequired: Boolean) = {
       try {
         val actorClass = clazz asSubclass classOf[Actor]
-        val props = Props(actorClass)
+        val props = Props { WebContext.createWithContext(webContext){ actorClass.newInstance() } }
         val actorName = if (webContext.length > 0) webContext + "-handler" else "root-handler"
         cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, initRequired)
         Some((symName, alias, version, actorClass))

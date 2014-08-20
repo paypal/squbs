@@ -23,12 +23,14 @@ import javax.management.ObjectName
 import akka.actor.ActorSystem
 import akka.io.IO
 import akka.testkit.{ImplicitSender, TestKit}
+import akka.pattern.ask
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import org.squbs.unicomplex.dummyextensions.DummyExtension
+import org.squbs.unicomplex.dummysvcactor.GetWebContext
 import spray.can.Http
 import spray.http._
 import scala.concurrent.duration._
@@ -148,6 +150,19 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("pong")
       }
+    }
+
+    "service actor with WebContext must have a WebContext" in {
+      val w = new Waiter
+      val webContext =
+      for {
+        svcActor <- system.actorSelection("/user/DummySvcActor/dummysvcactor-handler").resolveOne()
+        result   <- (svcActor ? GetWebContext).mapTo[String]
+      } {
+        w { result should be ("dummysvcactor") }
+        w.dismiss()
+      }
+      w.await()
     }
 
     "check cube MXbean" in {

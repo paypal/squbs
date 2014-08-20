@@ -17,18 +17,15 @@
  */
 package org.squbs.unicomplex.dummysvc
 
-import org.squbs.unicomplex.RouteDefinition
+import org.squbs.unicomplex._
 import akka.actor.{Props, ActorRef, Actor, ActorLogging}
 import spray.routing._
 import Directives._
 import spray.http.HttpEntity
 import spray.http.MediaTypes._
 import spray.http.HttpResponse
-import org.squbs.unicomplex.AppendedMsg
-import org.squbs.unicomplex.PrependedMsg
-import org.squbs.unicomplex.EchoMsg
 
-class DummySvc extends RouteDefinition{
+class DummySvc extends RouteDefinition with WebContext {
   def route = path("msg" / Segment) {param =>
     get {ctx =>
       context.actorOf(Props[DummyClient]).tell(EchoMsg(param), ctx.responder)

@@ -144,7 +144,12 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 
   val routeDef =
     try {
-      val d = RouteDefinition.startRoutes { clazz.newInstance }
+
+      val d = RouteDefinition.startRoutes {
+        WebContext.createWithContext[RouteDefinition](webContext) {
+          clazz.newInstance
+        }
+      }
       context.parent ! Initialized(Success(None))
       d
     } catch {
@@ -235,9 +240,9 @@ object RouteDefinition {
     override def initialValue(): Option[ActorContext] = None
   }
 
-  def startRoutes[T](fn: ()=>T)(implicit context: ActorContext): T = {
+  def startRoutes[T](fn: => T)(implicit context: ActorContext): T = {
     localContext.set(Some(context))
-    val r = fn()
+    val r = fn
     localContext.set(None)
     r
   }
@@ -248,6 +253,23 @@ trait RouteDefinition {
   implicit final lazy val self = context.self
 
   def route: Route
+}
+
+object WebContext {
+  private[unicomplex] val localContext = new ThreadLocal[Option[String]] {
+    override def initialValue(): Option[String] = None
+  }
+
+  def createWithContext[T](webContext: String)(fn: => T): T = {
+    localContext.set(Some(webContext))
+    val r = fn
+    localContext.set(None)
+    r
+  }
+}
+
+trait WebContext {
+  protected final val webContext: String = WebContext.localContext.get.get
 }
 
 /**
