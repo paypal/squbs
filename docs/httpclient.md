@@ -80,22 +80,6 @@ EnvironmentRegistry.register(DummyPriorityEnvironmentResolver)
 
 ### HttpClient Message Based API
 
-#### Create HttpClient
-
-```java
-val httpClientManager = HttpClientManager(system: ActorSystem).httpClientManager
-httpClientManager ! Create(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None)
-```
-- name(Mandatory): Service Name
-- env(Optional): Service Call Environment, by default is Default
-- pipeline(Optional): Service Call Request/Response Pipeline
-
-response:
-- Success: HttpClientActor Reference
-- Failure: HttpClientExistException
-
-![Create HttpClient Message Flow](../docs/img/create-httpclient.png)
-
 #### Get HttpClient
 
 ```java
@@ -107,7 +91,8 @@ httpClientManager ! Get(name: String, env: Environment = Default)
 
 response:
 - Success: HttpClientActor Reference
-- Failure: HttpClientNotExistException
+
+Note: If httpclient is not exist, it will create a new one.
 
 ![Get HttpClient Message Flow](../docs/img/get-httpclient.png)
 
@@ -154,20 +139,20 @@ response:
 #### Update HttpClient Configuration
 
 ```java
-//get HttpClientActor Ref from Create/Get HttpClient Message Call
+//get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Update(config: Configuration)
 ```
 - config(Mandatory): new Configuration
 
 response:
-- Success: UpdateSuccess
+- Success: HttpClientActor Reference
 
 ![Update HttpClient Configuration Message Flow](../docs/img/update-httpclient-configuration.png)
 
 #### MarkDown HttpClient
 
 ```java
-//get HttpClientActor Ref from Create/Get HttpClient Message Call
+//get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! MarkDown
 ```
 response:
@@ -178,7 +163,7 @@ response:
 #### MarkUp HttpClient
 
 ```java
-//get HttpClientActor Ref from Create/Get HttpClient Message Call
+//get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! MarkUp
 ```
 response:
@@ -189,7 +174,7 @@ response:
 #### Close HttpClient
 
 ```java
-//get HttpClientActor Ref from Create/Get HttpClient Message Call
+//get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Close
 ```
 response:
@@ -200,7 +185,7 @@ response:
 #### Use HttpClient Make HTTP Call
 
 ```java
-//get HttpClientActor Ref from Create/Get HttpClient Message Call
+//get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Get(uri)
 ```
 - uri(Mandatory): Uri for Service Call
@@ -212,7 +197,7 @@ response:
 ![HttpClient Get Call Message Flow](../docs/img/httpclient-call-get.png)
 
 ```java
-//get HttpClientActor Ref from Create/Get HttpClient Message Call
+//get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Head(uri)
 ```
 - uri(Mandatory): Uri for Service Call
@@ -224,7 +209,7 @@ response:
 ![HttpClient Head Call Message Flow](../docs/img/httpclient-call-head.png)
 
 ```java
-//get HttpClientActor Ref from Create/Get HttpClient Message Call
+//get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Options(uri)
 ```
 - uri(Mandatory): Uri for Service Call
@@ -236,7 +221,7 @@ response:
 ![HttpClient Options Call Message Flow](../docs/img/httpclient-call-options.png)
 
 ```java
-//get HttpClientActor Ref from Create/Get HttpClient Message Call
+//get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Delete(uri)
 ```
 - uri(Mandatory): Uri for Service Call
@@ -248,7 +233,7 @@ response:
 ![HttpClient Delete Call Message Flow](../docs/img/httpclient-call-delete.png)
 
 ```java
-//get HttpClientActor Ref from Create/Get HttpClient Message Call
+//get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Put[T](uri: String, content: Some[T], json4sSupport: BaseJson4sSupport = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol)
 ```
 - uri(Mandatory): Uri for Service Call
@@ -262,7 +247,7 @@ response:
 ![HttpClient Put Call Message Flow](../docs/img/httpclient-call-put.png)
 
 ```java
-//get HttpClientActor Ref from Create/Get HttpClient Message Call
+//get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Post[T](uri: String, content: Some[T], json4sSupport: BaseJson4sSupport = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol)
 ```
 - uri(Mandatory): Uri for Service Call
@@ -286,21 +271,22 @@ val result: T = httpResponse.unmarshalTo[T] //T is the unmarshall object
 
 ### HttpClient API
 
-#### Get Or Create HttpClient
+#### Get HttpClient
 
 ```java
-val client: HttpClient = HttpClientFactory.getOrCreate(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None)
+val client: HttpClient = HttpClientFactory.get(name: String, env: Environment = Default)
 ```
 - name(Mandatory): Service Name
 - env(Optional): Service Call Environment, by default is Default
-- pipeline(Optional): Service Call Request/Response Pipeline
+
+Note: If httpclient is not exist, it will create a new one.
 
 #### Update
 
 Update Configuration:
 
 ```java
-val client: HttpClient = HttpClientFactory.getOrCreate(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None).withConfig(config: Configuration)
+val client: HttpClient = HttpClientFactory.getOrCreate(name: String, env: Environment = Default).withConfig(config: Configuration)
 val response: Future[HttpResponseWrapper] = client.get(uri: String)
 ```
 

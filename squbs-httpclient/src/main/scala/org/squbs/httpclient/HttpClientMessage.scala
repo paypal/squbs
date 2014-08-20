@@ -17,16 +17,13 @@
  */
 package org.squbs.httpclient
 
-import org.squbs.httpclient.pipeline.Pipeline
 import scala.Some
 import org.squbs.httpclient.env.{Default, Environment}
 import spray.httpx.BaseJson4sSupport
 import akka.pattern.CircuitBreaker
-import scala.concurrent.duration._
+import akka.actor.ActorSystem
+import org.squbs.httpclient.endpoint.EndpointRegistry
 
-/**
-* Created by hakuang on 6/18/2014.
-*/
 object HttpClientManagerMessage {
 
   /**
@@ -34,11 +31,33 @@ object HttpClientManagerMessage {
    * @param name
    * @param env
    */
-  case class Get(name: String, env: Environment = Default) extends Client {
+  case class Get(name: String, env: Environment = Default)(implicit actorSystem: ActorSystem) extends Client {
     override val cb: CircuitBreaker = {
-      //TODO
       import scala.concurrent.ExecutionContext.Implicits.global
-      new CircuitBreaker(null, 5, 10 seconds, 60 seconds)
+      EndpointRegistry.resolve(name, env) match {
+        case Some(endpoint) =>
+          HttpClientManager.httpClientMap.get((name, env)) match {
+            case Some((client, _)) =>
+              client.cb
+            case None              =>
+              val cbConfig = endpoint.config.circuitBreakerConfig
+              new CircuitBreaker(actorSystem.scheduler, cbConfig.maxFailures, cbConfig.callTimeout, cbConfig.resetTimeout)
+          }
+        case None           =>
+          throw HttpClientEndpointNotExistException(name, env)
+      }
+    }
+
+    cb.onClose{
+      cbStatus = CircuitBreakerStatus.Closed
+    }
+
+    cb.onOpen{
+      cbStatus = CircuitBreakerStatus.Open
+    }
+
+    cb.onHalfOpen{
+      cbStatus = CircuitBreakerStatus.HalfOpen
     }
   }
 
@@ -68,13 +87,11 @@ object HttpClientManagerMessage {
 object HttpClientActorMessage {
 
   /**
-   * Success => UpdateSuccess
+   * Success => HttpClientActor
    * Failure => HttpClientNotExistException
    * @param config
    */
   case class Update(config: Configuration)
-
-  case object UpdateSuccess
 
   /**
    * Success => MarkDownSuccess

@@ -38,10 +38,6 @@ import org.squbs.httpclient.env.Environment
 import org.squbs.httpclient.pipeline.PipelineManager
 import org.squbs.httpclient.endpoint.Endpoint
 
-/**
- * Created by hakuang on 6/23/2014.
- */
-
 class HttpClientManagerExtension(system: ExtendedActorSystem) extends Extension {
 
   val httpClientManager = system.actorOf(Props[HttpClientManager], "httpClientManager")
@@ -157,7 +153,6 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
     case HttpClientActorMessage.Post(uri, content, json4sSupport) =>
       IO(Http) ! hostConnectorSetup(client)
       context.become(receivePostConnection(HttpMethods.POST, uri, content, client, sender(), json4sSupport))
-
   }
 
   def receiveGetConnection(httpMethod: HttpMethod, uri: String, client: Client, actorRef: ActorRef): Actor.Receive = {
@@ -165,13 +160,26 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
       implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
       httpMethod match {
         case HttpMethods.GET =>
+//          val res = get(client, connector, uri)
+//          res onComplete {
+//            case Success(HttpResponseWrapper(code, content)) =>
+//              println("successed:" + content)
+//            case Failure(e: CircuitBreakerOpenException) =>
+//              println("failed:" + e.getMessage)
+//            case Failure(throwable) =>
+//              println("throwable failed:" + throwable.getMessage)
+//          }
           get(client, connector, uri).pipeTo(actorRef)
+          context.unbecome
         case HttpMethods.DELETE =>
           delete(client, connector, uri).pipeTo(actorRef)
+          context.unbecome
         case HttpMethods.HEAD =>
           head(client, connector, uri).pipeTo(actorRef)
+          context.unbecome
         case HttpMethods.OPTIONS =>
           options(client, connector, uri).pipeTo(actorRef)
+          context.unbecome
       }
   }
 
@@ -187,8 +195,10 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
       httpMethod match {
         case HttpMethods.POST =>
           post[T](client, connector, uri, content).pipeTo(actorRef)
+          context.unbecome
         case HttpMethods.PUT =>
           put[T](client, connector, uri, content).pipeTo(actorRef)
+          context.unbecome
       }
   }
 }
@@ -225,7 +235,7 @@ class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport wi
         case Some(_) =>
           client.endpoint = Endpoint(client.endpoint.uri, conf)
           HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
-          sender ! UpdateSuccess
+          sender ! self
         case None    =>
           sender ! HttpClientNotExistException(client.name, client.env)
       }

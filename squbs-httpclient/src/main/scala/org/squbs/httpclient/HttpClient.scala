@@ -52,18 +52,6 @@ trait Client {
 
   val cb: CircuitBreaker
 
-//  cb.onClose{
-//    cbStatus = CircuitBreakerStatus.Closed
-//  }
-//
-//  cb.onOpen{
-//    cbStatus = CircuitBreakerStatus.Open
-//  }
-//
-//  cb.onHalfOpen{
-//    cbStatus = CircuitBreakerStatus.HalfOpen
-//  }
-
   val name: String
 
   val env: Environment
@@ -213,10 +201,33 @@ case class HttpClient(name: String,
 
   def client: Client = this
 
-  def withConfig(config: Configuration): HttpClient = {
-    endpoint = Endpoint(endpoint.uri, config)
-    HttpClientFactory.httpClientMap.put((name, env), this)
-    this
+  cb.onClose{
+    cbStatus = CircuitBreakerStatus.Closed
+  }
+
+  cb.onOpen{
+    cbStatus = CircuitBreakerStatus.Open
+  }
+
+  cb.onHalfOpen{
+    cbStatus = CircuitBreakerStatus.HalfOpen
+  }
+
+  def withConfig(config: Configuration)(implicit system: ActorSystem): HttpClient = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    endpoint.config.circuitBreakerConfig match {
+      case config.circuitBreakerConfig =>
+        endpoint = Endpoint(endpoint.uri, config)
+        HttpClientFactory.httpClientMap.put((name, env), this)
+        this
+      case _                           =>
+        val cbConfig = config.circuitBreakerConfig
+        val cb = new CircuitBreaker(system.scheduler, cbConfig.maxFailures, cbConfig.callTimeout, cbConfig.resetTimeout)
+        val hc = HttpClient(name, env, cb)
+        hc.endpoint = Endpoint(hc.endpoint.uri, config)
+        HttpClientFactory.httpClientMap.put((name, env), hc)
+        hc
+    }
   }
 
   def withFallback(response: HttpResponse): HttpClient = {
