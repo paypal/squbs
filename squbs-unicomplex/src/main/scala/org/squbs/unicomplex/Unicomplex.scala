@@ -175,7 +175,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     override def getCubes: util.List[CubeInfo] = {
       import scala.collection.JavaConversions._
-      cubes.values.toSeq map { c => CubeInfo(c._1.name, c._1.fullName, c._1.version, c._1.cubeSupervisor.path.name) }
+
+      cubes.values.toSeq map { c => CubeInfo(c._1.name, c._1.fullName, c._1.version, c._1.cubeSupervisor.path.toString) }
     }
   }
 
