@@ -57,3 +57,24 @@ object DummyLocalhostResolver extends EndpointResolver {
 
   override def name: String = "DummyLocalhostResolver"
 }
+
+object GoogleAPI {
+
+  object GoogleMapAPIEndpointResolver extends EndpointResolver {
+    override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
+      if (svcName == name)
+        Some(Endpoint("http://maps.googleapis.com/maps"))
+      else
+        None
+    }
+
+    override def name: String = "googlemap"
+  }
+
+  case class Elevation(location: Location, elevation: Double)
+  case class Location(lat: Double, lng: Double)
+  case class GoogleApiResult[T](status: String, results: List[T])
+
+}
+
+

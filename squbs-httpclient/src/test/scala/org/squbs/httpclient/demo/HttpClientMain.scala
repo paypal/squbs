@@ -17,21 +17,21 @@
  */
 package org.squbs.httpclient.demo
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, Actor, Props, ActorSystem}
 import org.squbs.httpclient._
-import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolver}
-import org.squbs.httpclient.env.{Default, Environment}
+import org.squbs.httpclient.endpoint.EndpointRegistry
 import spray.http.StatusCodes
 import scala.util.{Failure, Success}
+import org.squbs.httpclient.dummy.GoogleAPI.{Elevation, GoogleApiResult, GoogleMapAPIEndpointResolver}
 
 /**
  * Traditional API using get
  */
-object HttpClientMain1 extends App with HttpClientTestKit {
+object HttpClientDemo1 extends App with HttpClientTestKit {
 
-  private implicit val system = ActorSystem("HttpClientMain1")
+  private implicit val system = ActorSystem("HttpClientDemo1")
   import system.dispatcher
-  EndpointRegistry.register(new GoogleMapAPIEndpointResolver)
+  EndpointRegistry.register(GoogleMapAPIEndpointResolver)
 
   val response = HttpClientFactory.get("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
@@ -50,11 +50,11 @@ object HttpClientMain1 extends App with HttpClientTestKit {
 /**
  * Traditional API using getEntity
  */
-object HttpClientMain2 extends App with HttpClientTestKit{
+object HttpClientDemo2 extends App with HttpClientTestKit{
 
-  private implicit val system = ActorSystem("HttpClientMain2")
+  private implicit val system = ActorSystem("HttpClientDemo2")
   import system.dispatcher
-  EndpointRegistry.register(new GoogleMapAPIEndpointResolver)
+  EndpointRegistry.register(GoogleMapAPIEndpointResolver)
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
   val response = HttpClientFactory.get("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
@@ -71,17 +71,45 @@ object HttpClientMain2 extends App with HttpClientTestKit{
   }
 }
 
-class GoogleMapAPIEndpointResolver extends EndpointResolver {
-  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-    if (svcName == name)
-      Some(Endpoint("http://maps.googleapis.com/maps"))
-    else
-      None
-  }
+/**
+ * Message Based API
+ */
+object HttpClientDemo3 extends App with HttpClientTestKit {
 
-  override def name: String = "googlemap"
+  private implicit val system = ActorSystem("HttpClientDemo3")
+  EndpointRegistry.register(GoogleMapAPIEndpointResolver)
+
+  system.actorOf(Props(new HttpClientDemoActor)) ! GoogleApiCall
 }
 
-case class Elevation(location: Location, elevation: Double)
-case class Location(lat: Double, lng: Double)
-case class GoogleApiResult[T](status: String, results: List[T])
+case class HttpClientDemoActor(implicit system: ActorSystem) extends Actor with HttpClientTestKit {
+  override def receive: Receive = {
+    case GoogleApiCall =>
+      val httpClientManager = HttpClientManager(system).httpClientManager
+      httpClientManager ! HttpClientManagerMessage.Get("googlemap")
+    case httpClientActorRef: ActorRef =>
+      httpClientActorRef ! HttpClientActorMessage.Get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+    case HttpResponseWrapper(StatusCodes.OK, Right(res)) =>
+      println("Success, response entity is: " + res.entity.asString)
+
+      import HttpClientManager._
+      import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
+      val unmarshalData = res.unmarshalTo[GoogleApiResult[Elevation]]
+      unmarshalData match {
+        case Right(data) =>
+          println("elevation is: " + data.results.head.elevation + ", location.lat is: " + data.results.head.location.lat)
+        case Left(e)     =>
+          println("unmarshal error is:" + e.getMessage)
+      }
+
+      shutdownActorSystem
+    case HttpResponseWrapper(code, _) =>
+      println("Success, the status code is: " + code)
+      shutdownActorSystem
+    case akka.actor.Status.Failure(e) =>
+      println("Failure, the reason is: " + e.getMessage)
+      shutdownActorSystem
+  }
+}
+
+case object GoogleApiCall

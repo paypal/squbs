@@ -24,7 +24,7 @@ import spray.can.client.HostConnectorSettings
  */
 object CircuitBreakerMain2 extends App{
 
-  implicit val actorSystem = ActorSystem("CircuitBreakerMain2", ConfigFactory.load())
+  implicit val actorSystem = ActorSystem("CircuitBreakerMain2")
   import scala.concurrent.ExecutionContext.Implicits.global
 
   EndpointRegistry.register(new EndpointResolver{
