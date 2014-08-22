@@ -1,7 +1,3 @@
-packSettings
-
-atmosSettings
-
 jacoco.settings
 
 findbugsSettings
@@ -11,13 +7,9 @@ org.scalastyle.sbt.ScalastylePlugin.Settings
 
 scalaVersion := "2.10.3"
 
-val akkaV = "2.2.3"
-
-val sprayV = "1.2.0"
-
-val squbsV = "0.0.3-SNAPSHOT"
-
-traceAkka(akkaV)
+val akkaV = "2.3.2"
+val squbsV = "0.6.0-SNAPSHOT"
+val rocksqubsV = "0.6.0-SNAPSHOT"
 
 dependencyOverrides ++= Set(
   "org.slf4j" % "slf4j-api" % "1.7.5",
@@ -26,17 +18,15 @@ dependencyOverrides ++= Set(
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaV,
-  "io.spray" % "spray-routing" % sprayV,
-  "org.squbs" %% "unicomplex" % squbsV,
-  "com.ebay.squbs" %% "rocksqubs" % squbsV,
-  "com.ebay.squbs" %% "rocksqubsperfmon" % squbsV,
-  "com.ebay.squbs" %% "rocksqubsvi" % squbsV,
+  "org.squbs" %% "squbs-unicomplex" % squbsV,
+  "com.ebay.squbs" %% "rocksqubs-kernel" % squbsV,
+  "com.ebay.squbs" %% "rocksqubs-perfmon" % squbsV,
+  "com.ebay.squbs" %% "rocksqubs-vi" % squbsV,
   "com.ebay.kernel" % "uKernelCore" % "9.0.2-squbs-SNAPSHOT",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.3.2",
   "org.scalatest" %% "scalatest" % "2.1.0" % "test",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
-  "io.spray" % "spray-testkit" % sprayV % "test",
-  "org.squbs" %% "testkit" % squbsV % "test"
+  "org.squbs" %% "squbs-testkit" % squbsV % "test"
 )
 
 mainClass in (Compile, run) := Some("org.squbs.unicomplex.Bootstrap")
