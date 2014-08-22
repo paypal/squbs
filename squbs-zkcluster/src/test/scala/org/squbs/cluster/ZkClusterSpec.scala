@@ -79,8 +79,6 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     zk.zkAddress shouldNot be(null)
     zk.zkClientWithNs shouldNot be(null)
 
-    zk.zkMembershipMonitor shouldNot be(null)
-    zk.zkPartitionsManager shouldNot be(null)
     zk.zkClusterActor shouldNot be(null)
   }
 

@@ -6,9 +6,9 @@ name := "squbs-zkcluster"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.2",
   "com.typesafe.akka" %% "akka-remote" % "2.3.2",
-  "org.apache.curator" % "curator-recipes" % "2.4.1",
-  "org.apache.curator" % "curator-framework" % "2.4.1",
-  "org.apache.curator" % "curator-client" % "2.4.1" exclude("org.jboss.netty", "netty"),
+  "org.apache.curator" % "curator-recipes" % "2.6.0",
+  "org.apache.curator" % "curator-framework" % "2.6.0",
+  "org.apache.curator" % "curator-client" % "2.6.0" exclude("org.jboss.netty", "netty"),
   "org.apache.zookeeper" % "zookeeper" % "3.4.6",
   "com.typesafe" %% "scalalogging-slf4j" % "1.1.0",
   "com.google.protobuf" % "protobuf-java" % "2.5.0",
