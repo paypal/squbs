@@ -16,15 +16,15 @@ The picture below shows the interaction between the modules:
 Getting Started
 ---------------
 
-1. Clone the [squbs](https://github.scm.corp.ebay.com/Raptor/squbs) repo.
+1. Clone the [squbs](https://github.scm.corp.ebay.com/Squbs/squbs) repo.
 
-2. Build the unicomplex by running "mvn clean install" from the unicomplex directory. Note that steps 1 and 2 are not needed once we provide the unicomplex into the maven repo.
+2. Build the unicomplex by running "sbt clean update package" from the squbs-unicomplex directory. Note that steps 1 and 2 are not needed once we provide the unicomplex into the repo.
 
 3. Clone this git repo.
 
-4. Build each module separately using "mvn clean install" from each module directory starting with bottlemsgs, then bottlecube, and bottlesvc last.
+4. Build all the modules by running "sbt clean update package".
 
-5. Start the server using "mvn scala:run" from the bottlesvc project.
+5. Start the server using "sbt bottlesvc/run" from the project.
 
 6. Go to http://localhost:8080/bottles/index.html
 
