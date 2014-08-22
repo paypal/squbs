@@ -1,20 +1,12 @@
-packSettings
-
-atmosSettings
-
 jacoco.settings
 
 findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
-
 scalaVersion := "2.10.4"
 
 val akkaV = "2.3.2"
-
-val sprayV = "1.3.1"
-
 val squbsV = "0.5.0-SNAPSHOT"
 val rocksqubsV = "0.5.0-SNAPSHOT"
 
@@ -25,7 +17,6 @@ dependencyOverrides ++= Set(
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaV,
-  "io.spray" % "spray-routing" % sprayV,
   "org.squbs" %% "squbs-unicomplex" % squbsV,
   "com.ebay.squbs" %% "rocksqubs-kernel" % rocksqubsV,
   "com.ebay.squbs" %% "rocksqubs-perfmon" % rocksqubsV,
@@ -34,7 +25,6 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.3.2",
   "org.scalatest" %% "scalatest" % "2.1.0" % "test",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
-  "io.spray" % "spray-testkit" % sprayV % "test",
   "org.squbs" %% "squbs-testkit" % squbsV % "test"
 )
 
