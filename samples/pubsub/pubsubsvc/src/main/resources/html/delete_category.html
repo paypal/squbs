@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Publish Subscribe</title>
+</head>
+<body>
+    <h2>Delete Category</h2>
+	<form id="myform" name="myform" action="/pubsub/adm/delete"  onsubmit="return false;">
+        <table>
+            <tr>
+                <td>Category Id:</td>
+                <td><input type="text" name="category" id="catid" value="mycategory"/></td>
+            </tr>
+            <tr>
+                <td>Category Key:</td>
+                <td><input type="text" name="key" id="categorykey" value="12345"/></td>
+            </tr>
+        </table>
+        <p>
+		<input id="submit" type="submit">
+		</p>
+	</form>
+    <div id="request"></div>
+    <div id="response"></div>
+	<script type="text/javascript">
+        var submit = document.querySelector("#submit");
+        submit.addEventListener('click', sendForm, false);
+
+		function sendForm(evt) {
+			var formPostData = {"category-key": null};
+                formPostData["category-key"] = getFormValue("categorykey");
+	        var formData = JSON.stringify(formPostData);
+			var xhr = new XMLHttpRequest();
+			var postURL = getFormAction("myform") + '/' + getFormValue("catid")
+			document.getElementById("request").innerHTML = "<hr/><h4>Request:</h4>POST " + postURL + "<br/>" + formData;
+			xhr.onreadystatechange = function() {
+              if (xhr.readyState == 4) {
+                document.getElementById("response").innerHTML = "<hr/><h4>Response:</h4>" + xhr.responseText + "<hr/>";
+                document.getElementById("submit").disabled = true
+              }
+            }
+		  	xhr.open('POST', postURL, true);
+			xhr.send(formData);
+			return false; //Prevent the form to post and refresh the browser
+		}
+
+		function getFormAction(elId) {
+		    return document.getElementById(elId).action
+		}
+
+		function getFormValue(elId) {
+            return document.getElementById(elId).value;
+		}
+	</script>
+</body>
+</html>

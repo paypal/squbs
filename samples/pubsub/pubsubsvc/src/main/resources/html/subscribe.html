@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Publish Subscribe</title>
+</head>
+<body>
+    <h2>Subscribe to Channel</h2>
+	<form id="myform" name="myform" action="/pubsub/evt"  onsubmit="return false;">
+        <table>
+            <tr>
+                <td>Category Id:</td>
+                <td><input type="text" name="category" id="catid" value="mycategory"/></td>
+            </tr>
+            <tr>
+                <td>Channel Id:</td>
+                <td><input type="text" name="channel" id="channelid" value="mychannel"/></td>
+            </tr>
+            <tr>
+                <td>Event Type:</td>
+                <td><input type="text" name="event" id="eventid" value="some-event"/></td>
+            </tr>
+        </table>
+        <p>
+		<input id="submit" type="submit">
+		</p>
+	</form>
+    <hr/>
+    <h4>Request:</h4>
+    <div id="request"></div>
+    <hr/>
+    <h4>Events:</h4>
+    <div id="response"></div>
+    <hr/>
+    </body>
+	<script type="text/javascript">
+        var submit = document.querySelector("#submit");
+        submit.addEventListener('click', sendForm, false);
+
+		function sendForm(evt) {
+		    var evtURL = getFormAction("myform") + '/' + getFormValue("catid") + '/' + getFormValue("channelid")
+		    document.getElementById("request").innerHTML = "GET " + evtURL
+		    var target = document.getElementById("response");
+
+            var source = new EventSource(evtURL);
+            source.addEventListener(getFormValue("eventid"), function(e) {
+	            target.innerHTML += "type: " + e.type + "<br/>id: " + e.lastEventId + "<br/>data: " + e.data + "<hr/>";
+            }, false);
+            source.addEventListener('stream_end', function(e) {
+	            source.close();
+	            target.innerHTML += "stream_end";
+	        }, false);
+	        source.onmessage = function(e) {
+	            target.innerHTML += "message type: " + e.type + "<br/>id: " + e.lastEventId + "<br/>data: " + e.data + "<hr/>";
+	        }
+			return false; //Prevent the form to post and refresh the browser
+		}
+
+		function getFormAction(elId) {
+		    return document.getElementById(elId).action;
+		}
+
+		function getFormValue(elId) {
+            return document.getElementById(elId).value;
+		}
+	</script>
+</body>
+</html>
