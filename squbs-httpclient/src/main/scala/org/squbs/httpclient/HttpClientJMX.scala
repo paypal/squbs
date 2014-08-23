@@ -86,7 +86,7 @@ trait HttpClientMXBean {
   def getHttpClientInfo: java.util.List[HttpClientInfo]
 }
 
-object HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
+object HttpClientBean extends HttpClientMXBean {
 
   val httpClientBean = "org.squbs.unicomplex:type=HttpClientInfo"
 

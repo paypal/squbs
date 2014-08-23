@@ -51,24 +51,24 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     val response = HttpClientFactory.get("DummyService").get("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-    result.content.get.entity.data.asString should be (fullTeamJson)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamJson)
   }
 
   "HttpClient with correct Endpoint calling getEntity" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").getEntity[Team]("/view")
     val result = Await.result(response, 3 seconds)
-    result.status should be (StatusCodes.OK)
-    result.content should be (Right(fullTeam))
-    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
+    result.content should be (fullTeam)
+    result.rawHttpResponse.status should be (StatusCodes.OK)
+    result.rawHttpResponse.entity.data.nonEmpty should be (true)
   }
 
   "HttpClient with correct Endpoint calling head" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").head("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (false)
+    result.entity.nonEmpty should be (false)
   }
 
   "HttpClient with correct Endpoint calling headEntity" should "get the correct response" in {
@@ -82,78 +82,76 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     val response = HttpClientFactory.get("DummyService").options("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
   }
 
   "HttpClient with correct Endpoint calling optionsEntity" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").optionsEntity[Team]("/view")
     val result = Await.result(response, 3 seconds)
-    result.status should be (StatusCodes.OK)
-    result.content should be (Right(fullTeam))
-    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
+    result.content should be (fullTeam)
+    result.rawHttpResponse.status should be (StatusCodes.OK)
+    result.rawHttpResponse.entity.data.nonEmpty should be (true)
   }
 
   "HttpClient with correct Endpoint calling delete" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").delete("/del/4")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-    result.content.get.entity.data.asString should be (fullTeamWithDelJson)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamWithDelJson)
   }
 
   "HttpClient with correct Endpoint calling deleteEntity" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").deleteEntity[Team]("/del/4")
     val result = Await.result(response, 3 seconds)
-    result.status should be (StatusCodes.OK)
-    result.content should be (Right(fullTeamWithDel))
-    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
+    result.content should be (fullTeamWithDel)
+    result.rawHttpResponse.status should be (StatusCodes.OK)
+    result.rawHttpResponse.entity.data.nonEmpty should be (true)
   }
 
   "HttpClient with correct Endpoint calling post" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").post[Employee]("/add", Some(newTeamMember))
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-    result.content.get.entity.data.asString should be (fullTeamWithAddJson)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamWithAddJson)
   }
 
   "HttpClient with correct Endpoint calling postEnitty" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").postEntity[Employee, Team]("/add", Some(newTeamMember))
     val result = Await.result(response, 3 seconds)
-    result.status should be (StatusCodes.OK)
-    result.status should be (StatusCodes.OK)
-    result.content should be (Right(fullTeamWithAdd))
-    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
+    result.content should be (fullTeamWithAdd)
+    result.rawHttpResponse.status should be (StatusCodes.OK)
+    result.rawHttpResponse.entity.data.nonEmpty should be (true)
   }
 
   "HttpClient with correct Endpoint calling put" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").put[Employee]("/add", Some(newTeamMember))
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-    result.content.get.entity.data.asString should be (fullTeamWithAddJson)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamWithAddJson)
   }
 
   "HttpClient with correct Endpoint calling putEnitty" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").putEntity[Employee, Team]("/add", Some(newTeamMember))
     val result = Await.result(response, 3 seconds)
-    result.status should be (StatusCodes.OK)
-    result.status should be (StatusCodes.OK)
-    result.content should be (Right(fullTeamWithAdd))
-    result.rawHttpResponse.get.entity.data.nonEmpty should be (true)
+    result.content should be (fullTeamWithAdd)
+    result.rawHttpResponse.status should be (StatusCodes.OK)
+    result.rawHttpResponse.entity.data.nonEmpty should be (true)
   }
 
   "HttpClient could be use endpoint as service name directly without registry endpoint resolvers, major target for third party service call" should "get the correct response" in {
     val response = HttpClientFactory.get(dummyServiceEndpoint).get("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-    result.content.get.entity.data.asString should be (fullTeamJson)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamJson)
   }
 
   "HttpClient update configuration" should "get the correct behaviour" in {
@@ -169,9 +167,9 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     val response = HttpClientFactory.get("DummyService").get("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-    result.content.get.entity.data.asString should be (fullTeamJson)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamJson)
   }
 
   "HttpClient with correct endpoint calling get with not existing uri" should "get StatusCodes.NotFound" in {
@@ -190,17 +188,18 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     val httpClient = HttpClientFactory.get("DummyService")
     httpClient.markDown
     val response = httpClient.get("/view")
-    val result = Await.result(response, 3 seconds)
-    result.status should be (HttpClientException.httpClientMarkDownError)
-    result.content.isLeft should be (true)
-    result.content should be (Left(HttpClientMarkDownException("DummyService")))
+    try{
+      Await.result(response, 3 seconds)
+    } catch {
+      case e: Exception => e should be (HttpClientMarkDownException("DummyService"))
+    }
     httpClient.markUp
     val updatedResponse = httpClient.get("/view")
     val updatedResult = Await.result(updatedResponse, 3 seconds)
     updatedResult.status should be (StatusCodes.OK)
-    updatedResult.content.get.entity.nonEmpty should be (true)
-    updatedResult.content.get.entity.data.nonEmpty should be (true)
-    updatedResult.content.get.entity.data.asString should be (fullTeamJson)
+    updatedResult.entity.nonEmpty should be (true)
+    updatedResult.entity.data.nonEmpty should be (true)
+    updatedResult.entity.data.asString should be (fullTeamJson)
   }
 
 //  "Change the endpoint to None" should "throw out HttpClientEndpointNotExistException" in {

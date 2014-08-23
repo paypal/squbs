@@ -1,6 +1,6 @@
 package org.squbs.httpclient.demo
 
-import org.squbs.httpclient.{HttpResponseWrapper, CircuitBreakerConfiguration, Configuration, HttpClientFactory}
+import org.squbs.httpclient.{CircuitBreakerConfiguration, Configuration, HttpClientFactory}
 import scala.util.{Failure, Success}
 import akka.pattern.CircuitBreakerOpenException
 import scala.concurrent.duration._
@@ -31,7 +31,7 @@ object CircuitBreakerMain1 extends App{
   while(true){
     Thread.sleep(2000)
     httpClient.get("/view") onComplete {
-      case Success(HttpResponseWrapper(code, Right(httpResponse))) =>
+      case Success(httpResponse) =>
         println("call success, body is:" + httpResponse.entity.data.asString + ",status:" + httpClient.cbStatus)
       case Failure(e: CircuitBreakerOpenException) =>
         println("circuitBreaker open! remaining time is:" + e.remainingDuration.toSeconds + ", status:" + httpClient.cbStatus)

@@ -20,7 +20,7 @@ package org.squbs.httpclient.demo
 import akka.actor.{ActorRef, Actor, Props, ActorSystem}
 import org.squbs.httpclient._
 import org.squbs.httpclient.endpoint.EndpointRegistry
-import spray.http.StatusCodes
+import spray.http.{HttpResponse, StatusCodes}
 import scala.util.{Failure, Success}
 import org.squbs.httpclient.dummy.GoogleAPI.{Elevation, GoogleApiResult, GoogleMapAPIEndpointResolver}
 
@@ -35,10 +35,10 @@ object HttpClientDemo1 extends App with HttpClientTestKit {
 
   val response = HttpClientFactory.get("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
-    case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
+    case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
       println("Success, response entity is: " + res.entity.asString)
       shutdownActorSystem
-    case Success(HttpResponseWrapper(code, _)) =>
+    case Success(res@HttpResponse(code, _, _, _)) =>
       println("Success, the status code is: " + code)
       shutdownActorSystem
     case Failure(e) =>
@@ -59,10 +59,10 @@ object HttpClientDemo2 extends App with HttpClientTestKit{
 
   val response = HttpClientFactory.get("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
-    case Success(HttpResponseEntityWrapper(StatusCodes.OK, Right(res), rawHttpResponse)) =>
-      println("Success, response status is: " + res.status + ", elevation is: " + res.results.head.elevation + ", location.lat is: " + res.results.head.location.lat)
+    case Success(Result(content, res@HttpResponse(StatusCodes.OK, _, _, _))) =>
+      println("Success, response status is: " + content.status + ", elevation is: " + content.results.head.elevation + ", location.lat is: " + content.results.head.location.lat)
       shutdownActorSystem
-    case Success(HttpResponseEntityWrapper(code, _, _)) =>
+    case Success(Result(_, HttpResponse(code, _, _, _))) =>
       println("Success, the status code is: " + code)
       shutdownActorSystem
     case Failure(e) =>
@@ -89,7 +89,7 @@ case class HttpClientDemoActor(implicit system: ActorSystem) extends Actor with 
       httpClientManager ! HttpClientManagerMessage.Get("googlemap")
     case httpClientActorRef: ActorRef =>
       httpClientActorRef ! HttpClientActorMessage.Get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
-    case HttpResponseWrapper(StatusCodes.OK, Right(res)) =>
+    case res@ HttpResponse(StatusCodes.OK, _, _, _) =>
       println("Success, response entity is: " + res.entity.asString)
 
       import HttpClientManager._
@@ -103,7 +103,7 @@ case class HttpClientDemoActor(implicit system: ActorSystem) extends Actor with 
       }
 
       shutdownActorSystem
-    case HttpResponseWrapper(code, _) =>
+    case HttpResponse(code, _, _, _) =>
       println("Success, the status code is: " + code)
       shutdownActorSystem
     case akka.actor.Status.Failure(e) =>

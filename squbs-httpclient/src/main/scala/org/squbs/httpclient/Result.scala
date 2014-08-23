@@ -18,8 +18,8 @@
 package org.squbs.httpclient
 
 import spray.httpx.unmarshalling._
-import spray.http.{HttpResponse, StatusCode}
+import spray.http.{HttpResponse}
 
-case class HttpResponseEntityWrapper[T: FromResponseUnmarshaller](status: StatusCode, content: Either[Throwable, T], rawHttpResponse: Option[HttpResponse])
+case class Result[T: FromResponseUnmarshaller](content: T, rawHttpResponse: HttpResponse)
 
-case class HttpResponseWrapper(status: StatusCode, content: Either[Throwable, HttpResponse])
+//case class HttpResponseWrapper(status: StatusCode, content: Either[Throwable, HttpResponse])

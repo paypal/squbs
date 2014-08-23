@@ -68,62 +68,60 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
 /**
  * Without setup HttpConnection
  */
-trait HttpCallActorSupport extends ConfigurationSupport with PipelineManager {
+trait HttpCallActorSupport extends PipelineManager {
 
   import ExecutionContext.Implicits.global
   import spray.httpx.RequestBuilding._
 
   def handle(client: Client,
-             pipeline: Try[HttpRequest => Future[HttpResponseWrapper]],
-             httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+             pipeline: Try[HttpRequest => Future[HttpResponse]],
+             httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponse] = {
     pipeline match {
       case Success(res) =>
-        val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponseWrapper](res(httpRequest))
+        val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](res(httpRequest))
         client.endpoint.config.circuitBreakerConfig.fallbackHttpResponse match {
           case Some(response) =>
-            val fallbackResponse = future {
-              HttpResponseWrapper(response.status, Right(response))
-            }
+            val fallbackResponse = future {response}
             runCircuitBreaker fallbackTo fallbackResponse
           case None           =>
             runCircuitBreaker
         }
       case Failure(t@HttpClientMarkDownException(_, _)) => future {
-        HttpResponseWrapper(HttpClientException.httpClientMarkDownError, Left(t))
+        throw t
       }
       case Failure(t) => future {
-        HttpResponseWrapper(999, Left(t))
+        throw t
       }
     }
   }
 
   def get(client: Client, actorRef: ActorRef, uri: String)
-         (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+         (implicit actorSystem: ActorSystem): Future[HttpResponse] = {
     handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Get(client.endpoint + uri))
   }
 
   def post[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: Some[T])
-                         (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+                         (implicit actorSystem: ActorSystem): Future[HttpResponse] = {
     handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Post(client.endpoint + uri, content))
   }
 
   def put[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: Some[T])
-                        (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+                        (implicit actorSystem: ActorSystem): Future[HttpResponse] = {
     handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Put(client.endpoint + uri, content))
   }
 
   def head(client: Client, actorRef: ActorRef, uri: String)
-          (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+          (implicit actorSystem: ActorSystem): Future[HttpResponse] = {
     handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Head(client.endpoint + uri))
   }
 
   def delete(client: Client, actorRef: ActorRef, uri: String)
-            (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+            (implicit actorSystem: ActorSystem): Future[HttpResponse] = {
     handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Delete(client.endpoint + uri))
   }
 
   def options(client: Client, actorRef: ActorRef, uri: String)
-             (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+             (implicit actorSystem: ActorSystem): Future[HttpResponse] = {
     handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Options(client.endpoint + uri))
   }
 }
