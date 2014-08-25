@@ -45,7 +45,7 @@ class ServiceRegistry {
       import scala.collection.JavaConversions._
       listenerRoutes.flatMap { case (listenerName, agent) =>
         agent() map { case (webContext, actor) =>
-            ListenerInfo(listenerName, webContext, actor.path.toStringWithoutAddress)
+            ListenerInfo(listenerName, webContext, actor.toString)
         }
       }.toSeq
     }
