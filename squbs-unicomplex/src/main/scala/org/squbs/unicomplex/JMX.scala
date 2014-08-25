@@ -39,6 +39,7 @@ object JMX {
   val cubeStateName   = "org.squbs.unicomplex:type=CubeState,name="
   val listenersName    = "org.squbs.unicomplex:type=Listeners"
   val serverStats = "org.squbs.unicomplex:type=serverStats,listener="
+  val actorInfo       = "org.squbs.unicomplex:type=Actor,name="
 
   implicit def string2objectName(name:String):ObjectName = new ObjectName(name)
 
@@ -80,13 +81,13 @@ object JMX {
 }
 
 // $COVERAGE-OFF$
-case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", "supervisorPath"))(
+case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", "supervisor"))(
                                           @BeanProperty name: String,
                                           @BeanProperty fullName: String,
                                           @BeanProperty version: String,
-                                          @BeanProperty supervisorPath: String)
+                                          @BeanProperty supervisor: String)
 
-case class ListenerInfo @ConstructorProperties(Array("listener", "context", "actorPath"))(
+case class ListenerInfo @ConstructorProperties(Array("listener", "context", "actor"))(
                                           @BeanProperty listener: String,
                                           @BeanProperty context: String,
                                           @BeanProperty actorPath: String)
@@ -103,6 +104,13 @@ trait SystemStateMXBean {
 @MXBean
 trait CubesMXBean {
   def getCubes: java.util.List[CubeInfo]
+}
+
+@MXBean
+trait ActorMXBean {
+  def getActor: String
+  def getParent: String
+  def getChildren: String
 }
 
 @MXBean

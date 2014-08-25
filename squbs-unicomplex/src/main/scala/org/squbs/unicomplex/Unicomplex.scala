@@ -30,6 +30,7 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.Try
 
+
 class UnicomplexExtension(system: ExtendedActorSystem) extends Extension {
 
   val uniActor = system.actorOf(Props[Unicomplex], "unicomplex")
@@ -169,6 +170,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     override def getActivationMillis: Int = activationDuration
   }
+
+
+
   // $COVERAGE-ON$
 
   class CubesBean extends CubesMXBean {
@@ -176,17 +180,21 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     override def getCubes: util.List[CubeInfo] = {
       import scala.collection.JavaConversions._
 
-      cubes.values.toSeq map { c => CubeInfo(c._1.name, c._1.fullName, c._1.version, c._1.cubeSupervisor.path.toString) }
+      cubes.values.toSeq map { c => CubeInfo(c._1.name, c._1.fullName, c._1.version, c._1.cubeSupervisor.toString) }
     }
   }
 
+
   private val stateMXBean = new SystemStateBean
+
+
 
   override def preStart() {
     Unicomplex.actors += context.system.name -> self
 
     import JMX._
     register(stateMXBean, prefix + systemStateName)
+    register(new ActorBean, prefix + actorInfo + this.getClass.getSimpleName)
     register(new CubesBean, prefix + cubesName)
   }
 
@@ -194,6 +202,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     import JMX._ // JMX registrations
     unregister(prefix + cubesName)
     unregister(prefix + systemStateName)
+    unregister(prefix + actorInfo + this.getClass.getSimpleName)
 
     Unicomplex.actors -= context.system.name
   }
@@ -431,17 +440,20 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     override def getCubeState: String = cubeState.toString
 
     override def getWellKnownActors: String = context.children.mkString(",")
+
   }
 
   override def preStart() {
     import org.squbs.unicomplex.JMX._
     val cubeStateMXBean = new CubeStateBean
     register(cubeStateMXBean, prefix + cubeStateName + cubeName)
+    register(new ActorBean, prefix + actorInfo + cubeName )
   }
 
   override def postStop() {
     import org.squbs.unicomplex.JMX._
     unregister(prefix + cubeStateName + cubeName)
+    unregister(prefix + actorInfo + cubeName)
   }
 
   override val supervisorStrategy =
@@ -511,4 +523,13 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     case CheckInitStatus => // Explicitly requested reports have an attached requested flag as a tuple
       sender ! (InitReports(cubeState, initMap.toMap), true)
   }
+}
+
+
+
+class ActorBean(implicit context: ActorContext) extends ActorMXBean {
+  import context._
+  override def getActor = self.toString
+  override def getParent = parent.toString
+  override def getChildren = children.mkString(",")
 }
