@@ -30,8 +30,7 @@ import org.squbs.httpclient.HttpClientManagerMessage.Get
 import org.squbs.httpclient.HttpClientManagerMessage.Delete
 import scala.Some
 import spray.http.{HttpResponse, StatusCodes}
-import spray.util._
-import spray.json.{RootJsonFormat, JsonFormat, DefaultJsonProtocol}
+import spray.json.DefaultJsonProtocol
 import spray.httpx.SprayJsonSupport
 
 class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")) with FlatSpecLike with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll with DummyService{

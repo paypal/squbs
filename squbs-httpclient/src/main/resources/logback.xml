@@ -8,17 +8,9 @@
         </encoder>
     </appender>
 
-    <!-- <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-        <file>akka.log</file>
-        <append>false</append>
-        <encoder>
-            <pattern>%date{MM/dd HH:mm:ss} %-5level[%thread] %logger{1} - %msg%n</pattern>
-        </encoder>
-    </appender> -->
+    <logger name="akka" level="ERROR" />
 
-    <logger name="akka" level="INFO" />
-
-    <root level="DEBUG">
+    <root level="ERROR">
         <appender-ref ref="CONSOLE"/>
     </root>
 
