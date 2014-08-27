@@ -33,6 +33,7 @@ import akka.io.IO
 import javax.net.ssl.SSLContext
 import spray.io.ClientSSLEngineProvider
 import org.squbs.httpclient.endpoint.Endpoint
+import org.slf4j.LoggerFactory
 
 trait Pipeline {
   def requestPipelines: Seq[RequestTransformer]
@@ -62,10 +63,12 @@ object EmptyPipeline extends Pipeline {
 
 trait PipelineManager{
 
-  import ExecutionContext.Implicits.global
+//  import ExecutionContext.Implicits.global
 
-  private def pipelining(client: Client)(implicit actorSystem: ActorSystem) = {
+  val httpClientLogger = LoggerFactory.getLogger(this.getClass)
 
+  private def pipelining(client: Client)(implicit system: ActorSystem) = {
+    implicit val ec = system.dispatcher
     implicit val connectionTimeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
     for (
       Http.HostConnectorInfo(connector, _) <-
@@ -73,7 +76,7 @@ trait PipelineManager{
     ) yield sendReceive(connector)
   }
 
-  def hostConnectorSetup(client: Client)(implicit actorSystem: ActorSystem) = {
+  def hostConnectorSetup(client: Client)(implicit system: ActorSystem) = {
     implicit def sslContext: SSLContext = {
       client.endpoint.config.sslContext match {
         case Some(context) => context
@@ -92,7 +95,8 @@ trait PipelineManager{
     defaultHostConnectorSetup.copy(settings = Some(client.endpoint.config.hostSettings), connectionType = client.endpoint.config.connectionType)
   }
 
-  def invokeToHttpResponse(client: Client)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
+  def invokeToHttpResponse(client: Client)(implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
+    implicit val ec = system.dispatcher
     val pipelines = client.endpoint.config.pipeline.getOrElse(EmptyPipeline)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines
@@ -115,7 +119,8 @@ trait PipelineManager{
     }
   }
 
-  def invokeToHttpResponseWithoutSetup(client: Client, actorRef: ActorRef)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
+  def invokeToHttpResponseWithoutSetup(client: Client, actorRef: ActorRef)(implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
+    implicit val ec = system.dispatcher
     val pipelines = client.endpoint.config.pipeline.getOrElse(EmptyPipeline)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines
@@ -137,7 +142,8 @@ trait PipelineManager{
     }
   }
 
-  def invokeToEntity[T: FromResponseUnmarshaller](client: Client)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[Result[T]])] = {
+  def invokeToEntity[T: FromResponseUnmarshaller](client: Client)(implicit system: ActorSystem): Try[(HttpRequest => Future[Result[T]])] = {
+    implicit val ec = system.dispatcher
     val pipelines = client.endpoint.config.pipeline.getOrElse(EmptyPipeline)
     val reqPipelines = pipelines.requestPipelines
     val resPipelines = pipelines.responsePipelines

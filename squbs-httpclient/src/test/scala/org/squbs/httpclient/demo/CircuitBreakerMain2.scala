@@ -16,7 +16,8 @@ import spray.http.HttpResponse
 object CircuitBreakerMain2 extends App{
 
   implicit val actorSystem = ActorSystem("CircuitBreakerMain2")
-  import scala.concurrent.ExecutionContext.Implicits.global
+//  import scala.concurrent.ExecutionContext.Implicits.global
+  implicit val ec = actorSystem.dispatcher
 
   EndpointRegistry.register(new EndpointResolver{
 

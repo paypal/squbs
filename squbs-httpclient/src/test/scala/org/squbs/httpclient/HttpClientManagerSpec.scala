@@ -31,6 +31,8 @@ import org.squbs.httpclient.HttpClientManagerMessage.Delete
 import scala.Some
 import spray.http.{HttpResponse, StatusCodes}
 import spray.util._
+import spray.json.{RootJsonFormat, JsonFormat, DefaultJsonProtocol}
+import spray.httpx.SprayJsonSupport
 
 class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")) with FlatSpecLike with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll with DummyService{
 
@@ -161,7 +163,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
-  "HttpClientActor with correct endpoint send Options message nad unmarshall HttpResponse" should "get the correct response" in {
+  "HttpClientActor with correct endpoint send Options message and unmarshall HttpResponse" should "get the correct response" in {
     import HttpClientManager._
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Options("/view")
@@ -230,10 +232,23 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
-  "HttpClientActor with correct endpoint send Put message and unmarshal HttpResponse" should "get the correct response" in {
-    import HttpClientManager._
+  "HttpClientActor with correct endpoint send Put message with spray JSON marshall support" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", Some(newTeamMember))
+    val result = expectMsgType[HttpResponse]
+    result.status should be (StatusCodes.OK)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamWithAddJson)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
+  "HttpClientActor with correct endpoint send Put message and unmarshal HttpResponse" should "get the correct response" in {
+    import HttpClientManager._
+    implicit val jsonFormat = TeamJsonProtocol.employeeFormat
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", Some(newTeamMember), SprayJsonSupport.sprayJsonMarshaller[Employee])
     val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
     result.unmarshalTo[Team] should be (Right(fullTeamWithAdd))
@@ -252,4 +267,8 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     httpClientManager ! Delete(name, env)
     expectMsg(DeleteSuccess)
   }
+}
+
+object TeamJsonProtocol extends DefaultJsonProtocol {
+  implicit def employeeFormat = jsonFormat5(Employee)
 }

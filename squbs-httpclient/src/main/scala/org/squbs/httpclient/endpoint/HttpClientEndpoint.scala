@@ -49,7 +49,7 @@ object EndpointRegistry {
       case None =>
         endpointResolvers.prepend(resolver)
       case Some(routing) =>
-        logger.info("Endpoint Resolver:" + resolver.name + " has been registry, skip current endpoint resolver registry!")
+        logger.warn("Endpoint Resolver:" + resolver.name + " has been registry, skip current endpoint resolver registry!")
     }
   }
 
@@ -76,10 +76,14 @@ object EndpointRegistry {
       }
     }
     resolvedEndpoint match {
-      case Some(_) => resolvedEndpoint
+      case Some(ep) =>
+        logger.debug(s"Endpoint can be resolved by ($svcName, $env), the endpoint uri is:" + ep.uri)
+        resolvedEndpoint
       case None if (svcName != null && (svcName.startsWith("http://") || svcName.startsWith("https://"))) =>
+        logger.debug(s"Endpoint can be resolved with service name match http:// or https:// pattern by ($svcName, $env), the endpoint uri is:" + svcName)
         Some(Endpoint(svcName))
       case _ =>
+        logger.warn(s"Endpoint can not be resolved by ($svcName, $env)!")
         None
     }
   }

@@ -73,10 +73,11 @@ trait DummyService extends SimpleRoutingApp {
   ))
 
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
-  import scala.concurrent.ExecutionContext.Implicits.global
+//  import scala.concurrent.ExecutionContext.Implicits.global
   import DummyService._
 
   def startDummyService(implicit system: ActorSystem, address: String = dummyServiceIpAddress, port: Int = dummyServicePort) {
+    implicit val ec = system.dispatcher
     startServer(address, port = port) {
       pathSingleSlash {
         redirect("/view", StatusCodes.Found)

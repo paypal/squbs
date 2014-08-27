@@ -62,6 +62,7 @@ object GoogleAPI {
 
   object GoogleMapAPIEndpointResolver extends EndpointResolver {
     override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
+      println("resolving googleAPI")
       if (svcName == name)
         Some(Endpoint("http://maps.googleapis.com/maps"))
       else

@@ -14,7 +14,8 @@ import org.squbs.httpclient.env.Environment
 object CircuitBreakerMain1 extends App{
 
   implicit val actorSystem = ActorSystem("CircuitBreakerMain1")
-  import scala.concurrent.ExecutionContext.Implicits.global
+//  import scala.concurrent.ExecutionContext.Implicits.global
+  implicit val ec = actorSystem.dispatcher
 
   EndpointRegistry.register(new EndpointResolver{
 

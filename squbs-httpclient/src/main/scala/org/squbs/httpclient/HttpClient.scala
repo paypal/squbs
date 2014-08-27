@@ -75,13 +75,12 @@ trait Client {
 
 trait HttpCallSupport extends PipelineManager {
 
-  import ExecutionContext.Implicits.global
-
-  private val httpCallLogger = LoggerFactory.getLogger(this.getClass)
+//  import ExecutionContext.Implicits.global
 
   def client: Client
 
-  def handle(pipeline: Try[HttpRequest => Future[HttpResponse]], httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponse] = {
+  def handle(pipeline: Try[HttpRequest => Future[HttpResponse]], httpRequest: HttpRequest)(implicit system: ActorSystem): Future[HttpResponse] = {
+    implicit val ec = system.dispatcher
     pipeline match {
       case Success(res) =>
         val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](res(httpRequest))
@@ -92,55 +91,54 @@ trait HttpCallSupport extends PipelineManager {
             runCircuitBreaker
         }
       case Failure(t@HttpClientMarkDownException(_, _)) =>
-        httpCallLogger.debug("HttpClient has been mark down!", t)
+        httpClientLogger.debug("HttpClient has been mark down!", t)
         future {throw t}
       case Failure(t) =>
-        httpCallLogger.debug("HttpClient Pipeline execution failure!", t)
+        httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
         future {throw t}
     }
   }
 
-  def get(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponse] = {
-    httpCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def get(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handle(invokeToHttpResponse(client), Get(client.endpoint + uri))
   }
 
-  def post[T: Marshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponse] = {
-    httpCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def post[T: Marshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handle(invokeToHttpResponse(client), Post(client.endpoint + uri, content))
   }
 
-  def put[T: Marshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponse] = {
-    httpCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def put[T: Marshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handle(invokeToHttpResponse(client), Put(client.endpoint + uri, content))
   }
 
-  def head(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponse] = {
-    httpCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def head(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handle(invokeToHttpResponse(client), Head(client.endpoint + uri))
   }
 
-  def delete(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponse] = {
-    httpCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def delete(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handle(invokeToHttpResponse(client), Delete(client.endpoint + uri))
   }
 
-  def options(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponse] = {
-    httpCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def options(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handle(invokeToHttpResponse(client), Options(client.endpoint + uri))
   }
 }
 
 trait HttpEntityCallSupport extends PipelineManager {
 
-  import ExecutionContext.Implicits.global
-
-  private val httpEntityCallLogger = LoggerFactory.getLogger(this.getClass)
+//  import ExecutionContext.Implicits.global
 
   def client: Client
 
   def handleEntity[T: FromResponseUnmarshaller](pipeline: Try[HttpRequest => Future[Result[T]]],
-                                                httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[Result[T]] = {
+                                                httpRequest: HttpRequest)(implicit system: ActorSystem): Future[Result[T]] = {
+    implicit val ec = system.dispatcher
     pipeline match {
       case Success(res) =>
         val runCircuitBreaker = client.cb.withCircuitBreaker[Result[T]](res(httpRequest))
@@ -154,41 +152,41 @@ trait HttpEntityCallSupport extends PipelineManager {
             runCircuitBreaker
         }
       case Failure(t@HttpClientMarkDownException(_, _)) =>
-        httpEntityCallLogger.debug("HttpClient has been mark down!", t)
+        httpClientLogger.debug("HttpClient has been mark down!", t)
         throw t
       case Failure(t) =>
-        httpEntityCallLogger.debug("HttpClient Pipeline execution failure!", t)
+        httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
         throw t
     }
   }
 
-  def getEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[Result[R]] = {
-    httpEntityCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def getEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handleEntity[R](invokeToEntity[R](client), Get(client.endpoint + uri))
   }
 
-  def postEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[Result[R]] = {
-    httpEntityCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def postEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[Result[R]] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handleEntity[R](invokeToEntity[R](client), Post(client.endpoint + uri, content))
   }
 
-  def putEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[Result[R]] = {
-    httpEntityCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def putEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[Result[R]] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handleEntity[R](invokeToEntity[R](client), Put(client.endpoint + uri, content))
   }
 
-  def headEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[Result[R]] = {
-    httpEntityCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def headEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handleEntity[R](invokeToEntity[R](client), Head(client.endpoint + uri))
   }
 
-  def deleteEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[Result[R]] = {
-    httpEntityCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def deleteEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handleEntity[R](invokeToEntity[R](client), Delete(client.endpoint + uri))
   }
 
-  def optionsEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[Result[R]] = {
-    httpEntityCallLogger.debug("Service call url is:" + client.endpoint + uri)
+  def optionsEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
+    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
     handleEntity[R](invokeToEntity[R](client), Options(client.endpoint + uri))
   }
 }
@@ -239,8 +237,6 @@ case class HttpClient(name: String,
 
 object HttpClientFactory {
 
-  import scala.concurrent.ExecutionContext.Implicits.global
-
   HttpClientJMX.registryBeans
 
   val httpClientMap: TrieMap[(String, Environment), HttpClient] = TrieMap[(String, Environment), HttpClient]()
@@ -258,14 +254,9 @@ object HttpClientFactory {
       case Some(httpClient) =>
         httpClient
       case None             =>
-        EndpointRegistry.resolve(name, env) match {
-          case Some(endpoint) =>
-            val httpClient = HttpClient(name, newEnv)
-            httpClientMap.put((name, env), httpClient)
-            httpClient
-          case None           =>
-            throw HttpClientEndpointNotExistException(name, env)
-        }
+        val httpClient = HttpClient(name, newEnv)
+        httpClientMap.put((name, env), httpClient)
+        httpClient
     }
   }
 }

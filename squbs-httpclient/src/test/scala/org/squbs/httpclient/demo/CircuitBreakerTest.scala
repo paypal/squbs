@@ -13,7 +13,8 @@ object CircuitBreakerTest extends App{
 
   private implicit val system = ActorSystem("CircuitBreakerMain")
 
-  import scala.concurrent.ExecutionContext.Implicits.global
+//  import scala.concurrent.ExecutionContext.Implicits.global
+  implicit val ec = system.dispatcher
 
   val breaker = new CircuitBreaker(system.scheduler, maxFailures = 5, callTimeout = 10 seconds, resetTimeout = 5 seconds).onOpen{
     println("CircuitBreaker is now open and will not close for one minute.")
