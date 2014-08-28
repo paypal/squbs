@@ -396,8 +396,10 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
         }.map{case (member, impact) =>
           (addressee(member) match {
             case Left(me) => me.tell(ZkUpdatePartitions(impact._1, impact._2), me)
+              log.debug("[partitions] update me to onboard:{} and dropoff:{}", impact._1.map{assign => (keyToPath(assign._1), assign._2)}, impact._2.map{assign => (keyToPath(assign._1), assign._2)})
               Future(true)
             case Right(other) =>
+              log.debug("[partitions] update {} to onboard:{} and dropoff:{}", other, impact._1.map{assign => (keyToPath(assign._1), assign._2)}, impact._2.map{assign => (keyToPath(assign._1), assign._2)})
               (other ? ZkUpdatePartitions(impact._1, impact._2)).mapTo[Boolean]
           })
         }), timeout.duration).foldLeft(true){(successful, individual) => successful && individual}
