@@ -95,32 +95,38 @@ trait HttpCallActorSupport extends PipelineManager {
 
   def get(client: Client, actorRef: ActorRef, uri: String)
          (implicit system: ActorSystem): Future[HttpResponse] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Get(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Get(uri))
   }
 
   def post[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: Some[T])
                          (implicit system: ActorSystem): Future[HttpResponse] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Post(client.endpoint + uri, content))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Post(uri, content))
   }
 
   def put[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: Some[T])
                         (implicit system: ActorSystem): Future[HttpResponse] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Put(client.endpoint + uri, content))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Put(uri, content))
   }
 
   def head(client: Client, actorRef: ActorRef, uri: String)
           (implicit system: ActorSystem): Future[HttpResponse] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Head(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Head(uri))
   }
 
   def delete(client: Client, actorRef: ActorRef, uri: String)
             (implicit system: ActorSystem): Future[HttpResponse] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Delete(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Delete(uri))
   }
 
   def options(client: Client, actorRef: ActorRef, uri: String)
              (implicit system: ActorSystem): Future[HttpResponse] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Options(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Options(uri))
   }
 }
 

@@ -32,7 +32,6 @@ import scala.collection.concurrent.TrieMap
 import spray.http.{HttpResponse, HttpRequest}
 import org.squbs.httpclient.env.{EnvironmentRegistry, Default, Environment}
 import akka.pattern.CircuitBreaker
-import org.slf4j.LoggerFactory
 
 object Status extends Enumeration {
   type Status = Value
@@ -100,33 +99,33 @@ trait HttpCallSupport extends PipelineManager {
   }
 
   def get(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handle(invokeToHttpResponse(client), Get(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(invokeToHttpResponse(client), Get(uri))
   }
 
   def post[T: Marshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handle(invokeToHttpResponse(client), Post(client.endpoint + uri, content))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(invokeToHttpResponse(client), Post(uri, content))
   }
 
   def put[T: Marshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handle(invokeToHttpResponse(client), Put(client.endpoint + uri, content))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(invokeToHttpResponse(client), Put(uri, content))
   }
 
   def head(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handle(invokeToHttpResponse(client), Head(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(invokeToHttpResponse(client), Head(uri))
   }
 
   def delete(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handle(invokeToHttpResponse(client), Delete(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(invokeToHttpResponse(client), Delete(uri))
   }
 
   def options(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handle(invokeToHttpResponse(client), Options(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(invokeToHttpResponse(client), Options(uri))
   }
 }
 
@@ -161,33 +160,33 @@ trait HttpEntityCallSupport extends PipelineManager {
   }
 
   def getEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handleEntity[R](invokeToEntity[R](client), Get(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handleEntity[R](invokeToEntity[R](client), Get(uri))
   }
 
   def postEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handleEntity[R](invokeToEntity[R](client), Post(client.endpoint + uri, content))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handleEntity[R](invokeToEntity[R](client), Post(uri, content))
   }
 
   def putEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handleEntity[R](invokeToEntity[R](client), Put(client.endpoint + uri, content))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handleEntity[R](invokeToEntity[R](client), Put(uri, content))
   }
 
   def headEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handleEntity[R](invokeToEntity[R](client), Head(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handleEntity[R](invokeToEntity[R](client), Head(uri))
   }
 
   def deleteEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handleEntity[R](invokeToEntity[R](client), Delete(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handleEntity[R](invokeToEntity[R](client), Delete(uri))
   }
 
   def optionsEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + client.endpoint + uri)
-    handleEntity[R](invokeToEntity[R](client), Options(client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handleEntity[R](invokeToEntity[R](client), Options(uri))
   }
 }
 
