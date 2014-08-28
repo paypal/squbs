@@ -116,7 +116,7 @@ private[cluster] object ZkClusterData {
 
 private[cluster] case class ZkLeaderElected(address: Option[Address])
 private[cluster] case class ZkMembersChanged(members: Set[Address])
-private[cluster] case class ZkRebalance(partitionsToMembers: Map[ByteString, Set[Address]])
+private[cluster] case class ZkRebalance(partitionsToMembers: Map[ByteString, Set[Address]], members:Set[Address])
 private[cluster] case class ZkSegmentChanged(segment:String, partitions:Set[ByteString])
 private[cluster] case class ZkPartitionsChanged(segment:String, partitions: Map[ByteString, Set[Address]])
 private[cluster] case class ZkUpdatePartitions(onboards:Map[ByteString, String], dropoffs:Map[ByteString, String])
@@ -364,7 +364,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       //notification is the attachment part of the partition query, it will allow callback styled message handling at the sender()
       sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, partitionsToMembers.getOrElse(partitionKey, Set.empty)), partitionZkPath(partitionKey), notification)
 
-    case ZkRebalance(planned) =>
+    case ZkRebalance(planned, alives) =>
       log.info("[partitions] rebalance partitions based on plan:{}", planned.map{case (key, members) => keyToPath(key) -> members})
       def addressee(address:Address):Either[ActorRef, ActorSelection] =
         if(address == zkAddress)
@@ -374,11 +374,11 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
       val result = Try {
 
-        import scala.concurrent.ExecutionContext.Implicits.global
+        import context.dispatcher
         implicit val timeout = Timeout(5000, TimeUnit.MILLISECONDS)
         Await.result(Future.sequence(planned.foldLeft(Map.empty[Address, (Map[ByteString, String], Map[ByteString, String])]){(impacts, assign) =>
           val partitionKey = assign._1
-          val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address])
+          val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address]).filter(alives.contains(_))
           val onboards = assign._2.diff(servants)
           val dropoffs = servants.diff(assign._2)
           val zkPath = partitionZkPath(partitionKey)
@@ -507,7 +507,7 @@ class ZkClusterActor(zkAddress:Address,
 
     log.info("[leader] rebalance planned as:{}", plan.map{case (key, members) => keyToPath(key) -> members})
     implicit val timeout = Timeout(15000, TimeUnit.MILLISECONDS)
-    Await.result(zkPartitionsManager ? ZkRebalance(plan), timeout.duration) match {
+    Await.result(zkPartitionsManager ? ZkRebalance(plan, members), timeout.duration) match {
       case Success(true) =>
         log.info("[leader] rebalance successfully done")
         Some(plan)
