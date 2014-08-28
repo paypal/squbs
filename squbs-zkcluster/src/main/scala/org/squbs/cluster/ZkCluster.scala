@@ -349,7 +349,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, partitionsToMembers.getOrElse(partitionKey, Set.empty)), partitionZkPath(partitionKey), notification)
 
     case ZkRebalance(planned, alives) =>
-      log.info("[partitions] rebalance partitions based on plan:{}", planned.map{case (key, members) => keyToPath(key) -> members})
+      log.info("[partitions] rebalance partitions based on plan:{} and alives:{}", planned.map{case (key, members) => keyToPath(key) -> members}, alives)
       def addressee(address:Address):Either[ActorRef, ActorSelection] =
         if(address == zkAddress)
           Left(self)
