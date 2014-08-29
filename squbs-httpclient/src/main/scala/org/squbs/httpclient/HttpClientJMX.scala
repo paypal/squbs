@@ -207,8 +207,8 @@ object CircuitBreakerBean extends CircuitBreakerMXBean {
     val failFastTimes = httpClient.cbMetrics.failFastTimes
     val exceptionTimes = httpClient.cbMetrics.exceptionTimes
     val currentTime = System.currentTimeMillis
-    val MIN = 60 * 1000
-    httpClient.cbMetrics.cbLastMinCall = httpClient.cbMetrics.cbLastMinCall.dropWhile(_.callTime + MIN <= currentTime)
+    val lastDuration = httpClient.endpoint.config.circuitBreakerConfig.lastDurationMetrics.toMillis
+    httpClient.cbMetrics.cbLastMinCall = httpClient.cbMetrics.cbLastMinCall.dropWhile(_.callTime + lastDuration <= currentTime)
     val cbLastMinMetrics = httpClient.cbMetrics.cbLastMinCall.groupBy[ServiceCallStatus](_.status) map { data =>
       data._1 -> data._2.size
     }

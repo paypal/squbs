@@ -91,7 +91,7 @@ trait CircuitBreakerSupport extends UnmarshalSupport{
   def collectCbMetrics(client: Client, status: ServiceCallStatus) = {
     val cbLastMinCall = client.cbMetrics.cbLastMinCall
     val currentTime = System.currentTimeMillis
-    val MIN = 60 * 1000
+    val lastDuration = client.endpoint.config.circuitBreakerConfig.lastDurationMetrics.toMillis
     status match {
       case ServiceCallStatus.Success =>
         client.cbMetrics.successTimes += 1
@@ -106,6 +106,6 @@ trait CircuitBreakerSupport extends UnmarshalSupport{
         client.cbMetrics.exceptionTimes += 1
         cbLastMinCall.append(ServiceCall(currentTime, ServiceCallStatus.Exception))
     }
-    client.cbMetrics.cbLastMinCall = cbLastMinCall.dropWhile(_.callTime + MIN <= currentTime)
+    client.cbMetrics.cbLastMinCall = cbLastMinCall.dropWhile(_.callTime + lastDuration <= currentTime)
   }
 }
