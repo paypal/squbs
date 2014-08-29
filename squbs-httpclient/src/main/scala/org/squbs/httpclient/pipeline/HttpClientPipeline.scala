@@ -21,7 +21,7 @@ import spray.httpx.{UnsuccessfulResponseException, PipelineException}
 import spray.client.pipelining._
 import akka.actor.{ActorRef, ActorSystem}
 import spray.httpx.unmarshalling._
-import scala.concurrent.{ExecutionContext, Await, Future}
+import scala.concurrent.{Await, Future}
 import org.squbs.httpclient._
 import spray.http.{Uri, HttpRequest, HttpResponse}
 import org.squbs.httpclient.Result
@@ -61,9 +61,35 @@ object EmptyPipeline extends Pipeline {
   override def requestPipelines: Seq[RequestTransformer] = Seq.empty[RequestTransformer]
 }
 
-trait PipelineManager{
+trait UnmarshalSupport {
+  def unmarshal[T: FromResponseUnmarshaller]: HttpResponse ⇒ Result[T] = {
+    response =>
+      if (response.status.isSuccess)
+        response.as[T] match {
+          case Right(value) ⇒ Result[T](value, response)
+          case Left(error) ⇒ throw new PipelineException(error.toString)
+        }
+      else throw new UnsuccessfulResponseException(response)
+  }
+}
 
-//  import ExecutionContext.Implicits.global
+object HttpClientUnmarshal extends UnmarshalSupport {
+
+  implicit class HttpResponseUnmarshal(val response: HttpResponse) extends AnyVal {
+
+    def unmarshalTo[T: FromResponseUnmarshaller]: Either[Throwable, T] = {
+      if (response.status.isSuccess)
+        response.as[T] match {
+          case Right(value) ⇒ Right(value)
+          case Left(error) ⇒ Left(throw new PipelineException(error.toString))
+        }
+      else Left(new UnsuccessfulResponseException(response))
+    }
+  }
+
+}
+
+trait PipelineManager extends UnmarshalSupport{
 
   val httpClientLogger = LoggerFactory.getLogger(this.getClass)
 
@@ -164,16 +190,6 @@ trait PipelineManager{
           reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> unmarshal[T]
       }
     }
-  }
-
-  def unmarshal[T: FromResponseUnmarshaller]: HttpResponse ⇒ Result[T] = {
-    response =>
-      if (response.status.isSuccess)
-        response.as[T] match {
-          case Right(value) ⇒ Result[T](value, response)
-          case Left(error) ⇒ throw new PipelineException(error.toString)
-        }
-      else throw new UnsuccessfulResponseException(response)
   }
 
   implicit def endpointToUri(endpoint: Endpoint): String = {

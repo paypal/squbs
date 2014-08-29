@@ -28,6 +28,7 @@ import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
 import scala.collection.JavaConversions._
 import java.lang.management.ManagementFactory
 import akka.actor.ActorRef
+import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
 
 object HttpClientJMX {
 
@@ -57,10 +58,6 @@ object HttpClientJMX {
     }
   }
 }
-
-/**
- * Created by hakuang on 6/9/2014.
- */
 
 // $COVERAGE-OFF$
 case class HttpClientInfo @ConstructorProperties(
@@ -172,6 +169,69 @@ object EnvironmentResolverBean extends EnvironmentResolverMXBean {
 
   def toEnvironmentResolverInfo(resolverWithIndex: (EnvironmentResolver, Int)): EnvironmentResolverInfo = {
     EnvironmentResolverInfo(resolverWithIndex._2, resolverWithIndex._1.getClass.getCanonicalName)
+  }
+}
+
+case class CircuitBreakerInfo @ConstructorProperties(
+  Array("name", "status", "successTimes", "fallbackTimes", "failFastTimes", "exceptionTimes", "lastMinErrorRate", "lastMinFailFastRate", "lastMinExceptionRate"))(
+    @BeanProperty name: String,
+    @BeanProperty status: String,
+    @BeanProperty successTimes: Long,
+    @BeanProperty fallbackTimes: Long,
+    @BeanProperty failFastTimes: Long,
+    @BeanProperty exceptionTimes: Long,
+    @BeanProperty lastMinErrorRate: String,
+    @BeanProperty lastMinFailFastRate: String,
+    @BeanProperty lastMinExceptionRate: String
+  )
+
+trait CircuitBreakerMXBean {
+  def getHttpClientCircuitBreakerInfo: java.util.List[CircuitBreakerInfo]
+}
+
+object CircuitBreakerBean extends CircuitBreakerMXBean {
+
+  val circuitBreakerBean = "org.squbs.unicomplex:type=HttpClientCircuitBreakerInfo"
+
+  override def getHttpClientCircuitBreakerInfo: util.List[CircuitBreakerInfo] = {
+    val httpClientsFromFactory = HttpClientFactory.httpClientMap.values
+    val httpClientsFromManager = HttpClientManager.httpClientMap.values map {value: (Client, ActorRef) => value._1}
+    (httpClientsFromFactory ++ httpClientsFromManager).toList map {mapToHttpClientCircuitBreakerInfo(_)}
+  }
+
+  def mapToHttpClientCircuitBreakerInfo(httpClient: Client) = {
+    val name = httpClient.name
+    val status = httpClient.cbMetrics.status.toString
+    val successTimes = httpClient.cbMetrics.successTimes
+    val fallbackTimes = httpClient.cbMetrics.fallbackTimes
+    val failFastTimes = httpClient.cbMetrics.failFastTimes
+    val exceptionTimes = httpClient.cbMetrics.exceptionTimes
+    val currentTime = System.currentTimeMillis
+    val MIN = 60 * 1000
+    httpClient.cbMetrics.cbLastMinCall = httpClient.cbMetrics.cbLastMinCall.dropWhile(_.callTime + MIN <= currentTime)
+    val cbLastMinMetrics = httpClient.cbMetrics.cbLastMinCall.groupBy[ServiceCallStatus](_.status) map { data =>
+      data._1 -> data._2.size
+    }
+    println(cbLastMinMetrics)
+    val lastMinSuccess = cbLastMinMetrics.get(ServiceCallStatus.Success).getOrElse(0)
+    val lastMinFallback = cbLastMinMetrics.get(ServiceCallStatus.Fallback).getOrElse(0)
+    val lastMinFailFast = cbLastMinMetrics.get(ServiceCallStatus.FailFast).getOrElse(0)
+    val lastMinException = cbLastMinMetrics.get(ServiceCallStatus.Exception).getOrElse(0)
+    val lastMinTotal = lastMinSuccess + lastMinFallback + lastMinFailFast + lastMinException
+    val df = new java.text.DecimalFormat("0.00%")
+    val lastMinErrorRate = lastMinTotal match {
+      case 0 => "0%"
+      case _ => df.format((lastMinTotal - lastMinSuccess) * 1.0 / lastMinTotal)
+    }
+    val lastMinFailFastRate = lastMinTotal match {
+      case 0 => "0%"
+      case _ => df.format(lastMinFallback * 1.0 / lastMinTotal)
+    }
+    val lastMinExceptionRate = lastMinTotal match {
+      case 0 => "0%"
+      case _ => df.format(lastMinException * 1.0 / lastMinTotal)
+    }
+    CircuitBreakerInfo(name, status, successTimes, fallbackTimes, failFastTimes, exceptionTimes, lastMinErrorRate, lastMinFailFastRate, lastMinExceptionRate)
   }
 }
 

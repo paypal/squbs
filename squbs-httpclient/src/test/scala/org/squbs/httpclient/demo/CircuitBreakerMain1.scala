@@ -1,6 +1,6 @@
 package org.squbs.httpclient.demo
 
-import org.squbs.httpclient.{CircuitBreakerConfiguration, Configuration, HttpClientFactory}
+import org.squbs.httpclient.{CircuitBreakerBean, CircuitBreakerConfiguration, Configuration, HttpClientFactory}
 import scala.util.{Failure, Success}
 import akka.pattern.CircuitBreakerOpenException
 import scala.concurrent.duration._
@@ -31,13 +31,25 @@ object CircuitBreakerMain1 extends App{
   val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 0), circuitBreakerConfig = CircuitBreakerConfiguration().copy(callTimeout = 1 second)))
   while(true){
     Thread.sleep(2000)
-    httpClient.get("/view") onComplete {
-      case Success(httpResponse) =>
-        println("call success, body is:" + httpResponse.entity.data.asString + ",status:" + httpClient.cbStatus)
-      case Failure(e: CircuitBreakerOpenException) =>
-        println("circuitBreaker open! remaining time is:" + e.remainingDuration.toSeconds + ", status:" + httpClient.cbStatus)
-      case Failure(throwable) =>
-        println("exception is:" + throwable.getMessage + ", status:" + httpClient.cbStatus)
+//    httpClient.get("/view") onComplete {
+//      case Success(httpResponse) =>
+//        println(s"call success, body is: ${httpResponse.entity.data.asString}, (status, success, fallback, failfast, exception):(${httpClient.cbMetrics.status}, ${httpClient.cbMetrics.successTimes}, ${httpClient.cbMetrics.fallbackTimes}, ${httpClient.cbMetrics.failFastTimes}, ${httpClient.cbMetrics.exceptionTimes}), cbLastMinCall:${httpClient.cbMetrics.cbLastMinCall.size}")
+//      case Failure(e: CircuitBreakerOpenException) =>
+//        println(s"circuitBreaker open! remaining time is: ${e.remainingDuration.toSeconds}, (status, success, fallback, failfast, exception):(${httpClient.cbMetrics.status}, ${httpClient.cbMetrics.successTimes}, ${httpClient.cbMetrics.fallbackTimes}, ${httpClient.cbMetrics.failFastTimes}, ${httpClient.cbMetrics.exceptionTimes}), cbLastMinCall:${httpClient.cbMetrics.cbLastMinCall.size}")
+//      case Failure(throwable) =>
+//        println(s"exception is: ${throwable.getMessage}, (status, success, fallback, failfast, exception):(${httpClient.cbMetrics.status}, ${httpClient.cbMetrics.successTimes}, ${httpClient.cbMetrics.fallbackTimes}, ${httpClient.cbMetrics.failFastTimes}, ${httpClient.cbMetrics.exceptionTimes}), cbLastMinCall:${httpClient.cbMetrics.cbLastMinCall.size}")
+//    }
+  val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 0), circuitBreakerConfig = CircuitBreakerConfiguration().copy(callTimeout = 1 second)))
+    while(true){
+      Thread.sleep(2000)
+      httpClient.get("/view") onComplete {
+        case Success(httpResponse) =>
+          println(s"call success, body is: ${httpResponse.entity.data.asString}, error rate is: ${CircuitBreakerBean.getHttpClientCircuitBreakerInfo.get(0).lastMinErrorRate}")
+        case Failure(e: CircuitBreakerOpenException) =>
+          println(s"circuitBreaker open! remaining time is: ${e.remainingDuration.toSeconds}, error rate is: ${CircuitBreakerBean.getHttpClientCircuitBreakerInfo.get(0).lastMinErrorRate}")
+        case Failure(throwable) =>
+          println(s"exception is: ${throwable.getMessage}, error rate is: ${CircuitBreakerBean.getHttpClientCircuitBreakerInfo.get(0).lastMinErrorRate}")
+      }
     }
   }
 }

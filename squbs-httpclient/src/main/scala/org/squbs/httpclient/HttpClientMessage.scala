@@ -34,7 +34,6 @@ object HttpClientManagerMessage {
    */
   case class Get(name: String, env: Environment = Default)(implicit system: ActorSystem) extends Client {
     override val cb: CircuitBreaker = {
-//      import scala.concurrent.ExecutionContext.Implicits.global
       implicit val ec = system.dispatcher
       EndpointRegistry.resolve(name, env) match {
         case Some(endpoint) =>
@@ -51,15 +50,15 @@ object HttpClientManagerMessage {
     }
 
     cb.onClose{
-      cbStatus = CircuitBreakerStatus.Closed
+      cbMetrics.status = CircuitBreakerStatus.Closed
     }
 
     cb.onOpen{
-      cbStatus = CircuitBreakerStatus.Open
+      cbMetrics.status = CircuitBreakerStatus.Open
     }
 
     cb.onHalfOpen{
-      cbStatus = CircuitBreakerStatus.HalfOpen
+      cbMetrics.status = CircuitBreakerStatus.HalfOpen
     }
   }
 

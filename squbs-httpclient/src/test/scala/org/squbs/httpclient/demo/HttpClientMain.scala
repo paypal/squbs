@@ -23,6 +23,7 @@ import org.squbs.httpclient.endpoint.EndpointRegistry
 import spray.http.{HttpResponse, StatusCodes}
 import scala.util.{Failure, Success}
 import org.squbs.httpclient.dummy.GoogleAPI.{Elevation, GoogleApiResult, GoogleMapAPIEndpointResolver}
+import org.squbs.httpclient.pipeline.HttpClientUnmarshal
 
 /**
  * Traditional API using get
@@ -92,7 +93,7 @@ case class HttpClientDemoActor(implicit system: ActorSystem) extends Actor with 
     case res@ HttpResponse(StatusCodes.OK, _, _, _) =>
       println("Success, response entity is: " + res.entity.asString)
 
-      import HttpClientManager._
+      import HttpClientUnmarshal._
       import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
       val unmarshalData = res.unmarshalTo[GoogleApiResult[Elevation]]
       unmarshalData match {

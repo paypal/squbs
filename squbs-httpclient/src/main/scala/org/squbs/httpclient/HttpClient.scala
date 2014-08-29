@@ -32,22 +32,18 @@ import scala.collection.concurrent.TrieMap
 import spray.http.{HttpResponse, HttpRequest}
 import org.squbs.httpclient.env.{EnvironmentRegistry, Default, Environment}
 import akka.pattern.CircuitBreaker
+import scala.collection.mutable.ListBuffer
 
 object Status extends Enumeration {
   type Status = Value
   val UP, DOWN = Value
 }
 
-object CircuitBreakerStatus extends Enumeration {
-  type CircuitBreakerStatus = Value
-  val Closed, Open, HalfOpen = Value
-}
-
 trait Client {
 
   var status = Status.UP
 
-  var cbStatus = CircuitBreakerStatus.Closed
+  var cbMetrics = CircuitBreakerMetrics(CircuitBreakerStatus.Closed, 0, 0, 0, 0, ListBuffer.empty[ServiceCall])
 
   val cb: CircuitBreaker
 
@@ -72,9 +68,7 @@ trait Client {
   }
 }
 
-trait HttpCallSupport extends PipelineManager {
-
-//  import ExecutionContext.Implicits.global
+trait HttpCallSupport extends PipelineManager with CircuitBreakerSupport {
 
   def client: Client
 
@@ -82,18 +76,14 @@ trait HttpCallSupport extends PipelineManager {
     implicit val ec = system.dispatcher
     pipeline match {
       case Success(res) =>
-        val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](res(httpRequest))
-        client.endpoint.config.circuitBreakerConfig.fallbackHttpResponse match {
-          case Some(response) =>
-            runCircuitBreaker fallbackTo future{response}
-          case None           =>
-            runCircuitBreaker
-        }
+        withCircuitBreaker(client, res(httpRequest))
       case Failure(t@HttpClientMarkDownException(_, _)) =>
         httpClientLogger.debug("HttpClient has been mark down!", t)
+        collectCbMetrics(client, ServiceCallStatus.Exception)
         future {throw t}
       case Failure(t) =>
         httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
+        collectCbMetrics(client, ServiceCallStatus.Exception)
         future {throw t}
     }
   }
@@ -129,9 +119,7 @@ trait HttpCallSupport extends PipelineManager {
   }
 }
 
-trait HttpEntityCallSupport extends PipelineManager {
-
-//  import ExecutionContext.Implicits.global
+trait HttpEntityCallSupport extends PipelineManager with CircuitBreakerSupport {
 
   def client: Client
 
@@ -140,22 +128,15 @@ trait HttpEntityCallSupport extends PipelineManager {
     implicit val ec = system.dispatcher
     pipeline match {
       case Success(res) =>
-        val runCircuitBreaker = client.cb.withCircuitBreaker[Result[T]](res(httpRequest))
-        client.endpoint.config.circuitBreakerConfig.fallbackHttpResponse match {
-          case Some(response) =>
-            val fallbackResponse = future {
-              unmarshal[T].apply(response)
-            }
-            runCircuitBreaker fallbackTo fallbackResponse
-          case None           =>
-            runCircuitBreaker
-        }
+        withCircuitBreakerEntity[T](client, res(httpRequest))
       case Failure(t@HttpClientMarkDownException(_, _)) =>
         httpClientLogger.debug("HttpClient has been mark down!", t)
-        throw t
+        collectCbMetrics(client, ServiceCallStatus.Exception)
+        future {throw t}
       case Failure(t) =>
         httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
-        throw t
+        collectCbMetrics(client, ServiceCallStatus.Exception)
+        future {throw t}
     }
   }
 
@@ -205,15 +186,15 @@ case class HttpClient(name: String,
   def client: Client = this
 
   cb.onClose{
-    cbStatus = CircuitBreakerStatus.Closed
+    cbMetrics.status= CircuitBreakerStatus.Closed
   }
 
   cb.onOpen{
-    cbStatus = CircuitBreakerStatus.Open
+    cbMetrics.status = CircuitBreakerStatus.Open
   }
 
   cb.onHalfOpen{
-    cbStatus = CircuitBreakerStatus.HalfOpen
+    cbMetrics.status = CircuitBreakerStatus.HalfOpen
   }
 
   def withConfig(config: Configuration): HttpClient = {

@@ -23,8 +23,6 @@ import spray.can.Http
 import akka.io.IO
 import akka.pattern._
 import akka.util.{Timeout}
-import spray.httpx.unmarshalling._
-import spray.httpx.{PipelineException, UnsuccessfulResponseException}
 import spray.httpx.marshalling.Marshaller
 import scala.collection.concurrent.TrieMap
 import scala.concurrent._
@@ -51,24 +49,24 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
 
   override def lookup(): ExtensionId[_ <: Extension] = HttpClientManager
 
-  implicit class HttpResponseUnmarshal(val response: HttpResponse) extends AnyVal {
-
-    def unmarshalTo[T: FromResponseUnmarshaller]: Either[Throwable, T] = {
-      if (response.status.isSuccess)
-        response.as[T] match {
-          case Right(value) ⇒ Right(value)
-          case Left(error) ⇒ Left(throw new PipelineException(error.toString))
-        }
-      else Left(new UnsuccessfulResponseException(response))
-    }
-  }
+//  implicit class HttpResponseUnmarshal(val response: HttpResponse) extends AnyVal {
+//
+//    def unmarshalTo[T: FromResponseUnmarshaller]: Either[Throwable, T] = {
+//      if (response.status.isSuccess)
+//        response.as[T] match {
+//          case Right(value) ⇒ Right(value)
+//          case Left(error) ⇒ Left(throw new PipelineException(error.toString))
+//        }
+//      else Left(new UnsuccessfulResponseException(response))
+//    }
+//  }
 }
 
 
 /**
  * Without setup HttpConnection
  */
-trait HttpCallActorSupport extends PipelineManager {
+trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
 
   import spray.httpx.RequestBuilding._
 
@@ -78,17 +76,14 @@ trait HttpCallActorSupport extends PipelineManager {
     implicit val ec = system.dispatcher
     pipeline match {
       case Success(res) =>
-        val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](res(httpRequest))
-        client.endpoint.config.circuitBreakerConfig.fallbackHttpResponse match {
-          case Some(response) =>
-            val fallbackResponse = future {response}
-            runCircuitBreaker fallbackTo fallbackResponse
-          case None           =>
-            runCircuitBreaker
-        }
+        withCircuitBreaker(client, res(httpRequest))
       case Failure(t@HttpClientMarkDownException(_, _)) =>
+        httpClientLogger.debug("HttpClient has been mark down!", t)
+        collectCbMetrics(client, ServiceCallStatus.Exception)
         future {throw t}
       case Failure(t) =>
+        httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
+        collectCbMetrics(client, ServiceCallStatus.Exception)
         future {throw t}
     }
   }
