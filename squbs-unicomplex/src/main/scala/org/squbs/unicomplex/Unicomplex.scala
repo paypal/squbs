@@ -17,13 +17,17 @@
  */
 package org.squbs.unicomplex
 
+import java.lang.management.ManagementFactory
 import java.util
 import java.util.Date
+import javax.management.ObjectName
+import javax.management.openmbean.CompositeData
 
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
+import org.squbs.unicomplex.JMX._
 import spray.can.Http
 
 import scala.collection.mutable
@@ -70,6 +74,7 @@ object Unicomplex extends ExtensionId[UnicomplexExtension] with ExtensionIdProvi
   private[unicomplex] val actors = new mutable.HashMap[String, ActorRef] with mutable.SynchronizedMap[String, ActorRef]
 
   def apply(actorSystemName: String): ActorRef = actors(actorSystemName)
+
 }
 
 import org.squbs.unicomplex.Unicomplex._
@@ -427,6 +432,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         }
     }
   }
+
+
 }
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
@@ -477,11 +484,16 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     case StartCubeActor(props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name)
+
+      register(new PredefinedActorBean(props, cubeActor, self), prefix + actorInfo + name )
+
+
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
 
     case StartCubeService(webContext, listeners, props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name)
+
       if (initRequired) initMap += cubeActor -> None
       Unicomplex() ! RegisterContext(listeners, webContext, cubeActor)
       log.info(s"Started service actor ${cubeActor.path} for context $webContext")
@@ -525,11 +537,14 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   }
 }
 
+class ActorBean(implicit context: ActorContext) extends PredefinedActorBean(context.props, context.self, context.parent){
+  override def getChildren = context.children.mkString(",")
+}
 
-
-class ActorBean(implicit context: ActorContext) extends ActorMXBean {
-  import context._
-  override def getActor = self.toString
-  override def getParent = parent.toString
-  override def getChildren = children.mkString(",")
+class PredefinedActorBean(props: Props, self: ActorRef, parent: ActorRef) extends ActorMXBean {
+  def getActor = self.toString
+  def getClassName = props.actorClass.getCanonicalName
+  def getRouteConfig = props.routerConfig.toString
+  def getParent = parent.toString
+  def getChildren = ""
 }

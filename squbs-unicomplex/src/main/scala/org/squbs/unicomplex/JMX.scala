@@ -109,6 +109,8 @@ trait CubesMXBean {
 @MXBean
 trait ActorMXBean {
   def getActor: String
+  def getClassName: String
+  def getRouteConfig : String
   def getParent: String
   def getChildren: String
 }
