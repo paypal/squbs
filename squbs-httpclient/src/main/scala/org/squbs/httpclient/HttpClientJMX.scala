@@ -57,6 +57,12 @@ object HttpClientJMX {
       ManagementFactory.getPlatformMBeanServer.registerMBean(EnvironmentResolverBean, EnvironmentResolverBean.environmentResolverBean)
     }
   }
+
+  def registryHCCircuitBreakerBean = {
+    if (!ManagementFactory.getPlatformMBeanServer.isRegistered(CircuitBreakerBean.circuitBreakerBean)){
+      ManagementFactory.getPlatformMBeanServer.registerMBean(CircuitBreakerBean, CircuitBreakerBean.circuitBreakerBean)
+    }
+  }
 }
 
 // $COVERAGE-OFF$
@@ -172,18 +178,22 @@ object EnvironmentResolverBean extends EnvironmentResolverMXBean {
   }
 }
 
+// $COVERAGE-OFF$
 case class CircuitBreakerInfo @ConstructorProperties(
-  Array("name", "status", "successTimes", "fallbackTimes", "failFastTimes", "exceptionTimes", "lastMinErrorRate", "lastMinFailFastRate", "lastMinExceptionRate"))(
+  Array("name", "status", "lastDurationConfig", "successTimes", "fallbackTimes", "failFastTimes", "exceptionTimes", "lastDurationErrorRate", "lastDurationFailFastRate", "lastDurationExceptionRate"))(
     @BeanProperty name: String,
     @BeanProperty status: String,
+    @BeanProperty lastDurationConfig: String,
     @BeanProperty successTimes: Long,
     @BeanProperty fallbackTimes: Long,
     @BeanProperty failFastTimes: Long,
     @BeanProperty exceptionTimes: Long,
-    @BeanProperty lastMinErrorRate: String,
-    @BeanProperty lastMinFailFastRate: String,
-    @BeanProperty lastMinExceptionRate: String
+    @BeanProperty lastDurationErrorRate: String,
+    @BeanProperty lastDurationFailFastRate: String,
+    @BeanProperty lastDurationExceptionRate: String
   )
+
+// $COVERAGE-ON$
 
 trait CircuitBreakerMXBean {
   def getHttpClientCircuitBreakerInfo: java.util.List[CircuitBreakerInfo]
@@ -202,36 +212,36 @@ object CircuitBreakerBean extends CircuitBreakerMXBean {
   def mapToHttpClientCircuitBreakerInfo(httpClient: Client) = {
     val name = httpClient.name
     val status = httpClient.cbMetrics.status.toString
+    val lastDurationConfig = httpClient.endpoint.config.circuitBreakerConfig.lastDuration.toSeconds + " Seconds"
     val successTimes = httpClient.cbMetrics.successTimes
     val fallbackTimes = httpClient.cbMetrics.fallbackTimes
     val failFastTimes = httpClient.cbMetrics.failFastTimes
     val exceptionTimes = httpClient.cbMetrics.exceptionTimes
     val currentTime = System.currentTimeMillis
-    val lastDuration = httpClient.endpoint.config.circuitBreakerConfig.lastDurationMetrics.toMillis
-    httpClient.cbMetrics.cbLastMinCall = httpClient.cbMetrics.cbLastMinCall.dropWhile(_.callTime + lastDuration <= currentTime)
-    val cbLastMinMetrics = httpClient.cbMetrics.cbLastMinCall.groupBy[ServiceCallStatus](_.status) map { data =>
+    val lastDuration = httpClient.endpoint.config.circuitBreakerConfig.lastDuration.toMillis
+    httpClient.cbMetrics.cbLastDurationCall = httpClient.cbMetrics.cbLastDurationCall.dropWhile(_.callTime + lastDuration <= currentTime)
+    val cbLastMinMetrics = httpClient.cbMetrics.cbLastDurationCall.groupBy[ServiceCallStatus](_.status) map { data =>
       data._1 -> data._2.size
     }
-    println(cbLastMinMetrics)
-    val lastMinSuccess = cbLastMinMetrics.get(ServiceCallStatus.Success).getOrElse(0)
-    val lastMinFallback = cbLastMinMetrics.get(ServiceCallStatus.Fallback).getOrElse(0)
-    val lastMinFailFast = cbLastMinMetrics.get(ServiceCallStatus.FailFast).getOrElse(0)
-    val lastMinException = cbLastMinMetrics.get(ServiceCallStatus.Exception).getOrElse(0)
-    val lastMinTotal = lastMinSuccess + lastMinFallback + lastMinFailFast + lastMinException
+    val lastDurationSuccess = cbLastMinMetrics.get(ServiceCallStatus.Success).getOrElse(0)
+    val lastDurationFallback = cbLastMinMetrics.get(ServiceCallStatus.Fallback).getOrElse(0)
+    val lastDurationFailFast = cbLastMinMetrics.get(ServiceCallStatus.FailFast).getOrElse(0)
+    val lastDurationException = cbLastMinMetrics.get(ServiceCallStatus.Exception).getOrElse(0)
+    val lastDurationTotal = lastDurationSuccess + lastDurationFallback + lastDurationFailFast + lastDurationException
     val df = new java.text.DecimalFormat("0.00%")
-    val lastMinErrorRate = lastMinTotal match {
+    val lastDurationErrorRate = lastDurationTotal match {
       case 0 => "0%"
-      case _ => df.format((lastMinTotal - lastMinSuccess) * 1.0 / lastMinTotal)
+      case _ => df.format((lastDurationTotal - lastDurationSuccess) * 1.0 / lastDurationTotal)
     }
-    val lastMinFailFastRate = lastMinTotal match {
+    val lastDurationFailFastRate = lastDurationTotal match {
       case 0 => "0%"
-      case _ => df.format(lastMinFallback * 1.0 / lastMinTotal)
+      case _ => df.format(lastDurationFallback * 1.0 / lastDurationTotal)
     }
-    val lastMinExceptionRate = lastMinTotal match {
+    val lastDurationExceptionRate = lastDurationTotal match {
       case 0 => "0%"
-      case _ => df.format(lastMinException * 1.0 / lastMinTotal)
+      case _ => df.format(lastDurationException * 1.0 / lastDurationTotal)
     }
-    CircuitBreakerInfo(name, status, successTimes, fallbackTimes, failFastTimes, exceptionTimes, lastMinErrorRate, lastMinFailFastRate, lastMinExceptionRate)
+    CircuitBreakerInfo(name, status, lastDurationConfig, successTimes, fallbackTimes, failFastTimes, exceptionTimes, lastDurationErrorRate, lastDurationFailFastRate, lastDurationExceptionRate)
   }
 }
 

@@ -62,7 +62,7 @@ object EmptyPipeline extends Pipeline {
 }
 
 trait UnmarshalSupport {
-  def unmarshal[T: FromResponseUnmarshaller]: HttpResponse ⇒ Result[T] = {
+  def unmarshal[T: FromResponseUnmarshaller]: HttpResponse => Result[T] = {
     response =>
       if (response.status.isSuccess)
         response.as[T] match {

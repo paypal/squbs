@@ -44,11 +44,11 @@ object CircuitBreakerMain1 extends App{
       Thread.sleep(2000)
       httpClient.get("/view") onComplete {
         case Success(httpResponse) =>
-          println(s"call success, body is: ${httpResponse.entity.data.asString}, error rate is: ${CircuitBreakerBean.getHttpClientCircuitBreakerInfo.get(0).lastMinErrorRate}")
+          println(s"call success, body is: ${httpResponse.entity.data.asString}, error rate is: ${CircuitBreakerBean.getHttpClientCircuitBreakerInfo.get(0).lastDurationErrorRate}")
         case Failure(e: CircuitBreakerOpenException) =>
-          println(s"circuitBreaker open! remaining time is: ${e.remainingDuration.toSeconds}, error rate is: ${CircuitBreakerBean.getHttpClientCircuitBreakerInfo.get(0).lastMinErrorRate}")
+          println(s"circuitBreaker open! remaining time is: ${e.remainingDuration.toSeconds}, error rate is: ${CircuitBreakerBean.getHttpClientCircuitBreakerInfo.get(0).lastDurationErrorRate}")
         case Failure(throwable) =>
-          println(s"exception is: ${throwable.getMessage}, error rate is: ${CircuitBreakerBean.getHttpClientCircuitBreakerInfo.get(0).lastMinErrorRate}")
+          println(s"exception is: ${throwable.getMessage}, error rate is: ${CircuitBreakerBean.getHttpClientCircuitBreakerInfo.get(0).lastDurationErrorRate}")
       }
     }
   }

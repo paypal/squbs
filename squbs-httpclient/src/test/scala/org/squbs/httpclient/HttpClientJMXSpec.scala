@@ -20,15 +20,17 @@ package org.squbs.httpclient
 import akka.actor.ActorSystem
 import org.scalatest._
 import org.squbs.httpclient.dummy.DummyService._
-import org.squbs.httpclient.dummy.{DummyProdEnvironmentResolver, DummyRequestResponsePipeline, DummyServiceEndpointResolver}
+import org.squbs.httpclient.dummy.{DummyService, DummyProdEnvironmentResolver, DummyRequestResponsePipeline, DummyServiceEndpointResolver}
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolver}
 import org.squbs.httpclient.env._
 import spray.can.Http.ClientConnectionType.Proxied
 import spray.can.client.{ClientConnectionSettings, HostConnectorSettings}
 
 import scala.concurrent.duration._
+import scala.concurrent.Await
+import spray.http.StatusCodes
 
-class HttpClientJMXSpec extends FlatSpec with Matchers with HttpClientTestKit with BeforeAndAfterEach with BeforeAndAfterAll{
+class HttpClientJMXSpec extends FlatSpec with Matchers with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndAfterAll{
 
   private implicit val system = ActorSystem("HttpClientJMXSpec")
 
@@ -41,6 +43,10 @@ class HttpClientJMXSpec extends FlatSpec with Matchers with HttpClientTestKit wi
 
   override def afterEach = {
     clearHttpClient
+  }
+
+  override def beforeAll = {
+    startDummyService(system)
   }
 
   override def afterAll() {
@@ -87,6 +93,26 @@ class HttpClientJMXSpec extends FlatSpec with Matchers with HttpClientTestKit wi
     EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo.get(0).position should be (0)
     EnvironmentRegistry.resolve("abc") should be (PROD)
     EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo.get(0).resolver should be ("org.squbs.httpclient.dummy.DummyProdEnvironmentResolver$")
+  }
+
+  "HttpClient Circuit Breaker Info" should "show up some value of CircuitBreakerBean" in {
+    CircuitBreakerBean.getHttpClientCircuitBreakerInfo.size should be (0)
+    EndpointRegistry.register(DummyServiceEndpointResolver)
+    val response = HttpClientFactory.get("DummyService").get("/view")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    CircuitBreakerBean.getHttpClientCircuitBreakerInfo.size should be (1)
+    val cbInfo = CircuitBreakerBean.getHttpClientCircuitBreakerInfo.get(0)
+    cbInfo.name should be ("DummyService")
+    cbInfo.status should be ("Closed")
+    cbInfo.lastDurationConfig should be ("60 Seconds")
+    cbInfo.successTimes should be (1)
+    cbInfo.failFastTimes should be (0)
+    cbInfo.fallbackTimes should be (0)
+    cbInfo.exceptionTimes should be (0)
+    cbInfo.lastDurationErrorRate should be ("0.00%")
+    cbInfo.lastDurationFailFastRate should be ("0.00%")
+    cbInfo.lastDurationExceptionRate should be ("0.00%")
   }
 
   def findHttpClientBean(beans: java.util.List[HttpClientInfo], name: String): HttpClientInfo = {

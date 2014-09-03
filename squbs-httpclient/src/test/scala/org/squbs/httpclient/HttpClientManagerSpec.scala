@@ -33,6 +33,8 @@ import spray.http.{HttpResponse, StatusCodes}
 import spray.json.DefaultJsonProtocol
 import spray.httpx.SprayJsonSupport
 import org.squbs.httpclient.pipeline.HttpClientUnmarshal
+import org.squbs.httpclient.HttpClientActorMessage.{MarkUpSuccess, MarkDownSuccess}
+import akka.actor.Status.Failure
 
 class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")) with FlatSpecLike with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll with DummyService{
 
@@ -116,6 +118,34 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     httpClientMap.contains(("http://localhost:8080/test", Default)) should be (true)
     deleteHttpClient("DummyService")
     deleteHttpClient("http://localhost:8080/test")
+  }
+
+  "HttpClientActor send Update message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Update(Configuration().copy(circuitBreakerConfig = CircuitBreakerConfiguration().copy(maxFailures = 50)))
+    expectMsgType[ActorRef]
+    HttpClientManager.httpClientMap.size should be (1)
+    HttpClientManager.httpClientMap.get(("DummyService", Default)).get._1.endpoint.config.circuitBreakerConfig.maxFailures should be (50)
+    deleteHttpClient("DummyService")
+  }
+
+  "HttpClientActor with correct endpoint with MarkDown/MarkUp send Get message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.MarkDown
+    expectMsg(MarkDownSuccess)
+    httpClientActorRef ! HttpClientActorMessage.Get("/view")
+    val error = expectMsgType[Failure]
+    error.cause should be (HttpClientMarkDownException("DummyService"))
+    httpClientActorRef ! HttpClientActorMessage.MarkUp
+    expectMsg(MarkUpSuccess)
+    httpClientActorRef ! HttpClientActorMessage.Get("/view")
+    val result = expectMsgType[HttpResponse]
+    result.status should be (StatusCodes.OK)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamJson)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
   "HttpClientActor with correct endpoint send Get message" should "get the correct response" in {

@@ -25,9 +25,10 @@ import DummyService._
 object DummyServiceEndpointResolver extends EndpointResolver{
 
   override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
-    svcName match {
-      case name => Some(Endpoint(dummyServiceEndpoint))
-      case _    => None
+    if (svcName == name) {
+      Some(Endpoint(dummyServiceEndpoint))
+    } else {
+      None
     }
   }
 
@@ -37,9 +38,10 @@ object DummyServiceEndpointResolver extends EndpointResolver{
 object NotExistingEndpointResolver extends EndpointResolver {
 
   override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
-    svcName match {
-      case name => Some(Endpoint("http://www.notexistingservice.com"))
-      case _    => None
+    if (svcName == name) {
+      Some(Endpoint("http://www.notexistingservice.com"))
+    } else {
+      None
     }
   }
 
@@ -62,7 +64,6 @@ object GoogleAPI {
 
   object GoogleMapAPIEndpointResolver extends EndpointResolver {
     override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-      println("resolving googleAPI")
       if (svcName == name)
         Some(Endpoint("http://maps.googleapis.com/maps"))
       else

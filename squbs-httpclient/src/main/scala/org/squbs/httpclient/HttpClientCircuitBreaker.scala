@@ -44,7 +44,7 @@ case class CircuitBreakerMetrics(var status: CircuitBreakerStatus,
                                  var fallbackTimes: Long,
                                  var failFastTimes: Long,
                                  var exceptionTimes: Long,
-                                 var cbLastMinCall: ListBuffer[ServiceCall])
+                                 var cbLastDurationCall: ListBuffer[ServiceCall])
 
 trait CircuitBreakerSupport extends UnmarshalSupport{
 
@@ -89,23 +89,23 @@ trait CircuitBreakerSupport extends UnmarshalSupport{
   }
 
   def collectCbMetrics(client: Client, status: ServiceCallStatus) = {
-    val cbLastMinCall = client.cbMetrics.cbLastMinCall
+    val cbLastDurationCall = client.cbMetrics.cbLastDurationCall
     val currentTime = System.currentTimeMillis
-    val lastDuration = client.endpoint.config.circuitBreakerConfig.lastDurationMetrics.toMillis
+    val lastDuration = client.endpoint.config.circuitBreakerConfig.lastDuration.toMillis
     status match {
       case ServiceCallStatus.Success =>
         client.cbMetrics.successTimes += 1
-        cbLastMinCall.append(ServiceCall(currentTime, ServiceCallStatus.Success))
+        cbLastDurationCall.append(ServiceCall(currentTime, ServiceCallStatus.Success))
       case ServiceCallStatus.Fallback =>
         client.cbMetrics.fallbackTimes += 1
-        cbLastMinCall.append(ServiceCall(currentTime, ServiceCallStatus.Fallback))
+        cbLastDurationCall.append(ServiceCall(currentTime, ServiceCallStatus.Fallback))
       case ServiceCallStatus.FailFast =>
         client.cbMetrics.failFastTimes += 1
-        cbLastMinCall.append(ServiceCall(currentTime, ServiceCallStatus.FailFast))
+        cbLastDurationCall.append(ServiceCall(currentTime, ServiceCallStatus.FailFast))
       case ServiceCallStatus.Exception =>
         client.cbMetrics.exceptionTimes += 1
-        cbLastMinCall.append(ServiceCall(currentTime, ServiceCallStatus.Exception))
+        cbLastDurationCall.append(ServiceCall(currentTime, ServiceCallStatus.Exception))
     }
-    client.cbMetrics.cbLastMinCall = cbLastMinCall.dropWhile(_.callTime + lastDuration <= currentTime)
+    client.cbMetrics.cbLastDurationCall = cbLastDurationCall.dropWhile(_.callTime + lastDuration <= currentTime)
   }
 }

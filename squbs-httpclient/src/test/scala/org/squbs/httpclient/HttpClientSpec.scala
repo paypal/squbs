@@ -22,16 +22,13 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
-import spray.http.StatusCodes
-import spray.httpx.PipelineException
-import spray.util._
-
+import spray.http.{HttpResponse, StatusCodes}
+import spray.httpx.{UnsuccessfulResponseException, PipelineException}
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import akka.pattern.CircuitBreakerOpenException
-import scala.util.{Success, Failure}
+import org.squbs.httpclient.pipeline.UnmarshalSupport
 
-class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
+class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll with UnmarshalSupport{
 
   implicit val system = ActorSystem("HttpClientSpec")
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
@@ -172,16 +169,47 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     result.entity.data.asString should be (fullTeamJson)
   }
 
+  "HttpClient with the correct endpoint and unmarshal value" should "unmarshal successfully" in {
+    val response = HttpClientFactory.get("DummyService").get("/view")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    unmarshal[Team].apply(result) should be (Result[Team](fullTeam, result))
+  }
+
+  "HttpClient with the correct endpoint and wrong unmarshal value" should "throw out PipelineException" in {
+    val response = HttpClientFactory.get("DummyService").get("/view")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    a[PipelineException] should be thrownBy {
+      unmarshal[String].apply(result)
+    }
+  }
+
+  "HttpClient with correct endpoint calling get with not existing uri with UnmarshalSupport trait" should "throw out UnsuccessfulResponseException" in {
+    val response = HttpClientFactory.get("DummyService").get("/notExisting")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.NotFound)
+    a[UnsuccessfulResponseException] should be thrownBy {
+      unmarshal[Team].apply(result)
+    }
+  }
+
   "HttpClient with correct endpoint calling get with not existing uri" should "get StatusCodes.NotFound" in {
     val response = HttpClientFactory.get("DummyService").get("/notExisting")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.NotFound)
   }
 
-  "HttpClient with not existing endpoint" should "get StatusCodes.NotFound" in {
-    val response = HttpClientFactory.get("NotExistingService").get("/notExisting")
-    val result = Await.result(response, 3 seconds)
-    result.status should be (StatusCodes.NotFound)
+  "HttpClient with not existing endpoint" should "throw out HttpClientEndpointNotExistException" in {
+    a[HttpClientEndpointNotExistException] should be thrownBy {
+      HttpClientFactory.get("NotExistingService").get("/notExisting")
+    }
+  }
+
+  "HttpClient with fallback HttpResponse" should "get correct fallback logic" in {
+    val fallbackHttpResponse = HttpResponse()
+    val httpClient = HttpClientFactory.get("DummyService").withFallback(fallbackHttpResponse)
+    httpClient.endpoint.config.circuitBreakerConfig.fallbackHttpResponse should be (Some(fallbackHttpResponse))
   }
 
   "MarkDown/MarkUp HttpClient" should "have the correct behaviour" in {

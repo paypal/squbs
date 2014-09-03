@@ -38,5 +38,5 @@ object Configuration {
 case class CircuitBreakerConfiguration(maxFailures: Int = 5,
                                        callTimeout: FiniteDuration = 10 seconds,
                                        resetTimeout: FiniteDuration = 1 minute,
-                                       lastDurationMetrics: FiniteDuration = 60 seconds,
+                                       lastDuration: FiniteDuration = 60 seconds,
                                        fallbackHttpResponse: Option[HttpResponse] = None)
