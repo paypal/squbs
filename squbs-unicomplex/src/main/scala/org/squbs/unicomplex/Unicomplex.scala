@@ -485,7 +485,8 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     case StartCubeActor(props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name)
 
-      register(new PredefinedActorBean(props, cubeActor, self), prefix + actorInfo + name)
+      val beanName = cubeActor.path.toString.split(s"${cubeActor.path.root}user/").mkString("")
+      register(new PredefinedActorBean(props, cubeActor, self), prefix + actorInfo + beanName)
 
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
@@ -493,6 +494,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     case StartCubeService(webContext, listeners, props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name)
 
+      val beanName = cubeActor.path.toString.split(s"${cubeActor.path.root}user/").mkString("")
       register(new PredefinedActorBean(props, cubeActor, self), prefix + actorInfo + name )
 
       if (initRequired) initMap += cubeActor -> None

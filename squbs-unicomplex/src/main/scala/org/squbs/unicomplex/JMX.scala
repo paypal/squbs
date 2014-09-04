@@ -189,16 +189,11 @@ trait ActorJMX  {
 
   import JMX._
   val objName = {
-    val name = self.path.name.startsWith("$") match {
-      case true => self.path.parent.name  + self.path.name
-      case false => self.path.name
-    }
-
+    val name = self.path.toString.split(s"${self.path.root}user/").mkString("")
     prefix + actorInfo + name
   }
 
   override def preStart() {
-
     if (isRegistered(objName))
       unregister(objName)
 
