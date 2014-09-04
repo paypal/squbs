@@ -172,7 +172,12 @@ class SeverStats(name: String, httpListener: ActorRef) extends ServerStatsMXBean
 
 class ActorBean(implicit context: ActorContext) extends PredefinedActorBean(context.props, context.self, context.parent){
   import context._
-  override def getChildren = children.mkString(",")
+  override def getChildren = {
+   children.size match {
+     case count if (count > 10) => children.drop(count-20).mkString(",") + s"... total:$count"
+     case _ => children.mkString(",")
+   }
+  }
 }
 
 class PredefinedActorBean(props: Props, self: ActorRef, parent: ActorRef) extends ActorMXBean {
