@@ -20,7 +20,6 @@ package org.squbs.httpclient
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import akka.actor.ActorSystem
 import spray.client.pipelining._
-import spray.httpx.unmarshalling._
 import spray.httpx.marshalling.Marshaller
 import scala.util.Try
 import scala.concurrent._
@@ -93,12 +92,12 @@ trait HttpCallSupport extends PipelineManager with CircuitBreakerSupport {
     handle(invokeToHttpResponse(client), Get(uri))
   }
 
-  def post[T: Marshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[HttpResponse] = {
+  def post[T: Marshaller](uri: String, content: T)(implicit system: ActorSystem): Future[HttpResponse] = {
     httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
     handle(invokeToHttpResponse(client), Post(uri, content))
   }
 
-  def put[T: Marshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[HttpResponse] = {
+  def put[T: Marshaller](uri: String, content: T)(implicit system: ActorSystem): Future[HttpResponse] = {
     httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
     handle(invokeToHttpResponse(client), Put(uri, content))
   }
@@ -119,59 +118,7 @@ trait HttpCallSupport extends PipelineManager with CircuitBreakerSupport {
   }
 }
 
-trait HttpEntityCallSupport extends PipelineManager with CircuitBreakerSupport {
-
-  def client: Client
-
-  def handleEntity[T: FromResponseUnmarshaller](pipeline: Try[HttpRequest => Future[Result[T]]],
-                                                httpRequest: HttpRequest)(implicit system: ActorSystem): Future[Result[T]] = {
-    implicit val ec = system.dispatcher
-    pipeline match {
-      case Success(res) =>
-        withCircuitBreakerEntity[T](client, res(httpRequest))
-      case Failure(t@HttpClientMarkDownException(_, _)) =>
-        httpClientLogger.debug("HttpClient has been mark down!", t)
-        collectCbMetrics(client, ServiceCallStatus.Exception)
-        future {throw t}
-      case Failure(t) =>
-        httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
-        collectCbMetrics(client, ServiceCallStatus.Exception)
-        future {throw t}
-    }
-  }
-
-  def getEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handleEntity[R](invokeToEntity[R](client), Get(uri))
-  }
-
-  def postEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handleEntity[R](invokeToEntity[R](client), Post(uri, content))
-  }
-
-  def putEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handleEntity[R](invokeToEntity[R](client), Put(uri, content))
-  }
-
-  def headEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handleEntity[R](invokeToEntity[R](client), Head(uri))
-  }
-
-  def deleteEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handleEntity[R](invokeToEntity[R](client), Delete(uri))
-  }
-
-  def optionsEntity[R: FromResponseUnmarshaller](uri: String)(implicit system: ActorSystem): Future[Result[R]] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handleEntity[R](invokeToEntity[R](client), Options(uri))
-  }
-}
-
-trait HttpClientSupport extends HttpCallSupport with HttpEntityCallSupport
+trait HttpClientSupport extends HttpCallSupport
 
 case class HttpClient(name: String,
                       env: Environment = Default)(implicit system: ActorSystem) extends Client with HttpClientSupport {

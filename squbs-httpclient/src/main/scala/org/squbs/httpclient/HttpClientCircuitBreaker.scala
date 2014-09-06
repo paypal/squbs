@@ -17,9 +17,7 @@
  */
 package org.squbs.httpclient
 
-import org.squbs.httpclient.pipeline.UnmarshalSupport
 import scala.concurrent._
-import spray.httpx.unmarshalling._
 import spray.http.HttpResponse
 import scala.Some
 import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
@@ -46,7 +44,7 @@ case class CircuitBreakerMetrics(var status: CircuitBreakerStatus,
                                  var exceptionTimes: Long,
                                  var cbLastDurationCall: ListBuffer[ServiceCall])
 
-trait CircuitBreakerSupport extends UnmarshalSupport{
+trait CircuitBreakerSupport{
 
   def withCircuitBreaker(client: Client, response: Future[HttpResponse])(implicit system: ActorSystem) = {
     implicit val ec = system.dispatcher
@@ -62,26 +60,6 @@ trait CircuitBreakerSupport extends UnmarshalSupport{
       case (Some(response), CircuitBreakerStatus.Open | CircuitBreakerStatus.HalfOpen) =>
         collectCbMetrics(client, ServiceCallStatus.Fallback)
         runCircuitBreaker fallbackTo future{response}
-      case (None, CircuitBreakerStatus.Open | CircuitBreakerStatus.HalfOpen)           =>
-        collectCbMetrics(client, ServiceCallStatus.FailFast)
-        runCircuitBreaker
-    }
-  }
-
-  def withCircuitBreakerEntity[T: FromResponseUnmarshaller](client: Client, response: Future[Result[T]])(implicit system: ActorSystem) = {
-    implicit val ec = system.dispatcher
-    val runCircuitBreaker = client.cb.withCircuitBreaker[Result[T]](response)
-    val fallbackHttpResponse = client.endpoint.config.circuitBreakerConfig.fallbackHttpResponse
-    (fallbackHttpResponse, client.cbMetrics.status) match {
-      case (Some(response), CircuitBreakerStatus.Closed) =>
-        collectCbMetrics(client, ServiceCallStatus.Success)
-        runCircuitBreaker fallbackTo future{unmarshal[T].apply(response)}
-      case (None, CircuitBreakerStatus.Closed) =>
-        collectCbMetrics(client, ServiceCallStatus.Success)
-        runCircuitBreaker
-      case (Some(response), CircuitBreakerStatus.Open | CircuitBreakerStatus.HalfOpen) =>
-        collectCbMetrics(client, ServiceCallStatus.Fallback)
-        runCircuitBreaker fallbackTo future{unmarshal[T].apply(response)}
       case (None, CircuitBreakerStatus.Open | CircuitBreakerStatus.HalfOpen)           =>
         collectCbMetrics(client, ServiceCallStatus.FailFast)
         runCircuitBreaker

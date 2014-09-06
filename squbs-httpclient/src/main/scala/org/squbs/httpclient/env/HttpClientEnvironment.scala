@@ -74,12 +74,6 @@ object EnvironmentRegistry {
   }
 
   def resolve(svcName: String): Environment = {
-//    environmentResolvers.find(_.resolve(svcName) != None) match {
-//      case Some(resolver) =>
-//        resolver.resolve(svcName).getOrElse(Default)
-//      case None           =>
-//        Default
-//    }
     val resolvedEnv = environmentResolvers.foldLeft[Environment](Default){(env: Environment, resolver: EnvironmentResolver) =>
       env match {
         case Default => resolver.resolve(svcName)

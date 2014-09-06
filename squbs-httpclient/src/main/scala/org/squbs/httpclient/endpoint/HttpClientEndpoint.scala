@@ -20,7 +20,7 @@ package org.squbs.httpclient.endpoint
 import scala.collection.mutable.ListBuffer
 import org.slf4j.LoggerFactory
 import org.squbs.httpclient.env.{Default, Environment}
-import org.squbs.httpclient.{Configuration}
+import org.squbs.httpclient.Configuration
 
 case class Endpoint(uri: String, config: Configuration = Configuration())
 

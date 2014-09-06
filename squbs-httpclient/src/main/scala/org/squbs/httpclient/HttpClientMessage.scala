@@ -19,7 +19,6 @@ package org.squbs.httpclient
 
 import scala.Some
 import org.squbs.httpclient.env.{Default, Environment}
-import spray.httpx.BaseJson4sSupport
 import akka.pattern.CircuitBreaker
 import akka.actor.ActorSystem
 import org.squbs.httpclient.endpoint.EndpointRegistry
@@ -117,55 +116,51 @@ object HttpClientActorMessage {
   case object CloseSuccess
 
   /**
-   * Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-   * Failure => HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+   * Success => HttpResponse
+   * Failure => Throwable
    * @param uri
    */
   case class Get(uri: String)
 
   /**
-   * Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-   * Failure => HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+   * Success => HttpResponse
+   * Failure => Throwable
    * @param uri
    */
   case class Options(uri: String)
 
   /**
-   * Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-   * Failure => HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+   * Success => HttpResponse
+   * Failure => Throwable
    * @param uri
    */
   case class Head(uri: String)
 
   /**
-   * Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-   * Failure => HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+   * Success => HttpResponse
+   * Failure => Throwable
    * @param uri
    */
   case class Delete(uri: String)
 
 
   /**
-    * Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-   * Failure => HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+   * Success => HttpResponse
+   * Failure => Throwable
    * @param uri
    * @param content
    * @param marshaller
    * @tparam T
    */
-//  case class Post[T: Marshaller](uri: String, content: Some[T], support: BaseJson4sSupport)
-//  case class Post[T <: AnyRef](uri: String, content: Some[T], json4sSupport: BaseJson4sSupport = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol)
-  case class Post[T <: AnyRef](uri: String, content: Some[T], marshaller: Marshaller[T] = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller)
+  case class Post[T <: AnyRef](uri: String, content: T, marshaller: Marshaller[T] = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller)
 
   /**
-   * Success => HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-   * Failure => HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+   * Success => HttpResponse
+   * Failure => Throwable
    * @param uri
    * @param content
    * @param marshaller
    * @tparam T
    */
-//  case class Put[T: Marshaller](uri: String, content: Some[T], support: BaseJson4sSupport)
-//  case class Put[T <: AnyRef](uri: String, content: Some[T], json4sSupport: BaseJson4sSupport = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol)
-  case class Put[T <: AnyRef](uri: String, content: Some[T], marshaller: Marshaller[T] = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller)
+  case class Put[T <: AnyRef](uri: String, content: T, marshaller: Marshaller[T] = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller)
 }

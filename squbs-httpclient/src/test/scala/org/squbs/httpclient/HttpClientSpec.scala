@@ -23,12 +23,11 @@ import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import spray.http.{HttpResponse, StatusCodes}
-import spray.httpx.{UnsuccessfulResponseException, PipelineException}
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import org.squbs.httpclient.pipeline.UnmarshalSupport
+import scala.util.Success
 
-class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll with UnmarshalSupport{
+class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
 
   implicit val system = ActorSystem("HttpClientSpec")
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
@@ -53,12 +52,11 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     result.entity.data.asString should be (fullTeamJson)
   }
 
-  "HttpClient with correct Endpoint calling getEntity" should "get the correct response" in {
-    val response = HttpClientFactory.get("DummyService").getEntity[Team]("/view")
+  "HttpClient with correct Endpoint calling get and unmarshall object" should "get the correct response" in {
+    val response = HttpClientFactory.get("DummyService").get("/view")
     val result = Await.result(response, 3 seconds)
-    result.content should be (fullTeam)
-    result.rawHttpResponse.status should be (StatusCodes.OK)
-    result.rawHttpResponse.entity.data.nonEmpty should be (true)
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    result.unmarshalTo[Team] should be (Success(fullTeam))
   }
 
   "HttpClient with correct Endpoint calling head" should "get the correct response" in {
@@ -66,13 +64,6 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.entity.nonEmpty should be (false)
-  }
-
-  "HttpClient with correct Endpoint calling headEntity" should "get the correct response" in {
-    a[PipelineException] should be thrownBy {
-      val response = HttpClientFactory.get("DummyService").headEntity[Team]("/view")
-      Await.result(response, 3 seconds)
-    }
   }
 
   "HttpClient with correct Endpoint calling options" should "get the correct response" in {
@@ -83,12 +74,11 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     result.entity.data.nonEmpty should be (true)
   }
 
-  "HttpClient with correct Endpoint calling optionsEntity" should "get the correct response" in {
-    val response = HttpClientFactory.get("DummyService").optionsEntity[Team]("/view")
+  "HttpClient with correct Endpoint calling options and unmarshall object" should "get the correct response" in {
+    val response = HttpClientFactory.get("DummyService").options("/view")
     val result = Await.result(response, 3 seconds)
-    result.content should be (fullTeam)
-    result.rawHttpResponse.status should be (StatusCodes.OK)
-    result.rawHttpResponse.entity.data.nonEmpty should be (true)
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    result.unmarshalTo[Team] should be (Success(fullTeam))
   }
 
   "HttpClient with correct Endpoint calling delete" should "get the correct response" in {
@@ -100,16 +90,15 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     result.entity.data.asString should be (fullTeamWithDelJson)
   }
 
-  "HttpClient with correct Endpoint calling deleteEntity" should "get the correct response" in {
-    val response = HttpClientFactory.get("DummyService").deleteEntity[Team]("/del/4")
+  "HttpClient with correct Endpoint calling delete and unmarshall object" should "get the correct response" in {
+    val response = HttpClientFactory.get("DummyService").delete("/del/4")
     val result = Await.result(response, 3 seconds)
-    result.content should be (fullTeamWithDel)
-    result.rawHttpResponse.status should be (StatusCodes.OK)
-    result.rawHttpResponse.entity.data.nonEmpty should be (true)
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    result.unmarshalTo[Team] should be (Success(fullTeamWithDel))
   }
 
   "HttpClient with correct Endpoint calling post" should "get the correct response" in {
-    val response = HttpClientFactory.get("DummyService").post[Employee]("/add", Some(newTeamMember))
+    val response = HttpClientFactory.get("DummyService").post[Employee]("/add", newTeamMember)
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.entity.nonEmpty should be (true)
@@ -117,16 +106,15 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     result.entity.data.asString should be (fullTeamWithAddJson)
   }
 
-  "HttpClient with correct Endpoint calling postEnitty" should "get the correct response" in {
-    val response = HttpClientFactory.get("DummyService").postEntity[Employee, Team]("/add", Some(newTeamMember))
+  "HttpClient with correct Endpoint calling post and unmarshall object" should "get the correct response" in {
+    val response = HttpClientFactory.get("DummyService").post[Employee]("/add", newTeamMember)
     val result = Await.result(response, 3 seconds)
-    result.content should be (fullTeamWithAdd)
-    result.rawHttpResponse.status should be (StatusCodes.OK)
-    result.rawHttpResponse.entity.data.nonEmpty should be (true)
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    result.unmarshalTo[Team] should be (Success(fullTeamWithAdd))
   }
 
   "HttpClient with correct Endpoint calling put" should "get the correct response" in {
-    val response = HttpClientFactory.get("DummyService").put[Employee]("/add", Some(newTeamMember))
+    val response = HttpClientFactory.get("DummyService").put[Employee]("/add", newTeamMember)
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     result.entity.nonEmpty should be (true)
@@ -134,12 +122,11 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     result.entity.data.asString should be (fullTeamWithAddJson)
   }
 
-  "HttpClient with correct Endpoint calling putEnitty" should "get the correct response" in {
-    val response = HttpClientFactory.get("DummyService").putEntity[Employee, Team]("/add", Some(newTeamMember))
+  "HttpClient with correct Endpoint calling put and unmarshall object" should "get the correct response" in {
+    val response = HttpClientFactory.get("DummyService").put[Employee]("/add", newTeamMember)
     val result = Await.result(response, 3 seconds)
-    result.content should be (fullTeamWithAdd)
-    result.rawHttpResponse.status should be (StatusCodes.OK)
-    result.rawHttpResponse.entity.data.nonEmpty should be (true)
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    result.unmarshalTo[Team] should be (Success(fullTeamWithAdd))
   }
 
   "HttpClient could be use endpoint as service name directly without registry endpoint resolvers, major target for third party service call" should "get the correct response" in {
@@ -169,29 +156,20 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     result.entity.data.asString should be (fullTeamJson)
   }
 
-  "HttpClient with the correct endpoint and unmarshal value" should "unmarshal successfully" in {
+  "HttpClient with the correct endpoint and wrong unmarshal value" should "throw out PipelineException and failed" in {
     val response = HttpClientFactory.get("DummyService").get("/view")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
-    unmarshal[Team].apply(result) should be (Result[Team](fullTeam, result))
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    result.unmarshalTo[String].isFailure should be (true)
   }
 
-  "HttpClient with the correct endpoint and wrong unmarshal value" should "throw out PipelineException" in {
-    val response = HttpClientFactory.get("DummyService").get("/view")
-    val result = Await.result(response, 3 seconds)
-    result.status should be (StatusCodes.OK)
-    a[PipelineException] should be thrownBy {
-      unmarshal[String].apply(result)
-    }
-  }
-
-  "HttpClient with correct endpoint calling get with not existing uri with UnmarshalSupport trait" should "throw out UnsuccessfulResponseException" in {
+  "HttpClient with correct endpoint calling get with not existing uri and unmarshall value" should "throw out UnsuccessfulResponseException and failed" in {
     val response = HttpClientFactory.get("DummyService").get("/notExisting")
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.NotFound)
-    a[UnsuccessfulResponseException] should be thrownBy {
-      unmarshal[Team].apply(result)
-    }
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    result.unmarshalTo[Team].isFailure should be (true)
   }
 
   "HttpClient with correct endpoint calling get with not existing uri" should "get StatusCodes.NotFound" in {
@@ -229,12 +207,4 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     updatedResult.entity.data.nonEmpty should be (true)
     updatedResult.entity.data.asString should be (fullTeamJson)
   }
-
-//  "Change the endpoint to None" should "throw out HttpClientEndpointNotExistException" in {
-//    val httpClient = HttpClientFactory.getOrCreate("DummyService")
-//    httpClient.endpoint = None
-//    a[HttpClientEndpointNotExistException] should be thrownBy {
-//      httpClient.get("/view")
-//    }
-//  }
 }

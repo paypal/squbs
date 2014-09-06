@@ -22,7 +22,7 @@ import spray.http._
 import spray.can.Http
 import akka.io.IO
 import akka.pattern._
-import akka.util.{Timeout}
+import akka.util.Timeout
 import spray.httpx.marshalling.Marshaller
 import scala.collection.concurrent.TrieMap
 import scala.concurrent._
@@ -48,18 +48,6 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
   override def createExtension(system: ExtendedActorSystem): HttpClientManagerExtension = new HttpClientManagerExtension(system)
 
   override def lookup(): ExtensionId[_ <: Extension] = HttpClientManager
-
-//  implicit class HttpResponseUnmarshal(val response: HttpResponse) extends AnyVal {
-//
-//    def unmarshalTo[T: FromResponseUnmarshaller]: Either[Throwable, T] = {
-//      if (response.status.isSuccess)
-//        response.as[T] match {
-//          case Right(value) ⇒ Right(value)
-//          case Left(error) ⇒ Left(throw new PipelineException(error.toString))
-//        }
-//      else Left(new UnsuccessfulResponseException(response))
-//    }
-//  }
 }
 
 
@@ -94,13 +82,13 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
     handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Get(uri))
   }
 
-  def post[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: Some[T])
+  def post[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: T)
                          (implicit system: ActorSystem): Future[HttpResponse] = {
     httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
     handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Post(uri, content))
   }
 
-  def put[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: Some[T])
+  def put[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: T)
                         (implicit system: ActorSystem): Future[HttpResponse] = {
     httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
     handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Put(uri, content))
@@ -173,7 +161,7 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
 
   def receivePostConnection[T <: AnyRef](httpMethod: HttpMethod, 
                                          uri: String, 
-                                         content: Some[T], 
+                                         content: T,
                                          client: Client, 
                                          actorRef: ActorRef,
                                          marshaller: Marshaller[T]): Actor.Receive = {

@@ -1,3 +1,20 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the CONTRIBUTING file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.httpclient.demo
 
 import org.squbs.httpclient.endpoint.{EndpointRegistry, Endpoint, EndpointResolver}
@@ -9,9 +26,6 @@ import scala.util.Failure
 import scala.Some
 import scala.util.Success
 
-/**
-* Created by hakuang on 8/25/14.
-*/
 object DeliveryServiceMain extends App with HttpClientTestKit{
 
   private implicit val system = ActorSystem("DeliveryServiceMain")
@@ -30,31 +44,19 @@ object DeliveryServiceMain extends App with HttpClientTestKit{
     orderDetails = OrderDetails(List[Product](Product("BOPIS MOBILE", "MEBN ONLY TEST ITEMS – DO NOT BUY!+20140421030329", null, null, 1, Price("USD", 10.0), 1)), Price("USD", 10.0)),
     storeId = "10008",
     referenceDate = 1403804176062L)
-//  println(write(postData))
-//  val response = HttpClientFactory.get("deliveryService").post[DeliveryPayload]("/buy/shipping/v2/deliveries/delivery-slots/available", Some(postData))
-//  response onComplete {
-//    case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
-//      println("Success, response entity is: " + res.entity.asString)
-//      shutdownActorSystem
-//    case Success(res@HttpResponse(code, _, _, _)) =>
-//      println("Success, the status code is: " + code + ", response entity is: " + res.entity.asString)
-//      shutdownActorSystem
-//    case Failure(e) =>
-//      println("Failure, the reason is: " + e.getMessage)
-//      shutdownActorSystem
-  val response = HttpClientFactory.get("deliveryService").postEntity[DeliveryPayload, List[DeliveryResult]]("/buy/shipping/v2/deliveries/delivery-slots/available", Some(postData))
+
+  val response = HttpClientFactory.get("deliveryService").post[DeliveryPayload]("/buy/shipping/v2/deliveries/delivery-slots/available", postData)
   response onComplete {
-    case Success(Result(data, HttpResponse(StatusCodes.OK, _, _, _))) =>
-      data.foreach(println(_))
+    case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
+      println("Success, response entity is: " + res.entity.asString)
       shutdownActorSystem
-    case Success(Result(data, HttpResponse(code, _, _, _))) =>
-      println("Success, the status code is: " + code)
+    case Success(res@HttpResponse(code, _, _, _)) =>
+      println("Success, the status code is: " + code + ", response entity is: " + res.entity.asString)
       shutdownActorSystem
     case Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
       shutdownActorSystem
   }
-
 }
 
 object DeliveryServiceEndpointResolver extends EndpointResolver {

@@ -49,7 +49,7 @@ object HttpClientDemo1 extends App with HttpClientTestKit {
 }
 
 /**
- * Traditional API using getEntity
+ * Traditional API using get and unmarshall value
  */
 object HttpClientDemo2 extends App with HttpClientTestKit{
 
@@ -57,13 +57,20 @@ object HttpClientDemo2 extends App with HttpClientTestKit{
   import system.dispatcher
   EndpointRegistry.register(GoogleMapAPIEndpointResolver)
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
+  import HttpClientUnmarshal._
 
-  val response = HttpClientFactory.get("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.get("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
-    case Success(Result(content, res@HttpResponse(StatusCodes.OK, _, _, _))) =>
-      println("Success, response status is: " + content.status + ", elevation is: " + content.results.head.elevation + ", location.lat is: " + content.results.head.location.lat)
+    case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
+      val obj = res.unmarshalTo[GoogleApiResult[Elevation]]
+      obj match {
+        case Success(data) =>
+          println("Success, elevation is: " + data.results.head.elevation)
+        case Failure(e) =>
+          println("Failure, the reason is: " + e.getMessage)
+      }
       shutdownActorSystem
-    case Success(Result(_, HttpResponse(code, _, _, _))) =>
+    case Success(res@HttpResponse(code, _, _, _)) =>
       println("Success, the status code is: " + code)
       shutdownActorSystem
     case Failure(e) =>
@@ -97,9 +104,9 @@ case class HttpClientDemoActor(implicit system: ActorSystem) extends Actor with 
       import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
       val unmarshalData = res.unmarshalTo[GoogleApiResult[Elevation]]
       unmarshalData match {
-        case Right(data) =>
+        case Success(data) =>
           println("elevation is: " + data.results.head.elevation + ", location.lat is: " + data.results.head.location.lat)
-        case Left(e)     =>
+        case Failure(e)     =>
           println("unmarshal error is:" + e.getMessage)
       }
 
