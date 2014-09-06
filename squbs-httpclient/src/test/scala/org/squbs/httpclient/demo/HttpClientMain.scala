@@ -20,9 +20,10 @@ package org.squbs.httpclient.demo
 import akka.actor.{ActorRef, Actor, Props, ActorSystem}
 import org.squbs.httpclient._
 import org.squbs.httpclient.endpoint.EndpointRegistry
-import spray.http.StatusCodes
+import spray.http.{HttpResponse, StatusCodes}
 import scala.util.{Failure, Success}
 import org.squbs.httpclient.dummy.GoogleAPI.{Elevation, GoogleApiResult, GoogleMapAPIEndpointResolver}
+import org.squbs.httpclient.pipeline.HttpClientUnmarshal
 
 /**
  * Traditional API using get
@@ -35,10 +36,10 @@ object HttpClientDemo1 extends App with HttpClientTestKit {
 
   val response = HttpClientFactory.get("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
-    case Success(HttpResponseWrapper(StatusCodes.OK, Right(res))) =>
+    case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
       println("Success, response entity is: " + res.entity.asString)
       shutdownActorSystem
-    case Success(HttpResponseWrapper(code, _)) =>
+    case Success(res@HttpResponse(code, _, _, _)) =>
       println("Success, the status code is: " + code)
       shutdownActorSystem
     case Failure(e) =>
@@ -48,7 +49,7 @@ object HttpClientDemo1 extends App with HttpClientTestKit {
 }
 
 /**
- * Traditional API using getEntity
+ * Traditional API using get and unmarshall value
  */
 object HttpClientDemo2 extends App with HttpClientTestKit{
 
@@ -56,13 +57,20 @@ object HttpClientDemo2 extends App with HttpClientTestKit{
   import system.dispatcher
   EndpointRegistry.register(GoogleMapAPIEndpointResolver)
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
+  import HttpClientUnmarshal._
 
-  val response = HttpClientFactory.get("googlemap").getEntity[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.get("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
-    case Success(HttpResponseEntityWrapper(StatusCodes.OK, Right(res), rawHttpResponse)) =>
-      println("Success, response status is: " + res.status + ", elevation is: " + res.results.head.elevation + ", location.lat is: " + res.results.head.location.lat)
+    case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
+      val obj = res.unmarshalTo[GoogleApiResult[Elevation]]
+      obj match {
+        case Success(data) =>
+          println("Success, elevation is: " + data.results.head.elevation)
+        case Failure(e) =>
+          println("Failure, the reason is: " + e.getMessage)
+      }
       shutdownActorSystem
-    case Success(HttpResponseEntityWrapper(code, _, _)) =>
+    case Success(res@HttpResponse(code, _, _, _)) =>
       println("Success, the status code is: " + code)
       shutdownActorSystem
     case Failure(e) =>
@@ -89,21 +97,21 @@ case class HttpClientDemoActor(implicit system: ActorSystem) extends Actor with 
       httpClientManager ! HttpClientManagerMessage.Get("googlemap")
     case httpClientActorRef: ActorRef =>
       httpClientActorRef ! HttpClientActorMessage.Get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
-    case HttpResponseWrapper(StatusCodes.OK, Right(res)) =>
+    case res@ HttpResponse(StatusCodes.OK, _, _, _) =>
       println("Success, response entity is: " + res.entity.asString)
 
-      import HttpClientManager._
+      import HttpClientUnmarshal._
       import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
       val unmarshalData = res.unmarshalTo[GoogleApiResult[Elevation]]
       unmarshalData match {
-        case Right(data) =>
+        case Success(data) =>
           println("elevation is: " + data.results.head.elevation + ", location.lat is: " + data.results.head.location.lat)
-        case Left(e)     =>
+        case Failure(e)     =>
           println("unmarshal error is:" + e.getMessage)
       }
 
       shutdownActorSystem
-    case HttpResponseWrapper(code, _) =>
+    case HttpResponse(code, _, _, _) =>
       println("Success, the status code is: " + code)
       shutdownActorSystem
     case akka.actor.Status.Failure(e) =>

@@ -28,9 +28,13 @@ import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.HttpClientManagerMessage.Get
 import org.squbs.httpclient.HttpClientManagerMessage.Delete
-import scala.Some
-import spray.http.StatusCodes
-import spray.util._
+import spray.http.{HttpResponse, StatusCodes}
+import spray.json.DefaultJsonProtocol
+import spray.httpx.SprayJsonSupport
+import org.squbs.httpclient.pipeline.HttpClientUnmarshal
+import org.squbs.httpclient.HttpClientActorMessage.{MarkUpSuccess, MarkDownSuccess}
+import akka.actor.Status.Failure
+import scala.util.Success
 
 class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")) with FlatSpecLike with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll with DummyService{
 
@@ -116,26 +120,53 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     deleteHttpClient("http://localhost:8080/test")
   }
 
+  "HttpClientActor send Update message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Update(Configuration().copy(circuitBreakerConfig = CircuitBreakerConfiguration().copy(maxFailures = 50)))
+    expectMsgType[ActorRef]
+    HttpClientManager.httpClientMap.size should be (1)
+    HttpClientManager.httpClientMap.get(("DummyService", Default)).get._1.endpoint.config.circuitBreakerConfig.maxFailures should be (50)
+    deleteHttpClient("DummyService")
+  }
+
+  "HttpClientActor with correct endpoint with MarkDown/MarkUp send Get message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.MarkDown
+    expectMsg(MarkDownSuccess)
+    httpClientActorRef ! HttpClientActorMessage.Get("/view")
+    val error = expectMsgType[Failure]
+    error.cause should be (HttpClientMarkDownException("DummyService"))
+    httpClientActorRef ! HttpClientActorMessage.MarkUp
+    expectMsg(MarkUpSuccess)
+    httpClientActorRef ! HttpClientActorMessage.Get("/view")
+    val result = expectMsgType[HttpResponse]
+    result.status should be (StatusCodes.OK)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamJson)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
   "HttpClientActor with correct endpoint send Get message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Get("/view")
-    val result = expectMsgType[HttpResponseWrapper]
+    val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-    result.content.get.entity.data.asString should be (fullTeamJson)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamJson)
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
   "HttpClientActor with correct endpoint send Get message and unmarshall HttpResponse" should "get the correct response" in {
-    import HttpClientManager._
+    import HttpClientUnmarshal._
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Get("/view")
-    val result = expectMsgType[HttpResponseWrapper]
+    val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
-    val httpResponse = result.content.get
-    httpResponse.unmarshalTo[Team] should be (Right(fullTeam))
+    result.unmarshalTo[Team] should be (Success(fullTeam))
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
@@ -143,9 +174,9 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
   "HttpClientActor with correct endpoint send Head message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Head("/view")
-    val result = expectMsgType[HttpResponseWrapper]
+    val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (false)
+    result.entity.nonEmpty should be (false)
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
@@ -153,23 +184,22 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
   "HttpClientActor with correct endpoint send Options message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Options("/view")
-    val result = expectMsgType[HttpResponseWrapper]
+    val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-    result.content.get.entity.data.asString should be (fullTeamJson)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamJson)
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
-  "HttpClientActor with correct endpoint send Options message nad unmarshall HttpResponse" should "get the correct response" in {
-    import HttpClientManager._
+  "HttpClientActor with correct endpoint send Options message and unmarshall HttpResponse" should "get the correct response" in {
+    import HttpClientUnmarshal._
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Options("/view")
-    val result = expectMsgType[HttpResponseWrapper]
+    val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
-    val httpResponse = result.content.get
-    httpResponse.unmarshalTo[Team] should be (Right(fullTeam))
+    result.unmarshalTo[Team] should be (Success(fullTeam))
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
@@ -177,71 +207,81 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
   "HttpClientActor with correct endpoint send Delete message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Delete("/del/4")
-    val result = expectMsgType[HttpResponseWrapper]
+    val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-    result.content.get.entity.data.asString should be (fullTeamWithDelJson)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamWithDelJson)
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
   "HttpClientActor with correct endpoint send Delete message and unmarshal HttpResponse" should "get the correct response" in {
-    import HttpClientManager._
+    import HttpClientUnmarshal._
     val httpClientActorRef = createHttpClient("DummyService")
     httpClientActorRef ! HttpClientActorMessage.Delete("/del/4")
-    val result = expectMsgType[HttpResponseWrapper]
+    val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
-    val httpResponse = result.content.get
-    httpResponse.unmarshalTo[Team] should be (Right(fullTeamWithDel))
+    result.unmarshalTo[Team] should be (Success(fullTeamWithDel))
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
   "HttpClientActor with correct endpoint send Post message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
-    httpClientActorRef ! HttpClientActorMessage.Post[Employee]("/add", Some(newTeamMember))
-    val result = expectMsgType[HttpResponseWrapper]
+    httpClientActorRef ! HttpClientActorMessage.Post[Employee]("/add", newTeamMember)
+    val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-    result.content.get.entity.data.asString should be (fullTeamWithAddJson)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamWithAddJson)
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
   "HttpClientActor with correct endpoint send Post message and unmarshal HttpResponse" should "get the correct response" in {
-    import HttpClientManager._
+    import HttpClientUnmarshal._
     val httpClientActorRef = createHttpClient("DummyService")
-    httpClientActorRef ! HttpClientActorMessage.Post[Employee]("/add", Some(newTeamMember))
-    val result = expectMsgType[HttpResponseWrapper]
+    httpClientActorRef ! HttpClientActorMessage.Post[Employee]("/add", newTeamMember)
+    val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
-    val httpResponse = result.content.get
-    httpResponse.unmarshalTo[Team] should be (Right(fullTeamWithAdd))
+    result.unmarshalTo[Team] should be (Success(fullTeamWithAdd))
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
   "HttpClientActor with correct endpoint send Put message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
-    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", Some(newTeamMember))
-    val result = expectMsgType[HttpResponseWrapper]
+    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", newTeamMember)
+    val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
-    result.content.get.entity.nonEmpty should be (true)
-    result.content.get.entity.data.nonEmpty should be (true)
-    result.content.get.entity.data.asString should be (fullTeamWithAddJson)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamWithAddJson)
+    httpClientActorRef ! HttpClientActorMessage.Close
+    expectMsg(HttpClientActorMessage.CloseSuccess)
+  }
+
+  "HttpClientActor with correct endpoint send Put message with spray JSON marshall support" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", newTeamMember)
+    val result = expectMsgType[HttpResponse]
+    result.status should be (StatusCodes.OK)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamWithAddJson)
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
 
   "HttpClientActor with correct endpoint send Put message and unmarshal HttpResponse" should "get the correct response" in {
-    import HttpClientManager._
+    import HttpClientUnmarshal._
+    implicit val jsonFormat = TeamJsonProtocol.employeeFormat
     val httpClientActorRef = createHttpClient("DummyService")
-    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", Some(newTeamMember))
-    val result = expectMsgType[HttpResponseWrapper]
+    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", newTeamMember, SprayJsonSupport.sprayJsonMarshaller[Employee])
+    val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
-    val httpResponse = result.content.get
-    httpResponse.unmarshalTo[Team] should be (Right(fullTeamWithAdd))
+    result.unmarshalTo[Team] should be (Success(fullTeamWithAdd))
     httpClientActorRef ! HttpClientActorMessage.Close
     expectMsg(HttpClientActorMessage.CloseSuccess)
   }
@@ -257,4 +297,8 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     httpClientManager ! Delete(name, env)
     expectMsg(DeleteSuccess)
   }
+}
+
+object TeamJsonProtocol extends DefaultJsonProtocol {
+  implicit def employeeFormat = jsonFormat5(Employee)
 }

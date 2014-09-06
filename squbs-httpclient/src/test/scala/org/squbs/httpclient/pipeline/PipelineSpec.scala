@@ -49,7 +49,7 @@ class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit wit
     val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
     val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
-    response.content.get.headers contains (RawHeader("res-req1-name", "res-req1-value"))
+    response.headers contains (RawHeader("res-req1-name", "res-req1-value"))
   }
 
   "Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
@@ -59,7 +59,7 @@ class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit wit
     val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
     val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
-    response.content.get.headers contains (RawHeader("res1-name", "res1-value"))
+    response.headers contains (RawHeader("res1-name", "res1-value"))
   }
 
   "Request-Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
@@ -69,38 +69,7 @@ class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit wit
     val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
     val response = sendReceive.get(request).await
     response.status should be (StatusCodes.OK)
-    response.content.get.headers contains (RawHeader("res-req2-name", "res-req2-value"))
-    response.content.get.headers contains (RawHeader("res2-name", "res2-value"))
-  }
-
-  "Request Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestPipeline)))
-    val sendReceive = invokeToEntity[Team](httpClient)
-    sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
-    val response = sendReceive.get(request).await
-    response.status should be (StatusCodes.OK)
-    response.rawHttpResponse.get.headers contains (RawHeader("res-req1-name", "res-req1-value"))
-  }
-
-  "Response Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyResponsePipeline)))
-    val sendReceive = invokeToEntity[Team](httpClient)
-    sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
-    val response = sendReceive.get(request).await
-    response.status should be (StatusCodes.OK)
-    response.rawHttpResponse.get.headers contains (RawHeader("res1-name", "res1-value"))
-  }
-
-  "Request-Response Pipeline (invokeToEntity)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
-    val sendReceive = invokeToEntity[Team](httpClient)
-    sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
-    val response = sendReceive.get(request).await
-    response.status should be (StatusCodes.OK)
-    response.rawHttpResponse.get.headers contains (RawHeader("res-req2-name", "res-req2-value"))
-    response.rawHttpResponse.get.headers contains (RawHeader("res2-name", "res2-value"))
+    response.headers contains (RawHeader("res-req2-name", "res-req2-value"))
+    response.headers contains (RawHeader("res2-name", "res2-value"))
   }
 }

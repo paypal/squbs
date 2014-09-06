@@ -33,6 +33,7 @@ class SimpleServiceEndpointResolverSpec extends FlatSpec with HttpClientTestKit 
       "http://localhost:8080" -> Configuration(),
       "https://localhost:8443" -> Configuration(sslContext = Some(SSLContext.getDefault))
     ))
+    simpleResolver.name should be ("simple")
     EndpointRegistry.register(simpleResolver)
     EndpointRegistry.resolve("http://localhost:8080") should be (Some(Endpoint("http://localhost:8080")))
     EndpointRegistry.resolve("https://localhost:8443") should be (Some(Endpoint("https://localhost:8443", Configuration(sslContext = Some(SSLContext.getDefault)))))

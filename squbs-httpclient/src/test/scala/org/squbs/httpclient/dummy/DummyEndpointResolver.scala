@@ -25,9 +25,10 @@ import DummyService._
 object DummyServiceEndpointResolver extends EndpointResolver{
 
   override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
-    svcName match {
-      case name => Some(Endpoint(dummyServiceEndpoint))
-      case _    => None
+    if (svcName == name) {
+      Some(Endpoint(dummyServiceEndpoint))
+    } else {
+      None
     }
   }
 
@@ -37,9 +38,10 @@ object DummyServiceEndpointResolver extends EndpointResolver{
 object NotExistingEndpointResolver extends EndpointResolver {
 
   override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
-    svcName match {
-      case name => Some(Endpoint("http://www.notexistingservice.com"))
-      case _    => None
+    if (svcName == name) {
+      Some(Endpoint("http://www.notexistingservice.com"))
+    } else {
+      None
     }
   }
 
@@ -48,10 +50,10 @@ object NotExistingEndpointResolver extends EndpointResolver {
 
 object DummyLocalhostResolver extends EndpointResolver {
   override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-    if (svcName == null && svcName.length <= 0) throw new HttpClientException(700, "Service name cannot be null")
+    if (svcName == null && svcName.length <= 0) throw new HttpClientException("Service name cannot be null")
     env match {
       case Default | DEV => Some(Endpoint("http://localhost:8080/" + svcName))
-      case _   => throw new HttpClientException(701, "DummyLocalhostResolver cannot support " + env + " environment")
+      case _   => throw new HttpClientException("DummyLocalhostResolver cannot support " + env + " environment")
     }
   }
 

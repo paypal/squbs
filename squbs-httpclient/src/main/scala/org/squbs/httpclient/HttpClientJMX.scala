@@ -28,6 +28,7 @@ import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
 import scala.collection.JavaConversions._
 import java.lang.management.ManagementFactory
 import akka.actor.ActorRef
+import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
 
 object HttpClientJMX {
 
@@ -56,11 +57,13 @@ object HttpClientJMX {
       ManagementFactory.getPlatformMBeanServer.registerMBean(EnvironmentResolverBean, EnvironmentResolverBean.environmentResolverBean)
     }
   }
-}
 
-/**
- * Created by hakuang on 6/9/2014.
- */
+  def registryHCCircuitBreakerBean = {
+    if (!ManagementFactory.getPlatformMBeanServer.isRegistered(CircuitBreakerBean.circuitBreakerBean)){
+      ManagementFactory.getPlatformMBeanServer.registerMBean(CircuitBreakerBean, CircuitBreakerBean.circuitBreakerBean)
+    }
+  }
+}
 
 // $COVERAGE-OFF$
 case class HttpClientInfo @ConstructorProperties(
@@ -86,7 +89,7 @@ trait HttpClientMXBean {
   def getHttpClientInfo: java.util.List[HttpClientInfo]
 }
 
-object HttpClientBean extends HttpClientMXBean with ConfigurationSupport {
+object HttpClientBean extends HttpClientMXBean {
 
   val httpClientBean = "org.squbs.unicomplex:type=HttpClientInfo"
 
@@ -172,6 +175,73 @@ object EnvironmentResolverBean extends EnvironmentResolverMXBean {
 
   def toEnvironmentResolverInfo(resolverWithIndex: (EnvironmentResolver, Int)): EnvironmentResolverInfo = {
     EnvironmentResolverInfo(resolverWithIndex._2, resolverWithIndex._1.getClass.getCanonicalName)
+  }
+}
+
+// $COVERAGE-OFF$
+case class CircuitBreakerInfo @ConstructorProperties(
+  Array("name", "status", "lastDurationConfig", "successTimes", "fallbackTimes", "failFastTimes", "exceptionTimes", "lastDurationErrorRate", "lastDurationFailFastRate", "lastDurationExceptionRate"))(
+    @BeanProperty name: String,
+    @BeanProperty status: String,
+    @BeanProperty lastDurationConfig: String,
+    @BeanProperty successTimes: Long,
+    @BeanProperty fallbackTimes: Long,
+    @BeanProperty failFastTimes: Long,
+    @BeanProperty exceptionTimes: Long,
+    @BeanProperty lastDurationErrorRate: String,
+    @BeanProperty lastDurationFailFastRate: String,
+    @BeanProperty lastDurationExceptionRate: String
+  )
+
+// $COVERAGE-ON$
+
+trait CircuitBreakerMXBean {
+  def getHttpClientCircuitBreakerInfo: java.util.List[CircuitBreakerInfo]
+}
+
+object CircuitBreakerBean extends CircuitBreakerMXBean {
+
+  val circuitBreakerBean = "org.squbs.unicomplex:type=HttpClientCircuitBreakerInfo"
+
+  override def getHttpClientCircuitBreakerInfo: util.List[CircuitBreakerInfo] = {
+    val httpClientsFromFactory = HttpClientFactory.httpClientMap.values
+    val httpClientsFromManager = HttpClientManager.httpClientMap.values map {value: (Client, ActorRef) => value._1}
+    (httpClientsFromFactory ++ httpClientsFromManager).toList map {mapToHttpClientCircuitBreakerInfo(_)}
+  }
+
+  def mapToHttpClientCircuitBreakerInfo(httpClient: Client) = {
+    val name = httpClient.name
+    val status = httpClient.cbMetrics.status.toString
+    val lastDurationConfig = httpClient.endpoint.config.circuitBreakerConfig.lastDuration.toSeconds + " Seconds"
+    val successTimes = httpClient.cbMetrics.successTimes
+    val fallbackTimes = httpClient.cbMetrics.fallbackTimes
+    val failFastTimes = httpClient.cbMetrics.failFastTimes
+    val exceptionTimes = httpClient.cbMetrics.exceptionTimes
+    val currentTime = System.currentTimeMillis
+    val lastDuration = httpClient.endpoint.config.circuitBreakerConfig.lastDuration.toMillis
+    httpClient.cbMetrics.cbLastDurationCall = httpClient.cbMetrics.cbLastDurationCall.dropWhile(_.callTime + lastDuration <= currentTime)
+    val cbLastMinMetrics = httpClient.cbMetrics.cbLastDurationCall.groupBy[ServiceCallStatus](_.status) map { data =>
+      data._1 -> data._2.size
+    }
+    val lastDurationSuccess = cbLastMinMetrics.get(ServiceCallStatus.Success).getOrElse(0)
+    val lastDurationFallback = cbLastMinMetrics.get(ServiceCallStatus.Fallback).getOrElse(0)
+    val lastDurationFailFast = cbLastMinMetrics.get(ServiceCallStatus.FailFast).getOrElse(0)
+    val lastDurationException = cbLastMinMetrics.get(ServiceCallStatus.Exception).getOrElse(0)
+    val lastDurationTotal = lastDurationSuccess + lastDurationFallback + lastDurationFailFast + lastDurationException
+    val df = new java.text.DecimalFormat("0.00%")
+    val lastDurationErrorRate = lastDurationTotal match {
+      case 0 => "0%"
+      case _ => df.format((lastDurationTotal - lastDurationSuccess) * 1.0 / lastDurationTotal)
+    }
+    val lastDurationFailFastRate = lastDurationTotal match {
+      case 0 => "0%"
+      case _ => df.format(lastDurationFallback * 1.0 / lastDurationTotal)
+    }
+    val lastDurationExceptionRate = lastDurationTotal match {
+      case 0 => "0%"
+      case _ => df.format(lastDurationException * 1.0 / lastDurationTotal)
+    }
+    CircuitBreakerInfo(name, status, lastDurationConfig, successTimes, fallbackTimes, failFastTimes, exceptionTimes, lastDurationErrorRate, lastDurationFailFastRate, lastDurationExceptionRate)
   }
 }
 

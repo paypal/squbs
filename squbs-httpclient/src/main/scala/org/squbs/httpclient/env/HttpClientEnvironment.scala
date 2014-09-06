@@ -47,7 +47,7 @@ case class RawEnv(name: String) extends Environment
 trait EnvironmentResolver {
   def name: String
 
-  def resolve(svcName: String): Option[Environment]
+  def resolve(svcName: String): Environment
 }
 
 object EnvironmentRegistry {
@@ -60,7 +60,7 @@ object EnvironmentRegistry {
       case None =>
         environmentResolvers.prepend(resolver)
       case Some(resolver) =>
-        logger.info("Env Resolver:" + resolver.name + " has been registry, skip current env resolver registry!")
+        logger.warn("Env Resolver:" + resolver.name + " has been registry, skip current env resolver registry!")
     }
   }
 
@@ -74,12 +74,14 @@ object EnvironmentRegistry {
   }
 
   def resolve(svcName: String): Environment = {
-    environmentResolvers.find(_.resolve(svcName) != None) match {
-      case Some(resolver) =>
-        resolver.resolve(svcName).getOrElse(Default)
-      case None           =>
-        Default
+    val resolvedEnv = environmentResolvers.foldLeft[Environment](Default){(env: Environment, resolver: EnvironmentResolver) =>
+      env match {
+        case Default => resolver.resolve(svcName)
+        case _       => env
+      }
     }
+    logger.debug(s"Environment can be resolved by ($svcName), the environment is: " + resolvedEnv.lowercaseName)
+    resolvedEnv
   }
 }
 
