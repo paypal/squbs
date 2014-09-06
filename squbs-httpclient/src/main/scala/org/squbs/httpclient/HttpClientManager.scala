@@ -22,9 +22,7 @@ import spray.http._
 import spray.can.Http
 import akka.io.IO
 import akka.pattern._
-import akka.util.{Timeout}
-import spray.httpx.unmarshalling._
-import spray.httpx.{BaseJson4sSupport, PipelineException, UnsuccessfulResponseException}
+import akka.util.Timeout
 import spray.httpx.marshalling.Marshaller
 import scala.collection.concurrent.TrieMap
 import scala.concurrent._
@@ -50,81 +48,68 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
   override def createExtension(system: ExtendedActorSystem): HttpClientManagerExtension = new HttpClientManagerExtension(system)
 
   override def lookup(): ExtensionId[_ <: Extension] = HttpClientManager
-
-  implicit class HttpResponseUnmarshal(val response: HttpResponse) extends AnyVal {
-
-    def unmarshalTo[T: FromResponseUnmarshaller]: Either[Throwable, T] = {
-      if (response.status.isSuccess)
-        response.as[T] match {
-          case Right(value) ⇒ Right(value)
-          case Left(error) ⇒ Left(throw new PipelineException(error.toString))
-        }
-      else Left(new UnsuccessfulResponseException(response))
-    }
-  }
 }
 
 
 /**
  * Without setup HttpConnection
  */
-trait HttpCallActorSupport extends ConfigurationSupport with PipelineManager {
+trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
 
-  import ExecutionContext.Implicits.global
   import spray.httpx.RequestBuilding._
 
   def handle(client: Client,
-             pipeline: Try[HttpRequest => Future[HttpResponseWrapper]],
-             httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
+             pipeline: Try[HttpRequest => Future[HttpResponse]],
+             httpRequest: HttpRequest)(implicit system: ActorSystem): Future[HttpResponse] = {
+    implicit val ec = system.dispatcher
     pipeline match {
       case Success(res) =>
-        val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponseWrapper](res(httpRequest))
-        client.endpoint.config.circuitBreakerConfig.fallbackHttpResponse match {
-          case Some(response) =>
-            val fallbackResponse = future {
-              HttpResponseWrapper(response.status, Right(response))
-            }
-            runCircuitBreaker fallbackTo fallbackResponse
-          case None           =>
-            runCircuitBreaker
-        }
-      case Failure(t@HttpClientMarkDownException(_, _)) => future {
-        HttpResponseWrapper(HttpClientException.httpClientMarkDownError, Left(t))
-      }
-      case Failure(t) => future {
-        HttpResponseWrapper(999, Left(t))
-      }
+        withCircuitBreaker(client, res(httpRequest))
+      case Failure(t@HttpClientMarkDownException(_, _)) =>
+        httpClientLogger.debug("HttpClient has been mark down!", t)
+        collectCbMetrics(client, ServiceCallStatus.Exception)
+        future {throw t}
+      case Failure(t) =>
+        httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
+        collectCbMetrics(client, ServiceCallStatus.Exception)
+        future {throw t}
     }
   }
 
   def get(client: Client, actorRef: ActorRef, uri: String)
-         (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Get(client.endpoint + uri))
+         (implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Get(uri))
   }
 
-  def post[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: Some[T])
-                         (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Post(client.endpoint + uri, content))
+  def post[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: T)
+                         (implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Post(uri, content))
   }
 
-  def put[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: Some[T])
-                        (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Put(client.endpoint + uri, content))
+  def put[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: T)
+                        (implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Put(uri, content))
   }
 
   def head(client: Client, actorRef: ActorRef, uri: String)
-          (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Head(client.endpoint + uri))
+          (implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Head(uri))
   }
 
   def delete(client: Client, actorRef: ActorRef, uri: String)
-            (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Delete(client.endpoint + uri))
+            (implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Delete(uri))
   }
 
   def options(client: Client, actorRef: ActorRef, uri: String)
-             (implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Options(client.endpoint + uri))
+             (implicit system: ActorSystem): Future[HttpResponse] = {
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Options(uri))
   }
 }
 
@@ -132,7 +117,7 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
 
   implicit val system = context.system
 
-  import ExecutionContext.Implicits.global
+  implicit val ec = system.dispatcher
 
   override def receive: Actor.Receive = {
     case HttpClientActorMessage.Get(uri) =>
@@ -147,12 +132,12 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
     case HttpClientActorMessage.Options(uri) =>
       IO(Http) ! hostConnectorSetup(client)
       context.become(receiveGetConnection(HttpMethods.OPTIONS, uri, client, sender()))
-    case HttpClientActorMessage.Put(uri, content, json4sSupport) =>
+    case HttpClientActorMessage.Put(uri, content, marshaller) =>
       IO(Http) ! hostConnectorSetup(client)
-      context.become(receivePostConnection(HttpMethods.PUT, uri, content, client, sender(), json4sSupport))
-    case HttpClientActorMessage.Post(uri, content, json4sSupport) =>
+      context.become(receivePostConnection(HttpMethods.PUT, uri, content, client, sender(), marshaller))
+    case HttpClientActorMessage.Post(uri, content, marshaller) =>
       IO(Http) ! hostConnectorSetup(client)
-      context.become(receivePostConnection(HttpMethods.POST, uri, content, client, sender(), json4sSupport))
+      context.become(receivePostConnection(HttpMethods.POST, uri, content, client, sender(), marshaller))
   }
 
   def receiveGetConnection(httpMethod: HttpMethod, uri: String, client: Client, actorRef: ActorRef): Actor.Receive = {
@@ -160,15 +145,6 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
       implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
       httpMethod match {
         case HttpMethods.GET =>
-//          val res = get(client, connector, uri)
-//          res onComplete {
-//            case Success(HttpResponseWrapper(code, content)) =>
-//              println("successed:" + content)
-//            case Failure(e: CircuitBreakerOpenException) =>
-//              println("failed:" + e.getMessage)
-//            case Failure(throwable) =>
-//              println("throwable failed:" + throwable.getMessage)
-//          }
           get(client, connector, uri).pipeTo(actorRef)
           context.unbecome
         case HttpMethods.DELETE =>
@@ -185,12 +161,12 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
 
   def receivePostConnection[T <: AnyRef](httpMethod: HttpMethod, 
                                          uri: String, 
-                                         content: Some[T], 
+                                         content: T,
                                          client: Client, 
-                                         actorRef: ActorRef, 
-                                         json4sSupport: BaseJson4sSupport): Actor.Receive = {
+                                         actorRef: ActorRef,
+                                         marshaller: Marshaller[T]): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
-      implicit val marshaller = json4sSupport.json4sMarshaller[T]
+      implicit val marshallerSupport = marshaller
       implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
       httpMethod match {
         case HttpMethods.POST =>
