@@ -25,7 +25,7 @@ import spray.can.Http
 import spray.can.server.Stats
 
 import scala.beans.BeanProperty
-import akka.actor.{ActorRef, ActorSystem, ActorContext}
+import akka.actor._
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Await
 import scala.util.Try
@@ -39,6 +39,7 @@ object JMX {
   val cubeStateName   = "org.squbs.unicomplex:type=CubeState,name="
   val listenersName    = "org.squbs.unicomplex:type=Listeners"
   val serverStats = "org.squbs.unicomplex:type=serverStats,listener="
+  val actorInfo       = "org.squbs.unicomplex:type=Actor,name="
 
   implicit def string2objectName(name:String):ObjectName = new ObjectName(name)
 
@@ -80,13 +81,13 @@ object JMX {
 }
 
 // $COVERAGE-OFF$
-case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", "supervisorPath"))(
+case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", "supervisor"))(
                                           @BeanProperty name: String,
                                           @BeanProperty fullName: String,
                                           @BeanProperty version: String,
-                                          @BeanProperty supervisorPath: String)
+                                          @BeanProperty supervisor: String)
 
-case class ListenerInfo @ConstructorProperties(Array("listener", "context", "actorPath"))(
+case class ListenerInfo @ConstructorProperties(Array("listener", "context", "actor"))(
                                           @BeanProperty listener: String,
                                           @BeanProperty context: String,
                                           @BeanProperty actorPath: String)
@@ -103,6 +104,16 @@ trait SystemStateMXBean {
 @MXBean
 trait CubesMXBean {
   def getCubes: java.util.List[CubeInfo]
+}
+
+@MXBean
+trait ActorMXBean {
+  def getActor: String
+  def getClassName: String
+  def getRouteConfig : String
+  def getParent: String
+  def getChildren: String
+  def getDispatcher : String
 }
 
 @MXBean
@@ -156,5 +167,45 @@ class SeverStats(name: String, httpListener: ActorRef) extends ServerStatsMXBean
   private def status: Option[Stats] = {
     val statsFuture = httpListener.ask(Http.GetStats)(1 second).mapTo[Stats]
     Try(Await.result(statsFuture, 1 second)).toOption
+  }
+}
+
+class ActorBean(implicit context: ActorContext) extends PredefinedActorBean(context.props, context.self, context.parent){
+  import context._
+  override def getChildren = {
+   children.size match {
+     case count if (count > 10) => children.drop(count-20).mkString(",") + s"... total:$count"
+     case _ => children.mkString(",")
+   }
+  }
+}
+
+class PredefinedActorBean(props: Props, self: ActorRef, parent: ActorRef) extends ActorMXBean {
+  def getActor = self.toString
+  def getClassName = props.actorClass.getCanonicalName
+  def getRouteConfig = props.routerConfig.toString
+  def getParent = parent.toString
+  def getChildren = "Not Monitored"
+  def getDispatcher = props.dispatcher
+}
+
+trait ActorJMX  {
+  this : Actor =>
+
+  import JMX._
+  val objName = {
+    val name = self.path.toString.split(s"${self.path.root}user/").mkString("")
+    prefix + actorInfo + name
+  }
+
+  override def preStart() {
+    if (isRegistered(objName))
+      unregister(objName)
+
+    register(new ActorBean, objName)
+  }
+
+  override def postStop() {
+    unregister(objName )
   }
 }

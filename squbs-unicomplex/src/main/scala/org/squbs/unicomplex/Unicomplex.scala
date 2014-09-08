@@ -17,18 +17,23 @@
  */
 package org.squbs.unicomplex
 
+import java.lang.management.ManagementFactory
 import java.util
 import java.util.Date
+import javax.management.{InstanceAlreadyExistsException, ObjectName}
+import javax.management.openmbean.CompositeData
 
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
+import org.squbs.unicomplex.JMX._
 import spray.can.Http
 
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.Try
+
 
 class UnicomplexExtension(system: ExtendedActorSystem) extends Extension {
 
@@ -69,6 +74,7 @@ object Unicomplex extends ExtensionId[UnicomplexExtension] with ExtensionIdProvi
   private[unicomplex] val actors = new mutable.HashMap[String, ActorRef] with mutable.SynchronizedMap[String, ActorRef]
 
   def apply(actorSystemName: String): ActorRef = actors(actorSystemName)
+
 }
 
 import org.squbs.unicomplex.Unicomplex._
@@ -169,23 +175,31 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     override def getActivationMillis: Int = activationDuration
   }
+
+
+
   // $COVERAGE-ON$
 
   class CubesBean extends CubesMXBean {
 
     override def getCubes: util.List[CubeInfo] = {
       import scala.collection.JavaConversions._
-      cubes.values.toSeq map { c => CubeInfo(c._1.name, c._1.fullName, c._1.version, c._1.cubeSupervisor.path.name) }
+
+      cubes.values.toSeq map { c => CubeInfo(c._1.name, c._1.fullName, c._1.version, c._1.cubeSupervisor.toString) }
     }
   }
 
+
   private val stateMXBean = new SystemStateBean
+
+
 
   override def preStart() {
     Unicomplex.actors += context.system.name -> self
 
     import JMX._
     register(stateMXBean, prefix + systemStateName)
+    register(new ActorBean, prefix + actorInfo + this.getClass.getSimpleName)
     register(new CubesBean, prefix + cubesName)
   }
 
@@ -193,6 +207,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     import JMX._ // JMX registrations
     unregister(prefix + cubesName)
     unregister(prefix + systemStateName)
+    unregister(prefix + actorInfo + this.getClass.getSimpleName)
 
     Unicomplex.actors -= context.system.name
   }
@@ -417,11 +432,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         }
     }
   }
+
+
 }
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
-  val cubeName = self.path.elements.last
+  val cubeName = self.path.name
 
   class CubeStateBean extends CubeStateMXBean {
 
@@ -430,17 +447,20 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     override def getCubeState: String = cubeState.toString
 
     override def getWellKnownActors: String = context.children.mkString(",")
+
   }
 
   override def preStart() {
     import org.squbs.unicomplex.JMX._
     val cubeStateMXBean = new CubeStateBean
     register(cubeStateMXBean, prefix + cubeStateName + cubeName)
+    register(new ActorBean, prefix + actorInfo + cubeName )
   }
 
   override def postStop() {
     import org.squbs.unicomplex.JMX._
     unregister(prefix + cubeStateName + cubeName)
+    unregister(prefix + actorInfo + cubeName)
   }
 
   override val supervisorStrategy =
@@ -464,11 +484,19 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     case StartCubeActor(props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name)
+
+      val beanName = cubeActor.path.toString.split(s"${cubeActor.path.root}user/").mkString("")
+      register(new PredefinedActorBean(props, cubeActor, self), prefix + actorInfo + beanName)
+
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
 
     case StartCubeService(webContext, listeners, props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name)
+
+      val beanName = cubeActor.path.toString.split(s"${cubeActor.path.root}user/").mkString("")
+      register(new PredefinedActorBean(props, cubeActor, self), prefix + actorInfo + beanName )
+
       if (initRequired) initMap += cubeActor -> None
       Unicomplex() ! RegisterContext(listeners, webContext, cubeActor)
       log.info(s"Started service actor ${cubeActor.path} for context $webContext")
@@ -511,3 +539,4 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       sender ! (InitReports(cubeState, initMap.toMap), true)
   }
 }
+

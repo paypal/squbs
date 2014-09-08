@@ -34,8 +34,6 @@ import org.squbs.samples.pubsub.actors.MapProps
 // this class defines our service behavior independently from the service actor
 class PubSubSvc extends RouteDefinition {
   
-  val webContext = "pubsub"
-
   val router = context.actorOf(Props[RequestRouter], "RequestRouter")
 
   def route =
