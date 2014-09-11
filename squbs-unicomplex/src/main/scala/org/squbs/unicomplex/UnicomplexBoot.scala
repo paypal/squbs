@@ -465,7 +465,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
         val seqNo = config getOptionalInt "sequence" getOrElse Int.MaxValue
         (seqNo, className, cube.symName, cube.version, cube.jarPath)
       }
-    } .sortBy (_._2)
+    } .sortBy (_._1)
 
     // preInit extensions
     val extensions = initSeq map (preInitExtension _).tupled collect { case Some(extension) => extension }
