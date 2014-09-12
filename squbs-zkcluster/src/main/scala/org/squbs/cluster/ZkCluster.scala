@@ -60,40 +60,40 @@ class ZkCluster(system: ActorSystem,
           zkClient = CuratorFrameworkFactory.newClient(zkConnectionString, retryPolicy)
           zkClient.getConnectionStateListenable.addListener(this)
           zkClient.start
+          zkClient.blockUntilConnected
+
+          initialize
 
           zkClusterActor ! ZkClientUpdated(zkClientWithNs)
-          zkMembershipMonitor ! ZkClientUpdated(zkClientWithNs)
-          zkPartitionsManager ! ZkClientUpdated(zkClientWithNs)
         case _ =>
       }
     }
   })
   zkClient.start
+  zkClient.blockUntilConnected
 
   //this is the zk client that we'll use, using the namespace reserved throughout
   implicit def zkClientWithNs = zkClient.usingNamespace(zkNamespace)
 
-  //make sure /leader, /members, /segments znodes are available
-  guarantee("/leader",   Some(Array[Byte]()), CreateMode.PERSISTENT)
-  guarantee("/members",  Some(Array[Byte]()), CreateMode.PERSISTENT)
-  guarantee("/segments", Some(Array[Byte]()), CreateMode.PERSISTENT)
-
-  val segmentsSize = zkClientWithNs.getChildren.forPath("/segments").size()
-  if (segmentsSize != segmentationLogic.segmentsSize) {
-    0.until(segmentationLogic.segmentsSize).foreach(s => {
-      guarantee(s"/segments/segment-$s", Some(Array[Byte]()), CreateMode.PERSISTENT)
-    })
-  }
+  initialize
 
   //all interactions with the zk cluster extension should be through the zkClusterActor below
-  val zkClusterActor = system.actorOf(Props.create(classOf[ZkClusterActor], zkClientWithNs, zkAddress, rebalanceLogic, segmentationLogic), "zkCluster")
+  val zkClusterActor = system.actorOf(Props.create(classOf[ZkClusterActor], zkAddress, rebalanceLogic, segmentationLogic), "zkCluster")
 
-  //begin the process of electing a leader
-  private[cluster] val zkMembershipMonitor = system.actorOf(
-    Props(classOf[ZkMembershipMonitor], zkClientWithNs, zkClusterActor, zkAddress, new LeaderLatch(zkClientWithNs, "/leadership")).withDispatcher("pinned-dispatcher"), "zkMembership")
-  //begin the process of partitioning management
-  private[cluster] val zkPartitionsManager = system.actorOf(
-    Props(classOf[ZkPartitionsManager], zkClientWithNs, zkClusterActor, zkAddress, rebalanceLogic, segmentationLogic), "zkPartitions")
+  private[cluster] def initialize = {
+
+    //make sure /leader, /members, /segments znodes are available
+    guarantee("/leader",   Some(Array[Byte]()), CreateMode.PERSISTENT)
+    guarantee("/members",  Some(Array[Byte]()), CreateMode.PERSISTENT)
+    guarantee("/segments", Some(Array[Byte]()), CreateMode.PERSISTENT)
+
+    val segmentsSize = zkClientWithNs.getChildren.forPath("/segments").size()
+    if (segmentsSize != segmentationLogic.segmentsSize) {
+      0.until(segmentationLogic.segmentsSize).foreach(s => {
+        guarantee(s"/segments/segment-$s", Some(Array[Byte]()), CreateMode.PERSISTENT)
+      })
+    }
+  }
 }
 
 private[cluster] sealed trait ZkClusterState
@@ -107,9 +107,16 @@ private[cluster] case class ZkClusterData(leader: Option[Address],
                                           segmentsToPartitions: Map[String, Set[ByteString]],
                                           partitionsToMembers: Map[ByteString, Set[Address]])
 
+private[cluster] object ZkClusterData {
+
+  def apply(leader:Option[Address],
+            members: Set[Address],
+            init:(Map[String, Set[ByteString]], Map[ByteString, Set[Address]])) = new ZkClusterData(leader, members, init._1, init._2)
+}
+
 private[cluster] case class ZkLeaderElected(address: Option[Address])
 private[cluster] case class ZkMembersChanged(members: Set[Address])
-private[cluster] case class ZkRebalance(partitionsToMembers: Map[ByteString, Set[Address]])
+private[cluster] case class ZkRebalance(partitionsToMembers: Map[ByteString, Set[Address]], members:Set[Address])
 private[cluster] case class ZkSegmentChanged(segment:String, partitions:Set[ByteString])
 private[cluster] case class ZkPartitionsChanged(segment:String, partitions: Map[ByteString, Set[Address]])
 private[cluster] case class ZkUpdatePartitions(onboards:Map[ByteString, String], dropoffs:Map[ByteString, String])
@@ -189,7 +196,7 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
     initialize
   }
 
-  override def postStop = {
+    override def postStop = {
     //stop the leader latch to quit the competition
     zkLeaderLatch.close
   }
@@ -199,6 +206,7 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
     case ZkClientUpdated(updated) =>
       zkClient = updated
       zkLeaderLatch.close
+
       zkLeaderLatch = new LeaderLatch(zkClient, "/leadership")
       zkLeaderLatch.start
       initialize
@@ -246,7 +254,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
   def watchOverPartition(segment:String, partitionKey:ByteString, partitionWatcher:CuratorWatcher):Option[Set[Address]] = {
     val segmentZkPath = s"/segments/${keyToPath(segment)}"
-
+    
     try {
       Some(zkClient.getChildren.usingWatcher(partitionWatcher).forPath(s"$segmentZkPath/${keyToPath(partitionKey)}")
         .filterNot(_ == "$size")
@@ -356,8 +364,8 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       //notification is the attachment part of the partition query, it will allow callback styled message handling at the sender()
       sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, partitionsToMembers.getOrElse(partitionKey, Set.empty)), partitionZkPath(partitionKey), notification)
 
-    case ZkRebalance(planned) =>
-      log.info("[partitions] rebalance partitions based on plan:{}", planned.map{case (key, members) => keyToPath(key) -> members})
+    case ZkRebalance(planned, alives) =>
+      log.info("[partitions] rebalance partitions based on plan:{} and alives:{}", planned.map{case (key, members) => keyToPath(key) -> members}, alives)
       def addressee(address:Address):Either[ActorRef, ActorSelection] =
         if(address == zkAddress)
           Left(self)
@@ -366,11 +374,11 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
       val result = Try {
 
-        import scala.concurrent.ExecutionContext.Implicits.global
+        import context.dispatcher
         implicit val timeout = Timeout(5000, TimeUnit.MILLISECONDS)
         Await.result(Future.sequence(planned.foldLeft(Map.empty[Address, (Map[ByteString, String], Map[ByteString, String])]){(impacts, assign) =>
           val partitionKey = assign._1
-          val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address])
+          val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address]).filter(alives.contains(_))
           val onboards = assign._2.diff(servants)
           val dropoffs = servants.diff(assign._2)
           val zkPath = partitionZkPath(partitionKey)
@@ -388,8 +396,10 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
         }.map{case (member, impact) =>
           (addressee(member) match {
             case Left(me) => me.tell(ZkUpdatePartitions(impact._1, impact._2), me)
+              log.debug("[partitions] update me to onboard:{} and dropoff:{}", impact._1.map{assign => (keyToPath(assign._1), assign._2)}, impact._2.map{assign => (keyToPath(assign._1), assign._2)})
               Future(true)
             case Right(other) =>
+              log.debug("[partitions] update {} to onboard:{} and dropoff:{}", other, impact._1.map{assign => (keyToPath(assign._1), assign._2)}, impact._2.map{assign => (keyToPath(assign._1), assign._2)})
               (other ? ZkUpdatePartitions(impact._1, impact._2)).mapTo[Boolean]
           })
         }), timeout.duration).foldLeft(true){(successful, individual) => successful && individual}
@@ -444,10 +454,10 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
     //any change inbetween will be silently ignored, as we know leader will rebalance and trigger another event to reach the expected size eventually
     //NOTE, the size must be tested with `EQUAL` other than `LESS OR EQUAL`, due to a corner case, where onboard members happen ahead of dropoff members in a shift (no size change)
     val onboards = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).size == Math.min(try{
-      bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
-    } catch {
-      case _:Throwable => 0 //in case the $size node is being removed
-    }, numOfNodes) &&
+          bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
+        } catch {
+          case _:Throwable => 0 //in case the $size node is being removed
+        }, numOfNodes) &&
       partitionsToMembers.getOrElse(partitionKey, Set.empty) != changed.partitions.getOrElse(partitionKey, Set.empty)
     }
     val dropoffs = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}.filter(impacted.contains(_))
@@ -472,18 +482,17 @@ case object ZkRebalanceRetry
  * @param zkClient
  * @param zkAddress
  */
-class ZkClusterActor(implicit var zkClient: CuratorFramework,
-                     zkAddress:Address,
+class ZkClusterActor(zkAddress:Address,
                      rebalanceLogic:RebalanceLogic,
-                     segmentationLogic:SegmentationLogic) extends FSM[ZkClusterState, ZkClusterData] with Stash with Logging {
+                     implicit val segmentationLogic:SegmentationLogic) extends FSM[ZkClusterState, ZkClusterData] with Stash with Logging {
 
   import segmentationLogic._
 
   private[this] implicit val log = logger
 
-  private[cluster] var whenZkClientUpdated = Seq.empty[ActorPath]
+  implicit def zkClient: CuratorFramework = ZkCluster(context.system).zkClientWithNs
 
-  private[cluster] def partitionManager = context.actorSelection("../zkPartitions")
+  private[cluster] var whenZkClientUpdated = Seq.empty[ActorPath]
 
   private[cluster] def partitionSize(partitionKey:ByteString):Int = try{
     bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
@@ -500,7 +509,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
     log.info("[leader] rebalance planned as:{}", plan.map{case (key, members) => keyToPath(key) -> members})
     implicit val timeout = Timeout(15000, TimeUnit.MILLISECONDS)
-    Await.result(partitionManager ? ZkRebalance(plan), timeout.duration) match {
+    Await.result(zkPartitionsManager ? ZkRebalance(plan, members), timeout.duration) match {
       case Success(true) =>
         log.info("[leader] rebalance successfully done")
         Some(plan)
@@ -510,11 +519,19 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
     }
   }
 
+  //begin the process of electing a leader
+  private val zkMembershipMonitor = context.actorOf(
+    Props(classOf[ZkMembershipMonitor], zkClient, self, zkAddress, new LeaderLatch(zkClient, "/leadership")).withDispatcher("pinned-dispatcher"), "zkMembership")
+  //begin the process of partitioning management
+  private val zkPartitionsManager = context.actorOf(
+    Props(classOf[ZkPartitionsManager], zkClient, self, zkAddress, rebalanceLogic, segmentationLogic), "zkPartitions")
+
   private[this] val mandatory:StateFunction = {
 
-    case Event(ZkClientUpdated(updated), _) =>
-      zkClient = updated
-      whenZkClientUpdated.foreach(context.actorSelection(_) ! updated)
+    case Event(updatedEvent @ ZkClientUpdated(updated), _) =>
+      zkMembershipMonitor ! updatedEvent
+      zkPartitionsManager ! updatedEvent
+      whenZkClientUpdated.foreach(context.actorSelection(_) ! updatedEvent)
       stay
 
     case Event(ZkMonitorClient, _) =>
@@ -527,12 +544,12 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
     case Event(origin: ZkMonitorPartition, _) =>
       log.info("[follower/leader] monitor partitioning from:{}", sender().path)
-      partitionManager forward origin
+      zkPartitionsManager forward origin
       stay
 
     case Event(origin: ZkStopMonitorPartition, _) =>
       log.info("[follower/leader] stop monitor partitioning from:{}", sender().path)
-      partitionManager forward origin
+      zkPartitionsManager forward origin
       stay
 
     case Event(ZkListPartitions(member), _) =>
@@ -557,9 +574,8 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
     (segmentsToPartitions.mapValues(_.map(partition => ByteString(partition)).toSet), partitionsToMembers)
   }
 
-  private[this] val (segmentsToPartitions, partitionsToMembers) = init
-
-  startWith(ZkClusterUninitialized, ZkClusterData(None, Set.empty, segmentsToPartitions, partitionsToMembers))
+  //the reason we put startWith into #preStart is to allow postRestart to trigger new FSM actor when recover from error
+  override def preStart = startWith(ZkClusterUninitialized, ZkClusterData(None, Set.empty, init))
 
   when(ZkClusterUninitialized)(mandatory orElse {
 
@@ -681,20 +697,20 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
         }
       }
 
-    case Event(origin @ ZkQueryPartition(partitionKey, notification, Some(partitionSize), props, _), zkClusterData) =>
+    case Event(origin @ ZkQueryPartition(partitionKey, notification, Some(expectedSize), props, _), zkClusterData) =>
 
       val zkPath = guarantee(partitionZkPath(partitionKey), Some(props), CreateMode.PERSISTENT)
-      partitionsToMembers.get(partitionKey) match {
-        case Some(members) if members.size == partitionSize =>
+      zkClusterData.partitionsToMembers.get(partitionKey) match {
+        case Some(members) if members.nonEmpty && members.size == expectedSize =>
           logger.info("[leader] partition already exists:{} -> {}", keyToPath(partitionKey), members)
           //when the partition already exists, use the snapshot partition view, waiting for further notification for members change
           sender() ! ZkPartition(partitionKey, orderByAge(partitionKey, members), zkPath, notification)
           stay
-        case None =>
+        case _ =>
           log.info("[leader] partition creation:{}", keyToPath(partitionKey))
           //partition is to be recovered
-          guarantee(sizeOfParZkPath(partitionKey), Some(partitionSize), CreateMode.PERSISTENT)
-          rebalance(zkClusterData.partitionsToMembers + (partitionKey -> Set.empty), zkClusterData.members) match {
+          guarantee(sizeOfParZkPath(partitionKey), Some(expectedSize), CreateMode.PERSISTENT)
+          rebalance(zkClusterData.partitionsToMembers + (partitionKey -> zkClusterData.partitionsToMembers.getOrElse(partitionKey, Set.empty)), zkClusterData.members) match {
             case Some(rebalanced) =>
               try {
                 stay using zkClusterData.copy(partitionsToMembers = rebalanced)
@@ -730,7 +746,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
     case Event(remove:ZkRemovePartition, zkClusterData) =>
       log.info("[leader] remove partition:{} forwarded to partition manager", keyToPath(remove.partitionKey))
-      partitionManager forward remove
+      zkPartitionsManager forward remove
       stay
 
     case Event(ZkRebalanceRetry, zkClusterData) =>
@@ -749,7 +765,7 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
       //unstash all messages uninitialized state couldn't handle
       unstashAll
       //as a follower, i have to listen to the ZkPartitionsChanged event, as it's driven by ZkPartitionsManager and i must update my partitionsToMembers snapshot
-      partitionManager ! ZkMonitorPartition(onDifference = Set(self.path))
+      zkPartitionsManager ! ZkMonitorPartition(onDifference = Set(self.path))
 
     case ZkClusterUninitialized -> ZkClusterActiveAsLeader =>
       //unstash all messages uninitialized state couldn't handle
@@ -757,11 +773,11 @@ class ZkClusterActor(implicit var zkClient: CuratorFramework,
 
     case ZkClusterActiveAsFollower -> ZkClusterActiveAsLeader =>
       //as the leader, i no longer need to handle ZkPartitionsChanged event, as i drive the change instead, ZkPartitionsManager will accept my partitionsToMembers
-      partitionManager ! ZkStopMonitorPartition(onDifference = Set(self.path))
+      zkPartitionsManager ! ZkStopMonitorPartition(onDifference = Set(self.path))
 
     case ZkClusterActiveAsLeader -> ZkClusterActiveAsFollower =>
       //as a follower, i have to listen to the ZkPartitionsChanged event, as it's driven by ZkPartitionsManager and i must update my partitionsToMembers snapshot
-      partitionManager ! ZkMonitorPartition(onDifference = Set(self.path))
+      zkPartitionsManager ! ZkMonitorPartition(onDifference = Set(self.path))
   }
 }
 

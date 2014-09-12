@@ -20,7 +20,7 @@ package org.squbs.unicomplex
 import java.lang.management.ManagementFactory
 import java.util
 import java.util.Date
-import javax.management.ObjectName
+import javax.management.{InstanceAlreadyExistsException, ObjectName}
 import javax.management.openmbean.CompositeData
 
 import akka.actor.SupervisorStrategy._
@@ -438,7 +438,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
-  val cubeName = self.path.elements.last
+  val cubeName = self.path.name
 
   class CubeStateBean extends CubeStateMXBean {
 
@@ -485,14 +485,17 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     case StartCubeActor(props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name)
 
-      register(new PredefinedActorBean(props, cubeActor, self), prefix + actorInfo + name )
-
+      val beanName = cubeActor.path.toString.split(s"${cubeActor.path.root}user/").mkString("")
+      register(new PredefinedActorBean(props, cubeActor, self), prefix + actorInfo + beanName)
 
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
 
     case StartCubeService(webContext, listeners, props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name)
+
+      val beanName = cubeActor.path.toString.split(s"${cubeActor.path.root}user/").mkString("")
+      register(new PredefinedActorBean(props, cubeActor, self), prefix + actorInfo + beanName )
 
       if (initRequired) initMap += cubeActor -> None
       Unicomplex() ! RegisterContext(listeners, webContext, cubeActor)
@@ -537,14 +540,3 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   }
 }
 
-class ActorBean(implicit context: ActorContext) extends PredefinedActorBean(context.props, context.self, context.parent){
-  override def getChildren = context.children.mkString(",")
-}
-
-class PredefinedActorBean(props: Props, self: ActorRef, parent: ActorRef) extends ActorMXBean {
-  def getActor = self.toString
-  def getClassName = props.actorClass.getCanonicalName
-  def getRouteConfig = props.routerConfig.toString
-  def getParent = parent.toString
-  def getChildren = ""
-}

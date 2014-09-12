@@ -143,19 +143,9 @@ class ServiceRegistry {
 }
 
 private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
-    extends Actor with HttpService with ActorLogging {
+    extends Actor with HttpService with ActorLogging with ActorJMX {
 
-  val name = webContext + "-route"
 
-  override def preStart() {
-    import JMX._
-    register(new ActorBean , prefix + actorInfo + name )
-  }
-
-  override def postStop() {
-    import JMX._
-    unregister(prefix + actorInfo + name )
-  }
   // the HttpService trait defines only one abstract member, which
   // connects the services environment to the enclosing actor or test
 
@@ -171,10 +161,9 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 
   val routeDef =
     try {
-
       val d = RouteDefinition.startRoutes {
         WebContext.createWithContext[RouteDefinition](webContext) {
-          clazz.newInstance
+        clazz.newInstance
         }
       }
       context.parent ! Initialized(Success(None))
@@ -285,20 +274,35 @@ trait RouteDefinition {
 }
 
 object WebContext {
+
   private[unicomplex] val localContext = new ThreadLocal[Option[String]] {
+
     override def initialValue(): Option[String] = None
+
   }
+
+
 
   def createWithContext[T](webContext: String)(fn: => T): T = {
+
     localContext.set(Some(webContext))
+
     val r = fn
+
     localContext.set(None)
+
     r
+
   }
+
 }
 
+
+
 trait WebContext {
+
   protected final val webContext: String = WebContext.localContext.get.get
+
 }
 
 /**

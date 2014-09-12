@@ -156,7 +156,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val w = new Waiter
       val webContext =
       for {
-        svcActor <- system.actorSelection("/user/DummySvcActor/dummysvcactor-handler").resolveOne()
+        svcActor <- system.actorSelection("/user/DummySvcActor/dummysvcactor-DummySvcActor-handler").resolveOne()
         result   <- (svcActor ? GetWebContext).mapTo[String]
       } {
         w { result should be ("dummysvcactor") }
