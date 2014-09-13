@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the CONTRIBUTING file distributed with this work for
+ * See the AUTHORS file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -23,12 +23,14 @@ import javax.management.ObjectName
 import akka.actor.ActorSystem
 import akka.io.IO
 import akka.testkit.{ImplicitSender, TestKit}
+import akka.pattern.ask
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import org.squbs.unicomplex.dummyextensions.DummyExtension
+import org.squbs.unicomplex.dummysvcactor.GetWebContext
 import spray.can.Http
 import spray.http._
 import scala.concurrent.duration._
@@ -150,6 +152,19 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       }
     }
 
+    "service actor with WebContext must have a WebContext" in {
+      val w = new Waiter
+      val webContext =
+      for {
+        svcActor <- system.actorSelection("/user/DummySvcActor/dummysvcactor-DummySvcActor-handler").resolveOne()
+        result   <- (svcActor ? GetWebContext).mapTo[String]
+      } {
+        w { result should be ("dummysvcactor") }
+        w.dismiss()
+      }
+      w.await()
+    }
+
     "check cube MXbean" in {
       import JMX._
       val mbeanServer = ManagementFactory.getPlatformMBeanServer
@@ -166,9 +181,19 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val mbeanServer = ManagementFactory.getPlatformMBeanServer
       val cubesObjName = new ObjectName(prefix(system) + cubeStateName + cubeName)
       val name = mbeanServer.getAttribute(cubesObjName, "Name")
-      val cubeState = mbeanServer.getAttribute(cubesObjName, "CubeState")
       name should be (cubeName)
+
+      val cubeState = mbeanServer.getAttribute(cubesObjName, "CubeState")
       cubeState should be ("Active")
+
+      val WellKnownActors = mbeanServer.getAttribute(cubesObjName, "WellKnownActors").asInstanceOf[String]
+      println(WellKnownActors)
+      val b1 = WellKnownActors.contains("Actor[akka://unicomplexSpec/user/DummyCube/Prepender#")
+      b1 should be (true)
+      val b2 =WellKnownActors.contains("Actor[akka://unicomplexSpec/user/DummyCube/Appender#")
+      b2 should be (true)
+
+
     }
 
     "check listener MXbean" in {

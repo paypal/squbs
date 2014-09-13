@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the CONTRIBUTING file distributed with this work for
+ * See the AUTHORS file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -17,7 +17,7 @@
  */
 package org.squbs.httpclient.env
 
-import org.squbs.httpclient.{HttpClientTestKit}
+import org.squbs.httpclient.HttpClientTestKit
 import org.squbs.httpclient.dummy.{DummyProdEnvironmentResolver, DummyPriorityEnvironmentResolver}
 import org.scalatest._
 
