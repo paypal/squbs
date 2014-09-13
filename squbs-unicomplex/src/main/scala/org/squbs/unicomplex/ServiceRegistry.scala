@@ -19,9 +19,10 @@ package org.squbs.unicomplex
 
 import javax.net.ssl.SSLContext
 
-import akka.actor.SupervisorStrategy.{Stop, Escalate, Restart}
+import akka.actor.SupervisorStrategy.Stop
 import akka.actor._
 import akka.agent.Agent
+import akka.event.LoggingAdapter
 import akka.io.IO
 import com.typesafe.config.Config
 import org.squbs.unicomplex.JMX._
@@ -37,7 +38,7 @@ import scala.util.{Failure, Success}
 
 case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorRef)
 
-class ServiceRegistry {
+class ServiceRegistry(log: LoggingAdapter) {
 
   var listenerRoutes = Map.empty[String, Agent[Map[String, ActorRef]]]
 
@@ -66,7 +67,14 @@ class ServiceRegistry {
   private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, actor: ActorRef) {
     listeners foreach { listener =>
       val agent = listenerRoutes(listener)
-      agent.send { _ + (webContext -> actor) }
+      agent.send { currentMap =>
+        currentMap get webContext match {
+          case Some(ref) =>
+            log.warning(s"Web context $webContext already registered on $listener. Ignoring new registration.")
+            currentMap
+          case None => currentMap + (webContext -> actor)
+        }
+      }
     }
   }
 

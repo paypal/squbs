@@ -17,11 +17,8 @@
  */
 package org.squbs.unicomplex
 
-import java.lang.management.ManagementFactory
 import java.util
 import java.util.Date
-import javax.management.{InstanceAlreadyExistsException, ObjectName}
-import javax.management.openmbean.CompositeData
 
 import akka.actor.SupervisorStrategy._
 import akka.actor._
@@ -155,7 +152,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   private var listenersBound = false
 
-  lazy val serviceRegistry = new ServiceRegistry
+  lazy val serviceRegistry = new ServiceRegistry(log)
 
   // $COVERAGE-OFF$
   /**
@@ -197,14 +194,14 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   override def preStart() {
     Unicomplex.actors += context.system.name -> self
 
-    import JMX._
+    import org.squbs.unicomplex.JMX._
     register(stateMXBean, prefix + systemStateName)
     register(new ActorBean, prefix + actorInfo + this.getClass.getSimpleName)
     register(new CubesBean, prefix + cubesName)
   }
 
   override def postStop() {
-    import JMX._ // JMX registrations
+    import org.squbs.unicomplex.JMX._ // JMX registrations
     unregister(prefix + cubesName)
     unregister(prefix + systemStateName)
     unregister(prefix + actorInfo + this.getClass.getSimpleName)
@@ -244,7 +241,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   def shutdownBehavior: Receive = {
     case StopTimeout(timeout) => if (shutdownTimeout < timeout) shutdownTimeout = timeout
 
-    case GracefulStop => import JMX._
+    case GracefulStop => import org.squbs.unicomplex.JMX._
       log.info(s"got GracefulStop from ${sender().path}.")
       updateSystemState(Stopping)
       if (servicesStarted) {
@@ -287,7 +284,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     case StartListener(name, config) => // Sent from Bootstrap to start the web service infrastructure.
       val serviceRef = serviceRegistry.startListener(name, config, notifySender = sender())
       context.become ({
-        case b: Http.Bound => import JMX._
+        case b: Http.Bound => import org.squbs.unicomplex.JMX._
           JMX.register(new SeverStats(name, sender), prefix + serverStats + name)
           serviceListeners = serviceListeners + (name -> Some((serviceRef, sender())))
           if (serviceListeners.size == serviceRegistry.listenerRoutes.size) {
