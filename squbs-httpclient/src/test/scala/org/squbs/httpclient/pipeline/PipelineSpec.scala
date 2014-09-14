@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the CONTRIBUTING file distributed with this work for
+ * See the AUTHORS file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -19,10 +19,10 @@ package org.squbs.httpclient.pipeline
 
 import akka.actor.ActorSystem
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
-import org.squbs.httpclient.{Configuration, HttpClientTestKit, HttpClientFactory}
 import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.EndpointRegistry
+import org.squbs.httpclient.{Configuration, HttpClientFactory, HttpClientTestKit}
 import spray.http.HttpHeaders.RawHeader
 import spray.http._
 import spray.util._
@@ -30,7 +30,6 @@ import spray.util._
 class PipelineSpec extends FlatSpec with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll with PipelineManager{
 
   implicit val system = ActorSystem("PipelineSpec")
-  import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
   override def beforeAll = {
     EndpointRegistry.register(DummyServiceEndpointResolver)
