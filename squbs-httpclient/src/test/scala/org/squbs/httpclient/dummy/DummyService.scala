@@ -38,6 +38,11 @@ object DummyService {
   val dummyServiceEndpoint = s"http://$dummyServiceIpAddress:$dummyServicePort"
 }
 
+object DummyServiceMain extends App with DummyService {
+  implicit val actorSystem = ActorSystem("DummyServiceMain")
+  startDummyService(actorSystem, address = "localhost", port = 8888)
+}
+
 trait DummyService extends SimpleRoutingApp {
 
   val fullTeam = Team("Scala Team", List[Employee](
@@ -68,11 +73,12 @@ trait DummyService extends SimpleRoutingApp {
   ))
 
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
-  import scala.concurrent.ExecutionContext.Implicits.global
+//  import scala.concurrent.ExecutionContext.Implicits.global
   import DummyService._
 
-  def startDummyService(implicit system: ActorSystem, port: Int = dummyServicePort) {
-    startServer(dummyServiceIpAddress, port = port) {
+  def startDummyService(implicit system: ActorSystem, address: String = dummyServiceIpAddress, port: Int = dummyServicePort) {
+    implicit val ec = system.dispatcher
+    startServer(address, port = port) {
       pathSingleSlash {
         redirect("/view", StatusCodes.Found)
       } ~
@@ -104,6 +110,14 @@ trait DummyService extends SimpleRoutingApp {
             complete {
               system.scheduler.scheduleOnce(1.second)(system.shutdown())(system.dispatcher)
               "Shutting down in 1 second..."
+            }
+          }
+        } ~
+        path("timeout") {
+          (get | head | options) {
+            complete {
+              Thread.sleep(3000)
+              "Thread 3 seconds, then return!"
             }
           }
         } ~

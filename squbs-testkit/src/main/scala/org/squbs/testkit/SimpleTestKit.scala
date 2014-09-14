@@ -30,7 +30,7 @@ object SimpleTestKit {
   val testConfig = testConfFile map ConfigFactory.parseURL getOrElse null
 
   val boot = UnicomplexBoot(testConfig)
-              .createUsing { (name, config) => ActorSystem(name, testConfig withFallback ConfigFactory.load) } // Use the test config instead.
+              .createUsing { (name, config) => ActorSystem(name, testConfig) } // Use the test config instead.
               .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
               .initExtensions
   boot.start()

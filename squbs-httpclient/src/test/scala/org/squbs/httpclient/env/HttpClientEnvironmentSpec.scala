@@ -17,21 +17,18 @@
  */
 package org.squbs.httpclient.env
 
-import org.squbs.httpclient.endpoint.EndpointRegistry
-import org.squbs.httpclient.HttpClientFactory
+import org.squbs.httpclient.HttpClientTestKit
 import org.squbs.httpclient.dummy.{DummyProdEnvironmentResolver, DummyPriorityEnvironmentResolver}
 import org.scalatest._
 
-class HttpClientEnvironmentSpec extends FlatSpec with Matchers with BeforeAndAfterEach{
+class HttpClientEnvironmentSpec extends FlatSpec with HttpClientTestKit with Matchers with BeforeAndAfterEach{
 
   override def beforeEach = {
     EnvironmentRegistry.register(DummyProdEnvironmentResolver)
   }
 
   override def afterEach = {
-    EndpointRegistry.endpointResolvers.clear
-    EnvironmentRegistry.environmentResolvers.clear
-    HttpClientFactory.httpClientMap.clear
+    clearHttpClient
   }
 
   "EnvironmentResolverRegistry" should "contain DummyProdEnvironmentResolver" in {
