@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the AUTHORS file distributed with this work for
+ * See the CONTRIBUTING file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -15,23 +15,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.httpclient.dummy
+package org.squbs.httpclient
 
-import org.squbs.httpclient.env._
+import org.squbs.httpclient.endpoint.EndpointRegistry
+import org.squbs.httpclient.env.EnvironmentRegistry
+import akka.actor.ActorSystem
+import akka.io.IO
+import spray.can.Http
+import akka.pattern._
+import scala.concurrent.duration._
+import spray.util._
 
-object DummyProdEnvironmentResolver extends EnvironmentResolver {
+trait HttpClientTestKit {
 
-  override def resolve(svcName: String): Environment = PROD
-
-  override def name: String = "DummyProdEnvironmentResolver"
-}
-
-object DummyPriorityEnvironmentResolver extends EnvironmentResolver {
-
-  override def resolve(svcName: String): Environment = svcName match {
-    case "abc" => QA
-    case _ => Default
+  def clearHttpClient = {
+    EndpointRegistry.endpointResolvers.clear
+    EnvironmentRegistry.environmentResolvers.clear
+    HttpClientFactory.httpClientMap.clear
   }
-
-  override def name: String = "DummyPriorityEnvironmentResolver"
+  
+  def shutdownActorSystem(implicit system: ActorSystem) = {
+    IO(Http).ask(Http.CloseAll)(30.second).await
+    system.shutdown()  
+  }
 }

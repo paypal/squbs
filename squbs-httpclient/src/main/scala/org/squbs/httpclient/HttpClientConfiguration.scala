@@ -21,11 +21,22 @@ import spray.can.client.HostConnectorSettings
 import spray.can.Http.ClientConnectionType
 import javax.net.ssl.SSLContext
 import com.typesafe.config.ConfigFactory
+import scala.concurrent.duration._
+import spray.http.HttpResponse
+import org.squbs.httpclient.pipeline.Pipeline
 
-case class Configuration(hostSettings: HostConnectorSettings = Configuration.defaultHostSettings,
+case class Configuration(pipeline: Option[Pipeline] = None,
+                         hostSettings: HostConnectorSettings = Configuration.defaultHostSettings,
                          connectionType: ClientConnectionType = ClientConnectionType.AutoProxied,
-                         sslContext: Option[SSLContext] = None)
+                         sslContext: Option[SSLContext] = None,
+                         circuitBreakerConfig: CircuitBreakerConfiguration = CircuitBreakerConfiguration())
 
 object Configuration {
   val defaultHostSettings = HostConnectorSettings(ConfigFactory.load)
 }
+
+case class CircuitBreakerConfiguration(maxFailures: Int = 5,
+                                       callTimeout: FiniteDuration = 10 seconds,
+                                       resetTimeout: FiniteDuration = 1 minute,
+                                       lastDuration: FiniteDuration = 60 seconds,
+                                       fallbackHttpResponse: Option[HttpResponse] = None)
