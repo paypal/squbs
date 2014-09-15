@@ -19,15 +19,14 @@ package org.squbs.cluster
 
 import java.io.File
 import java.net.InetAddress
-
 import com.google.common.base.Charsets
 import com.google.common.io.Files
 import org.apache.zookeeper.server.ZooKeeperServerMain
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.LazyLogging
 
-class ZkActorForTestOnly(val externalConfigDir:String) {
+class ZkActorForTestOnly(val externalConfigDir:String) extends LazyLogging {
 
-  private val log = LoggerFactory.getLogger(this.getClass)
+  private val log = logger
   private var zkThread:Thread = null
 
   def startup(port:Int = 2181) = {

@@ -37,7 +37,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.LazyLogging
 import org.squbs.unicomplex.{Unicomplex, ConfigUtil}
 
 class ZkCluster(system: ActorSystem,
@@ -46,7 +46,7 @@ class ZkCluster(system: ActorSystem,
                 zkNamespace: String,
                 implicit val segmentationLogic: SegmentationLogic,
                 retryPolicy: RetryPolicy = new ExponentialBackoffRetry(1000, 3),
-                rebalanceLogic:RebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = false)) extends Extension with Logging {
+                rebalanceLogic:RebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = false)) extends Extension with LazyLogging {
 
   private[this] implicit val log = logger
   private[this] var zkClient = CuratorFrameworkFactory.newClient(zkConnectionString, retryPolicy)
@@ -132,7 +132,7 @@ private[cluster] case object ZkAcquireLeadership
 private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramework,
                                            zkClusterActor: ActorRef,
                                            zkAddress: Address,
-                                           var zkLeaderLatch: LeaderLatch) extends Actor with Logging {
+                                           var zkLeaderLatch: LeaderLatch) extends Actor with LazyLogging {
 
   private[this] implicit val log = logger
 
@@ -234,7 +234,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
                                            zkClusterActor: ActorRef,
                                            zkAddress: Address,
                                            rebalanceLogic: RebalanceLogic,
-                                           implicit val segmentationLogic:SegmentationLogic) extends Actor with Logging {
+                                           implicit val segmentationLogic:SegmentationLogic) extends Actor with LazyLogging {
 
   import segmentationLogic._
 
@@ -350,7 +350,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
           dropoffs.map{dropoff => dropoff -> Seq.empty}
         val zkPaths = diff.keySet.map { partitionKey => partitionKey -> partitionZkPath(partitionKey)}.toMap
 
-        log.debug("[partitions] change consolidated as:{} and notifying:{}", diff.map{case (key, members) => keyToPath(key) -> members}, notifyOnDifference)
+        log.debug("[partitions] change consolidated as:{} and notifying:{}", diff.map({case (key, members) => keyToPath(key) -> members}).toString, notifyOnDifference)
         if(diff.nonEmpty){
           notifyOnDifference.foreach { listener => context.actorSelection(listener) ! ZkPartitionDiff(diff, zkPaths)}
         }
@@ -484,7 +484,7 @@ case object ZkRebalanceRetry
  */
 class ZkClusterActor(zkAddress:Address,
                      rebalanceLogic:RebalanceLogic,
-                     implicit val segmentationLogic:SegmentationLogic) extends FSM[ZkClusterState, ZkClusterData] with Stash with Logging {
+                     implicit val segmentationLogic:SegmentationLogic) extends FSM[ZkClusterState, ZkClusterData] with Stash with LazyLogging {
 
   import segmentationLogic._
 
@@ -781,7 +781,7 @@ class ZkClusterActor(zkAddress:Address,
   }
 }
 
-object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Logging {
+object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with LazyLogging {
 
   override def lookup(): ExtensionId[_ <: Extension] = ZkCluster
 

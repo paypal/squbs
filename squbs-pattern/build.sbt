@@ -4,7 +4,7 @@ name := "squbs-pattern"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  "org.scalatest" %% "scalatest" % "2.1.0" % "test->*"
+  "org.scalatest" %% "scalatest" % "2.2.1" % "test->*"
 )
 
 findbugsSettings
@@ -13,8 +13,6 @@ findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
-// (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/pattern")
+// (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pattern")
 
 instrumentSettings
-
-// parallelExecution in ScoverageTest := false

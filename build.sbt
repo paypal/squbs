@@ -1,4 +1,4 @@
-scalaVersion in ThisBuild := "2.10.4"
+scalaVersion in ThisBuild := "2.11.2"
 
 version in ThisBuild := "0.6.0-SNAPSHOT"
 
@@ -13,6 +13,8 @@ ScoverageKeys.minimumCoverage := 70
 ScoverageKeys.failOnMinimumCoverage := true
 
 parallelExecution in ScoverageTest := false
+
+parallelExecution in Test := false
 
 lazy val `squbs-unicomplex` = project
 

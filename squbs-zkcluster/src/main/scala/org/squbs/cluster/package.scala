@@ -27,7 +27,7 @@ import akka.actor.{AddressFromURIString, Address}
 import org.apache.zookeeper.CreateMode
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.KeeperException.{NoNodeException, NodeExistsException}
-import com.typesafe.scalalogging.slf4j.Logger
+import com.typesafe.scalalogging.Logger
 
 package object cluster {
 
