@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the CONTRIBUTING file distributed with this work for
+ * See the AUTHORS file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -19,10 +19,13 @@ package org.squbs.unicomplex
 
 import javax.net.ssl.SSLContext
 
+import akka.actor.SupervisorStrategy.Stop
 import akka.actor._
 import akka.agent.Agent
+import akka.event.LoggingAdapter
 import akka.io.IO
 import com.typesafe.config.Config
+import org.squbs.unicomplex.JMX._
 import spray.can.Http
 import spray.can.server.ServerSettings
 import spray.http.StatusCodes.NotFound
@@ -35,7 +38,7 @@ import scala.util.{Failure, Success}
 
 case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorRef)
 
-class ServiceRegistry {
+class ServiceRegistry(log: LoggingAdapter) {
 
   var listenerRoutes = Map.empty[String, Agent[Map[String, ActorRef]]]
 
@@ -45,7 +48,7 @@ class ServiceRegistry {
       import scala.collection.JavaConversions._
       listenerRoutes.flatMap { case (listenerName, agent) =>
         agent() map { case (webContext, actor) =>
-            ListenerInfo(listenerName, webContext, actor.path.toStringWithoutAddress)
+            ListenerInfo(listenerName, webContext, actor.toString)
         }
       }.toSeq
     }
@@ -64,7 +67,14 @@ class ServiceRegistry {
   private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, actor: ActorRef) {
     listeners foreach { listener =>
       val agent = listenerRoutes(listener)
-      agent.send { _ + (webContext -> actor) }
+      agent.send { currentMap =>
+        currentMap get webContext match {
+          case Some(ref) =>
+            log.warning(s"Web context $webContext already registered on $listener. Ignoring new registration.")
+            currentMap
+          case None => currentMap + (webContext -> actor)
+        }
+      }
     }
   }
 
@@ -75,7 +85,11 @@ class ServiceRegistry {
   private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
                                          (implicit context: ActorContext) = {
 
-    val listenerRef = context.actorOf(Props(classOf[ListenerActor], name, listenerRoutes(name)), name)
+    val props = Props(classOf[ListenerActor], name, listenerRoutes(name))
+    val listenerRef = context.actorOf(props, name)
+
+  //  register(new PredefinedActorBean(props, listenerRef, context.self), prefix + actorInfo + name )
+
     listenerRef ! notifySender // listener needs to send the notifySender an ack when it is ready.
 
     // create a new HttpServer using our handler tell it where to bind to
@@ -131,20 +145,35 @@ class ServiceRegistry {
 
       import org.squbs.unicomplex.JMX._
       unregister(prefix + listenersName)
+      unregister( prefix + actorInfo + name )
     }
   }
 }
 
 private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
-    extends Actor with HttpService with ActorLogging {
+    extends Actor with HttpService with ActorLogging with ActorJMX {
+
 
   // the HttpService trait defines only one abstract member, which
   // connects the services environment to the enclosing actor or test
+
+  import scala.concurrent.duration._
+  override val supervisorStrategy =
+    OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
+      case e: Exception =>
+        log.error(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender().path}")
+        Stop//Escalate
+    }
+
   def actorRefFactory = context
 
   val routeDef =
     try {
-      val d = RouteDefinition.startRoutes { clazz.newInstance }
+      val d = RouteDefinition.startRoutes {
+        WebContext.createWithContext[RouteDefinition](webContext) {
+        clazz.newInstance
+        }
+      }
       context.parent ! Initialized(Success(None))
       d
     } catch {
@@ -163,6 +192,8 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 
 private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String, ActorRef]]) extends Actor
     with ActorLogging {
+
+  register(new ActorBean, prefix + actorInfo + name )
 
   val pendingRequests = mutable.WeakHashMap.empty[ActorRef, ActorRef]
 
@@ -235,9 +266,9 @@ object RouteDefinition {
     override def initialValue(): Option[ActorContext] = None
   }
 
-  def startRoutes[T](fn: ()=>T)(implicit context: ActorContext): T = {
+  def startRoutes[T](fn: => T)(implicit context: ActorContext): T = {
     localContext.set(Some(context))
-    val r = fn()
+    val r = fn
     localContext.set(None)
     r
   }
@@ -248,6 +279,38 @@ trait RouteDefinition {
   implicit final lazy val self = context.self
 
   def route: Route
+}
+
+object WebContext {
+
+  private[unicomplex] val localContext = new ThreadLocal[Option[String]] {
+
+    override def initialValue(): Option[String] = None
+
+  }
+
+
+
+  def createWithContext[T](webContext: String)(fn: => T): T = {
+
+    localContext.set(Some(webContext))
+
+    val r = fn
+
+    localContext.set(None)
+
+    r
+
+  }
+
+}
+
+
+
+trait WebContext {
+
+  protected final val webContext: String = WebContext.localContext.get.get
+
 }
 
 /**

@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the CONTRIBUTING file distributed with this work for
+ * See the AUTHORS file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -44,7 +44,7 @@ package object cluster {
 
       partitionsToMembers.map(assign => {
         val partitionKey = assign._1
-        val servants = assign._2
+        val servants = assign._2.filter(members.contains(_))
         val partitionSize = size(partitionKey)
 
         servants.size match {
