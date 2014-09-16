@@ -1,6 +1,6 @@
 ##Overview
 
-squbs HttpClient is the library enabling Scala/Akka/Spray applications to easily execute HTTP requests and asynchronously process the HTTP responses in a managed environment. This means it provides environment awareness whether you're in development or in production, service routing which exact service endpoint should be accessed, and also service resilience ensuring that service quality is being maintained. It is build on the top of Akka and the spray-can layer.
+squbs HttpClient is the library enabling Scala/Akka/Spray applications to easily execute HTTP requests and asynchronously process the HTTP responses in a managed environment. This means it provides environment awareness whether you're in development or in production, service routing which exact service endpoint should be accessed, and also service resilience ensuring that service quality is being maintained. It is build on the top of Akka and the spray layer.
 
 ##Concepts
 
@@ -8,9 +8,10 @@ squbs HttpClient is the library enabling Scala/Akka/Spray applications to easily
 The HttpClient is primary interface for the application to call a web site or service. For ease of use and manageability, the following facilities are provided with the HttpClient:
 
 * json4s native/jackson Marshalling/Unmarshalling.
-* Per-client configuration to easy support spray related configuration, SslContext and so on.
+* Service resilience
+* Per-client configuration to easy support spray related configuration, SslContext, circuit breaker configuration and so on.
 * HttpClient mark-up and mark-down.
-* A HttpClientJMXBean to expose HttpClient/EndpointResolver/EnvironmentResolver and mark-up/mark-down state information.
+* A HttpClientJMXBean to expose HttpClient/EndpointResolver/EnvironmentResolver/CircuitBreaker and mark-up/mark-down state information.
 
 ###EndpointResolver
 The EndpointResolver is a resolver that maps a logical request to an endpoint. Generally, a service or web request on the internet does not be mapped. But a similar request inside an organization will need to be mapped based on a particular environment. For instance, a request to http://www.ebay.com/itm/0001 will be mapped to http://www.qa.ebay.com/itm/001 in the development and QA environments so as not to hit production data.
@@ -42,7 +43,7 @@ Following are a few basic pipeline handlers provided with the HttpClient
 
 Add the following dependency to your build.sbt or scala build file:
 
-"org.squbs" %% "httpclient" % squbsVersion
+"org.squbs" %% "squbs-httpclient" % squbsVersion
 
 ### EndpointRegistry
 
@@ -51,6 +52,7 @@ Users could register multiple `EndpointResolver`s with the `EndpointRegistry`. T
 The following is an example of an EndpointResolver:
 
 ```scala
+
 object DummyLocalhostResolver extends EndpointResolver {
   override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == null && svcName.length <= 0) throw new HttpClientException(700, "Service name cannot be null")
@@ -67,6 +69,7 @@ object DummyLocalhostResolver extends EndpointResolver {
 After defining the resolver, simply register the resolver with the EndpointRegistry:
 
 ```scala
+
 EndpointRegistry.register(DummyLocalhostResolver)
 
 ```
@@ -98,13 +101,19 @@ EnvironmentRegistry.register(DummyPriorityEnvironmentResolver)
 
 ```
 
+### Service Resilience
+
+Service resilience layer has been supported in HttpClient which is build on top of akka circuit breaker to stop cascading failure, provide fallback logic and enable resilience.
+
 ### HttpClient Message Based API
 
 #### Get HttpClient
 
-```java
+```scala
+
 val httpClientManager = HttpClientManager(system: ActorSystem).httpClientManager
 httpClientManager ! Get(name: String, env: Environment = Default)
+
 ```
 - name(Mandatory): Service Name
 - env(Optional): Service Call Environment, by default is Default
@@ -118,9 +127,11 @@ Note: If httpclient is not exist, it will create a new one.
 
 #### Delete HttpClient
 
-```java
+```scala
+
 val httpClientManager = HttpClientManager(system: ActorSystem).httpClientManager
 httpClientManager ! Delete(name: String, env: Environment = Default)
+
 ```
 - name(Mandatory): Service Name
 - env(Optional): Service Call Environment, by default is Default
@@ -133,9 +144,11 @@ response:
 
 #### Delete All HttpClients
 
-```java
+```scala
+
 val httpClientManager = HttpClientManager(system: ActorSystem).httpClientManager
 httpClientManager ! DeleteAll
+
 ```
 
 response:
@@ -146,9 +159,11 @@ response:
 
 #### Get All HttpClients
 
-```java
+```scala
+
 val httpClientManager = HttpClientManager(system: ActorSystem).httpClientManager
 httpClientManager ! GetAll
+
 ```
 
 response:
@@ -158,9 +173,11 @@ response:
 
 #### Update HttpClient Configuration
 
-```java
+```scala
+
 //get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Update(config: Configuration)
+
 ```
 - config(Mandatory): new Configuration
 
@@ -171,9 +188,11 @@ response:
 
 #### MarkDown HttpClient
 
-```java
+```scala
+
 //get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! MarkDown
+
 ```
 response:
 - Success: MarkDownSuccess
@@ -182,9 +201,11 @@ response:
 
 #### MarkUp HttpClient
 
-```java
+```scala
+
 //get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! MarkUp
+
 ```
 response:
 - Success: MarkUpSuccess
@@ -193,9 +214,11 @@ response:
 
 #### Close HttpClient
 
-```java
+```scala
+
 //get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Close
+
 ```
 response:
 - Success: CloseSuccess
@@ -204,97 +227,113 @@ response:
 
 #### Use HttpClient Make HTTP Call
 
-```java
+```scala
+
 //get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Get(uri)
+
 ```
 - uri(Mandatory): Uri for Service Call
 
 response:
-- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponse
+- Failure: Throwable
 
 ![HttpClient Get Call Message Flow](../docs/img/httpclient-call-get.png)
 
-```java
+```scala
+
 //get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Head(uri)
+
 ```
 - uri(Mandatory): Uri for Service Call
 
 response:
-- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponse
+- Failure: Throwable
 
 ![HttpClient Head Call Message Flow](../docs/img/httpclient-call-head.png)
 
-```java
+```scala
+
 //get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Options(uri)
+
 ```
 - uri(Mandatory): Uri for Service Call
 
 response:
-- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponse
+- Failure: Throwable
 
 ![HttpClient Options Call Message Flow](../docs/img/httpclient-call-options.png)
 
-```java
+```scala
+
 //get HttpClientActor Ref from Get HttpClient Message Call
 httpClientActorRef ! Delete(uri)
+
 ```
 - uri(Mandatory): Uri for Service Call
 
 response:
-- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponse
+- Failure: Throwable
 
 ![HttpClient Delete Call Message Flow](../docs/img/httpclient-call-delete.png)
 
-```java
+```scala
+
 //get HttpClientActor Ref from Get HttpClient Message Call
-httpClientActorRef ! Put[T](uri: String, content: Some[T], json4sSupport: BaseJson4sSupport = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol)
+httpClientActorRef ! Put[T](uri: String, content: T, marshaller: Marshaller[T] = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller)
+
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Put Content
-- json4sSupport(Optional): By Default is org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
+- marshaller(Optional): By Default is org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
 
 response:
-- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponse
+- Failure: Throwable
 
 ![HttpClient Put Call Message Flow](../docs/img/httpclient-call-put.png)
 
-```java
+```scala
+
 //get HttpClientActor Ref from Get HttpClient Message Call
-httpClientActorRef ! Post[T](uri: String, content: Some[T], json4sSupport: BaseJson4sSupport = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol)
+httpClientActorRef ! Post[T](uri: String, content: T, marshaller: Marshaller[T] = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller)
+
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Post Content
-- json4sSupport(Optional): By Default is org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
+- marshaller(Optional): By Default is org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
 
 response:
-- Success: HttpResponseWrapper(status: StatusCode, content: Right[HttpResponse])
-- Failure: HttpResponseWrapper(status: StatusCode, content: Left[Throwable])
+- Success: HttpResponse
+- Failure: Throwable
 
 ![HttpClient Post Call Message Flow](../docs/img/httpclient-call-post.png)
 
 
 #### Use HttpClient Make HTTP Call and return Unmarshall Object
 
-```java
+```scala
+
 //get httpResponse from the above Http Call
-import org.squbs.httpclient.HttpClientManager._
+import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
 val result: T = httpResponse.unmarshalTo[T] //T is the unmarshall object
+
 ```
 
 ### HttpClient API
 
 #### Get HttpClient
 
-```java
+```scala
+
 val client: HttpClient = HttpClientFactory.get(name: String, env: Environment = Default)
+
 ```
 - name(Mandatory): Service Name
 - env(Optional): Service Call Environment, by default is Default
@@ -305,109 +344,87 @@ Note: If httpclient is not exist, it will create a new one.
 
 Update Configuration:
 
-```java
-val client: HttpClient = HttpClientFactory.getOrCreate(name: String, env: Environment = Default).withConfig(config: Configuration)
+```scala
+
+val client: HttpClient = HttpClientFactory.get(name: String, env: Environment = Default).withConfig(config: Configuration)
 val response: Future[HttpResponseWrapper] = client.get(uri: String)
+
 ```
 
 #### MarkDown
 
-```java
+```scala
+
 client.markDown
+
 ```
 
 #### MarkUp
 
-```java
+```scala
+
 client.markUp
+
 ```
 
 #### Use HttpClient to make HTTP Call
 
-```java
-val response: Future[HttpResponseWrapper] = client.get(uri: String)
+```scala
+
+val response: Future[HttpResponse] = client.get(uri: String)
+
 ```
 - uri(Mandatory): Uri for Service Call
 
-```java
-val response: Future[HttpResponseWrapper] = client.post[T](uri: String, content: Some[T])
+```scala
+
+val response: Future[HttpResponse] = client.post[T](uri: String, content: T)
+
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Post Content
 
-```java
-val response: Future[HttpResponseWrapper] = client.put[T](uri: String, content: Some[T])
+```scala
+
+val response: Future[HttpResponse] = client.put[T](uri: String, content: T)
+
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Put Content
 
-```java
-val response: Future[HttpResponseWrapper] = client.head(uri: String)
+```scala
+
+val response: Future[HttpResponse] = client.head(uri: String)
+
 ```
 - uri(Mandatory): Uri for Service Call
 
-```java
-val response: Future[HttpResponseWrapper] = client.delete(uri: String)
+```scala
+
+val response: Future[HttpResponse] = client.delete(uri: String)
+
 ```
 - uri(Mandatory): Uri for Service Call
 
-```java
-val response: Future[HttpResponseWrapper] = client.options(uri: String)
+```scala
+
+val response: Future[HttpResponse] = client.options(uri: String)
+
 ```
 - uri(Mandatory): Uri for Service Call
-
-#### Use HttpClient Make HTTP Call and return Unmarshalled Object
-
-User needs to implement the Json Serialize/Deserialize Protocol, please see [json4s Marshalling/Unmarshalling](#json4s-marshallingunmarshalling).
-
-```java
-val response: Future[HttpResponseEntityWrapper[R]] = client.getEntity[R](uri: String)
-```
-- uri(Mandatory): Uri for Service Call
-- R(Mandatory): Unmarshall Object
-
-```java
-val response: Future[HttpResponseEntityWrapper[R]] = client.postEntity[T, R](uri: String, content: Some[T])
-```
-- uri(Mandatory): Uri for Service Call
-- T(Mandatory): Post Content
-- R(Mandatory): Unmarshall Object
-
-```java
-val response: Future[HttpResponseEntityWrapper[R]] = client.putEntity[T, R](uri: String, content: Some[T])
-```
-- uri(Mandatory): Uri for Service Call
-- T(Mandatory): Put Content
-- R(Mandatory): Unmarshall Object
-
-```java
-val response: Future[HttpResponseEntityWrapper[R]] = client.headEntity[R](uri: String)
-```
-- uri(Mandatory): Uri for Service Call
-- R(Mandatory): Unmarshall Object
-
-```java
-val response: Future[HttpResponseEntityWrapper[R]] = client.deleteEntity[R](uri: String)
-```
-- uri(Mandatory): Uri for Service Call
-- R(Mandatory): Unmarshall Object
-
-```java
-val response: Future[HttpResponseEntityWrapper[R]] = client.optionsEntity[R](uri: String)
-```
-- uri(Mandatory): Uri for Service Call
-- R(Mandatory): Unmarshall Object
 
 
 ### Pipeline
 
 The pipeline is a way for pre-processing the request as well as post-processing the response. The user can provide a request/response pipeline when calling service as follows:
  
-```java
+```scala
+
 object DummyRequestResponsePipeline extends Pipeline {
   override def requestPipelines: Seq[RequestTransformer] = Seq[RequestTransformer](RequestAddHeaderHandler(RawHeader("req2-name", "req2-value")).processRequest)
   override def responsePipelines: Seq[ResponseTransformer] = Seq[ResponseTransformer](ResponseAddHeaderHandler(RawHeader("res2-name", "res2-value")).processResponse)
 }
+
 ```
 
 By default, squbs HttpClient provides the below Request/Response Handlers.
@@ -424,13 +441,15 @@ By default, squbs HttpClient provides the below Request/Response Handlers.
 Configuration provides spray host related configuration and sslContext configuration.
 
 Configuration
+- pipeline (default is None)
 - hostSettings (default is Configuration.defaultHostSettings)
 - connectionType (default is ClientConnectionType.AutoProxied)
 - sslContext (default is None)
+- circuitBreakerConfig (default is Configuration.defaultCircuitBreakerConfig)
 
 ### Json4s Marshalling/Unmarshalling
 
-Squbs HttpClient provides integration with Json4s Marshalling/Unmarshalling to support native/jackson Protocols.
+Squbs HttpClient provides integration with Json4s Marshalling/Unmarshalling to support native/jackson Protocols. User don't limit to use Json4s for Marshalling/Unmarshalling.
 
 Json4s Jackson Support:
 
@@ -448,7 +467,7 @@ Json4s Native Support:
 
 ### HttpClientJMXBean
 
-HttpClientInfoMXBean:
+HttpClientInfo:
 - name
 - env
 - endpoint
@@ -462,22 +481,46 @@ HttpClientInfoMXBean:
 - requestPipelines
 - responsePipelines
 
-```java
+```scala
+
 val httpClients: java.util.List[HttpClientInfo] = HttpClientBean.getHttpClientInfo
+
 ```
 
-EndpointresolverMXBean:
+EndpointresolverInfo:
 - position
 - resolver
 
-```java
+```scala
+
 val endpointResolvers: java.util.List[EndpointResolverInfo] = EndpointResolverBean.getHttpClientEndpointResolverInfo
+
 ```
 
-EnvironmentResolverBean:
+EnvironmentResolverInfo:
 - position
 - resolver
 
-```java
+```scala
+
 val environmentResolvers: java.util.List[EnvironmentResolverInfo] = EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo
+
+```
+
+CircuitBreakerInfo:
+- name
+- status
+- lastDurationConfig
+- successTimes
+- fallbackTimes
+- failFastTimes
+- exceptionTimes
+- lastDurationErrorRate
+- lastDurationFailFastRate
+- lastDuratoinExceptionRate
+
+```scala
+
+val circuitBreakers: java.util.List[CircuitBreakerInfo] = CircuitBreakerBean.getHttpClientCircuitBreakerInfo
+
 ```

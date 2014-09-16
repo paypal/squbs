@@ -29,10 +29,11 @@ case class Configuration(pipeline: Option[Pipeline] = None,
                          hostSettings: HostConnectorSettings = Configuration.defaultHostSettings,
                          connectionType: ClientConnectionType = ClientConnectionType.AutoProxied,
                          sslContext: Option[SSLContext] = None,
-                         circuitBreakerConfig: CircuitBreakerConfiguration = CircuitBreakerConfiguration())
+                         circuitBreakerConfig: CircuitBreakerConfiguration = Configuration.defaultCircuitBreakerConfig)
 
 object Configuration {
   val defaultHostSettings = HostConnectorSettings(ConfigFactory.load)
+  val defaultCircuitBreakerConfig = CircuitBreakerConfiguration()
 }
 
 case class CircuitBreakerConfiguration(maxFailures: Int = 5,

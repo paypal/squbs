@@ -76,11 +76,11 @@ trait HttpCallSupport extends PipelineManager with CircuitBreakerSupport {
       case Failure(t@HttpClientMarkDownException(_, _)) =>
         httpClientLogger.debug("HttpClient has been marked down!", t)
         collectCbMetrics(client, ServiceCallStatus.Exception)
-        future {throw t}
+        Future.failed(t)
       case Failure(t) =>
         httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
         collectCbMetrics(client, ServiceCallStatus.Exception)
-        future {throw t}
+        Future.failed(t)
     }
   }
 
@@ -148,14 +148,14 @@ case class HttpClient(name: String,
     hc
   }
 
-  def withFallback(response: HttpResponse): HttpClient = {
-    val oldConfig = endpoint.config
-    val cbConfig = oldConfig.circuitBreakerConfig.copy(fallbackHttpResponse = Some(response))
-    val newConfig = oldConfig.copy(circuitBreakerConfig = cbConfig)
-    endpoint = Endpoint(endpoint.uri, newConfig)
-    HttpClientFactory.httpClientMap.put((name, env), this)
-    this
-  }
+//  def withFallback(response: Option[HttpResponse]): HttpClient = {
+//    val oldConfig = endpoint.config
+//    val cbConfig = oldConfig.circuitBreakerConfig.copy(fallbackHttpResponse = response)
+//    val newConfig = oldConfig.copy(circuitBreakerConfig = cbConfig)
+//    endpoint = Endpoint(endpoint.uri, newConfig)
+//    HttpClientFactory.httpClientMap.put((name, env), this)
+//    this
+//  }
 
 }
 

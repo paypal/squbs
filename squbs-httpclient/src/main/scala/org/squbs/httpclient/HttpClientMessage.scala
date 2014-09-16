@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the AUTHORS file distributed with this work for
+ * See the CONTRIBUTING file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -17,11 +17,13 @@
  */
 package org.squbs.httpclient
 
-import akka.actor.ActorSystem
-import akka.pattern.CircuitBreaker
-import org.squbs.httpclient.endpoint.EndpointRegistry
+import scala.Some
 import org.squbs.httpclient.env.{Default, Environment}
+import akka.pattern.CircuitBreaker
+import akka.actor.ActorSystem
+import org.squbs.httpclient.endpoint.EndpointRegistry
 import spray.httpx.marshalling.Marshaller
+import spray.http.HttpResponse
 
 object HttpClientManagerMessage {
 
@@ -87,10 +89,15 @@ object HttpClientActorMessage {
 
   /**
    * Success => HttpClientActor
-   * Failure => HttpClientNotExistException
    * @param config
    */
   case class Update(config: Configuration)
+
+//  /**
+//   * Success => HttpClientActor
+//   * @param response
+//   */
+//  case class Fallback(response: Option[HttpResponse])
 
   /**
    * Success => MarkDownSuccess

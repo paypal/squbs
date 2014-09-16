@@ -120,7 +120,7 @@ trait PipelineManager{
       val pipeline = Await.result(futurePipeline, connTimeout)
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, Status.DOWN) =>
-          throw new HttpClientMarkDownException(client.name, client.env)
+          throw HttpClientMarkDownException(client.name, client.env)
         case (Seq(), Seq(), _) =>
           pipeline
         case (Seq(), _: Seq[ResponseTransformer], _) =>
@@ -143,7 +143,7 @@ trait PipelineManager{
     Try{
       (reqPipelines, resPipelines, client.status) match {
         case (_, _, Status.DOWN) =>
-          throw new HttpClientMarkDownException(client.name, client.env)
+          throw HttpClientMarkDownException(client.name, client.env)
         case (Seq(), Seq(), _) =>
           pipeline
         case (Seq(), _: Seq[ResponseTransformer], _) =>
