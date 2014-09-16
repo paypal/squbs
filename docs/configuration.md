@@ -22,6 +22,11 @@ squbs {
   # An external configuration directory to supply external application.conf. The location of this directory
   # is relative to the working directory of the squbs process.
   external-config-dir = squbsconfig
+
+  # An external configuration file name list. Any file with the name in the list under the external-confi-dir will bes
+  # loaded during squbs initialization for Actor System settings. Implicit "application.conf" will be loaded
+  # besides this file name list
+  external-config-files = []
 }
 
 default-listener {

@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the CONTRIBUTING file distributed with this work for
+ * See the AUTHORS file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -29,10 +29,11 @@ case class Configuration(pipeline: Option[Pipeline] = None,
                          hostSettings: HostConnectorSettings = Configuration.defaultHostSettings,
                          connectionType: ClientConnectionType = ClientConnectionType.AutoProxied,
                          sslContext: Option[SSLContext] = None,
-                         circuitBreakerConfig: CircuitBreakerConfiguration = CircuitBreakerConfiguration())
+                         circuitBreakerConfig: CircuitBreakerConfiguration = Configuration.defaultCircuitBreakerConfig)
 
 object Configuration {
   val defaultHostSettings = HostConnectorSettings(ConfigFactory.load)
+  val defaultCircuitBreakerConfig = CircuitBreakerConfiguration()
 }
 
 case class CircuitBreakerConfiguration(maxFailures: Int = 5,

@@ -17,8 +17,6 @@ import org.squbs.bottlemsgs._
 // this class defines our service behavior independently from the service actor
 class BottleSvc extends RouteDefinition {
   
-  val webContext = "bottles"
-  
   def route =
     path("hello") {
       get {

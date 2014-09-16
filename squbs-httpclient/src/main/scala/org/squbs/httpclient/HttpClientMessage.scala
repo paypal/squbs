@@ -23,6 +23,7 @@ import akka.pattern.CircuitBreaker
 import akka.actor.ActorSystem
 import org.squbs.httpclient.endpoint.EndpointRegistry
 import spray.httpx.marshalling.Marshaller
+import spray.http.HttpResponse
 
 object HttpClientManagerMessage {
 
@@ -88,10 +89,15 @@ object HttpClientActorMessage {
 
   /**
    * Success => HttpClientActor
-   * Failure => HttpClientNotExistException
    * @param config
    */
   case class Update(config: Configuration)
+
+//  /**
+//   * Success => HttpClientActor
+//   * @param response
+//   */
+//  case class Fallback(response: Option[HttpResponse])
 
   /**
    * Success => MarkDownSuccess

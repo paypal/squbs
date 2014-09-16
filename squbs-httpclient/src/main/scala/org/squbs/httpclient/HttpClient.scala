@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the CONTRIBUTING file distributed with this work for
+ * See the AUTHORS file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -21,12 +21,9 @@ import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import akka.actor.ActorSystem
 import spray.client.pipelining._
 import spray.httpx.marshalling.Marshaller
-import scala.util.Try
 import scala.concurrent._
 import org.squbs.httpclient.pipeline.PipelineManager
-import scala.util.Failure
-import scala.Some
-import scala.util.Success
+import scala.util.{Try, Success, Failure}
 import scala.collection.concurrent.TrieMap
 import spray.http.{HttpResponse, HttpRequest}
 import org.squbs.httpclient.env.{EnvironmentRegistry, Default, Environment}
@@ -77,13 +74,13 @@ trait HttpCallSupport extends PipelineManager with CircuitBreakerSupport {
       case Success(res) =>
         withCircuitBreaker(client, res(httpRequest))
       case Failure(t@HttpClientMarkDownException(_, _)) =>
-        httpClientLogger.debug("HttpClient has been mark down!", t)
+        httpClientLogger.debug("HttpClient has been marked down!", t)
         collectCbMetrics(client, ServiceCallStatus.Exception)
-        future {throw t}
+        Future.failed(t)
       case Failure(t) =>
         httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
         collectCbMetrics(client, ServiceCallStatus.Exception)
-        future {throw t}
+        Future.failed(t)
     }
   }
 
@@ -151,14 +148,14 @@ case class HttpClient(name: String,
     hc
   }
 
-  def withFallback(response: HttpResponse): HttpClient = {
-    val oldConfig = endpoint.config
-    val cbConfig = oldConfig.circuitBreakerConfig.copy(fallbackHttpResponse = Some(response))
-    val newConfig = oldConfig.copy(circuitBreakerConfig = cbConfig)
-    endpoint = Endpoint(endpoint.uri, newConfig)
-    HttpClientFactory.httpClientMap.put((name, env), this)
-    this
-  }
+//  def withFallback(response: Option[HttpResponse]): HttpClient = {
+//    val oldConfig = endpoint.config
+//    val cbConfig = oldConfig.circuitBreakerConfig.copy(fallbackHttpResponse = response)
+//    val newConfig = oldConfig.copy(circuitBreakerConfig = cbConfig)
+//    endpoint = Endpoint(endpoint.uri, newConfig)
+//    HttpClientFactory.httpClientMap.put((name, env), this)
+//    this
+//  }
 
 }
 
@@ -166,7 +163,7 @@ object HttpClientFactory {
 
   HttpClientJMX.registryBeans
 
-  val httpClientMap: TrieMap[(String, Environment), HttpClient] = TrieMap[(String, Environment), HttpClient]()
+  val httpClientMap = TrieMap.empty[(String, Environment), HttpClient]
 
   def get(name: String)(implicit system: ActorSystem): HttpClient = {
     get(name, Default)

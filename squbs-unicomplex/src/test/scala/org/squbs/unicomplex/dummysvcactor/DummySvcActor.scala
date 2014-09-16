@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the CONTRIBUTING file distributed with this work for
+ * See the AUTHORS file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -18,11 +18,14 @@
 package org.squbs.unicomplex.dummysvcactor
 
 import akka.actor.{Props, ActorLogging, Actor}
+import org.squbs.unicomplex.WebContext
 import spray.can.Http.RegisterChunkHandler
 import spray.http.StatusCodes._
 import spray.http._
 
-class DummySvcActor extends Actor with ActorLogging {
+case object GetWebContext
+
+class DummySvcActor extends Actor with WebContext with ActorLogging {
 
   def receive = {
     case req: HttpRequest if req.uri.path.toString == "/dummysvcactor/ping" =>
@@ -33,6 +36,8 @@ class DummySvcActor extends Actor with ActorLogging {
       val handler = context.actorOf(Props[ChunkedRequestHandler])
       sender() ! RegisterChunkHandler(handler)
       handler forward req
+
+    case GetWebContext => sender() ! webContext
   }
 }
 

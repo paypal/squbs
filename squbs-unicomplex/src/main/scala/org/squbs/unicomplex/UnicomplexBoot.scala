@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the CONTRIBUTING file distributed with this work for
+ * See the AUTHORS file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -45,6 +45,7 @@ object UnicomplexBoot {
   private lazy val log = LoggerFactory.getLogger(this.getClass)
 
   final val extConfigDirKey = "squbs.external-config-dir"
+  final val extConfigNameKey = "squbs.external-config-files"
   final val actorSystemNameKey = "squbs.actorsystem-name"
 
   val startupTimeout: Timeout =
@@ -89,10 +90,15 @@ object UnicomplexBoot {
       case None =>
         // Sorry, the configDir is used to read the file. So it cannot be read from this config file.
         val configDir = new File(baseConfig.getString(extConfigDirKey))
-        val configFile = new File(configDir, "application")
+        import collection.JavaConversions._
+        var configNames = baseConfig.getStringList(extConfigNameKey)
+        configNames.add("application")
         val parseOptions = ConfigParseOptions.defaults().setAllowMissing(true)
-        val config = ConfigFactory.parseFileAnySyntax(configFile, parseOptions)
-        if (config.entrySet.isEmpty) baseConfig else ConfigFactory.load(config withFallback baseConfig)
+        val addConfigs = configNames map {
+        	name => ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
+        }
+        if (addConfigs.isEmpty) baseConfig
+        else ConfigFactory.load((addConfigs :\ baseConfig) (_ withFallback _))
     }
   }
 
@@ -267,7 +273,8 @@ object UnicomplexBoot {
       try {
         val routeClass = clazz asSubclass classOf[RouteDefinition]
         val props = Props(classOf[RouteActor], webContext, routeClass)
-        val actorName = if (webContext.length > 0) webContext + "-route" else "root-route"
+        val className = clazz.getSimpleName
+        val actorName = if (webContext.length > 0) s"$webContext-$className-route" else s"root-$className-route"
         cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, initRequired = true)
         Some((symName, alias, version, clazz))
       } catch {
@@ -279,8 +286,9 @@ object UnicomplexBoot {
                           initRequired: Boolean) = {
       try {
         val actorClass = clazz asSubclass classOf[Actor]
-        val props = Props(actorClass)
-        val actorName = if (webContext.length > 0) webContext + "-handler" else "root-handler"
+        val props = Props { WebContext.createWithContext(webContext){ actorClass.newInstance() } }
+        val className = clazz.getSimpleName
+        val actorName = if (webContext.length > 0) s"$webContext-$className-handler" else s"root-$className-handler"
         cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, initRequired)
         Some((symName, alias, version, actorClass))
       } catch {
@@ -457,7 +465,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
         val seqNo = config getOptionalInt "sequence" getOrElse Int.MaxValue
         (seqNo, className, cube.symName, cube.version, cube.jarPath)
       }
-    } .sortBy (_._2)
+    } .sortBy (_._1)
 
     // preInit extensions
     val extensions = initSeq map (preInitExtension _).tupled collect { case Some(extension) => extension }

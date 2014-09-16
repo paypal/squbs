@@ -68,11 +68,11 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
       case Failure(t@HttpClientMarkDownException(_, _)) =>
         httpClientLogger.debug("HttpClient has been mark down!", t)
         collectCbMetrics(client, ServiceCallStatus.Exception)
-        future {throw t}
+        Future.failed(t)
       case Failure(t) =>
         httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
         collectCbMetrics(client, ServiceCallStatus.Exception)
-        future {throw t}
+        Future.failed(t)
     }
   }
 
@@ -198,6 +198,13 @@ class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport wi
       httpClientCallerActor.forward(msg)
     case msg@ HttpClientActorMessage.Post(uri, content, json4sSupport) =>
       httpClientCallerActor.forward(msg)
+//    case Fallback(response) =>
+//      val oldConfig = client.endpoint.config
+//      val cbConfig = oldConfig.circuitBreakerConfig.copy(fallbackHttpResponse = response)
+//      val newConfig = oldConfig.copy(circuitBreakerConfig = cbConfig)
+//      client.endpoint = Endpoint(client.endpoint.uri, newConfig)
+//      HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
+//      sender ! self
     case MarkDown =>
       client.markDown
       HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
@@ -207,14 +214,9 @@ class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport wi
       HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
       sender ! MarkUpSuccess
     case Update(conf) =>
-      HttpClientManager.httpClientMap.get(client.name, client.env) match {
-        case Some(_) =>
-          client.endpoint = Endpoint(client.endpoint.uri, conf)
-          HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
-          sender ! self
-        case None    =>
-          sender ! HttpClientNotExistException(client.name, client.env)
-      }
+      client.endpoint = Endpoint(client.endpoint.uri, conf)
+      HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
+      sender ! self
     case Close =>
       context.stop(httpClientCallerActor)
       context.stop(self)

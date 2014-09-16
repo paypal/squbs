@@ -1,6 +1,6 @@
 /*
  * Licensed to Typesafe under one or more contributor license agreements.
- * See the CONTRIBUTING file distributed with this work for
+ * See the AUTHORS file distributed with this work for
  * additional information regarding copyright ownership.
  * This file is licensed to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -93,8 +93,6 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     zk.zkAddress shouldNot be(null)
     zk.zkClientWithNs shouldNot be(null)
 
-    zk.zkMembershipMonitor shouldNot be(null)
-    zk.zkPartitionsManager shouldNot be(null)
     zk.zkClusterActor shouldNot be(null)
   }
 
