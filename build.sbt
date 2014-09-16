@@ -8,13 +8,9 @@ publishArtifact := false
 
 addCommandAlias("coverage", "scoverage:test")
 
-ScoverageKeys.minimumCoverage := 70
+ScoverageKeys.minimumCoverage in ThisBuild := 70
 
-ScoverageKeys.failOnMinimumCoverage := true
-
-parallelExecution in ScoverageTest := false
-
-parallelExecution in Test := false
+ScoverageKeys.failOnMinimumCoverage in ThisBuild := true
 
 lazy val `squbs-unicomplex` = project
 
