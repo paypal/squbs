@@ -15,28 +15,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.unicomplex
+package org.squbs.httpclient
 
-import java.io._
-import akka.actor.ActorSystem
-import org.squbs.lifecycle.GracefulStop
+import spray.httpx.unmarshalling._
+import spray.http.{HttpResponse, StatusCode}
 
-object Bootstrap extends App {
+case class HttpResponseEntityWrapper[T: FromResponseUnmarshaller](status: StatusCode, content: Either[Throwable, T], rawHttpResponse: Option[HttpResponse])
 
-  println("Booting unicomplex")
-
-  // Note, the config directories may change during extension init. It is important to re-read the full config
-  // for the actor system start.
-  UnicomplexBoot { (name, config) => ActorSystem(name, config) }
-    .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
-    .initExtensions
-    .stopJVMOnExit
-    .start()
-}
-
-
-object Shutdown extends App {
-  val preConfig = UnicomplexBoot.getFullConfig(None)
-  val actorSystemName = preConfig.getString("squbs.actorsystem-name")
-  Unicomplex(actorSystemName) ! GracefulStop
-}
+case class HttpResponseWrapper(status: StatusCode, content: Either[Throwable, HttpResponse])
