@@ -25,6 +25,8 @@ org.scalastyle.sbt.ScalastylePlugin.Settings
 
 instrumentSettings
 
+fork in Test := true
+
 parallelExecution in ScoverageTest := false
 
 parallelExecution in Test := false
