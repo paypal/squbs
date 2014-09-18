@@ -11,6 +11,7 @@ libraryDependencies ++= Seq(
   "org.apache.curator" % "curator-client" % "2.6.0" exclude("org.jboss.netty", "netty"),
   "org.apache.zookeeper" % "zookeeper" % "3.4.6",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+  "ch.qos.logback" % "logback-core" % "1.1.2" % "runtime",
   "ch.qos.logback" % "logback-classic" % "1.1.2" % "runtime",
   "com.google.protobuf" % "protobuf-java" % "2.5.0",
   "com.google.guava" % "guava" % "16.0.1" % "test",
