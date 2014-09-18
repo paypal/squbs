@@ -481,9 +481,9 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     case StartCubeActor(props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name)
+      context.watch(cubeActor)
 
-      val beanName = cubeActor.path.toString.split(s"${cubeActor.path.root}user/").mkString("")
-      register(new PredefinedActorBean(props, cubeActor, self), prefix + actorInfo + beanName)
+      register(new PredefinedActorBean(props, cubeActor, self), getActorBeanObjName(cubeActor))
 
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
@@ -491,8 +491,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     case StartCubeService(webContext, listeners, props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name)
 
-      val beanName = cubeActor.path.toString.split(s"${cubeActor.path.root}user/").mkString("")
-      register(new PredefinedActorBean(props, cubeActor, self), prefix + actorInfo + beanName )
+      register(new PredefinedActorBean(props, cubeActor, self), getActorBeanObjName(cubeActor) )
 
       if (initRequired) initMap += cubeActor -> None
       Unicomplex() ! RegisterContext(listeners, webContext, cubeActor)
@@ -534,6 +533,15 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     case CheckInitStatus => // Explicitly requested reports have an attached requested flag as a tuple
       sender ! (InitReports(cubeState, initMap.toMap), true)
+
+    case Terminated(actor) =>
+      unregister(getActorBeanObjName(actor))
+  
+  }
+
+  private def getActorBeanObjName(actor: ActorRef) = {
+    import org.squbs.unicomplex.JMX._
+    prefix + actorInfo + actor.path.toString.split(s"${actor.path.root}user/").mkString("")
   }
 }
 
