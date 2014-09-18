@@ -67,7 +67,7 @@ object MutliListenerSpecActorSystem {
       """.stripMargin)
     val boot = UnicomplexBoot(config)
     		.createUsing { (name, config) => ActorSystem(name, config)}
-  			.scanComponents(Seq(new File("squbs-unicomplex/src/test/resources/classpaths/MultiListeners").getAbsolutePath))
+  			.scanComponents(Seq(new File("src/test/resources/classpaths/MultiListeners").getAbsolutePath))
   			.initExtensions
   			.start()
   	

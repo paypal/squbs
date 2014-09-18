@@ -25,9 +25,3 @@ org.scalastyle.sbt.ScalastylePlugin.Settings
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-httpclient")
 
 instrumentSettings
-
-fork in Test := true
-
-parallelExecution in ScoverageTest := false
-
-parallelExecution in Test := false

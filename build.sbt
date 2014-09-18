@@ -12,6 +12,12 @@ ScoverageKeys.minimumCoverage in ThisBuild := 70
 
 ScoverageKeys.failOnMinimumCoverage in ThisBuild := true
 
+fork in Test in ThisBuild := true
+
+parallelExecution in ScoverageTest in ThisBuild := false
+
+parallelExecution in Test in ThisBuild := false
+
 lazy val `squbs-unicomplex` = project
 
 lazy val `squbs-zkcluster` = project dependsOn `squbs-unicomplex`

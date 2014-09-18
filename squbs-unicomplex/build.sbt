@@ -28,7 +28,3 @@ org.scalastyle.sbt.ScalastylePlugin.Settings
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")
 
 instrumentSettings
-
-parallelExecution in ScoverageTest := false
-
-parallelExecution in Test := false
