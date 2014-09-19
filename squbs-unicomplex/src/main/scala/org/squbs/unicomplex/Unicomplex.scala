@@ -482,16 +482,24 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     case StartCubeActor(props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name) 
       context.watch(cubeActor)
-      register(new PredefinedActorBean(props, cubeActor, self), getActorBeanObjName(cubeActor))
-
+      try {
+        register(new PredefinedActorBean(props, cubeActor, self), getActorBeanObjName(cubeActor))
+      } catch {
+        case e : Exception =>
+      }
+      
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
 
     case StartCubeService(webContext, listeners, props, name, initRequired) =>
       val cubeActor = context.actorOf(props, name) 
       context.watch(cubeActor)
-      register(new PredefinedActorBean(props, cubeActor, self), getActorBeanObjName(cubeActor))
-
+      try {
+        register(new PredefinedActorBean(props, cubeActor, self), getActorBeanObjName(cubeActor))
+      } catch {
+        case e : Exception =>
+      }
+      
       if (initRequired) initMap += cubeActor -> None
       Unicomplex() ! RegisterContext(listeners, webContext, cubeActor)
       log.info(s"Started service actor ${cubeActor.path} for context $webContext")
