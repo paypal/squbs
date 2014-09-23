@@ -229,6 +229,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
   private[cluster] var partitionWatchers = Map.empty[String, CuratorWatcher]
   private[cluster] var partitionsToMembers = Map.empty[ByteString, Set[Address]]
   private[cluster] var notifyOnDifference = Set.empty[ActorPath]
+  private[cluster] var partitionsToProtect = Set.empty[ByteString]
 
   def initialize = {
     segmentsToPartitions = zkClient.getChildren.forPath("/segments").map{segment => segment -> watchOverSegment(segment)}.toMap
@@ -319,6 +320,17 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
     case origin @ ZkPartitionsChanged(segment, change) => //partition changes found in zk
       log.debug("[partitions] partitions change detected from zk: {}", change.map{case (key, members) => keyToPath(key) -> members})
+
+      change.foreach{case (key, members) =>
+        //in case of a real dropoff, ZkUpdatePartitions is to be handled
+        //if in prior to this detection, then partitionsToProtect will exclude the dropoff member
+        //if afterwards, the actual dropoff will then remove the znode again
+        if(partitionsToProtect.contains(key)) {
+          val zkPathRestore = s"${partitionZkPath(key)}/${keyToPath(zkAddress.toString)}"
+          log.warn("[partitions] partitions change caused by loss of emphemeral znode, restoring it:{}", zkPathRestore)
+          guarantee(zkPathRestore, Some(Array[Byte]()), CreateMode.EPHEMERAL)
+        }
+      }
 
       val numOfNodes = zkClient.getChildren.forPath("/members").size
       //correction of https://github.scm.corp.ebay.com/Squbs/chnlsvc/pull/79
@@ -425,10 +437,14 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
         guarantee(zkPath, None)
         //mark acceptance
         guarantee(s"$zkPath/${keyToPath(zkAddress.toString)}", Some(Array[Byte]()), CreateMode.EPHEMERAL)
+
+        partitionsToProtect += partitionKey
       }
       dropoffs.foreach{case (partitionKey, zkPath) =>
         log.debug("[partitions] release:{} with zkPath:{} replying to:{}", keyToPath(partitionKey), zkPath, sender().path)
         safelyDiscard(s"$zkPath/${keyToPath(zkAddress.toString)}")
+
+        partitionsToProtect -= partitionKey
       }
       sender() ! true
   }

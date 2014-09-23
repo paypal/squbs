@@ -139,6 +139,8 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     if (members.nonEmpty) {
       extension.zkClientWithNs.delete.forPath(s"$zkPath/${members.head}")
       expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq.empty[Address]))
+      //this is because we now restore the partition
+      expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq(extension.zkAddress)))
     }
 
     //this forces to trigger a rebalance
