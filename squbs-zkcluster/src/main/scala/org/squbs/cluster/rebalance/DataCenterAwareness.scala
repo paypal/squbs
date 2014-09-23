@@ -17,8 +17,7 @@
  */
 package org.squbs.cluster
 
-import com.typesafe.scalalogging.slf4j.Logging
-
+import com.typesafe.scalalogging.LazyLogging
 import scala.annotation.tailrec
 import scala.collection.immutable
 import java.net._
@@ -45,7 +44,7 @@ object DefaultCorrelation {
 
 }
 
-class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlation[C]) extends RoutingLogic with Logging {
+class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlation[C]) extends RoutingLogic with LazyLogging {
 
   val fallback = RoundRobinRoutingLogic()
 

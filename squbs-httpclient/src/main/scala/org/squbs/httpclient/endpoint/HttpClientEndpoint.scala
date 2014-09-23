@@ -18,9 +18,9 @@
 package org.squbs.httpclient.endpoint
 
 import scala.collection.mutable.ListBuffer
-import org.slf4j.LoggerFactory
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.Configuration
+import com.typesafe.scalalogging.LazyLogging
 
 case class Endpoint(uri: String, config: Configuration = Configuration())
 
@@ -38,11 +38,9 @@ trait EndpointResolver {
   def resolve(svcName: String, env: Environment = Default): Option[Endpoint]
 }
 
-object EndpointRegistry {
+object EndpointRegistry extends LazyLogging {
 
   val endpointResolvers = ListBuffer[EndpointResolver]()
-
-  val logger = LoggerFactory.getLogger(EndpointRegistry.getClass)
 
   def register(resolver: EndpointResolver) = {
     endpointResolvers.find(_.name == resolver.name) match {

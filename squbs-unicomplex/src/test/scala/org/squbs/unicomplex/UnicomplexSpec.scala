@@ -38,7 +38,7 @@ import scala.util.Try
 
 object UnicomplexSpec {
 
-  val dummyJarsDir = "squbs-unicomplex/src/test/resources/classpaths"
+  val dummyJarsDir = "src/test/resources/classpaths"
 
   val classPaths = Array(
     "DummyCube",

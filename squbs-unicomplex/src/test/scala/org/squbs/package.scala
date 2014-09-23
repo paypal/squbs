@@ -17,9 +17,8 @@
  */
 package org
 
-import java.net.{InetSocketAddress, Socket}
 import java.io.IOException
-import scala.util.control.NonFatal
+import java.net.ServerSocket
 
 /**
  * copied from twitter util for testing purpose only.
@@ -31,32 +30,14 @@ package object squbs {
    * A generator of random local [[java.net.InetSocketAddress]] objects with
    * ephemeral ports.
    */
-  private[this] def localSocketOnPort(port: Int) =
-    new InetSocketAddress(port)
-
-  private[this] val ephemeralSocketAddress = localSocketOnPort(0)
-
-  def apply() = nextAddress()
-
-  def nextAddress(): InetSocketAddress =
-    localSocketOnPort(nextPort())
-
   def nextPort(): Int = {
-
-    val s = new Socket
-    s.setReuseAddress(true)
+    val s = new ServerSocket(0)
     try {
-      s.bind(ephemeralSocketAddress)
       s.getLocalPort
-    }
-    catch {
-      case NonFatal(e) =>
-        if (e.getClass == classOf[IOException] || e.getClass == classOf[IllegalArgumentException])
+    } catch {
+      case e:Throwable =>
           throw new Exception("Couldn't find an open port: %s".format(e.getMessage))
-        else
-          throw e
-    }
-    finally {
+    } finally {
       s.close()
     }
   }

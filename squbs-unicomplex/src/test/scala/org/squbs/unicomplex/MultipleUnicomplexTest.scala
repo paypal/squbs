@@ -22,10 +22,11 @@ import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.squbs._
+import org.squbs.lifecycle.GracefulStop
 
-object SystemStatusTest2 {
+object MultipleUnicomplexTest {
 
-  val dummyJarsDir = "squbs-unicomplex/src/test/resources/classpaths"
+  val dummyJarsDir = "src/test/resources/classpaths"
 
   val classPaths = Array(
     "InitBlockCube",
@@ -38,7 +39,7 @@ object SystemStatusTest2 {
 
   val mapConfig = ConfigFactory.parseMap(
     Map(
-      "squbs.actorsystem-name"    -> "SystemStatusTest2",
+      "squbs.actorsystem-name"    -> "MultipleUnicomplexTest1",
       "squbs." + JMX.prefixConfig -> Boolean.box(true),
       "default-listener.bind-service" -> Boolean.box(false),
       "default-listener.bind-port" -> nextPort.toString
@@ -47,7 +48,7 @@ object SystemStatusTest2 {
 
   val mapConfig2 = ConfigFactory.parseMap(
     Map(
-      "squbs.actorsystem-name"    -> "SystemStatusTest3",
+      "squbs.actorsystem-name"    -> "MultipleUnicomplexTest2",
       "squbs." + JMX.prefixConfig -> Boolean.box(false),
       "default-listener.bind-service" -> Boolean.box(false),
       "default-listener.bind-port" -> nextPort.toString
@@ -65,18 +66,29 @@ object SystemStatusTest2 {
     .initExtensions.start()
 
 }
-class MultipleUnicomplexTest  extends TestKit(SystemStatusTest2.boot.actorSystem) with ImplicitSender
-with WordSpecLike with Matchers with BeforeAndAfterAll
-with SequentialNestedSuiteExecution{
-  override def afterAll = {
-    system.shutdown
-    SystemStatusTest2.boot2.actorSystem.shutdown
+
+class MultipleUnicomplexTest extends TestKit(MultipleUnicomplexTest.boot.actorSystem) with ImplicitSender
+		with WordSpecLike with Matchers with BeforeAndAfterAll with SequentialNestedSuiteExecution {
+  
+  val sys1 = system
+  val sys2 = MultipleUnicomplexTest.boot2.actorSystem
+  
+  override def beforeAll {
+    sys.addShutdownHook {
+      Unicomplex(sys2).uniActor ! GracefulStop
+      Unicomplex(sys1).uniActor ! GracefulStop
+    }
+  }
+  
+  override def afterAll {
+    Unicomplex(sys2).uniActor ! GracefulStop
+    Unicomplex(sys1).uniActor ! GracefulStop
   }
 
   "UniComplex" must {
 
     "get cube init reports" in {
-      Unicomplex(system).uniActor ! ReportStatus
+      Unicomplex(sys1).uniActor ! ReportStatus
       val (systemState, cubes) = expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])])]
       systemState should be(Failed)
       val cubeAReport = cubes.values.find(_._1.name == "CubeA").flatMap(_._2)
@@ -92,8 +104,7 @@ with SequentialNestedSuiteExecution{
       initBlockReport should not be (None)
       initBlockReport.get.state should be(Initializing)
 
-      val system2 = SystemStatusTest2.boot2.actorSystem
-      Unicomplex(system2).uniActor ! ReportStatus
+      Unicomplex(sys2).uniActor ! ReportStatus
       val (systemState2, cubes2) = expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])])]
       systemState2 should be(Failed)
       val cubeAReport2 = cubes2.values.find(_._1.name == "CubeA").flatMap(_._2)
@@ -108,11 +119,6 @@ with SequentialNestedSuiteExecution{
       val initBlockReport2 = cubes.values.find(_._1.name == "InitBlock").flatMap(_._2)
       initBlockReport2 should not be (None)
       initBlockReport2.get.state should be(Initializing)
-
-
-
     }
   }
 }
-
-
