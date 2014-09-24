@@ -1,41 +1,27 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" output="target/classes" path="src/main/scala">
-		<attributes>
-			<attribute name="optional" value="true"/>
-			<attribute name="maven.pomderived" value="true"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry excluding="**" kind="src" output="target/classes" path="src/main/resources">
-		<attributes>
-			<attribute name="maven.pomderived" value="true"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="src" output="target/test-classes" path="src/test/scala">
-		<attributes>
-			<attribute name="optional" value="true"/>
-			<attribute name="maven.pomderived" value="true"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry excluding="**" kind="src" output="target/test-classes" path="src/test/resources">
-		<attributes>
-			<attribute name="maven.pomderived" value="true"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER">
-		<attributes>
-			<attribute name="maven.pomderived" value="true"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6">
-		<attributes>
-			<attribute name="maven.pomderived" value="true"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
-		<attributes>
-			<attribute name="maven.pomderived" value="true"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="output" path="target/classes"/>
+  <classpathentry kind="src" path="src/main/scala" output="target/scala-2.10/classes"/>
+  <classpathentry kind="src" path="src/main/java" output="target/scala-2.10/classes"/>
+  <classpathentry kind="src" path="src/test/scala" output="target/scala-2.10/test-classes"/>
+  <classpathentry kind="src" path="src/test/java" output="target/scala-2.10/test-classes"/>
+  <classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/com.typesafe.akka/akka-actor_2.10/jars/akka-actor_2.10-2.2.3.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/com.typesafe/config/bundles/config-1.0.2.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/com.typesafe.akka/akka-agent_2.10/bundles/akka-agent_2.10-2.2.3.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/org.scala-stm/scala-stm_2.10/jars/scala-stm_2.10-0.7.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/io.spray/spray-can/bundles/spray-can-1.2.0.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/io.spray/spray-io/bundles/spray-io-1.2.0.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/io.spray/spray-util/bundles/spray-util-1.2.0.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/io.spray/spray-http/bundles/spray-http-1.2.0.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/org.parboiled/parboiled-scala_2.10/bundles/parboiled-scala_2.10-1.1.6.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/org.parboiled/parboiled-core/bundles/parboiled-core-1.1.6.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/io.spray/spray-routing/bundles/spray-routing-1.2.0.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/io.spray/spray-httpx/bundles/spray-httpx-1.2.0.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/org.jvnet.mimepull/mimepull/jars/mimepull-1.9.3.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/com.chuusai/shapeless_2.10/jars/shapeless_2.10-1.2.4.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/org.zeromq/jeromq/jars/jeromq-0.3.3.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/org.scalatest/scalatest_2.10/jars/scalatest_2.10-2.1.0.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/com.typesafe.akka/akka-testkit_2.10/bundles/akka-testkit_2.10-2.2.3.jar"/>
+  <classpathentry kind="lib" path="/Users/jiamzhang/.ivy2/cache/io.spray/spray-testkit/jars/spray-testkit-1.2.0.jar"/>
+  <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+  <classpathentry kind="output" path="bin"/>
 </classpath>

@@ -12,12 +12,20 @@ import akka.actor.Terminated
 import akka.pattern.pipe
 import spray.can.Http.Bound
 import spray.can.Http
+import Unicomplex._
+import java.io.File
+import com.typesafe.config.ConfigParseOptions
+import com.typesafe.config.Config
 
 object Unicomplex {
 
   type InitReport = Try[Option[String]]
+  
+  val externalConfigDir = "squbsconfig"
+  
+  val externalConfigKey = "external-config-files"
 
-  val config = ConfigFactory.load.getConfig("squbs")
+  val config = getFullConfig
 
   val actorSystemName = config.getString("actorsystem-name")
 
@@ -25,12 +33,21 @@ object Unicomplex {
 
   val uniActor = actorSystem.actorOf(Props[Unicomplex], "unicomplex")
 
-  val externalConfigDir = "squbsconfig"
-
   def apply() = uniActor
+  
+  def getFullConfig: Config = {
+	  val baseConfig = ConfigFactory.load
+	  val configDir = new File(externalConfigDir)
+	  val configNames = baseConfig.getConfig("squbs").getStringList(externalConfigKey)
+	  val parseOptions = ConfigParseOptions.defaults.setAllowMissing(true)
+	  import scala.collection.JavaConversions._
+	  val addonConfig = configNames map { name =>
+	 	  ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
+	  }
+	  if (addonConfig.isEmpty) baseConfig
+	  else ConfigFactory.load((addonConfig :\ baseConfig) (_ withFallback _))
+  }
 }
-
-import Unicomplex._
 
 private[unicomplex] case object PreStartWebService
 private[unicomplex] case object StartWebService
