@@ -52,7 +52,7 @@ object DummyLocalhostResolver extends EndpointResolver {
   override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == null && svcName.length <= 0) throw new HttpClientException("Service name cannot be null")
     env match {
-      case Default | DEV => Some(Endpoint("http://localhost:8080/" + svcName))
+      case Default | DEV => Some(Endpoint("http://localhost:8080"))
       case _   => throw new HttpClientException("DummyLocalhostResolver cannot support " + env + " environment")
     }
   }
@@ -65,7 +65,7 @@ object GoogleAPI {
   object GoogleMapAPIEndpointResolver extends EndpointResolver {
     override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
       if (svcName == name)
-        Some(Endpoint("http://maps.googleapis.com/maps"))
+        Some(Endpoint("http://maps.googleapis.com"))
       else
         None
     }

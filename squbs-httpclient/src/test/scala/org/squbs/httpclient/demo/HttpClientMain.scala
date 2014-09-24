@@ -34,7 +34,7 @@ object HttpClientDemo1 extends App with HttpClientTestKit {
   import system.dispatcher
   EndpointRegistry.register(GoogleMapAPIEndpointResolver)
 
-  val response = HttpClientFactory.get("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.get("googlemap").get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
       println("Success, response entity is: " + res.entity.asString)
@@ -59,7 +59,7 @@ object HttpClientDemo2 extends App with HttpClientTestKit{
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
   import HttpClientUnmarshal._
 
-  val response = HttpClientFactory.get("googlemap").get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.get("googlemap").get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
       val obj = res.unmarshalTo[GoogleApiResult[Elevation]]
@@ -96,7 +96,7 @@ case class HttpClientDemoActor(implicit system: ActorSystem) extends Actor with 
       val httpClientManager = HttpClientManager(system).httpClientManager
       httpClientManager ! HttpClientManagerMessage.Get("googlemap")
     case httpClientActorRef: ActorRef =>
-      httpClientActorRef ! HttpClientActorMessage.Get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+      httpClientActorRef ! HttpClientActorMessage.Get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false")
     case res@ HttpResponse(StatusCodes.OK, _, _, _) =>
       println("Success, response entity is: " + res.entity.asString)
 

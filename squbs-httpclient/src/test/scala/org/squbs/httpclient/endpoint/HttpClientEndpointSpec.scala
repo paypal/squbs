@@ -52,7 +52,7 @@ class HttpClientEndpointSpec extends FlatSpec with HttpClientTestKit with Matche
     EndpointRegistry.register(DummyLocalhostResolver)
     EndpointRegistry.route("abcService") should not be (None)
     EndpointRegistry.route("abcService").get.name should be ("DummyLocalhostResolver")
-    EndpointRegistry.route("abcService").get.resolve("abcService") should be (Some(Endpoint("http://localhost:8080/abcService")))
+    EndpointRegistry.route("abcService").get.resolve("abcService") should be (Some(Endpoint("http://localhost:8080")))
   }
 
   "DummyLocalhostResolver" should "be throw out HttpClientException if env isn't Dev" in {
@@ -66,13 +66,13 @@ class HttpClientEndpointSpec extends FlatSpec with HttpClientTestKit with Matche
     EndpointRegistry.register(DummyLocalhostResolver)
     EndpointRegistry.route("abcService", DEV) should not be (None)
     EndpointRegistry.route("abcService", DEV).get.name should be ("DummyLocalhostResolver")
-    EndpointRegistry.resolve("abcService", DEV) should be (Some(Endpoint("http://localhost:8080/abcService")))
+    EndpointRegistry.resolve("abcService", DEV) should be (Some(Endpoint("http://localhost:8080")))
   }
 
   "Latter registry EndpointResolver" should "have high priority" in {
     EndpointRegistry.register(DummyLocalhostResolver)
     EndpointRegistry.register(new EndpointResolver {
-      override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = Some(Endpoint("http://localhost:8080/override"))
+      override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = Some(Endpoint("http://localhost:9090"))
 
       override def name: String = "override"
     })
@@ -81,7 +81,7 @@ class HttpClientEndpointSpec extends FlatSpec with HttpClientTestKit with Matche
     EndpointRegistry.endpointResolvers.head.name should be ("override")
     EndpointRegistry.route("abcService") should not be (None)
     EndpointRegistry.route("abcService").get.name should be ("override")
-    EndpointRegistry.resolve("abcService") should be (Some(Endpoint("http://localhost:8080/override")))
+    EndpointRegistry.resolve("abcService") should be (Some(Endpoint("http://localhost:9090")))
   }
 
   "It" should "fallback to the previous EndpointResolver if latter one cannot be resolve" in {
@@ -89,7 +89,7 @@ class HttpClientEndpointSpec extends FlatSpec with HttpClientTestKit with Matche
     EndpointRegistry.register(new EndpointResolver {
       override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
         svcName match {
-          case "unique" => Some(Endpoint("http://www.ebay.com/unique"))
+          case "unique" => Some(Endpoint("http://www.ebay.com"))
           case _ => None
         }
       }
@@ -101,15 +101,15 @@ class HttpClientEndpointSpec extends FlatSpec with HttpClientTestKit with Matche
     EndpointRegistry.route("abcService").get.name should be ("DummyLocalhostResolver")
     EndpointRegistry.route("unique") should not be (None)
     EndpointRegistry.route("unique").get.name should be ("unique")
-    EndpointRegistry.resolve("abcService") should be (Some(Endpoint("http://localhost:8080/abcService")))
-    EndpointRegistry.resolve("unique") should be (Some(Endpoint("http://www.ebay.com/unique")))
+    EndpointRegistry.resolve("abcService") should be (Some(Endpoint("http://localhost:8080")))
+    EndpointRegistry.resolve("unique") should be (Some(Endpoint("http://www.ebay.com")))
   }
 
   "unregister EndpointResolver" should "have the correct behaviour" in {
     EndpointRegistry.register(new EndpointResolver {
       override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
         svcName match {
-          case "unique" => Some(Endpoint("http://www.ebay.com/unique"))
+          case "unique" => Some(Endpoint("http://www.ebay.com"))
           case _ => None
         }
       }
@@ -120,9 +120,9 @@ class HttpClientEndpointSpec extends FlatSpec with HttpClientTestKit with Matche
 
     EndpointRegistry.endpointResolvers.length should be (2)
     EndpointRegistry.endpointResolvers.head should be (DummyLocalhostResolver)
-    EndpointRegistry.resolve("unique") should be (Some(Endpoint("http://localhost:8080/unique")))
+    EndpointRegistry.resolve("unique") should be (Some(Endpoint("http://localhost:8080")))
     EndpointRegistry.unregister("DummyLocalhostResolver")
     EndpointRegistry.endpointResolvers.length should be (1)
-    EndpointRegistry.resolve("unique") should be (Some(Endpoint("http://www.ebay.com/unique")))
+    EndpointRegistry.resolve("unique") should be (Some(Endpoint("http://www.ebay.com")))
   }
 }
