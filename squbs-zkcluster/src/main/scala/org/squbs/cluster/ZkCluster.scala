@@ -222,14 +222,13 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
                                            rebalanceLogic: RebalanceLogic,
                                            implicit val segmentationLogic:SegmentationLogic) extends Actor with Logging {
 
+  import ZkPartitionsManager._
   import segmentationLogic._
 
   private[this] implicit val log = logger
   private[cluster] var segmentsToPartitions = Map.empty[String, Set[ByteString]]
-  private[cluster] var partitionWatchers = Map.empty[String, CuratorWatcher]
   private[cluster] var partitionsToMembers = Map.empty[ByteString, Set[Address]]
-  private[cluster] var notifyOnDifference = Set.empty[ActorPath]
-  private[cluster] var partitionsToProtect = Set.empty[ByteString]
+  private[cluster] var partitionWatchers = Map.empty[String, CuratorWatcher]
 
   def initialize = {
     segmentsToPartitions = zkClient.getChildren.forPath("/segments").map{segment => segment -> watchOverSegment(segment)}.toMap
@@ -474,6 +473,18 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       onboards -- dropoffs,
       dropoffs)
   }
+}
+
+object ZkPartitionsManager {
+
+  /**
+   * both notifyOnDifference & partionsToProtect are moved out of the actor
+   * for PartitionsManager to survive cluster/manager failure, notify targets should be preserved.
+   *
+   */
+  private[cluster] var notifyOnDifference = Set.empty[ActorPath]
+  private[cluster] var partitionsToProtect = Set.empty[ByteString]
+
 }
 
 case object ZkRebalanceRetry
