@@ -327,7 +327,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
         //if afterwards, the actual dropoff will then remove the znode again
         if(partitionsToProtect.contains(key) && !members.contains(zkAddress)) {
           val zkPathRestore = s"${partitionZkPath(key)}/${keyToPath(zkAddress.toString)}"
-          log.warn("[partitions] partitions change caused by loss of emphemeral znode, restoring it:{}", zkPathRestore)
+          log.warn("[partitions] partitions change caused by loss of ephemeral znode:{} out of:{}, restoring it:{}", zkAddress, members, zkPathRestore)
           guarantee(zkPathRestore, Some(Array[Byte]()), CreateMode.EPHEMERAL)
         }
       }
@@ -368,19 +368,13 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
         else
           Right(context.actorSelection(self.path.toStringWithAddress(address)))
 
-      val actuals = planned.map{case (partitionKey, _) =>
-        partitionKey -> zkClient.getChildren.forPath(partitionZkPath(partitionKey))
-          .filterNot(_ == "$size")
-          .map(memberZNode => AddressFromURIString(pathToKey(memberZNode))).toSet
-      }.toMap
-
       val result = Try {
 
         import context.dispatcher
         implicit val timeout = Timeout(5000, TimeUnit.MILLISECONDS)
         Await.result(Future.sequence(planned.foldLeft(Map.empty[Address, (Map[ByteString, String], Map[ByteString, String])]){(impacts, assign) =>
           val partitionKey = assign._1
-          val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address]).filter(alives.contains(_)) ++ actuals.getOrElse(partitionKey, Set.empty[Address])
+          val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address]).filter(alives.contains(_))
           val onboards = assign._2.diff(servants)
           val dropoffs = servants.diff(assign._2)
           val zkPath = partitionZkPath(partitionKey)
