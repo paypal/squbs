@@ -498,12 +498,11 @@ class ZkClusterActor(zkAddress:Address,
                      implicit val segmentationLogic:SegmentationLogic) extends FSM[ZkClusterState, ZkClusterData] with Stash with Logging {
 
   import segmentationLogic._
+  import ZkCluster.whenZkClientUpdated
 
   private[this] implicit val log = logger
 
   implicit def zkClient: CuratorFramework = ZkCluster(context.system).zkClientWithNs
-
-  private[cluster] var whenZkClientUpdated = Seq.empty[ActorPath]
 
   private[cluster] def partitionSize(partitionKey:ByteString):Int = try{
     bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
@@ -793,6 +792,8 @@ class ZkClusterActor(zkAddress:Address,
 }
 
 object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Logging {
+
+  private[cluster] var whenZkClientUpdated = Seq.empty[ActorPath]
 
   override def lookup(): ExtensionId[_ <: Extension] = ZkCluster
 
