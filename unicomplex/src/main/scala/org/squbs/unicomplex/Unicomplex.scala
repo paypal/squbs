@@ -25,11 +25,13 @@ object Unicomplex {
   
   val externalConfigKey = "external-config-files"
 
-  val config = getFullConfig
+  val fullconfig = getFullConfig
+  
+  val config = fullconfig.getConfig("squbs")
 
   val actorSystemName = config.getString("actorsystem-name")
 
-  implicit val actorSystem = ActorSystem(actorSystemName, config)
+  implicit val actorSystem = ActorSystem(actorSystemName, fullconfig)
 
   val uniActor = actorSystem.actorOf(Props[Unicomplex], "unicomplex")
 
@@ -44,8 +46,10 @@ object Unicomplex {
 	  val addonConfig = configNames map { name =>
 	 	  ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
 	  }
-	  if (addonConfig.isEmpty) baseConfig
-	  else ConfigFactory.load((addonConfig :\ baseConfig) (_ withFallback _))
+	  val mergeCfg = if (addonConfig.isEmpty) baseConfig
+	   else ConfigFactory.load((addonConfig :\ baseConfig) (_ withFallback _))
+	   
+	   mergeCfg
   }
 }
 
