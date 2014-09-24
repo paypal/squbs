@@ -222,14 +222,13 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
                                            rebalanceLogic: RebalanceLogic,
                                            implicit val segmentationLogic:SegmentationLogic) extends Actor with Logging {
 
+  import ZkPartitionsManager._
   import segmentationLogic._
 
   private[this] implicit val log = logger
   private[cluster] var segmentsToPartitions = Map.empty[String, Set[ByteString]]
-  private[cluster] var partitionWatchers = Map.empty[String, CuratorWatcher]
   private[cluster] var partitionsToMembers = Map.empty[ByteString, Set[Address]]
-  private[cluster] var notifyOnDifference = Set.empty[ActorPath]
-  private[cluster] var partitionsToProtect = Set.empty[ByteString]
+  private[cluster] var partitionWatchers = Map.empty[String, CuratorWatcher]
 
   def initialize = {
     segmentsToPartitions = zkClient.getChildren.forPath("/segments").map{segment => segment -> watchOverSegment(segment)}.toMap
@@ -476,6 +475,18 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
   }
 }
 
+object ZkPartitionsManager {
+
+  /**
+   * both notifyOnDifference & partionsToProtect are moved out of the actor
+   * for PartitionsManager to survive cluster/manager failure, notify targets should be preserved.
+   *
+   */
+  private[cluster] var notifyOnDifference = Set.empty[ActorPath]
+  private[cluster] var partitionsToProtect = Set.empty[ByteString]
+
+}
+
 case object ZkRebalanceRetry
 /**
  * The main Actor of ZkCluster
@@ -487,12 +498,11 @@ class ZkClusterActor(zkAddress:Address,
                      implicit val segmentationLogic:SegmentationLogic) extends FSM[ZkClusterState, ZkClusterData] with Stash with Logging {
 
   import segmentationLogic._
+  import ZkCluster.whenZkClientUpdated
 
   private[this] implicit val log = logger
 
   implicit def zkClient: CuratorFramework = ZkCluster(context.system).zkClientWithNs
-
-  private[cluster] var whenZkClientUpdated = Seq.empty[ActorPath]
 
   private[cluster] def partitionSize(partitionKey:ByteString):Int = try{
     bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
@@ -782,6 +792,8 @@ class ZkClusterActor(zkAddress:Address,
 }
 
 object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Logging {
+
+  private[cluster] var whenZkClientUpdated = Seq.empty[ActorPath]
 
   override def lookup(): ExtensionId[_ <: Extension] = ZkCluster
 
