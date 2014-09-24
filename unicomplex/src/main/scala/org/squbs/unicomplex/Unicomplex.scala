@@ -29,7 +29,7 @@ object Unicomplex {
 
   val actorSystemName = config.getString("actorsystem-name")
 
-  implicit val actorSystem = ActorSystem(actorSystemName)
+  implicit val actorSystem = ActorSystem(actorSystemName, config)
 
   val uniActor = actorSystem.actorOf(Props[Unicomplex], "unicomplex")
 
