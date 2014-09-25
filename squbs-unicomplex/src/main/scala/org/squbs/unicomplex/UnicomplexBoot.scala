@@ -536,7 +536,9 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
       }
     }
 
-    copy(config = actorSystem.settings.config, actors = actors, extensions = extensions, started = true)
+    val boot = copy(config = actorSystem.settings.config, actors = actors, extensions = extensions, started = true)
+    uniActor ! boot
+    boot
   }
 
   def registerExtensionShutdown(actorSystem: ActorSystem) {
