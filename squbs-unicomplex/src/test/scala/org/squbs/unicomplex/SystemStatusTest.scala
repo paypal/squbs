@@ -22,6 +22,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.{ImplicitSender, TestKit}
 import org.scalatest._
 import org.squbs.lifecycle.GracefulStop
+import scala.concurrent.Await
 
 object SystemStatusTest {
 
@@ -49,11 +50,27 @@ object SystemStatusTest {
     .scanComponents(classPaths)
     .initExtensions.start()
 
+
 }
 
 class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with ImplicitSender
                         with WordSpecLike with Matchers with BeforeAndAfterAll
                         with SequentialNestedSuiteExecution{
+
+  def checkStatus() {
+    Unicomplex(system).uniActor ! ReportStatus
+
+    val state = expectMsgType[LifecycleState]
+
+    if ((Seq[LifecycleState](Active, Stopped, Failed) indexOf(state)) >= 0 ) {
+      Await.wait(3000)
+      checkStatus()
+    }
+  }
+  override def beforeAll() {
+    checkStatus()
+  }
+
 
   override def afterAll() {
     Unicomplex(system).uniActor ! GracefulStop
