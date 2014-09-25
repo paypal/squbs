@@ -60,10 +60,14 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
   def checkStatus() {
     Unicomplex(system).uniActor ! ReportStatus
 
-    val state = expectMsgType[LifecycleState]
+    val (state, msg) = expectMsgType[(LifecycleState, _)]
 
     if ((Seq[LifecycleState](Active, Stopped, Failed) indexOf(state)) >= 0 ) {
-      Await.wait(3000)
+    	try {
+      		Thread.sleep(5)
+    	} catch {
+    		case e:Throwable =>
+    	}
       checkStatus()
     }
   }
