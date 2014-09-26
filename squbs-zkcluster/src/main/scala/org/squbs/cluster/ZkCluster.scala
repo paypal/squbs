@@ -341,7 +341,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       if(dropoffs.nonEmpty || onboards.nonEmpty) {
         partitionsToMembers = effects
         //reduced the diff events, notifying only when the expected size have reached! (either the total members or the expected size)
-        val diff = onboards.map{alter => alter -> orderByAge(alter, partitionsToMembers.getOrElse(alter, Set.empty)).toSeq}.toMap ++
+        val diff = onboards.map{alter => alter -> orderByAge(alter, partitionsToMembers.getOrElse(alter, Set.empty))}.toMap ++
           dropoffs.map{dropoff => dropoff -> Seq.empty}
         val zkPaths = diff.keySet.map { partitionKey => partitionKey -> partitionZkPath(partitionKey)}.toMap
 
@@ -498,7 +498,7 @@ class ZkClusterActor(zkAddress:Address,
                      implicit val segmentationLogic:SegmentationLogic) extends FSM[ZkClusterState, ZkClusterData] with Stash with Logging {
 
   import segmentationLogic._
-  import ZkCluster.whenZkClientUpdated
+  import ZkCluster._
 
   private[this] implicit val log = logger
 
@@ -631,6 +631,7 @@ class ZkClusterActor(zkAddress:Address,
     case Event(ZkQueryLeadership, zkClusterData) =>
       log.info("[follower] leadership query answered:{} to:{}", zkClusterData.leader, sender().path)
       zkClusterData.leader.foreach(address => sender() ! ZkLeadership(address))
+      whenZkLeadershipUpdated += sender().path
       stay
 
     case Event(ZkMembersChanged(members), zkClusterData) =>
@@ -682,23 +683,24 @@ class ZkClusterActor(zkAddress:Address,
     case Event(ZkQueryLeadership, zkClusterData) =>
       log.info("[leader] leadership query answered:{} to:{}", zkClusterData.leader, sender().path)
       zkClusterData.leader.foreach(address => sender() ! ZkLeadership(address))
+      whenZkLeadershipUpdated += sender().path
       stay
 
     case Event(ZkMembersChanged(members), zkClusterData) =>
       log.info("[leader] membership updated:{}", members)
 
       if(zkClusterData.members == members){
-        //corner case, in which members weren't really changed, avoid undesired rebalancing
+        //corner case, in which members weren't really changed, avoid redundant rebalances
         stay
       }
       else {
         val dropoffs = zkClusterData.members.diff(members)
-        val filtered = if (dropoffs.nonEmpty)
-          zkClusterData.partitionsToMembers.mapValues { servants => servants.filterNot(dropoffs.contains(_))}
+        val excluded = if(dropoffs.nonEmpty)
+          zkClusterData.partitionsToMembers.mapValues{servants => servants.filterNot(dropoffs.contains(_))}
         else
           zkClusterData.partitionsToMembers
 
-        rebalance(filtered, members) match {
+        rebalance(excluded, members) match {
           case Some(rebalanced) =>
             stay using zkClusterData.copy(members = members, partitionsToMembers = rebalanced)
           case None =>
@@ -784,6 +786,7 @@ class ZkClusterActor(zkAddress:Address,
     case ZkClusterActiveAsFollower -> ZkClusterActiveAsLeader =>
       //as the leader, i no longer need to handle ZkPartitionsChanged event, as i drive the change instead, ZkPartitionsManager will accept my partitionsToMembers
       zkPartitionsManager ! ZkStopMonitorPartition(onDifference = Set(self.path))
+      whenZkLeadershipUpdated.foreach{context.actorSelection(_) ! ZkLeadership(zkAddress)}
 
     case ZkClusterActiveAsLeader -> ZkClusterActiveAsFollower =>
       //as a follower, i have to listen to the ZkPartitionsChanged event, as it's driven by ZkPartitionsManager and i must update my partitionsToMembers snapshot
@@ -794,6 +797,7 @@ class ZkClusterActor(zkAddress:Address,
 object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Logging {
 
   private[cluster] var whenZkClientUpdated = Seq.empty[ActorPath]
+  private[cluster] var whenZkLeadershipUpdated = Set.empty[ActorPath]
 
   override def lookup(): ExtensionId[_ <: Extension] = ZkCluster
 
