@@ -18,7 +18,6 @@
 package org.squbs.actormonitor
 
 import akka.actor._
-import scala.concurrent.duration._
 import org.slf4j.LoggerFactory
 import org.squbs.lifecycle.ExtensionLifecycle
 
