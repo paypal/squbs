@@ -145,13 +145,13 @@ class ServiceRegistry(log: LoggingAdapter) {
 
       import org.squbs.unicomplex.JMX._
       unregister(prefix + listenersName)
-      unregister( prefix + actorInfo + name )
+
     }
   }
 }
 
 private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
-    extends Actor with HttpService with ActorLogging with ActorJMX {
+    extends Actor with HttpService with ActorLogging  {
 
 
   // the HttpService trait defines only one abstract member, which
@@ -193,7 +193,6 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String, ActorRef]]) extends Actor
     with ActorLogging {
 
-  register(new ActorBean, prefix + actorInfo + name )
 
   val pendingRequests = mutable.WeakHashMap.empty[ActorRef, ActorRef]
 

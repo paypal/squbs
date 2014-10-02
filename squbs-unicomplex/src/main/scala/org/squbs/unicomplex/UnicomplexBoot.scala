@@ -40,6 +40,7 @@ import org.squbs.lifecycle.ExtensionLifecycle
 import ConfigUtil._
 import UnicomplexBoot.Cube
 
+
 object UnicomplexBoot {
 
   private lazy val log = LoggerFactory.getLogger(this.getClass)
@@ -255,7 +256,7 @@ object UnicomplexBoot {
         val props = if (withRouter) Props(actorClass) withRouter FromConfig() else Props(actorClass)
 
         // Send the props to be started by the cube.
-        cubeSupervisor ! StartCubeActor(props, name, initRequired)
+        cubeSupervisor ! StartCubeActor(props, name,initRequired)
         Some((symName, alias, version, clazz))
       } catch {
         case e: Exception =>
