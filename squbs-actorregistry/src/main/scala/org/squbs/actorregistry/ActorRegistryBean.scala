@@ -35,7 +35,7 @@ private[actorregistry] object ActorRegistryBean {
 
   def objName(actor: ActorRef) (implicit context: ActorContext)= prefix + Pattern + actor.path.toString.split(s"${actor.path.root}user/").mkString("")
 
-  def totalBeans = ManagementFactory.getPlatformMBeanServer.queryNames(Total, null)
+  def totalBeans(implicit context: ActorContext) = ManagementFactory.getPlatformMBeanServer.queryNames(prefix + Total, null)
 }
 
 @MXBean
@@ -51,9 +51,11 @@ private[actorregistry] class ActorRegistryBean(actor: ActorRef) extends ActorReg
 
 @MXBean
 private[actorregistry] trait ActorRegistryConfigMXBean {
+  def getCount : Int
   def getTimeout: Int
 }
 
-private[actorregistry] class ActorRegistryConfigBean(timeout: Int) extends ActorRegistryConfigMXBean {
+private[actorregistry] class ActorRegistryConfigBean(timeout: Int, implicit val context: ActorContext) extends ActorRegistryConfigMXBean {
+  def getCount : Int = ActorRegistryBean.totalBeans.size
   def getTimeout: Int = timeout
 }

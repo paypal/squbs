@@ -112,8 +112,9 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     "1.1) check ActorMonitorConfigBean" in {
       import ActorMonitorSpec._
       assert(getActorMonitorConfigBean("Timeout") == 10)
-      assert(getActorMonitorConfigBean("MaxActorCount") == 500)
-      assert(getActorMonitorConfigBean("MaxChildrenDisplay") == 20)
+      assert(getActorMonitorConfigBean("MaxCount") == 500)
+      assert(getActorMonitorConfigBean("MaxCount") == 500)
+      assert(getActorMonitorConfigBean("Count") == 6)
     }
 
     "2.0) getActor of TestCube/TestActor" in {
@@ -256,27 +257,29 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
       assert(bean == "0")
     }
 
-    "6.0) getBean after actor has been killed" in {
+
+    "6.0) getBean after actor has been stop" in {
       val before = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor1", "Actor")
+      import ActorMonitorSpec._
+      assert(getActorMonitorConfigBean("Count") == 6)
       assert(before != null)
-      system.actorSelection("/user/Test/TestActor1") ! Kill
-      receiveOne(timeout.duration) match {
+      system.actorSelection("/user/TestCube/TestActor1") ! "stop"
+      receiveOne(2 seconds) match {
         case msg =>
-          system.scheduler.scheduleOnce(timeout.duration) {
             val after = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor1", "Actor")
             assert(after == null)
-          }
+            assert(getActorMonitorConfigBean("Count") == 5)
       }
     }
+
+
 
     "7.0) kill ActorMonitor" in {
       system.actorSelection("/user/ActorMonitorCube/ActorMonitor") ! Kill
       receiveOne(timeout.duration) match {
         case msg =>
-          system.scheduler.scheduleOnce(timeout.duration) {
-            val after = ManagementFactory.getPlatformMBeanServer.queryNames(ActorMonitorSpec.getObjName("*"), null)
-            assert(after.size == 0)
-          }
+          val after = ManagementFactory.getPlatformMBeanServer.queryNames(ActorMonitorSpec.getObjName("*"), null)
+          assert(after.size == 0)
       }
     }
 

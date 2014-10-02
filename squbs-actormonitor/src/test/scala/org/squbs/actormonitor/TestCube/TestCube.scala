@@ -34,6 +34,6 @@ class TestActorWithRoute extends Actor {
 
 class TestActor1 extends Actor {
   def receive = {
-    case x =>
+    case x =>context.stop(self)
   }
 }

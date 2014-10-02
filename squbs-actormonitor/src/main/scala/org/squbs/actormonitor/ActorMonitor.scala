@@ -37,13 +37,12 @@ private[actormonitor] class ActorMonitor extends Actor  {
 
   override def postStop() {
     unregister(prefix + configBean)
-    val name = new ObjectName(prefix + Total)
     totalBeans.foreach {unregister(_)}
   }
 
   def receive = {
     case StartActorMonitor(topLevelActorList, monitorConfig) =>
-      register(new ActorMonitorConfigBean(monitorConfig), prefix + configBean )
+      register(new ActorMonitorConfigBean(monitorConfig, context), prefix + configBean )
 
       count = topLevelActorList.size
       topLevelActorList.foreach { name =>
@@ -53,7 +52,6 @@ private[actormonitor] class ActorMonitor extends Actor  {
     case  ActorIdentity(monitorConfig: ActorMonitorConfig , Some(actor))=>
       implicit val config = monitorConfig
       process(actor)
-      context.watch(actor)
       count -= 1
       if (count <= 0)
         context.parent ! Initialized(Success(None))
@@ -63,6 +61,7 @@ private[actormonitor] class ActorMonitor extends Actor  {
   }
 
   def process(actor: ActorRef) (implicit monitorConfig: ActorMonitorConfig , context: ActorContext) : Unit= {
+      context.watch(actor)
       registerBean(actor)
       getDescendant(actor).foreach(process(_))
   }

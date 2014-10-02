@@ -36,6 +36,7 @@ private[actorregistry] object ActorRegistry {
   val path = "/user/ActorRegistryCube/ActorRegistry"
   val registry = mutable.HashMap.empty[ActorRef,List[CubeActorMessageType]]
   val configBean =  "org.squbs.unicomplex:type=ActorRegistry"
+
 }
 
 private[actorregistry] class ActorRegistry extends Actor  {
@@ -43,7 +44,6 @@ private[actorregistry] class ActorRegistry extends Actor  {
 
   override def postStop() {
     unregister(prefix + ActorRegistry.configBean)
-    val name = new ObjectName(prefix + Total)
     totalBeans.foreach {unregister(_)}
   }
 
@@ -51,7 +51,7 @@ private[actorregistry] class ActorRegistry extends Actor  {
   import ActorRegistryBean._
   def receive = {
     case StartActorRegister(cubeActorInfoList, timeout) =>
-      register(new ActorRegistryConfigBean(timeout), prefix + configBean )
+      register(new ActorRegistryConfigBean(timeout, context), prefix + configBean )
 
       cubeCount = cubeActorInfoList.size
       cubeActorInfoList.foreach { cubeActorInfo=>
@@ -71,7 +71,12 @@ private[actorregistry] class ActorRegistry extends Actor  {
       sender !  ActorIdentity("ActorLookup", result)
 
     case ActorLookupMessage(lookupObj, msg) =>
-      processActorLookup(lookupObj) foreach (_._1.tell(msg, sender))
+      processActorLookup(lookupObj) match {
+        case result if (result.isEmpty) =>
+          sender ! org.squbs.actorregistry.ActorNotFound(lookupObj)
+        case result =>
+          result foreach (_._1.tell(msg, sender))
+      }
 
     case Terminated(actor) =>
       registry.remove(actor)
@@ -93,7 +98,7 @@ private[actorregistry] class ActorRegistry extends Actor  {
         }
 
         val resultRequestFilter = obj.requestClass.map(_.getCanonicalName) match {
-          case Some("akka.actor.Identify") =>
+          case Some(name) if name.startsWith("akka.actor.")=>
             resultActorFilter
           case Some(name) if (name.endsWith("$")) =>
             val newName = name.substring(0, name.length - 1)

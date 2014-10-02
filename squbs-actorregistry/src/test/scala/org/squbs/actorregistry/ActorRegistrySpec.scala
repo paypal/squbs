@@ -108,6 +108,7 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
     }
 
     "1.1) check ActorRegistryConfigBean " in {
+      assert(ActorRegistrySpec.getActorRegistryConfigBean("Count") == 2)
       assert(ActorRegistrySpec.getActorRegistryConfigBean("Timeout") == 10)
     }
 
@@ -232,27 +233,41 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
       }
     }
 
-    "11) ActorLookup ! Kill" in {
-      val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
-      assert(before != null)
-      ActorLookup("TestActor1") ! Kill
+    "11) ActorLookup[TestResponse] ! TestRequest" in {
+      ActorLookup[TestResponse] ! TestRequest
       receiveOne(timeout.duration) match {
-        case msg =>
-          system.scheduler.scheduleOnce(timeout.duration) {
-            val after = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
-            assert(after == null)
-          }
+        case x =>
+          assert(x === TestResponse)
       }
     }
 
-    "12 ) kill ActorRegistry" in {
-      system.actorSelection("/user/ActorRegistryCube/ActorRegistry") ! Kill
+    "12) ActorLookup[String] ! NotExist " in {
+      ActorLookup[String] ! "NotExist"
+      receiveOne(timeout.duration) match {
+        case msg : ActorNotFound =>
+            assert(true)
+        case _ =>
+            assert(false)
+      }
+    }
+
+    "13) ActorLookup ! PoisonPill" in {
+      val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
+      assert(before != null)
+      ActorLookup("TestActor1") ! PoisonPill
       receiveOne(timeout.duration) match {
         case msg =>
-          system.scheduler.scheduleOnce(timeout.duration) {
+            val after = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
+            assert(after == null)
+      }
+    }
+
+    "14) kill ActorRegistry" in {
+      system.actorSelection("/user/ActorRegistryCube/ActorRegistry") ! PoisonPill
+      receiveOne(timeout.duration) match {
+        case msg =>
             val after = ManagementFactory.getPlatformMBeanServer.queryNames(ActorRegistrySpec.getObjName("*"), null)
             assert(after.size == 0)
-          }
       }
     }
   }

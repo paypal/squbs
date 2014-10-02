@@ -33,7 +33,7 @@ private[actormonitor] object ActorMonitorBean {
       register(new ActorMonitorBean(actor), objName(actor))
   }
 
-  def totalBeans = ManagementFactory.getPlatformMBeanServer.queryNames(Total, null)
+  def totalBeans(implicit context: ActorContext) = ManagementFactory.getPlatformMBeanServer.queryNames(prefix + Total, null)
 
   def unregisterBean(actor: ActorRef) (implicit context: ActorContext) = unregister(objName(actor))
 
@@ -106,13 +106,15 @@ private[actormonitor] class ActorMonitorBean(actor: ActorRef)(implicit monitorCo
 
 @MXBean
 private[actormonitor] trait ActorMonitorConfigMXBean {
-  def getMaxActorCount: Int
+  def getCount : Int
+  def getMaxCount: Int
   def getMaxChildrenDisplay: Int
   def getTimeout : Int
 }
 
-private[actormonitor] class ActorMonitorConfigBean(config: ActorMonitorConfig) extends ActorMonitorConfigMXBean {
-  def getMaxActorCount: Int = config.maxActorCount
+private[actormonitor] class ActorMonitorConfigBean(config: ActorMonitorConfig, implicit val context: ActorContext) extends ActorMonitorConfigMXBean {
+  def getCount : Int = ActorMonitorBean.totalBeans.size()
+  def getMaxCount: Int = config.maxActorCount
   def getMaxChildrenDisplay: Int = config.maxChildrenDisplay
   def getTimeout: Int = config.timeout
 }
