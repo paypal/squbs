@@ -19,21 +19,22 @@ package org.squbs.actormonitor
 
 import javax.management.ObjectName
 import akka.actor._
+import org.squbs.lifecycle.GracefulStopHelper
 import org.squbs.unicomplex.Initialized
 import org.squbs.unicomplex.JMX._
 import scala.util.Success
 import collection.JavaConversions._
 import ActorMonitorBean._
 
-private[actormonitor] case class StartActorMonitor(cubeNameList: List[String], monitorConfig: ActorMonitorConfig)
-private[actormonitor] case class ActorMonitorConfig(timeout: Int, maxActorCount: Int, maxChildrenDisplay: Int)
+private[actormonitor] case class ActorMonitorConfig(maxActorCount: Int, maxChildrenDisplay: Int)
 
 
-private[actormonitor] class ActorMonitor extends Actor  {
-
-  implicit var count = 0
+private[actormonitor] class ActorMonitor(monitorConfig: ActorMonitorConfig) extends Actor with GracefulStopHelper {
 
   val configBean =  "org.squbs.unicomplex:type=ActorMonitor"
+
+  register(new ActorMonitorConfigBean(monitorConfig, context), prefix + configBean )
+  context.actorSelection(s"/user/*") ! Identify(monitorConfig)
 
   override def postStop() {
     unregister(prefix + configBean)
@@ -41,20 +42,9 @@ private[actormonitor] class ActorMonitor extends Actor  {
   }
 
   def receive = {
-    case StartActorMonitor(topLevelActorList, monitorConfig) =>
-      register(new ActorMonitorConfigBean(monitorConfig, context), prefix + configBean )
-
-      count = topLevelActorList.size
-      topLevelActorList.foreach { name =>
-        context.actorSelection(s"/user/$name") ! Identify(monitorConfig)
-      }
-
     case  ActorIdentity(monitorConfig: ActorMonitorConfig , Some(actor))=>
       implicit val config = monitorConfig
       process(actor)
-      count -= 1
-      if (count <= 0)
-        context.parent ! Initialized(Success(None))
 
     case Terminated(actor) =>
       unregisterBean(actor)
@@ -65,7 +55,6 @@ private[actormonitor] class ActorMonitor extends Actor  {
       registerBean(actor)
       getDescendant(actor).foreach(process(_))
   }
-
 }
 
 

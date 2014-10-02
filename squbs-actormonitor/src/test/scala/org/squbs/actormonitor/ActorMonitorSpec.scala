@@ -99,25 +99,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
   "ActorMonitor" must {
 
-    "1.0) check ActorMonitor" in {
-      system.actorSelection("/user/ActorMonitorCube/ActorMonitor") ! Identify("test")
-      receiveOne(timeout.duration) match {
-        case ActorIdentity(result, Some(ref)) =>
-          assert(true)
-        case _ =>
-          assert(false)
-      }
-    }
-
-    "1.1) check ActorMonitorConfigBean" in {
-      import ActorMonitorSpec._
-      assert(getActorMonitorConfigBean("Timeout") == 10)
-      assert(getActorMonitorConfigBean("MaxCount") == 500)
-      assert(getActorMonitorConfigBean("MaxCount") == 500)
-      assert(getActorMonitorConfigBean("Count") == 6)
-    }
-
-    "2.0) getActor of TestCube/TestActor" in {
+    "1) getActor of TestCube/TestActor" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor", "Actor")
       assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"))
     }
@@ -261,21 +243,21 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     "6.0) getBean after actor has been stop" in {
       val before = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor1", "Actor")
       import ActorMonitorSpec._
-      assert(getActorMonitorConfigBean("Count") == 6)
+      assert(getActorMonitorConfigBean("MaxCount") == 500)
+      assert(getActorMonitorConfigBean("MaxChildrenDisplay") == 20)
+      assert(getActorMonitorConfigBean("Count") == 8)
       assert(before != null)
-      system.actorSelection("/user/TestCube/TestActor1") ! "stop"
+      system.actorSelection("/user/TestCube/TestActor1") ! PoisonPill
       receiveOne(2 seconds) match {
         case msg =>
             val after = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor1", "Actor")
             assert(after == null)
-            assert(getActorMonitorConfigBean("Count") == 5)
+            assert(getActorMonitorConfigBean("Count") == 7)
       }
     }
 
-
-
     "7.0) kill ActorMonitor" in {
-      system.actorSelection("/user/ActorMonitorCube/ActorMonitor") ! Kill
+      system.actorSelection("/user/*") ! PoisonPill
       receiveOne(timeout.duration) match {
         case msg =>
           val after = ManagementFactory.getPlatformMBeanServer.queryNames(ActorMonitorSpec.getObjName("*"), null)

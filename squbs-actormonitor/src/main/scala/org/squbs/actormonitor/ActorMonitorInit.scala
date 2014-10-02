@@ -32,35 +32,11 @@ private class ActorMonitorInit extends ExtensionLifecycle  {
     import boot._
     implicit val system = actorSystem
 
-
     val monitorConfig = config.getConfig("squbs-actormonitor")
+
     import monitorConfig._
-
-    val topLevelActors = "unicomplex" :: cubes.filterNot(_.alias == "ActorMonitorCube").map(_.alias).toList
-    val mConfig = ActorMonitorConfig(getInt("timeout"), getInt("maxActorCount"), getInt("maxChildrenDisplay"))
-
-
-    system.actorOf(Props(classOf[HelperActor],
-        system.actorSelection("/user/ActorMonitorCube/ActorMonitor"),
-        StartActorMonitor(topLevelActors, mConfig),
-        FiniteDuration(mConfig.timeout, MILLISECONDS)))
+    system.actorOf(Props(classOf[ActorMonitor], ActorMonitorConfig(getInt("maxActorCount"), getInt("maxChildrenDisplay"))))
   }
 }
 
-private class HelperActor(sel: ActorSelection, msg: Any, duration: FiniteDuration) extends Actor {
-  implicit val ex = context.dispatcher
-  sel ! Identify("try")
-
-  context.setReceiveTimeout(duration)
-  def receive = {
-    case ActorIdentity("try", Some(actor)) =>
-      actor ! msg
-      context.stop(self)
-    case ReceiveTimeout =>
-      context.setReceiveTimeout(Duration.Undefined)
-      context.system.scheduler.scheduleOnce(duration) {
-        sel ! Identify("try")
-      }
-  }
-}
 
