@@ -39,7 +39,7 @@ import scala.util.{Failure, Success, Try}
 
 object ActorRegistrySpec {
 
-  val dummyJarsDir = "squbs-actorregistry/src/test/resources/classpaths"
+  val dummyJarsDir = "src/test/resources/classpaths"
 
   val classPaths = Array(
    "ActorRegistryCube",

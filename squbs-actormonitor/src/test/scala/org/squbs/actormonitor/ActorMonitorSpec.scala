@@ -39,7 +39,7 @@ import scala.concurrent.duration._
 
 object ActorMonitorSpec {
 
-  val dummyJarsDir = "squbs-actormonitor/src/test/resources/classpaths"
+  val dummyJarsDir = "src/test/resources/classpaths"
 
   val classPaths = Array(
    "ActorMonitorCube",
