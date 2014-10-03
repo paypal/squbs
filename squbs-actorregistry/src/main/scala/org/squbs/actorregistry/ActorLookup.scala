@@ -26,7 +26,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 import scala.util.Success
 
-object ActorLookup extends AskSupport {
+object ActorLookup  {
 
   /**
    * Squbs API: Returns a ActorLookup instance that has default values except for responseClass which will be the supplied type
@@ -67,7 +67,7 @@ case class ActorNotFound(actorLookup: ActorLookup) extends RuntimeException("Act
 /**
  * Construct an [[org.squbs.actorregistry.ActorLookup]] from the requestClass, responseClass, actor name
  */
-case class ActorLookup(requestClass: Option[Class[_]] = None, responseClass: Option[Class[_]]=None, actorName: Option[String] = None) extends AskSupport{
+ case class ActorLookup(requestClass: Option[Class[_]] = None, responseClass: Option[Class[_]]=None, actorName: Option[String] = None) extends AskSupport{
 
   /**
    * Squbs API: Send msg with tell pattern to a corresponding actor based if requestClass(msg's class type), responseClass, actorName matching with an entry at Actor registry

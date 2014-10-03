@@ -165,6 +165,17 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
       }
     }
 
+    "5.1) new ActorLookup(requestClass=Some(Class[TestRequest])).resolveOne" in {
+      val l= new ActorLookup(requestClass=Some(classOf[TestRequest]))
+      val vFuture = l.resolveOne(FiniteDuration(100, MILLISECONDS))
+      Try(Await.result(vFuture, timeout.duration)) match {
+        case Success(actor: ActorRef) =>
+          assert(actor.path.name == "TestActor")
+        case _ =>
+          assert(false)
+      }
+    }
+
 
     "6.0) ActorLookup[TestResponse].resolveOne" in {
       val vFuture = ActorLookup[TestResponse].resolveOne
