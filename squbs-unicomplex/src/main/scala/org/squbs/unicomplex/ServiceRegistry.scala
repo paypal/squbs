@@ -34,6 +34,7 @@ import spray.io.ServerSSLEngineProvider
 import spray.routing._
 
 import scala.collection.mutable
+import scala.concurrent.{Future, ExecutionContext}
 import scala.util.{Failure, Success}
 
 case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorRef)
@@ -76,6 +77,14 @@ class ServiceRegistry(log: LoggingAdapter) {
         }
       }
     }
+  }
+
+  private[unicomplex] def deregisterContext(webContexts: Seq[String])
+                                           (implicit ec: ExecutionContext): Future[Ack.type] = {
+    val futures = listenerRoutes flatMap {
+      case (_, agent) => webContexts map {ctx => agent.alter(_ - ctx)}
+    }
+    Future.sequence(futures) map {_ => Ack}
   }
 
   /**
