@@ -161,6 +161,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   lazy val serviceRegistry = new ServiceRegistry(log)
 
+  private val unicomplexExtension = Unicomplex(context.system)
+  import unicomplexExtension._
+
   // $COVERAGE-OFF$
   /**
    * MXBean for exposing Unicomplex state
@@ -268,8 +271,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   def stopAndStartCube: Receive = {
     case StopCube(name) =>
-      val unicomplexExtension = Unicomplex(context.system)
-      import unicomplexExtension._
       val responder = sender
       boot.get.cubes.find(_.alias == name) flatMap {cube =>
         cube.components.get(StartupType.SERVICES)
@@ -313,8 +314,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       }, false)
 
     case StartCube(name) =>
-      val unicomplexExtension = Unicomplex(context.system)
-      import unicomplexExtension._
       val responder = sender
       context.actorSelection(s"/user/$name") ! Identify(name)
       context.become({
