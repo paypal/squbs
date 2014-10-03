@@ -39,7 +39,7 @@ private[actorregistry] object ActorRegistry {
 
 }
 
-private[actorregistry] class ActorRegistry extends Actor  {
+private[actorregistry] class ActorRegistry extends Actor with Stash {
   var cubeCount =0
 
   override def postStop() {
@@ -49,6 +49,20 @@ private[actorregistry] class ActorRegistry extends Actor  {
 
   import ActorRegistry._
   import ActorRegistryBean._
+
+  def startupReceive: Receive = {
+    case ActorIdentity(cubeActorInfo : CubeActorInfo, Some(actor))=>
+      registry += (actor -> cubeActorInfo.messageTypeList)
+      registerBean(actor)
+      context.watch(actor)
+      cubeCount -= 1
+      if (cubeCount <= 0) {
+        context.parent ! Initialized(Success(None))
+        context.unbecome()
+      }
+    case _ => stash()
+  }
+
   def receive = {
     case StartActorRegister(cubeActorInfoList, timeout) =>
       register(new ActorRegistryConfigBean(timeout, context), prefix + configBean )
@@ -58,13 +72,7 @@ private[actorregistry] class ActorRegistry extends Actor  {
         context.actorSelection(cubeActorInfo.actorPath) ! Identify(cubeActorInfo)
       }
 
-    case ActorIdentity(cubeActorInfo : CubeActorInfo, Some(actor))=>
-      registry += (actor -> cubeActorInfo.messageTypeList)
-      registerBean(actor)
-      context.watch(actor)
-      cubeCount -= 1
-      if (cubeCount <= 0)
-        context.parent ! Initialized(Success(None))
+      context.become(startupReceive)
 
     case ActorLookupMessage(lookupObj, Identify("ActorLookup"))  =>
       val result = processActorLookup(lookupObj).map(_._1).find(x=> true)
