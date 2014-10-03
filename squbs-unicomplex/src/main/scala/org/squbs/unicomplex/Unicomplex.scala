@@ -54,6 +54,8 @@ class UnicomplexExtension(system: ExtendedActorSystem) extends Extension {
   val config = system.settings.config.getConfig("squbs")
 
   lazy val externalConfigDir = config.getString("external-config-dir")
+
+  val boot = Agent[UnicomplexBoot](null)(system.dispatcher)
 }
 
 object Unicomplex extends ExtensionId[UnicomplexExtension] with ExtensionIdProvider {
@@ -156,8 +158,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   private var serviceListeners = Map.empty[String, Option[(ActorRef, ActorRef)]] // Service actor and HttpListener actor
 
   private var listenersBound = false
-
-  private val boot = Agent[UnicomplexBoot](null)
 
   lazy val serviceRegistry = new ServiceRegistry(log)
 
@@ -267,8 +267,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   }
 
   def stopAndStartCube: Receive = {
-    case bootObj: UnicomplexBoot => boot.send(bootObj)
     case StopCube(name) =>
+      val unicomplexExtension = Unicomplex(context.system)
+      import unicomplexExtension._
       val responder = sender
       boot.get.cubes.find(_.alias == name) flatMap {cube =>
         cube.components.get(StartupType.SERVICES)
@@ -312,6 +313,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       }, false)
 
     case StartCube(name) =>
+      val unicomplexExtension = Unicomplex(context.system)
+      import unicomplexExtension._
       val responder = sender
       context.actorSelection(s"/user/$name") ! Identify(name)
       context.become({
