@@ -22,9 +22,12 @@ import java.util
 import java.util.Date
 import akka.actor.SupervisorStrategy._
 import akka.actor._
+import akka.pattern._
+import akka.agent.Agent
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
 import org.squbs.unicomplex.JMX._
+import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import spray.can.Http
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -50,6 +53,8 @@ class UnicomplexExtension(system: ExtendedActorSystem) extends Extension {
   val config = system.settings.config.getConfig("squbs")
 
   lazy val externalConfigDir = config.getString("external-config-dir")
+
+  val boot = Agent[UnicomplexBoot](null)(system.dispatcher)
 }
 
 object Unicomplex extends ExtensionId[UnicomplexExtension] with ExtensionIdProvider {
@@ -110,6 +115,8 @@ case class LifecycleTimes(start: Option[Timestamp], started: Option[Timestamp],
                           active: Option[Timestamp], stop: Option[Timestamp])
 case class ObtainLifecycleEvents(states: LifecycleState*)
 case class StopTimeout(timeout: FiniteDuration)
+case class StopCube(name: String)
+case class StartCube(name: String)
 
 /**
  * The Unicomplex actor is the supervisor of the Unicomplex.
@@ -153,6 +160,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   private var listenersBound = false
 
   lazy val serviceRegistry = new ServiceRegistry(log)
+
+  private val unicomplexExtension = Unicomplex(context.system)
+  import unicomplexExtension._
 
   // $COVERAGE-OFF$
   /**
@@ -257,7 +267,70 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       context.system.scheduler.scheduleOnce(shutdownTimeout, self, ShutdownTimedout)
   }
 
-  def receive = shutdownBehavior orElse {
+  def stopAndStartCube: Receive = {
+    case StopCube(name) =>
+      val responder = sender
+      boot.get.cubes.find(_.alias == name) flatMap {cube =>
+        cube.components.get(StartupType.SERVICES)
+      } map {configs =>
+        configs.map(_.getString("web-context"))
+      } match {
+        case Some(webContexts) => serviceRegistry.deregisterContext(webContexts) pipeTo self
+        case None => self ! Ack
+      }
+      context.become({
+        case Ack =>
+          context.actorSelection(s"/user/$name") ! Identify(name)
+          context.become({
+            case ActorIdentity(`name`, Some(cubeSupervisor)) =>
+              (cubes get cubeSupervisor) match {
+                case Some(cube) =>
+                  cubes -= cubeSupervisor
+                  cubeSupervisor ! GracefulStop
+                  context.become({
+                    case Terminated(`cubeSupervisor`) =>
+                      responder ! Ack
+                      unstashAll
+                      context.unbecome
+                    case other => stash
+                  }, true)
+                case None =>
+                  unstashAll
+                  context.unbecome
+              }
+            case ActorIdentity(`name`, None) =>
+              log.warning(s"Cube $name does not exist")
+              unstashAll
+              context.unbecome
+            case other => stash
+          }, true)
+        case Status.Failure(e) =>
+          log.warning(s"Failed to deregistered web-contexts. Cause: $e")
+          unstashAll
+          context.unbecome
+        case other => stash
+      }, false)
+
+    case StartCube(name) =>
+      val responder = sender
+      context.actorSelection(s"/user/$name") ! Identify(name)
+      context.become({
+        case ActorIdentity(name, Some(cubeSupervisor)) =>
+          log.warning(s"Cube $name is already started")
+          unstashAll
+          context.unbecome
+        case ActorIdentity(`name`, None) =>
+          boot.get.cubes.find(_.alias == name) foreach {cube =>
+            UnicomplexBoot.startComponents(cube, boot.get.listenerAliases)(context.system)
+          }
+          responder ! Ack
+          unstashAll
+          context.unbecome
+        case other => stash
+      }, false)
+  }
+
+  def receive = stopAndStartCube orElse shutdownBehavior orElse {
     case t: Timestamp => // Setting the real start time from bootstrap
       systemStart = Some(t)
       stateMXBean.startTime = new Date(t.millis)
