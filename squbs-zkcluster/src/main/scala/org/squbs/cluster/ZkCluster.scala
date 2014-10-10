@@ -121,17 +121,20 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
                                            var zkLeaderLatch: LeaderLatch) extends Actor with Logging {
 
   private[this] implicit val log = logger
+  private[this] var stopped = false
 
   def initialize = {
 
     //watch over leader changes
     val leader = zkClient.getData.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
-        log.info("[membership] leader watch event:{}", event)
-        event.getType match {
-          case EventType.NodeCreated | EventType.NodeDataChanged =>
-            zkClusterActor ! ZkLeaderElected(zkClient.getData.usingWatcher(this).forPath("/leader"))
-          case _ =>
+        log.info("[membership] leader watch event:{} when stopped:", event, stopped.toString)
+        if(!stopped) {
+          event.getType match {
+            case EventType.NodeCreated | EventType.NodeDataChanged =>
+              zkClusterActor ! ZkLeaderElected(zkClient.getData.usingWatcher(this).forPath("/leader"))
+            case _ =>
+          }
         }
       }
     }).forPath("/leader")
@@ -142,23 +145,27 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
     // still alive (https://issues.apache.org/jira/browse/ZOOKEEPER-1740)
     zkClient.getData.usingWatcher(new CuratorWatcher {
       def process(event: WatchedEvent): Unit = {
-        log.info("[membership] self watch event: {}", event)
-        event.getType match {
-          case EventType.NodeDeleted =>
-            log.info("[membership] member node was deleted unexpectedly, recreate")
-            zkClient.getData.usingWatcher(this).forPath(guarantee(me, Some(Array[Byte]()), CreateMode.EPHEMERAL))
-          case _ =>
+        log.info("[membership] self watch event: {} when stopped:", event, stopped.toString)
+        if(!stopped) {
+          event.getType match {
+            case EventType.NodeDeleted =>
+              log.info("[membership] member node was deleted unexpectedly, recreate")
+              zkClient.getData.usingWatcher(this).forPath(guarantee(me, Some(Array[Byte]()), CreateMode.EPHEMERAL))
+            case _ =>
+          }
         }
       }
     }).forPath(me)
 
     lazy val members = zkClient.getChildren.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
-        log.info("[membership] membership watch event:{}", event)
-        event.getType match {
-          case EventType.NodeChildrenChanged =>
-            refresh(zkClient.getChildren.usingWatcher(this).forPath("/members"))
-          case _ =>
+        log.info("[membership] membership watch event:{} when stopped:{}", event, stopped.toString)
+        if(!stopped) {
+          event.getType match {
+            case EventType.NodeChildrenChanged =>
+              refresh(zkClient.getChildren.usingWatcher(this).forPath("/members"))
+            case _ =>
+          }
         }
       }
     }).forPath("/members")
@@ -182,7 +189,8 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
     initialize
   }
 
-    override def postStop = {
+  override def postStop = {
+    stopped = true
     //stop the leader latch to quit the competition
     zkLeaderLatch.close
   }
@@ -229,6 +237,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
   private[cluster] var segmentsToPartitions = Map.empty[String, Set[ByteString]]
   private[cluster] var partitionsToMembers = Map.empty[ByteString, Set[Address]]
   private[cluster] var partitionWatchers = Map.empty[String, CuratorWatcher]
+  private[cluster] var stopped = false
 
   def initialize = {
     segmentsToPartitions = zkClient.getChildren.forPath("/segments").map{segment => segment -> watchOverSegment(segment)}.toMap
@@ -238,18 +247,28 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
     initialize
   }
 
+  override def postStop = {
+    stopped = true
+  }
+
   def watchOverPartition(segment:String, partitionKey:ByteString, partitionWatcher:CuratorWatcher):Option[Set[Address]] = {
-    val segmentZkPath = s"/segments/${keyToPath(segment)}"
-    
-    try {
-      Some(zkClient.getChildren.usingWatcher(partitionWatcher).forPath(s"$segmentZkPath/${keyToPath(partitionKey)}")
-        .filterNot(_ == "$size")
-        .map(memberZNode => AddressFromURIString(pathToKey(memberZNode))).toSet)
-      //the member data stored at znode is implicitly converted to Option[Address] which says where the member is in Akka
+
+    if(stopped){
+      None //no longer watch the partition once it's stopped, and could be collected thereafter
     }
-    catch{
-      case _:NoNodeException => None
-      case t:Throwable => log.error("partitions refresh failed due to unknown reason: {}", t); None
+    else {
+      val segmentZkPath = s"/segments/${keyToPath(segment)}"
+
+      try {
+        Some(zkClient.getChildren.usingWatcher(partitionWatcher).forPath(s"$segmentZkPath/${keyToPath(partitionKey)}")
+          .filterNot(_ == "$size")
+          .map(memberZNode => AddressFromURIString(pathToKey(memberZNode))).toSet)
+        //the member data stored at znode is implicitly converted to Option[Address] which says where the member is in Akka
+      }
+      catch {
+        case _: NoNodeException => None
+        case t: Throwable => log.error("partitions refresh failed due to unknown reason: {}", t); None
+      }
     }
   }
 
@@ -259,27 +278,31 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
     //watch over changes of creation/removal of any partition (watcher over /partitions)
     lazy val segmentWatcher: CuratorWatcher = new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
-        event.getType match {
-          case EventType.NodeChildrenChanged =>
-            self ! ZkSegmentChanged(segment, zkClient.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath).map{p => ByteString(pathToKey(p))}.toSet)
-          case _ =>
+        if(!stopped) {
+          event.getType match {
+            case EventType.NodeChildrenChanged =>
+              self ! ZkSegmentChanged(segment, zkClient.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath).map { p => ByteString(pathToKey(p))}.toSet)
+            case _ =>
+          }
         }
       }
     }
     //watch over changes of members of a partition (watcher over /partitions/some-partition)
     lazy val partitionWatcher: CuratorWatcher = new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
-        event.getType match {
-          case EventType.NodeChildrenChanged =>
-            val sectors = event.getPath.split("[/]")
-            val partitionKey = ByteString(pathToKey(sectors(sectors.length - 1)))
+        if(!stopped) {
+          event.getType match {
+            case EventType.NodeChildrenChanged =>
+              val sectors = event.getPath.split("[/]")
+              val partitionKey = ByteString(pathToKey(sectors(sectors.length - 1)))
 
-            watchOverPartition(segment, partitionKey, this) match {
-              case Some(members) =>
-                self ! ZkPartitionsChanged(segment, partitionsToMembers + (partitionKey -> members))
-              case _ =>
-            }
-          case _ =>
+              watchOverPartition(segment, partitionKey, this) match {
+                case Some(members) =>
+                  self ! ZkPartitionsChanged(segment, partitionsToMembers + (partitionKey -> members))
+                case _ =>
+              }
+            case _ =>
+          }
         }
       }
     }
@@ -341,7 +364,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       if(dropoffs.nonEmpty || onboards.nonEmpty) {
         partitionsToMembers = effects
         //reduced the diff events, notifying only when the expected size have reached! (either the total members or the expected size)
-        val diff = onboards.map{alter => alter -> orderByAge(alter, partitionsToMembers.getOrElse(alter, Set.empty)).toSeq}.toMap ++
+        val diff = onboards.map{alter => alter -> orderByAge(alter, partitionsToMembers.getOrElse(alter, Set.empty))}.toMap ++
           dropoffs.map{dropoff => dropoff -> Seq.empty}
         val zkPaths = diff.keySet.map { partitionKey => partitionKey -> partitionZkPath(partitionKey)}.toMap
 
@@ -498,7 +521,7 @@ class ZkClusterActor(zkAddress:Address,
                      implicit val segmentationLogic:SegmentationLogic) extends FSM[ZkClusterState, ZkClusterData] with Stash with Logging {
 
   import segmentationLogic._
-  import ZkCluster.whenZkClientUpdated
+  import ZkCluster._
 
   private[this] implicit val log = logger
 
@@ -631,6 +654,7 @@ class ZkClusterActor(zkAddress:Address,
     case Event(ZkQueryLeadership, zkClusterData) =>
       log.info("[follower] leadership query answered:{} to:{}", zkClusterData.leader, sender().path)
       zkClusterData.leader.foreach(address => sender() ! ZkLeadership(address))
+      whenZkLeadershipUpdated += sender().path
       stay
 
     case Event(ZkMembersChanged(members), zkClusterData) =>
@@ -682,23 +706,24 @@ class ZkClusterActor(zkAddress:Address,
     case Event(ZkQueryLeadership, zkClusterData) =>
       log.info("[leader] leadership query answered:{} to:{}", zkClusterData.leader, sender().path)
       zkClusterData.leader.foreach(address => sender() ! ZkLeadership(address))
+      whenZkLeadershipUpdated += sender().path
       stay
 
     case Event(ZkMembersChanged(members), zkClusterData) =>
       log.info("[leader] membership updated:{}", members)
 
       if(zkClusterData.members == members){
-        //corner case, in which members weren't really changed, avoid undesired rebalancing
+        //corner case, in which members weren't really changed, avoid redundant rebalances
         stay
       }
       else {
         val dropoffs = zkClusterData.members.diff(members)
-        val filtered = if (dropoffs.nonEmpty)
-          zkClusterData.partitionsToMembers.mapValues { servants => servants.filterNot(dropoffs.contains(_))}
+        val excluded = if(dropoffs.nonEmpty)
+          zkClusterData.partitionsToMembers.mapValues{servants => servants.filterNot(dropoffs.contains(_))}
         else
           zkClusterData.partitionsToMembers
 
-        rebalance(filtered, members) match {
+        rebalance(excluded, members) match {
           case Some(rebalanced) =>
             stay using zkClusterData.copy(members = members, partitionsToMembers = rebalanced)
           case None =>
@@ -784,6 +809,7 @@ class ZkClusterActor(zkAddress:Address,
     case ZkClusterActiveAsFollower -> ZkClusterActiveAsLeader =>
       //as the leader, i no longer need to handle ZkPartitionsChanged event, as i drive the change instead, ZkPartitionsManager will accept my partitionsToMembers
       zkPartitionsManager ! ZkStopMonitorPartition(onDifference = Set(self.path))
+      whenZkLeadershipUpdated.foreach{context.actorSelection(_) ! ZkLeadership(zkAddress)}
 
     case ZkClusterActiveAsLeader -> ZkClusterActiveAsFollower =>
       //as a follower, i have to listen to the ZkPartitionsChanged event, as it's driven by ZkPartitionsManager and i must update my partitionsToMembers snapshot
@@ -794,6 +820,7 @@ class ZkClusterActor(zkAddress:Address,
 object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Logging {
 
   private[cluster] var whenZkClientUpdated = Seq.empty[ActorPath]
+  private[cluster] var whenZkLeadershipUpdated = Set.empty[ActorPath]
 
   override def lookup(): ExtensionId[_ <: Extension] = ZkCluster
 
