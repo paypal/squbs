@@ -189,7 +189,8 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
     initialize
   }
 
-    override def postStop = {
+  override def postStop = {
+    stopped = true
     //stop the leader latch to quit the competition
     zkLeaderLatch.close
   }
