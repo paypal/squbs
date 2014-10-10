@@ -128,7 +128,7 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
     //watch over leader changes
     val leader = zkClient.getData.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
-        log.info("[membership] leader watch event:{} when stopped:", event, stopped.toString)
+        log.info("[membership] leader watch event:{} when stopped:{}", event, stopped.toString)
         if(!stopped) {
           event.getType match {
             case EventType.NodeCreated | EventType.NodeDataChanged =>
@@ -145,7 +145,7 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
     // still alive (https://issues.apache.org/jira/browse/ZOOKEEPER-1740)
     zkClient.getData.usingWatcher(new CuratorWatcher {
       def process(event: WatchedEvent): Unit = {
-        log.info("[membership] self watch event: {} when stopped:", event, stopped.toString)
+        log.info("[membership] self watch event: {} when stopped:{}", event, stopped.toString)
         if(!stopped) {
           event.getType match {
             case EventType.NodeDeleted =>
