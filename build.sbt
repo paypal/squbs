@@ -18,6 +18,8 @@ parallelExecution in ScoverageTest in ThisBuild := false
 
 parallelExecution in Test in ThisBuild := false
 
+updateOptions in ThisBuild := updateOptions.value.withConsolidatedResolution(true)
+
 lazy val `squbs-unicomplex` = project
 
 lazy val `squbs-zkcluster` = project dependsOn `squbs-unicomplex`
