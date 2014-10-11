@@ -1,3 +1,5 @@
+import sbt._
+
 scalaVersion in ThisBuild := "2.11.2"
 
 version in ThisBuild := "0.6.0-SNAPSHOT"
