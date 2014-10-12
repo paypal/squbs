@@ -1,6 +1,6 @@
-scalaVersion := "2.10.4"
+scalaVersion := "2.11.2"
 
-val akkaVersion = "2.3.2"
+val akkaVersion = "2.3.5"
 val squbsVersion = "0.6.0-SNAPSHOT"
 val rocksqubsVersion = "0.6.0-SNAPSHOT"
 
@@ -11,7 +11,7 @@ libraryDependencies ++= Seq(
   "org.squbs" %% "squbs-unicomplex" % squbsVersion,
   "com.ebay.squbs" %% "rocksqubs-kernel" % rocksqubsVersion,
   "com.ebay.raptor.core" % "ConfigWeb" % "2.0.0-RELEASE",
-  "org.scalatest" %% "scalatest" % "1.9.1" % "test",
+  "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test",
   "org.squbs" %% "squbs-testkit" % squbsVersion % "test"
 )

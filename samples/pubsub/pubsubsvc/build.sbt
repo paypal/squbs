@@ -1,13 +1,10 @@
-jacoco.settings
-
 findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
+scalaVersion := "2.11.2"
 
-scalaVersion := "2.10.3"
-
-val akkaV = "2.3.2"
+val akkaV = "2.3.5"
 val squbsV = "0.6.0-SNAPSHOT"
 val rocksqubsV = "0.6.0-SNAPSHOT"
 
@@ -24,7 +21,7 @@ libraryDependencies ++= Seq(
   "com.ebay.squbs" %% "rocksqubs-vi" % squbsV,
   "com.ebay.kernel" % "uKernelCore" % "9.0.2-squbs-SNAPSHOT",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.3.2",
-  "org.scalatest" %% "scalatest" % "2.1.0" % "test",
+  "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "org.squbs" %% "squbs-testkit" % squbsV % "test"
 )
