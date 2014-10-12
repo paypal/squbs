@@ -19,8 +19,8 @@ libraryDependencies ++= Seq(
   "com.ebay.squbs" %% "rocksqubs-kernel" % squbsV,
   "com.ebay.squbs" %% "rocksqubs-perfmon" % squbsV,
   "com.ebay.squbs" %% "rocksqubs-vi" % squbsV,
-  "com.ebay.kernel" % "uKernelCore" % "9.0.2-squbs-SNAPSHOT",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.3.2",
+  "com.ebay.kernel" % "uKernelCore" % "9.1.1-squbs-SNAPSHOT",
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.4.2",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "org.squbs" %% "squbs-testkit" % squbsV % "test"
