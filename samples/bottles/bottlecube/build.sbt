@@ -1,17 +1,14 @@
-scalaVersion := "2.11.2"
-
 val akkaVersion = "2.3.5"
-val squbsVersion = "0.6.0-SNAPSHOT"
+val SqubsVersion = "0.6.0-SNAPSHOT"
 val rocksqubsVersion = "0.6.0-SNAPSHOT"
 
-dependencyOverrides += "org.slf4j" % "slf4j-api" % "1.7.5"
-
 libraryDependencies ++= Seq(
+  "org.slf4j" % "slf4j-api" % "1.7.5",
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
-  "org.squbs" %% "squbs-unicomplex" % squbsVersion,
+  "org.squbs" %% "squbs-unicomplex" % SqubsVersion,
   "com.ebay.squbs" %% "rocksqubs-kernel" % rocksqubsVersion,
-  "com.ebay.raptor.core" % "ConfigWeb" % "2.0.0-RELEASE",
+  "com.ebay.raptor.core" % "ConfigWeb" % "2.1.7-RELEASE",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test",
-  "org.squbs" %% "squbs-testkit" % squbsVersion % "test"
+  "org.squbs" %% "squbs-testkit" % SqubsVersion % "test"
 )
