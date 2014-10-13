@@ -19,7 +19,6 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
   var preserve:Option[String] = None
   val conf = new File(Unicomplex(system).externalConfigDir, "zkcluster.conf")
-  var zk:ZkActorForTestOnly = null
 
   override def beforeAll = {
 
@@ -31,14 +30,11 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     Files.write(
       s"""
           |zkCluster {
-          |    connectionString = "localhost:2181"
+          |    connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-3e34.stratus.phx.qa.ebay.com:8085,phx8b03c-9c8e.stratus.phx.qa.ebay.com:8085"
           |    namespace = "zkclusterunitest-${System.nanoTime}"
           |    segments = 16
           |}
         """.stripMargin, conf, Charsets.UTF_8)
-
-    zk = new ZkActorForTestOnly(Unicomplex(system).externalConfigDir)
-    zk.startup(2181)
   }
 
   override def afterAll = {
@@ -49,24 +45,13 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
     safelyDiscard("")(zkClient)
 
-    zk.postStop
-
-    try {
-      Runtime.getRuntime.exec("netstat -anp | grep :2181 | grep ESTABLISHED | awk {'print $7}' | awk -F '/' {'print $1'} | xargs kill -9")
-    }
-    catch{
-      case e:Exception => //ignored
-    }
-
-    system.awaitTermination
-
     //find zk process if it sticks
 
     preserve match {
       case None => conf.delete
       case Some(value) => Files.write(value, conf, Charsets.UTF_8)
     }
-    system.awaitTermination()
+    system.awaitTermination
 
     println("ActorSystem zkcluster shutdown.")
   }
