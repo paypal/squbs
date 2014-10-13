@@ -368,6 +368,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         case f: Http.CommandFailed =>
           serviceListeners = serviceListeners + (name -> None)
           log.error(s"Failed to bind listener $name. Cleaning up. System may not function properly.")
+          context.unwatch(serviceRef)
           serviceRef ! PoisonPill
           updateSystemState(checkInitState)
           context.unbecome()
