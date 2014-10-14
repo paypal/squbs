@@ -42,7 +42,7 @@ Following are a few basic pipeline handlers provided with the HttpClient
 
 Add the following dependency to your build.sbt or scala build file:
 
-"org.squbs" %% "httpclient" % squbsVersion
+"org.squbs" %% "squbs-httpclient" % squbsV
 
 ### EndpointRegistry
 
