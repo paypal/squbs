@@ -382,7 +382,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       val result = Try {
 
         import context.dispatcher
-        implicit val timeout:Timeout = 5.seconds
+        implicit val timeout:Timeout = 10.seconds
         Await.result(Future.sequence(planned.foldLeft(Map.empty[Address, (Map[ByteString, String], Map[ByteString, String])]){(impacts, assign) =>
           val partitionKey = assign._1
           val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address]).filter(alives.contains(_))
@@ -796,7 +796,7 @@ class ZkClusterActor(zkAddress:Address,
     val plan = rebalanceLogic.rebalance(rebalanceLogic.compensate(partitionsToMembers, candidates.toSeq, partitionSize _), members)
 
     log.info("[leader] rebalance planned as:{}", plan.map{case (key, members) => keyToPath(key) -> members})
-    implicit val timeout = Timeout(15.seconds)
+    implicit val timeout:akka.util.Timeout = 30.seconds
     Await.result(zkPartitionsManager ? ZkRebalance(plan, members), timeout.duration) match {
       case Success(true) =>
         log.info("[leader] rebalance successfully done")
