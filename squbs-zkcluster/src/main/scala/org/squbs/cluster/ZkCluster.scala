@@ -386,9 +386,8 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
         Await.result(Future.sequence(planned.foldLeft(Map.empty[Address, (Map[ByteString, String], Map[ByteString, String])]){(impacts, assign) =>
           val partitionKey = assign._1
           val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address]).filter(alives.contains(_))
-          val realones = zkClient.getChildren.forPath(partitionZkPath(partitionKey)).filterNot(_ == "$size").map(m => AddressFromURIString(pathToKey(m))).filter(alives.contains(_)).toSet
-          val onboards = assign._2.diff(servants) ++ assign._2.diff(realones)
-          val dropoffs = servants.diff(assign._2) ++ realones.diff(assign._2)
+          val onboards = assign._2.diff(servants)
+          val dropoffs = servants.diff(assign._2)
           //take realones into consideration, as the previous rebalance might yet get a universal agreement, simply force the plan again here.
           val zkPath = partitionZkPath(partitionKey)
           log.debug("[partitions] {} - onboards:{} and dropoffs:{}", keyToPath(partitionKey), onboards, dropoffs)
@@ -719,6 +718,9 @@ class ZkClusterActor(zkAddress:Address,
         notification)
       stay
 
+    case Event(ZkPartitionDiff(diff, _), zkClusterData) =>
+      stay using zkClusterData.copy(partitionsToMembers = diff.foldLeft(zkClusterData.partitionsToMembers){(memoize, change) => memoize.updated(change._1, change._2.toSet)})
+
     case Event(ZkResizePartition(partitionKey, sizeOf), zkClusterData) =>
       log.info("[leader] resize partition:{} forwarded to partition manager", keyToPath(partitionKey))
       guarantee(sizeOfParZkPath(partitionKey), Some(intToBytes(sizeOf)), CreateMode.PERSISTENT)
@@ -749,22 +751,19 @@ class ZkClusterActor(zkAddress:Address,
   onTransition {
     case ZkClusterUninitialized -> ZkClusterActiveAsFollower =>
       //unstash all messages uninitialized state couldn't handle
-      unstashAll
       //as a follower, i have to listen to the ZkPartitionsChanged event, as it's driven by ZkPartitionsManager and i must update my partitionsToMembers snapshot
       zkPartitionsManager ! ZkMonitorPartition(onDifference = Set(self.path))
+      unstashAll
 
     case ZkClusterUninitialized -> ZkClusterActiveAsLeader =>
       //unstash all messages uninitialized state couldn't handle
+      zkPartitionsManager ! ZkMonitorPartition(onDifference = Set(self.path))
       unstashAll
 
     case ZkClusterActiveAsFollower -> ZkClusterActiveAsLeader =>
       //as the leader, i no longer need to handle ZkPartitionsChanged event, as i drive the change instead, ZkPartitionsManager will accept my partitionsToMembers
-      zkPartitionsManager ! ZkStopMonitorPartition(onDifference = Set(self.path))
       whenZkLeadershipUpdated.foreach{context.actorSelection(_) ! ZkLeadership(zkAddress)}
 
-    case ZkClusterActiveAsLeader -> ZkClusterActiveAsFollower =>
-      //as a follower, i have to listen to the ZkPartitionsChanged event, as it's driven by ZkPartitionsManager and i must update my partitionsToMembers snapshot
-      zkPartitionsManager ! ZkMonitorPartition(onDifference = Set(self.path))
   }
 
   private[this] def partitionsInitialize:(Map[String, Set[ByteString]], Map[ByteString, Set[Address]]) = {
