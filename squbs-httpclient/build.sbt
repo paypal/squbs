@@ -13,7 +13,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" 			  % "logback-classic" 				% "1.0.11" % "runtime",
   "io.spray"                  %% "spray-client"                 % "1.3.2",
   "io.spray"                  %% "spray-routing"                % "1.3.2" % "test",
-  "io.spray"                  %% "spray-json"                   % "1.3.2" % "test",
+  "io.spray"                  %% "spray-json"                   % "1.3.0" % "test",
   "org.scalatest"             %% "scalatest"                    % "2.2.1" % "test->*",
   "org.json4s"                %% "json4s-native"                % "3.2.9",
   "org.json4s"                %% "json4s-jackson"               % "3.2.9"
