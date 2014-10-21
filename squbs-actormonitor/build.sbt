@@ -5,10 +5,10 @@ name := "squbs-actormonitor"
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "org.scalatest" %% "scalatest" % "2.2.1" % "test->*",
-  "com.typesafe.akka" %% "akka-actor" % "2.3.5",
-  "com.typesafe.akka" %% "akka-agent" % "2.3.5",
-  "com.typesafe.akka" %% "akka-slf4j" % "2.3.5",
-  "com.typesafe.akka" %% "akka-testkit" % "2.3.5" % "test"
+  "com.typesafe.akka" %% "akka-actor" % "2.3.6",
+  "com.typesafe.akka" %% "akka-agent" % "2.3.6",
+  "com.typesafe.akka" %% "akka-slf4j" % "2.3.6",
+  "com.typesafe.akka" %% "akka-testkit" % "2.3.6" % "test"
 )
 
 findbugsSettings

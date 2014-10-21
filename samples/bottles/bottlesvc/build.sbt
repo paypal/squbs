@@ -1,4 +1,4 @@
-val akkaVersion = "2.3.5"
+val akkaVersion = "2.3.6"
 val SqubsVersion = "0.6.0-SNAPSHOT"
 val rocksqubsVersion = "0.6.0-SNAPSHOT"
 

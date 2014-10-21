@@ -4,7 +4,7 @@ org.scalastyle.sbt.ScalastylePlugin.Settings
 
 scalaVersion := "2.11.2"
 
-val akkaV = "2.3.5"
+val akkaV = "2.3.6"
 val squbsV = "0.6.0-SNAPSHOT"
 val rocksqubsV = "0.6.0-SNAPSHOT"
 
