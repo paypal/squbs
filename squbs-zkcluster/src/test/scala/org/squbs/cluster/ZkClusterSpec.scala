@@ -30,7 +30,7 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     Files.write(
       s"""
           |zkCluster {
-          |    connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-3e34.stratus.phx.qa.ebay.com:8085,phx8b03c-9c8e.stratus.phx.qa.ebay.com:8085"
+          |    connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-3e34.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
           |    namespace = "zkclusterunitest-${System.nanoTime}"
           |    segments = 16
           |}

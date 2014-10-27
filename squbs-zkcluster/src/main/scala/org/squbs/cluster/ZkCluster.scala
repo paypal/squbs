@@ -133,6 +133,8 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
           event.getType match {
             case EventType.NodeCreated | EventType.NodeDataChanged =>
               zkClusterActor ! ZkLeaderElected(zkClient.getData.usingWatcher(this).forPath("/leader"))
+            case EventType.NodeDeleted =>
+              zkClusterActor ! ZkAcquireLeadership
             case _ =>
           }
         }
@@ -177,7 +179,6 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
 
     refresh(members)
 
-    self ! ZkAcquireLeadership
     zkClusterActor ! ZkLeaderElected(leader)
   }
 
@@ -382,7 +383,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       val result = Try {
 
         import context.dispatcher
-        implicit val timeout:Timeout = 10.seconds
+        implicit val timeout:Timeout = 15.seconds
         Await.result(Future.sequence(planned.foldLeft(Map.empty[Address, (Map[ByteString, String], Map[ByteString, String])]){(impacts, assign) =>
           val partitionKey = assign._1
           val servants = partitionsToMembers.getOrElse(partitionKey, Set.empty[Address]).filter(alives.contains(_))
@@ -438,6 +439,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       notifyOnDifference = notifyOnDifference -- stopOnDifference
 
     case ZkUpdatePartitions(onboards, dropoffs) =>
+      sender() ! true
       onboards.foreach{case (partitionKey, zkPath) =>
         log.debug("[partitions] assignment:{} with zkPath:{} replying to:{}", keyToPath(partitionKey), zkPath, sender().path)
         guarantee(zkPath, None)
@@ -452,7 +454,6 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
         partitionsToProtect -= partitionKey
       }
-      sender() ! true
   }
 
   private[cluster] def applyChanges(segmentsToPartitions:Map[String, Set[ByteString]],
@@ -752,17 +753,20 @@ class ZkClusterActor(zkAddress:Address,
     case ZkClusterUninitialized -> ZkClusterActiveAsFollower =>
       //unstash all messages uninitialized state couldn't handle
       //as a follower, i have to listen to the ZkPartitionsChanged event, as it's driven by ZkPartitionsManager and i must update my partitionsToMembers snapshot
-      zkPartitionsManager ! ZkMonitorPartition(onDifference = Set(self.path))
+      zkPartitionsManager ! ZkMonitorPartition(Set(self.path))
       unstashAll
 
     case ZkClusterUninitialized -> ZkClusterActiveAsLeader =>
       //unstash all messages uninitialized state couldn't handle
-      zkPartitionsManager ! ZkMonitorPartition(onDifference = Set(self.path))
       unstashAll
 
     case ZkClusterActiveAsFollower -> ZkClusterActiveAsLeader =>
       //as the leader, i no longer need to handle ZkPartitionsChanged event, as i drive the change instead, ZkPartitionsManager will accept my partitionsToMembers
       whenZkLeadershipUpdated.foreach{context.actorSelection(_) ! ZkLeadership(zkAddress)}
+      zkPartitionsManager ! ZkStopMonitorPartition(Set(self.path))
+
+    case ZkClusterActiveAsLeader -> ZkClusterActiveAsFollower =>
+      zkPartitionsManager ! ZkMonitorPartition(Set(self.path))
 
   }
 
