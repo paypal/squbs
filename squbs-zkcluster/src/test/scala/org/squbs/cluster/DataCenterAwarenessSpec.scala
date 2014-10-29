@@ -23,7 +23,7 @@ class DataCenterAwarenessSpec extends FlatSpec with Matchers with MockitoSugar {
 
     val mockAddress = Address("akka.tcp", "pubsub", "10.100.194.253", 8080)
 
-    DefaultCorrelation().common(mockAddress) should equal("10.100")
+    DefaultCorrelation().common(mockAddress) should equal("pubsub@10.100")
   }
 
   "CorrelateRoundRobinRoutingLogic" should "prefer routees that correlate with itself" in {
