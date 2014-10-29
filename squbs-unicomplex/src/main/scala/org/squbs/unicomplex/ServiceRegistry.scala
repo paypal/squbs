@@ -207,6 +207,30 @@ private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String
         case None => log.warning("Received request chunk end from unknown request. Possibly already timed out.")
       }
 
+    case timedOut@Timedout(req: HttpRequest) =>
+      contextActor(req) match {
+        case Some(actor) => actor forward timedOut
+        case None => log.warning(s"Received Timedout message for unknown context ${req.uri.path.toString()} .")
+      }
+
+    case timedOut@Timedout(reqStart: ChunkedRequestStart) =>
+      contextActor(reqStart.request) match {
+        case Some(actor) => actor forward timedOut
+          pendingRequests -= sender()
+          context.unwatch(sender())
+        case None => log.warning(
+          s"Received Timedout message for unknown context ${reqStart.request.uri.path.toString()} .")
+      }
+
+    case timedOut: Timedout =>
+      pendingRequests.get(sender()) match {
+        case Some(actor) =>
+          actor forward timedOut
+          pendingRequests -= sender()
+          context.unwatch(sender())
+        case None => log.warning(s"Received unknown Timedout message.")
+      }
+
     case Terminated(responder) =>
       log.info("Chunked input responder terminated.")
       pendingRequests -= responder
