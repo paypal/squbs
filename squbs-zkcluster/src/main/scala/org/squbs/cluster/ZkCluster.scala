@@ -107,6 +107,7 @@ private[cluster] case class ZkSegmentChanged(segment:String, partitions:Set[Byte
 private[cluster] case class ZkPartitionsChanged(segment:String, partitions: Map[ByteString, Set[Address]])
 private[cluster] case class ZkUpdatePartitions(onboards:Map[ByteString, String], dropoffs:Map[ByteString, String])
 private[cluster] case object ZkAcquireLeadership
+private[cluster] case object ZkSnapshotPartitions
 
 /**
  * the membership monitor has a few responsibilities, most importantly to enroll the leadership competition and get membership, leadership information immediately after change
@@ -454,6 +455,9 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
 
         partitionsToProtect -= partitionKey
       }
+
+    case ZkSnapshotPartitions =>
+      sender() ! partitionsToMembers
   }
 
   private[cluster] def applyChanges(segmentsToPartitions:Map[String, Set[ByteString]],
@@ -612,6 +616,9 @@ class ZkClusterActor(zkAddress:Address,
       log.info("[follower] membership updated:{}", members)
       stay using zkClusterData.copy(members = members)
 
+    case Event(snapshot:Map[ByteString, Set[Address]], zkClusterData) =>
+      stay using zkClusterData.copy(partitionsToMembers = snapshot)
+
     case Event(ZkPartitionDiff(diff, _), zkClusterData) =>
       stay using zkClusterData.copy(partitionsToMembers = diff.foldLeft(zkClusterData.partitionsToMembers){(memoize, change) => memoize.updated(change._1, change._2.toSet)})
 
@@ -766,6 +773,7 @@ class ZkClusterActor(zkAddress:Address,
       zkPartitionsManager ! ZkStopMonitorPartition(Set(self.path))
 
     case ZkClusterActiveAsLeader -> ZkClusterActiveAsFollower =>
+      zkPartitionsManager ! ZkSnapshotPartitions
       zkPartitionsManager ! ZkMonitorPartition(Set(self.path))
 
   }
