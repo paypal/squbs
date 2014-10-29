@@ -38,7 +38,9 @@ class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlat
   override def select(message: Any, routees: immutable.IndexedSeq[Routee]): Routee = {
 
     val candidates = routees.filter{
-      case ActorSelectionRoutee(selection) =>
+      case ActorSelectionRoutee(selection) if selection.anchorPath != null =>
+        correlation.common(zkAddress) == correlation.common(selection.anchorPath.address)
+      case ActorSelectionRoutee(selection) if !selection.pathString.startsWith("/")=>
         correlation.common(zkAddress) == correlation.common(AddressFromURIString(selection.pathString))
       case _ =>
         true
