@@ -1,27 +1,29 @@
 package org.squbs.cluster
 
 import java.io.File
-import java.util.concurrent.TimeUnit
-import org.apache.zookeeper.KeeperException.NoNodeException
-import org.apache.zookeeper.{WatchedEvent, CreateMode}
-import org.apache.zookeeper.Watcher.Event.EventType
-import org.apache.curator.retry.ExponentialBackoffRetry
-import org.apache.curator.RetryPolicy
-import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
-import org.apache.curator.framework.recipes.leader.LeaderLatch
-import org.apache.curator.framework.state.{ConnectionState, ConnectionStateListener}
-import org.apache.curator.framework.api._
-import scala.collection.JavaConversions._
-import scala.concurrent.duration._
-import scala.concurrent.{Future, Await}
-import scala.util.{Success, Try}
+import java.util
+
 import akka.actor._
 import akka.pattern.ask
-import akka.util.Timeout
-import akka.util.ByteString
+import akka.util.{ByteString, Timeout}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.slf4j.Logging
-import org.squbs.unicomplex.{Unicomplex, ConfigUtil}
+import org.apache.curator.RetryPolicy
+import org.apache.curator.framework.api._
+import org.apache.curator.framework.recipes.leader.LeaderLatch
+import org.apache.curator.framework.state.{ConnectionState, ConnectionStateListener}
+import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
+import org.apache.curator.retry.ExponentialBackoffRetry
+import org.apache.zookeeper.KeeperException.NoNodeException
+import org.apache.zookeeper.Watcher.Event.EventType
+import org.apache.zookeeper.{CreateMode, WatchedEvent}
+import org.squbs.unicomplex.{ConfigUtil, Unicomplex}
+
+import scala.collection.JavaConversions._
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+import scala.util.{Success, Try}
+import JMX._
 
 /**
  * Created by huzhou on 3/25/14.
@@ -124,6 +126,12 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
   private[this] implicit val log = logger
   private[this] var stopped = false
 
+  class MembersInfoBean extends MembersInfoMXBean {
+    override def getLeader: String = bytesToAddress(zkClient.getData.forPath("/leader")).toString
+
+    override def getMembers: util.List[String] = zkClient.getChildren.forPath("/members")
+  }
+
   def initialize = {
 
     //watch over leader changes
@@ -135,7 +143,7 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
             case EventType.NodeCreated | EventType.NodeDataChanged =>
               zkClusterActor ! ZkLeaderElected(zkClient.getData.usingWatcher(this).forPath("/leader"))
             case EventType.NodeDeleted =>
-              zkClusterActor ! ZkAcquireLeadership
+              self ! ZkAcquireLeadership
             case _ =>
           }
         }
@@ -189,12 +197,16 @@ private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramewo
     zkLeaderLatch.start
 
     initialize
+
+    register(new MembersInfoBean, prefix + membersInfoName)
   }
 
   override def postStop = {
     stopped = true
     //stop the leader latch to quit the competition
     zkLeaderLatch.close
+
+    unregister(prefix + membersInfoName)
   }
 
   def receive: Actor.Receive = {
@@ -232,7 +244,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
                                            rebalanceLogic: RebalanceLogic,
                                            implicit val segmentationLogic:SegmentationLogic) extends Actor with Logging {
 
-  import ZkPartitionsManager._
+  import org.squbs.cluster.ZkPartitionsManager._
   import segmentationLogic._
 
   private[this] implicit val log = logger
@@ -241,16 +253,25 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
   private[cluster] var partitionWatchers = Map.empty[String, CuratorWatcher]
   private[cluster] var stopped = false
 
+  class PartitionsInfoBean extends PartitionsInfoMXBean {
+    import scala.collection.JavaConversions._
+    override def getPartitions: util.List[PartitionInfo] = partitionsToMembers map {
+      case (name, members) => PartitionInfo(name, partitionZkPath(name), members.map(_.toString).toList)
+    } toList
+  }
+
   def initialize = {
     segmentsToPartitions = zkClient.getChildren.forPath("/segments").map{segment => segment -> watchOverSegment(segment)}.toMap
   }
 
   override def preStart = {
     initialize
+    register(new PartitionsInfoBean, prefix + partitionsInfoName)
   }
 
   override def postStop = {
     stopped = true
+    unregister(prefix + partitionsInfoName)
   }
 
   def watchOverPartition(segment:String, partitionKey:ByteString, partitionWatcher:CuratorWatcher):Option[Set[Address]] = {
@@ -321,15 +342,15 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       initialize
 
     case ZkSegmentChanged(segment, change) =>
-      val invalidates = segmentsToPartitions.getOrElse(segment, Set.empty).diff(change)
-      self ! ZkPartitionsChanged(segment, change.diff(segmentsToPartitions.getOrElse(segment, Set.empty)).foldLeft(partitionsToMembers){(memoize, partitionKey) =>
-        watchOverPartition(segment, partitionKey, partitionWatchers(segment)) match {
-          case Some(members) =>
-            memoize + (partitionKey -> members)
-          case _ =>
-            memoize
+      val dropOffSegments = segmentsToPartitions.getOrElse(segment, Set.empty).diff(change)
+      val onboardSegments = change.diff(segmentsToPartitions.getOrElse(segment, Set.empty))
+      partitionsToMembers = partitionsToMembers -- dropOffSegments ++
+        (onboardSegments map {partitionKey =>
+          (partitionKey -> watchOverPartition(segment, partitionKey, partitionWatchers(segment)))
+        }).collect {
+          case (key, Some(addresses)) => key -> addresses
         }
-      } -- invalidates)
+      self ! ZkPartitionsChanged(segment, partitionsToMembers)
 
     case origin @ ZkPartitionsChanged(segment, change) => //partition changes found in zk
       log.debug("[partitions] partitions change detected from zk: {}", change.map{case (key, members) => keyToPath(key) -> members})
@@ -515,8 +536,8 @@ class ZkClusterActor(zkAddress:Address,
                      rebalanceLogic:RebalanceLogic,
                      implicit val segmentationLogic:SegmentationLogic) extends FSM[ZkClusterState, ZkClusterData] with Stash with Logging {
 
+  import org.squbs.cluster.ZkCluster._
   import segmentationLogic._
-  import ZkCluster._
 
   private[this] implicit val log = logger
 
