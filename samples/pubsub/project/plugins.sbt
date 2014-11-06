@@ -1,12 +1,12 @@
 checksums in update := Nil
 
 resolvers ++= Seq(
-  "Raptor Snapshots" at "http://nxraptor/content/repositories/snapshots/"
+ "eBay Central Releases" at "http://ebaycentral/content/repositories/releases/",
+  "eBay Central Snapshots" at "http://ebaycentral/content/repositories/snapshots/",
+  "Maven Central" at "http://ebaycentral/content/repositories/central/" 
 )
 
-addSbtPlugin("com.ebay.squbs" % "sbt-ebay" % "0.0.9-SNAPSHOT")
-
-addSbtPlugin("de.johoop" % "jacoco4sbt" % "2.1.4")
+addSbtPlugin("com.ebay.squbs" % "sbt-ebay" % "0.5.1-SNAPSHOT")
 
 addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.3.2")
 
