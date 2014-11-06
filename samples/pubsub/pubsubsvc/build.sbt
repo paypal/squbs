@@ -1,5 +1,3 @@
-jacoco.settings
-
 findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings

@@ -1,7 +1,7 @@
 scalaVersion := "2.10.4"
 
 val akkaVersion = "2.3.2"
-val squbsVersion = "0.5.0-SNAPSHOT"
+val SqubsVersion = "0.5.0-SNAPSHOT"
 val rocksqubsVersion = "0.5.0-SNAPSHOT"
 val sprayVersion = "1.3.1"
 
@@ -12,12 +12,12 @@ dependencyOverrides ++= Set(
 
 libraryDependencies ++= Seq (
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
-  "org.squbs" %% "squbs-unicomplex" % squbsVersion,
+  "org.squbs" %% "squbs-unicomplex" % SqubsVersion,
   "com.ebay.squbs" %% "rocksqubs-kernel" % rocksqubsVersion,
   "com.ebay.raptor.core" % "ConfigWeb" % "2.0.0-RELEASE",
   "org.scalatest" %% "scalatest" % "1.9.1" % "test",
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test",
-  "org.squbs" %% "squbs-testkit" % squbsVersion % "test"
+  "org.squbs" %% "squbs-testkit" % SqubsVersion % "test"
 )
 
 mainClass in (Compile, run) := Some("org.squbs.unicomplex.Bootstrap")

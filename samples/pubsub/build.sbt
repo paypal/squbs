@@ -1,5 +1,3 @@
-jacoco.settings
-
 scalaVersion := "2.10.4"
 
 name := "pubsub"
