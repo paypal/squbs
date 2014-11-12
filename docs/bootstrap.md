@@ -1,5 +1,11 @@
 #Bootstrapping squbs
-squbs is provided with a default bootstrap class developers can just use to call from the command line. The class to start is `org.squbs.unicomplex.Bootstrap`. Given normal circumstances, bootstrapping detail are irrelevant. However, one may need to programmatically bootstrap squbs in different ways. This is especially common in test cases needing custom configuration and needing to run in parallel. Please see [Testing](testing.md) for more information. The syntax for bootstrapping squbs is as follows:
+
+squbs comes with a default bootstrap class `org.squbs.unicomplex.Bootstrap`. This can be started from IDEs, command line, sbt, or even Maven. Bootstrap scans the classpath and finds META-INF/squbs-meta.&lt;ext&gt; in each classpath entry.
+If squbs metadata is available, the jar is treated as squbs cube or extension and initialized according to the
+metadata declarations. The bootstrap then first initializes extensions, cubes, then service routes last regardless of
+their sequence in the classpath.
+
+Given normal circumstances, bootstrapping detail are of not much significance. However, one may need to programmatically bootstrap squbs in different ways. This is especially common in test cases needing custom configuration and needing to run in parallel. Please see [Testing](testing.md) for more information. The syntax for bootstrapping squbs is as follows:
 
 **Option 1)** Start with user-defined configuration
 
@@ -41,7 +47,7 @@ Lets take a look at each component.
 
 #Configuration Resolution
 
-squbs chooses exactly one application configuration and merges it with the aggregated reference.conf. The application configuration being merged are chosen from the following order.
+squbs chooses one application configuration and merges it with the aggregated application.conf and reference.conf in the classpath. The application configuration being merged are chosen from the following order.
 
 1. If a configuration is provided when creating the boot object, this configuration is chosen. This is the `customConfig` field from the example above.
 
@@ -99,11 +105,14 @@ squbs-actors = [
     class-name = org.squbs.bottlecube.LyricsDispatcher
     name = lyrics
     with-router = false  # Optional, defaults to false
+    init-required = false # Optional
   }
 ]
 ```
 
-If an actor is configured with-router (with-router = true) and a non-default dispatcher, the intention is usually to
+The `init-required` parameter is used for actors that need to signal back their fully initialized status for the system to be considered initialized. Please refer to the [Startup Hooks](lifecycle.md#startup-hooks) section of the [Runtime Lifecycles & API](lifecycle.md) documentation for a full discussion of startup/initialization hooks.
+
+If an actor is configured `with-router` (with-router = true) and a non-default dispatcher, the intention is usually to
 schedule the actor (routee) on the non-default dispatcher. The router will assume the well known actor name, not the
 routee (your actor implementation). A dispatcher set on the router will only affect the router, not the routee. To
 affect the routee, you need to create a separate configuration for the routees (by appending "/*" to the name) and
@@ -133,12 +142,16 @@ Router concepts, examples, and configuration, are documented in the
 
 ##Services
 
-Services extend from org.squbs.unicomplex.RouteDefinition trait and have to provide 2 components.
+Each service entry point is bound to a unique web context which is the first path segment separated by `/` characters. For instance, the url `http://mysite.com/my-context/index` would match the context `"my-context"`, if registered. It can also match the root context if `"my-context"` is not registered.
 
-1. The webContext - a String that uniquely identifies the web context of a request to be dispatched to this service.
-   This webContext must be a lowercase alphanumeric string without any slash ('/') character
-2. The route - A Spray route according to the
-   [Spray documentation](http://spray.io/documentation/1.2.0/spray-routing/key-concepts/routes/).
+Service implementations can have two flavors:
+
+1. A spray-can style server request handler actor as documented at [http://spray.io/documentation/1.2.1/spray-can/http-server/](http://spray.io/documentation/1.2.1/spray-can/http-server/). The actor handles all but the `Connected` message and must not take any constructor arguments. The whole request or request part is passed on to this actor unchanged.
+
+2. A spray-routing style route definition. These are classes extending from the `org.squbs.unicomplex.RouteDefinition` trait, must not take any constructor arguments (zero-argument constructor) and have to provide the route member which is a Spray route according to the
+   [spray-routing documentation](http://spray.io/documentation/1.3.1/spray-routing/key-concepts/routes/). In contrast to the actor implementation, the path matching of the route matches the path **AFTER** the registered web context. For instance, a route definition registered under the web context `"my-context"` would match `/segment1/segment2` for the url `http://mysite.com/my-context/segment1/segment2` not including the web context string itself.
+      
+Service metadata is declared in META-INF/squbs-meta.conf as shown in the following example.
 
 ```
 cube-name = org.squbs.bottlesvc
@@ -146,9 +159,58 @@ cube-version = "0.0.2-SNAPSHOT"
 squbs-services = [
   {
     class-name = org.squbs.bottlesvc.BottleSvc
+    web-context = bottles
+    
+    # The listeners entry is optional, and defaults to 'default-listener'
+    listeners = [ default-listener, my-listener ]
+    
+    init-required = false # Optional, only applies to actors
+
   }
 ]
 ```
+
+The class-name parameter identifies either the actor or route class.
+
+The web-context is a string that uniquely identifies the web context of a request to be dispatched to this service. It **MUST NOT** start with a `/` character. It is allowed to be `""` for root context.
+
+Optionally, the listeners parameter declares a list of listeners to bind this service. Listener binding is discussed in the following section, below.
+
+Only actors can have another optional `init-required` parameter which allows the actor to feed back its state to the system. Please refer to the [Startup Hooks](lifecycle.md#startup-hooks) section of the [Runtime Lifecycles & API](lifecycle.md) documentation for a full discussion of startup/initialization hooks.
+
+
+### Listener Binding
+
+A listener is declared in `application.conf` or `reference.conf` usually living in the project's `src/main/resources` directory. Listeners declare interfaces, ports, and security attributes, and name aliases, and are explained in [Configuration](configuration.md)
+
+A service route attaches itself to one or more listeners. The `listeners` attribute is a list of listeners or aliases the route should bind to. If listeners are not defined, it will default to the `default-listener`.
+
+The wildcard value `"*"` (note, it has to be quoted or will not be properly be interpreted) is a special case which translates to attaching this route to all active listeners. By itself, if will however not activate any listener if it is not already activated by a concrete attachment of a route. If the route should activate the default listener and attach to any other listener activated by other routes, the concrete attachment has to be specified separately as follows:
+
+```
+    listeners = [ default-listener, "*" ]
+```
+
+### Runtime Access to Web Context
+While the web context is configured in metadata, both the route and the actor will sometimes need to know what web context it is serving. To do so, any service class (route or actor) may want to mix in the `org.squbs.unicomplex.WebContext` trait. Doing so will add the following field to your object
+
+```
+    val webContext: String
+```
+
+The webContext field is initialized to the value of the configured web context as set in Metadata upon construction of the object as shown below:
+
+```
+class MySvcActor extends Actor with WebContext {
+  def receive = {
+    case HttpRequest(HttpMethods.GET, Uri.Path(p), _, _, _)
+        if p.startsWith(s"/$webContext") =>
+      // handle request...
+  }
+}
+```
+
+The `webContext` field will automatically be made available to the logic in this class
 
 ##Extensions
 
@@ -163,14 +225,6 @@ specifying:
 in the extension declaration. If the sequence is not specified, it defaults to Int.maxValue. This means it will start
 after all extensions that provide a sequence number. If there is more than one extension not specifying the sequence,
 the order between them is indeterministic.
-
-##Bootstrapping
-
-Bootstrapping squbs is done by starting the org.squbs.unicomplex.Bootstrap object from the Java command line, IDE, sbt,
-or even maven. Bootstrap scans the classpath and finds META-INF/squbs-meta.&lt;ext&gt; in each classpath entry.
-If squbs metadata is available, the jar is treated as squbs cube or extension and initialized according to the
-metadata declarations. The bootstrap then first initializes extensions, cubes, then service routes last regardless of
-their sequence in the classpath.
 
 #Shutting Down squbs
 

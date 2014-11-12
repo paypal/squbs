@@ -2,6 +2,9 @@
 *.log
 .cache
 bin
+report/
+squbsconfig/
+var/
 
 # sbt specific
 dist/*

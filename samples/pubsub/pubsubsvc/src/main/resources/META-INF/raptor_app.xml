@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application>
+    <name>sqpubsub</name>
+    <type>Service</type>
+    <public>false</public>
+    <!-- Mandatory field -->
+    <description>GPF/squbs REST pubsub service based on Akka/Spray</description>
+    <lifecycleState>Deployed</lifecycleState>
+    <!-- Optional field: Default value will be used if not specified -->
+    <urlStrategy></urlStrategy>
+    <page-Map>
+        <page>
+            <name>DefaultPage</name>
+            <description>This default page that will be inserted for every application. The page id of the default page will be used
+                for every page that is not registered with AR during development</description>
+            <!-- Mandatory field -->
+            <lifecycleState>Deployed</lifecycleState>
+            <isAjax>false</isAjax>
+            <isDefault>true</isDefault>
+            <security>
+                <authentication>L1AUTH</authentication>
+                <authorization>true</authorization>
+                <roleId>true</roleId>
+            </security>
+        </page>
+    </page-Map>
+    <webService-List>
+        <webService>
+            <description>Pubsubservice</description>
+            <lifecycleState>Deployed</lifecycleState>
+            <name>pubsub.events.v0</name>
+            <svcMapping-List>
+                <svcMapping>/pubsub/events</svcMapping>
+            </svcMapping-List>
+        </webService>
+    </webService-List>
+    <!-- Optional field: true if your application invokes services that require an IAFToken -->
+    <secureService>false</secureService>
+</application>

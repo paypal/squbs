@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+
+<FindBugsFilter>
+	
+	<!-- This is to ignore the immutable field error -->
+	<Match>
+       <Bug code="EI,EI2" />
+     </Match>
+     
+     <Match>
+     	<Bug pattern="SA_LOCAL_SELF_ASSIGNMENT,SE_BAD_FIELD" />
+     </Match>
+     
+     <!-- ConfigWeb project will be removed from Raptor and hence removing it from analysis -->
+     <Match>
+       <Package name="~com.ebay.raptor.configweb.*.*" />
+     </Match>
+     <Match>
+       <Package name=".*/raptor/configweb/.*" />
+     </Match>
+     <Match>
+       <Class name="~.*Test$"/>
+     </Match>
+     <Match>
+       <Package name="~test\..*"/>
+     </Match>
+
+     <Match>
+       <Package name="~tests\..*"/>
+     </Match>
+ 
+     <Match>
+     	<Package name="~com.ebay.content.srp_raptor.*"/>
+     </Match>
+     
+     <!-- Need to exclude as it uses a hardcoded password for code collaborator -->
+     <Match>
+       <Class name="~com.ebay.raptor.test.util.CodeCollaboratorUtil" />
+     </Match>
+     
+     <!-- Need to exclude as it uses a hardcoded password for code collaborator -->
+     <Match>
+       <Class name="~com.ebay.content.srp_raptor.SearchResultsContent" />
+     </Match>
+     
+     <!-- These fields are final but still findbugs produce warnings on these -->
+     <Match>
+     	<Class name="~com.ebay.raptor.kernel.util.XssCheckUtil"/>
+     	<Field name="ILLEGAL_TAGS_FOR_STRINGS"/>
+     	<Bug code="MS"/>
+     </Match>
+     <Match>
+     	<Class name="~com.ebay.raptor.kernel.util.XssCheckUtil"/>
+     	<Field name="ILLEGAL_TAGS_FOR_URLS"/>
+     	<Bug code="MS"/>
+     </Match>
+
+</FindBugsFilter>
