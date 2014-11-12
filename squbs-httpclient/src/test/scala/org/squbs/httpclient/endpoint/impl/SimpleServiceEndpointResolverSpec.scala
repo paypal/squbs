@@ -40,4 +40,9 @@ class SimpleServiceEndpointResolverSpec extends FlatSpec with HttpClientTestKit 
     EndpointRegistry.resolve("notExisting") should be (None)
     EndpointRegistry.unregister(simpleResolver.name)
   }
+
+  "ExternalServiceEndpointResolver with null Configuration" should "not throw out exception" in {
+    val resolver = SimpleServiceEndpointResolver("external", Map("http://www.ebay.com" -> null))
+    resolver.resolve("http://www.ebay.com") should be (Some(Endpoint("http://www.ebay.com")))
+  }
 }
