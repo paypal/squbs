@@ -36,6 +36,9 @@ private class ActorRegistryInit extends ExtensionLifecycle  {
     import boot._
     import ConfigUtil._
 
+    val registryConfig = config.getConfig("squbs-actorregistry")
+    val remoteConfig   = registryConfig.getOptionalConfigList("squbs").map(_.toList).getOrElse(List.empty)
+
     val cubeActorList = cubes.filterNot(_.alias == "ActorRegistryCube").flatMap {
       cube =>
         cube.components.getOrElse(StartupType.ACTORS, Seq.empty).map {
@@ -45,15 +48,17 @@ private class ActorRegistryInit extends ExtensionLifecycle  {
             val messageTypeList = config.getOptionalConfigList("message-class").getOrElse(List.empty[Config]).toList.
               map(x => CubeActorMessageType(x.getOptionalString("request").getOrElse(null), x.getOptionalString("response").getOrElse(null))).toList
 
-            CubeActorInfo(s"/user/${cube.alias}/$actorName", messageTypeList)
+            val endpoint = remoteConfig.find(_.getString("name") == cube.symName).map(_.getString("endpoint")).getOrElse("")
+            val path = s"$endpoint/user/${cube.alias}/$actorName"
+
+            CubeActorInfo(path, messageTypeList)
         }
     }.toList
 
-    val t = config.getConfig("squbs-actorregistry").getInt("timeout")
     implicit val system = boot.actorSystem
     system.actorOf(Props(classOf[HelperActor],
               system.actorSelection(ActorRegistry.path),
-              StartActorRegister(cubeActorList, t),
+              StartActorRegister(cubeActorList, registryConfig.getInt("timeout")),
               FiniteDuration(t, MILLISECONDS)))
   }
 }

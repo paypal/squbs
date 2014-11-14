@@ -17,7 +17,6 @@
  */
 package org.squbs.actorregistry
 
-import javax.management.ObjectName
 
 import akka.actor._
 import org.squbs.unicomplex.{JMX, Initialized}
@@ -92,32 +91,32 @@ private[actorregistry] class ActorRegistry extends Actor with Stash {
   }
 
   def processActorLookup(lookupObj: ActorLookup) : Map[ActorRef, List[CubeActorMessageType]]= {
+    var result= registry.toMap
     lookupObj match {
       case ActorLookup(None, None, None) =>
         Map.empty[ActorRef, List[CubeActorMessageType]]
-      case obj =>
-        var result= registry.toMap
-
-        val resultActorFilter = obj.actorName match {
+      case ActorLookup(_, responseClass, Some(actorName)) =>
+        val resultActorFilter = result.filter(_._1.path.name == actorName)
+        responseClass.map(_.getCanonicalName) match {
+          case Some("scala.runtime.Nothing$") =>
+            resultActorFilter
+          case any =>
+            resultActorFilter.filter(_._2.exists(_.responseClassName == any.getOrElse("")))
+        }
+      case ActorLookup(requestClass, responseClass, None) =>
+        val resultRequestFilter = requestClass.map(_.getCanonicalName) match {
+          case Some(name) if name.startsWith("akka.actor.")=>
+            result
+          case Some(name) if (name.endsWith("$")) =>
+            val newName = name.substring(0, name.length - 1)
+            result.filter(_._2.exists(_.requestClassName == newName))
           case Some(name) =>
-            result.filter(_._1.path.name == name)
+            result.filter(_._2.exists(_.requestClassName == name))
           case _ =>
             result
         }
 
-        val resultRequestFilter = obj.requestClass.map(_.getCanonicalName) match {
-          case Some(name) if name.startsWith("akka.actor.")=>
-            resultActorFilter
-          case Some(name) if (name.endsWith("$")) =>
-            val newName = name.substring(0, name.length - 1)
-            resultActorFilter.filter(_._2.exists(_.requestClassName == newName))
-          case Some(name) =>
-            resultActorFilter.filter(_._2.exists(_.requestClassName == name))
-          case _ =>
-            resultActorFilter
-        }
-
-        val resultResponseFilter = obj.responseClass.map(_.getCanonicalName) match {
+        val resultResponseFilter = responseClass.map(_.getCanonicalName) match {
           case Some("scala.runtime.Nothing$") =>
             resultRequestFilter
           case Some(name)=>

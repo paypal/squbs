@@ -40,12 +40,14 @@ private[actorregistry] object ActorRegistryBean {
 
 @MXBean
 private[actorregistry] trait ActorRegistryMXBean {
+  def getPath : String
   def getActorMessageTypeList: java.util.List[String]
 }
 
 private[actorregistry] class ActorRegistryBean(actor: ActorRef) extends ActorRegistryMXBean {
   import ActorRegistry._
   import scala.collection.JavaConversions._
+  def getPath = actor.path.toString
   def getActorMessageTypeList = registry.get(actor).getOrElse(List.empty[CubeActorMessageType]).map(_.toString)
 }
 

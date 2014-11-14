@@ -262,7 +262,29 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
       }
     }
 
-    "13) ActorLookup ! PoisonPill" in {
+    "13) ActorLookup('TestActor1') ! TestRequest1" in {
+      val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
+      assert(before != null)
+      ActorLookup[String]("TestActor1") ! TestRequest1("13")
+      receiveOne(timeout.duration) match {
+        case msg: ActorNotFound =>
+          assert(true)
+        case _ =>
+          assert(false)
+      }
+    }
+
+    "14) ActorLookup[String]('TestActor1') ! TestRequest1" in {
+      val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
+      assert(before != null)
+      ActorLookup("TestActor1") ! TestRequest1("13")
+      receiveOne(timeout.duration) match {
+        case TestResponse(msg) =>
+          assert(msg=="13")
+      }
+    }
+
+    "15) ActorLookup ! PoisonPill" in {
       val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
       assert(before != null)
       ActorLookup("TestActor1") ! PoisonPill
@@ -273,7 +295,7 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
       }
     }
 
-    "14) kill ActorRegistry" in {
+    "16) kill ActorRegistry" in {
       system.actorSelection("/user/ActorRegistryCube/ActorRegistry") ! PoisonPill
       receiveOne(timeout.duration) match {
         case msg =>
