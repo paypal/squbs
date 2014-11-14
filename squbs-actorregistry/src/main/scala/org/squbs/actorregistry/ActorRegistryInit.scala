@@ -55,10 +55,11 @@ private class ActorRegistryInit extends ExtensionLifecycle  {
         }
     }.toList
 
+    val t = registryConfig.getInt("timeout")
     implicit val system = boot.actorSystem
     system.actorOf(Props(classOf[HelperActor],
               system.actorSelection(ActorRegistry.path),
-              StartActorRegister(cubeActorList, registryConfig.getInt("timeout")),
+              StartActorRegister(cubeActorList, t),
               FiniteDuration(t, MILLISECONDS)))
   }
 }
