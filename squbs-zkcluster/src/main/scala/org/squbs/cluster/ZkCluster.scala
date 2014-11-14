@@ -17,13 +17,13 @@ import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.zookeeper.KeeperException.NoNodeException
 import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
+import org.squbs.cluster.JMX._
 import org.squbs.unicomplex.{ConfigUtil, Unicomplex}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.{Success, Try}
-import JMX._
 
 /**
  * Created by huzhou on 3/25/14.
@@ -256,7 +256,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
   class PartitionsInfoBean extends PartitionsInfoMXBean {
     import scala.collection.JavaConversions._
     override def getPartitions: util.List[PartitionInfo] = partitionsToMembers map {
-      case (name, members) => PartitionInfo(name, partitionZkPath(name), members.map(_.toString).toList)
+      case (name, members) => PartitionInfo(name, partitionZkPath(name), members.mkString(","))
     } toList
   }
 

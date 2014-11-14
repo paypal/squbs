@@ -14,7 +14,7 @@ import scala.beans.BeanProperty
 object JMX {
 
   val membersInfoName = "org.squbs.zkcluster:type=MembersInfo"
-  val partitionsInfoName       = "org.squbs.unicomplex:type=Partitions"
+  val partitionsInfoName = "org.squbs.zkcluster:type=Partitions"
 
   implicit def string2objectName(name:String):ObjectName = new ObjectName(name)
 
@@ -32,7 +32,7 @@ object JMX {
 case class PartitionInfo @ConstructorProperties(Array("name", "zkPath", "members"))
                                                (@BeanProperty name: String,
                                                 @BeanProperty zkPath: String,
-                                                @BeanProperty members: java.util.List[String])
+                                                @BeanProperty members: String)
 
 trait MembersInfoMXBean {
   def getLeader: String
