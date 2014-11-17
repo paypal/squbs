@@ -686,7 +686,7 @@ class ZkClusterActor(zkAddress:Address,
             stay using zkClusterData.copy(members = members, partitionsToMembers = rebalanced)
           case None =>
             self ! ZkRebalanceRetry
-            stay using zkClusterData.copy(members = members)
+            stay using zkClusterData.copy(members = members, partitionsToMembers = excluded)
         }
       }
 
