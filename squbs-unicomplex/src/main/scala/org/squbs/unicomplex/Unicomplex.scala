@@ -135,6 +135,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         Restart
     }
 
+
   private var systemStart: Option[Timestamp] = None
 
   private var systemStarted: Option[Timestamp] = None
@@ -196,6 +197,33 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     }
   }
 
+  class SystemSettingBean extends SystemSettingMXBean {
+    override def getSystemSetting: util.List[SystemSetting] = {
+      import scala.collection.JavaConversions._
+      context.system.settings.config
+
+      def iterateMap(prefix: String, map: util.Map[String, AnyRef]): util.Map[String, String] = {
+        val result = new util.TreeMap[String, String]()
+        map.foreach {
+          case (k, v: util.List[AnyRef]) => {
+            var index = 0
+            v.foreach(i => {
+              result.put(s"$prefix$k[$index]", String.valueOf(i))
+              index = index + 1
+            })
+          }
+          case (k, v: util.Map[String, AnyRef]) => result.putAll(iterateMap(s"$prefix$k.", v))
+          case (k, v) => result.put(s"$prefix$k", String.valueOf(v))
+        }
+
+        result
+      }
+      iterateMap("", context.system.settings.config.root.unwrapped()).toList.map{case (k:String, v:String) => {
+        SystemSetting(k, v)
+      }}
+    }
+  }
+
 
   private val stateMXBean = new SystemStateBean
 
@@ -207,12 +235,14 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     import JMX._
     register(stateMXBean, prefix + systemStateName)
     register(new CubesBean, prefix + cubesName)
+    register(new SystemSettingBean, prefix + systemSettingName)
   }
 
   override def postStop() {
     import JMX._ // JMX registrations
     unregister(prefix + cubesName)
     unregister(prefix + systemStateName)
+    unregister(prefix + systemSettingName)
 
     Unicomplex.actors -= context.system.name
   }

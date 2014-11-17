@@ -18,6 +18,7 @@
 package org.squbs.unicomplex
 
 import java.lang.management.ManagementFactory
+import java.util
 import javax.management.{MXBean, ObjectName}
 import java.util.Date
 import java.beans.ConstructorProperties
@@ -39,6 +40,7 @@ object JMX {
   val cubeStateName   = "org.squbs.unicomplex:type=CubeState,name="
   val listenersName    = "org.squbs.unicomplex:type=Listeners"
   val serverStats = "org.squbs.unicomplex:type=serverStats,listener="
+  val systemSettingName   = "org.squbs.unicomplex:type=SystemSetting"
 
 
   implicit def string2objectName(name:String):ObjectName = new ObjectName(name)
@@ -91,6 +93,10 @@ case class ListenerInfo @ConstructorProperties(Array("listener", "context", "act
                                           @BeanProperty listener: String,
                                           @BeanProperty context: String,
                                           @BeanProperty actorPath: String)
+case class SystemSetting @ConstructorProperties(Array("key", "value"))(
+                                                                    @BeanProperty key: String,
+                                                                    @BeanProperty value: String
+                                                                    )
 // $COVERAGE-ON$
                                           
 @MXBean
@@ -140,6 +146,16 @@ trait ServerStatsMXBean {
   def getOpenConnections: Long
   def getMaxOpenConnections: Long
   def getRequestsTimedOut: Long
+}
+
+/**
+ * Created by miawang on 11/17/14.
+ */
+
+
+@MXBean
+trait SystemSettingMXBean {
+  def getSystemSetting: util.List[SystemSetting]
 }
 
 class SeverStats(name: String, httpListener: ActorRef) extends ServerStatsMXBean {
