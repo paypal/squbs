@@ -22,6 +22,7 @@ import java.util
 import javax.management.{MXBean, ObjectName}
 import java.util.Date
 import java.beans.ConstructorProperties
+import com.typesafe.config.Config
 import spray.can.Http
 import spray.can.server.Stats
 
@@ -185,4 +186,35 @@ class SeverStats(name: String, httpListener: ActorRef) extends ServerStatsMXBean
     val statsFuture = httpListener.ask(Http.GetStats)(1 second).mapTo[Stats]
     Try(Await.result(statsFuture, 1 second)).toOption
   }
+}
+
+class SystemSettingBean(config: Config) extends SystemSettingMXBean {
+  lazy val settings:util.List[SystemSetting] = {
+    import scala.collection.JavaConversions._
+    def iterateMap(prefix: String, map: util.Map[String, AnyRef]): util.Map[String, String] = {
+      val result = new util.TreeMap[String, String]()
+      map.foreach {
+        case (key, value: util.List[AnyRef]) => result.putAll(iterateList(s"$prefix$key", value))
+        case (key, value: util.Map[String, AnyRef]) => result.putAll(iterateMap(s"$prefix$key.", value))
+        case (key, value) => result.put(s"$prefix$key", String.valueOf(value))
+      }
+      result
+    }
+
+    def iterateList(prefix: String, list: util.List[AnyRef]): util.Map[String, String] = {
+      val result = new util.TreeMap[String, String]()
+
+      list.zipWithIndex.foreach{
+        case (value: util.List[AnyRef], i) => result.putAll(iterateList(s"$prefix[$i]", value))
+        case (value: util.Map[String, AnyRef], i) => result.putAll(iterateMap(s"$prefix[$i].", value))
+        case (value, i) => result.put(s"$prefix[$i]", String.valueOf(value))
+      }
+      result
+    }
+
+    iterateMap("", config.root.unwrapped()).toList.map{case (k:String, v:String) => {
+      SystemSetting(k, v)
+    }}
+  }
+  override def getSystemSetting: util.List[SystemSetting] = settings
 }
