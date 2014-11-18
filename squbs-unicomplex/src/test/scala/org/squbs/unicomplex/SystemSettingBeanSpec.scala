@@ -26,18 +26,25 @@ class SystemSettingBeanSpec extends FlatSpecLike with Matchers{
         |      ]
         |    }
         |  }
-        |  list: [
-        |    "lv0",
-        |    ["lv10", "lv11"]
+        |  oneLevelList: ["v0", "v1", "v2"]
+        |  listList: [
+        |    ["v00", "v01", "v02"],
+        |    ["v10", "v11"],
+        |    ["v20", "v21"]
+        |  ]
+        |  listObject: [
         |    {
-        |      l2k: "lv2k"
+        |      k1: "v1"
+        |    },
+        |    {
+        |      k2: "v2"
         |    }
         |  ]
         |}
       """.stripMargin)
     val bean = new SystemSettingBean(config)
     val settings = bean.getSystemSetting
-    settings.length should be(11)
+    settings.length should be(19)
     settings.find(_.key.equals("root.str")).get.value should be("1")
     settings.find(_.key.equals("root.number")).get.value should be("2")
     settings.find(_.key.equals("root.nil")).get.value should be("null")
@@ -45,9 +52,17 @@ class SystemSettingBeanSpec extends FlatSpecLike with Matchers{
     settings.find(_.key.equals("root.map.k1")).get.value should be("v1")
     settings.find(_.key.equals("root.map.k2.k21")).get.value should be("v21")
     settings.find(_.key.equals("root.map.k2.k22[0]")).get.value should be("v220")
-    settings.find(_.key.equals("root.list[0]")).get.value should be("lv0")
-    settings.find(_.key.equals("root.list[1][0]")).get.value should be("lv10")
-    settings.find(_.key.equals("root.list[1][1]")).get.value should be("lv11")
-    settings.find(_.key.equals("root.list[2].l2k")).get.value should be("lv2k")
+    settings.find(_.key.equals("root.oneLevelList[0]")).get.value should be("v0")
+    settings.find(_.key.equals("root.oneLevelList[1]")).get.value should be("v1")
+    settings.find(_.key.equals("root.oneLevelList[2]")).get.value should be("v2")
+    settings.find(_.key.equals("root.listList[0][0]")).get.value should be("v00")
+    settings.find(_.key.equals("root.listList[0][1]")).get.value should be("v01")
+    settings.find(_.key.equals("root.listList[0][2]")).get.value should be("v02")
+    settings.find(_.key.equals("root.listList[1][0]")).get.value should be("v10")
+    settings.find(_.key.equals("root.listList[1][1]")).get.value should be("v11")
+    settings.find(_.key.equals("root.listList[2][0]")).get.value should be("v20")
+    settings.find(_.key.equals("root.listList[2][1]")).get.value should be("v21")
+    settings.find(_.key.equals("root.listObject[0].k1")).get.value should be("v1")
+    settings.find(_.key.equals("root.listObject[1].k2")).get.value should be("v2")
   }
 }
