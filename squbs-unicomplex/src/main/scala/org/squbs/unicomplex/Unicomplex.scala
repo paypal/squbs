@@ -135,6 +135,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         Restart
     }
 
+
   private var systemStart: Option[Timestamp] = None
 
   private var systemStarted: Option[Timestamp] = None
@@ -207,12 +208,14 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     import JMX._
     register(stateMXBean, prefix + systemStateName)
     register(new CubesBean, prefix + cubesName)
+    register(new SystemSettingBean(context.system.settings.config), prefix + systemSettingName)
   }
 
   override def postStop() {
     import JMX._ // JMX registrations
     unregister(prefix + cubesName)
     unregister(prefix + systemStateName)
+    unregister(prefix + systemSettingName)
 
     Unicomplex.actors -= context.system.name
   }
