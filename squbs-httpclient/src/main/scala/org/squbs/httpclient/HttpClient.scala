@@ -85,33 +85,49 @@ trait HttpCallSupport extends PipelineManager with CircuitBreakerSupport {
   }
 
   def get(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(invokeToHttpResponse(client), Get(uri))
+    val verifiedUri = verifyUri(uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(invokeToHttpResponse(client), Get(verifiedUri))
   }
 
   def post[T: Marshaller](uri: String, content: T)(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(invokeToHttpResponse(client), Post(uri, content))
+    val verifiedUri = verifyUri(uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(invokeToHttpResponse(client), Post(verifiedUri, content))
   }
 
   def put[T: Marshaller](uri: String, content: T)(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(invokeToHttpResponse(client), Put(uri, content))
+    val verifiedUri = verifyUri(uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(invokeToHttpResponse(client), Put(verifiedUri, content))
   }
 
   def head(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(invokeToHttpResponse(client), Head(uri))
+    val verifiedUri = verifyUri(uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(invokeToHttpResponse(client), Head(verifiedUri))
   }
 
   def delete(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(invokeToHttpResponse(client), Delete(uri))
+    val verifiedUri = verifyUri(uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(invokeToHttpResponse(client), Delete(verifiedUri))
   }
 
   def options(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(invokeToHttpResponse(client), Options(uri))
+    val verifiedUri = verifyUri(uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(invokeToHttpResponse(client), Options(verifiedUri))
+  }
+
+  private def verifyUri(uri: String) = {
+    if (uri.charAt(0) != '/') {
+      httpClientLogger.warn(s"The URI: $uri should be the full path after host:port including the first slash.")
+      httpClientLogger.warn(s"Prepend the slash automatically. URI: ${'/' + uri}")
+      '/' + uri
+    }else {
+      uri
+    }
   }
 }
 
