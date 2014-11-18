@@ -205,12 +205,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       def iterateMap(prefix: String, map: util.Map[String, AnyRef]): util.Map[String, String] = {
         val result = new util.TreeMap[String, String]()
         map.foreach {
-          case (k, v: util.List[AnyRef]) => {
-            var index = 0
-            v.foreach(i => {
-              result.put(s"$prefix$k[$index]", String.valueOf(i))
-              index = index + 1
-            })
+          case (k, v: util.List[AnyRef]) => v.zipWithIndex.foreach{
+            case (value, index) => result.put(s"$prefix$k[$index]", String.valueOf(value))
           }
           case (k, v: util.Map[String, AnyRef]) => result.putAll(iterateMap(s"$prefix$k.", v))
           case (k, v) => result.put(s"$prefix$k", String.valueOf(v))
