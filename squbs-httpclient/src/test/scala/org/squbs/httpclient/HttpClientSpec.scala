@@ -52,6 +52,15 @@ class HttpClientSpec extends FlatSpec with DummyService with HttpClientTestKit w
     result.entity.data.asString should be (fullTeamJson)
   }
 
+  "HttpClient with correct Endpoint calling get" should "prepend slash to the uri" in {
+    val response = HttpClientFactory.get("DummyService").get("view")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamJson)
+  }
+
   "HttpClient with correct Endpoint calling get and unmarshall object" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").get("/view")
     val result = Await.result(response, 3 seconds)
