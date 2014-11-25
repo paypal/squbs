@@ -6,6 +6,7 @@ import MathUtil._
 
 
 import scala.concurrent.duration._
+import scala.math._
 
 /**
  * Created by miawang on 11/21/14.
@@ -18,7 +19,7 @@ class Metrics(private var _initial: FiniteDuration) {
 
   private var _timeoutCount = 0
 
-  private var _square = 0.0
+  private var _sumSquare = 0.0
 
   private[timeout] def update(time: Long, timeout:Boolean) {
     if (timeout) {
@@ -35,8 +36,8 @@ class Metrics(private var _initial: FiniteDuration) {
   private def sumSquare(time: Long) {
     if (_totalCount > 1) {
       val y = _totalCount * time - _totalTime
-      _square = _square + y * y / (_totalCount * (_totalCount - 1).toDouble)
-    } else _square = time
+      _sumSquare = _sumSquare + y * y / (_totalCount * (_totalCount - 1).toDouble)
+    } else _sumSquare = time
   }
 
   def totalCount = _totalCount
@@ -49,12 +50,17 @@ class Metrics(private var _initial: FiniteDuration) {
 
   def timeoutCount = _timeoutCount
 
-  def square = _square
+  def sumSquare = _sumSquare
 
   def initial = _initial
 
+  def standardDeviation = sqrt(_sumSquare / _totalCount)
+
+  def averageTime = _totalTime.toDouble / _totalCount
+
   override def toString: String = {
-    s"[initial=${_initial}, totalCount=${_totalCount},totalTime=${_totalTime}, square=${_square}, timeoutCount=${_timeoutCount}]"
+    s"[initial=${_initial}, average=${averageTime * 0.000001} ms, standardDeviation=${standardDeviation * 0.000001} ms, " +
+      s"totalCount=${_totalCount},totalTime=${_totalTime * 0.000001} ms, sumSquare=${_sumSquare}, timeoutCount=${_timeoutCount}]"
   }
 }
 
@@ -77,17 +83,14 @@ class TimeoutItem(val policy: TimeoutPolicy) {
 abstract class TimeoutPolicy(initial: FiniteDuration) {
   @volatile private[timeout] var _metrics = new Metrics(initial)
 
-  def waitTime:FiniteDuration
+  private[timeout] def waitTime:FiniteDuration
 
   def execute[T](f: FiniteDuration => T): T = {
-    val start = System.nanoTime()
-    lazy val timeout = waitTime
+    val item = this.item
     try {
-      f(timeout)
+      f(item.waitTime)
     } finally {
-      val timeTaken = System.nanoTime() - start
-      val isTimeout = timeTaken > timeout.toNanos
-      _metrics.update(timeTaken, isTimeout)
+      item.update()
     }
   }
 
@@ -123,13 +126,12 @@ class FixedTimeoutPolicy(timeout: FiniteDuration) extends TimeoutPolicy(timeout)
 class EmpiricalTimeoutPolicy(initial: FiniteDuration, unit: Double) extends TimeoutPolicy(initial) {
 
   override def waitTime: FiniteDuration = {
-    import math._
     // assign the instance field to a local variable for preventing data in-consistence
     val metrics = this._metrics
     val duration = if (metrics.totalCount > 1) {
-      val standardDeviation = sqrt(metrics.square / metrics.totalCount)
-      val averageTime = metrics.totalTime / metrics.totalCount.toDouble
-      FiniteDuration((averageTime + (unit * standardDeviation)).toLong, TimeUnit.NANOSECONDS)
+      val standardDeviation = metrics.standardDeviation
+      val averageTime = metrics.averageTime
+      FiniteDuration((averageTime + unit * standardDeviation).toLong, TimeUnit.NANOSECONDS)
     } else metrics.initial
     if (duration > metrics.initial) metrics.initial else duration
   }
