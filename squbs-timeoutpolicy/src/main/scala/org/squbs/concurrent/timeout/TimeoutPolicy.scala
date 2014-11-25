@@ -34,7 +34,7 @@ class Metrics(private var _initial: FiniteDuration) {
 
   private def sumSquare(time: Long) {
     if (_totalCount > 1) {
-      val y = _totalCount * time - totalTime
+      val y = _totalCount * time - _totalTime
       _square = _square + y * y / (_totalCount * (_totalCount - 1).toDouble)
     } else _square = time
   }
