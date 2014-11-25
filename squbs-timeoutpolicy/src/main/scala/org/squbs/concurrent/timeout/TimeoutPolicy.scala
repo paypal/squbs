@@ -50,7 +50,7 @@ abstract class TimeoutPolicy(initial: FiniteDuration) {
   }
 
   def execute[T](f: FiniteDuration => T): T = {
-    val tx = this.start
+    val tx = this.transaction
     try {
       f(tx.waitTime)
     } finally {
@@ -58,7 +58,7 @@ abstract class TimeoutPolicy(initial: FiniteDuration) {
     }
   }
 
-  def start = new TimeoutTransaction()
+  def transaction = new TimeoutTransaction()
 
 
   /**
