@@ -176,18 +176,22 @@ object TimeoutPolicy {
    * @param rule
    * @return
    */
-  def apply(name: String, initial: FiniteDuration, debug: FiniteDuration = 1000 seconds, rule: TimeoutRule): TimeoutPolicy = if (debugMode) {
-    new FixedTimeoutPolicy(debug)
-  } else {
-    val policy = rule match {
-      case FixedTimeoutRule | null => new FixedTimeoutPolicy(initial)
-      case SigmaTimeoutRule(unit) => new EmpiricalTimeoutPolicy(initial, unit)
-      case r: PercentileTimeoutRule => new EmpiricalTimeoutPolicy(initial, r.unit)
+  def apply(name: String, initial: FiniteDuration, rule: TimeoutRule, debug: FiniteDuration = 1000 seconds): TimeoutPolicy = {
+    require(initial != null, "initial is required")
+    require(debug != null, "debug is required")
+    if (debugMode) {
+      new FixedTimeoutPolicy(debug)
+    } else {
+      val policy = rule match {
+        case FixedTimeoutRule | null => new FixedTimeoutPolicy(initial)
+        case SigmaTimeoutRule(unit) => new EmpiricalTimeoutPolicy(initial, unit)
+        case r: PercentileTimeoutRule => new EmpiricalTimeoutPolicy(initial, r.unit)
+      }
+
+      if (name != null) policyMap.put(name, policy)
+
+      policy
     }
-
-    policyMap.put(name, policy)
-
-    policy
   }
 
   /**
