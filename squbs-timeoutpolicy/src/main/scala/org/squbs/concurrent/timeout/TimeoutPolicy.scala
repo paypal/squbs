@@ -106,14 +106,14 @@ class FixedTimeoutPolicy(name: String, initial: FiniteDuration)(implicit ec:Exec
  * @param initial
  * @param sigmaUnits
  */
-class EmpiricalTimeoutPolicy(name: String, initial: FiniteDuration, sigmaUnits: Double, miniSamples: Int)(implicit ec:ExecutionContext) extends TimeoutPolicy(name, initial)(ec) {
-  require(miniSamples > 0, "miniSamples should be positive")
+class EmpiricalTimeoutPolicy(name: String, initial: FiniteDuration, sigmaUnits: Double, minSamples: Int)(implicit ec:ExecutionContext) extends TimeoutPolicy(name, initial)(ec) {
+  require(minSamples > 0, "miniSamples should be positive")
   require(sigmaUnits > 0, "sigmaUnits should be positive")
 
   override def waitTime: FiniteDuration = {
 
     val metrics = this.metrics
-    val waitTime = if (metrics.totalCount > miniSamples) {
+    val waitTime = if (metrics.totalCount > minSamples) {
       val standardDeviation = metrics.standardDeviation
       val averageTime = metrics.averageTime
       (averageTime + sigmaUnits * standardDeviation).toLong nanoseconds
@@ -160,7 +160,7 @@ object TimeoutPolicy extends SLF4JLogging{
    * @param rule
    * @return
    */
-  def apply(name: String, initial: FiniteDuration, rule: TimeoutRule, debug: FiniteDuration = 1000 seconds, miniSamples: Int = 1000)(implicit ec: ExecutionContext): TimeoutPolicy = {
+  def apply(name: String, initial: FiniteDuration, rule: TimeoutRule, debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000)(implicit ec: ExecutionContext): TimeoutPolicy = {
     require(initial != null, "initial is required")
     require(debug != null, "debug is required")
     if (debugMode) {
@@ -169,8 +169,8 @@ object TimeoutPolicy extends SLF4JLogging{
     } else {
       val policy = rule match {
         case FixedTimeoutRule | null => new FixedTimeoutPolicy(name, initial)(ec)
-        case SigmaTimeoutRule(unit) => new EmpiricalTimeoutPolicy(name, initial, unit, miniSamples)(ec)
-        case r: PercentileTimeoutRule => new EmpiricalTimeoutPolicy(name, initial, r.unit, miniSamples)(ec)
+        case SigmaTimeoutRule(unit) => new EmpiricalTimeoutPolicy(name, initial, unit, minSamples)(ec)
+        case r: PercentileTimeoutRule => new EmpiricalTimeoutPolicy(name, initial, r.unit, minSamples)(ec)
       }
 
       if (name != null) policyMap.put(name, policy)
