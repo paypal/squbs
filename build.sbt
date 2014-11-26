@@ -16,7 +16,7 @@ fork in Test in ThisBuild := true
 
 parallelExecution in ScoverageTest in ThisBuild := false
 
-parallelExecution in Test in ThisBuild := false
+parallelExecution in ThisBuild := false
 
 updateOptions in ThisBuild := updateOptions.value.withConsolidatedResolution(true)
 
