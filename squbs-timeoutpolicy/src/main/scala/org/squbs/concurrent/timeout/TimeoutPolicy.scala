@@ -1,7 +1,6 @@
 package org.squbs.concurrent.timeout
 
 import java.lang.management.ManagementFactory
-import java.util.concurrent.TimeUnit
 import MathUtil._
 
 
@@ -20,7 +19,8 @@ case class Metrics(initial: FiniteDuration, totalTime: Long, totalCount: Int, ti
 
 }
 
-abstract class TimeoutPolicy(initial: FiniteDuration) {
+abstract class TimeoutPolicy(name: String, initial: FiniteDuration) {
+  require(initial != null, "initial duration is required")
   private var _totalCount = 0
 
   private var _totalTime = 0L
@@ -103,8 +103,7 @@ abstract class TimeoutPolicy(initial: FiniteDuration) {
   }
 }
 
-class FixedTimeoutPolicy(timeout: FiniteDuration) extends TimeoutPolicy(timeout) {
-
+class FixedTimeoutPolicy(name: String, initial: FiniteDuration) extends TimeoutPolicy(name, initial) {
   override def waitTime: FiniteDuration = _initial
 
 }
@@ -113,24 +112,25 @@ class FixedTimeoutPolicy(timeout: FiniteDuration) extends TimeoutPolicy(timeout)
  * Timeout Policy by following sigma rules
  * http://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule
  * @param initial
- * @param unit
+ * @param sigmaUnits
  */
-class EmpiricalTimeoutPolicy(initial: FiniteDuration, unit: Double) extends TimeoutPolicy(initial) {
+class EmpiricalTimeoutPolicy(name: String, initial: FiniteDuration, sigmaUnits: Double, miniSamples: Int) extends TimeoutPolicy(name, initial) {
+  require(miniSamples > 0, "miniSamples should be positive")
+  require(sigmaUnits > 0, "sigmaUnits should be positive")
 
   override def waitTime: FiniteDuration = {
 
     val metrics = this.metrics
-    val waitTime = if (metrics.totalCount > 1) {
+    val waitTime = if (metrics.totalCount > miniSamples) {
       val standardDeviation = metrics.standardDeviation
       val averageTime = metrics.averageTime
-      FiniteDuration((averageTime + unit * standardDeviation).toLong, TimeUnit.NANOSECONDS)
+      (averageTime + sigmaUnits * standardDeviation).toLong nanoseconds
     } else metrics.initial
     if (waitTime > metrics.initial) metrics.initial else waitTime
   }
 }
 
-trait TimeoutRule {
-}
+trait TimeoutRule
 
 object FixedTimeoutRule extends TimeoutRule
 
@@ -168,16 +168,16 @@ object TimeoutPolicy {
    * @param rule
    * @return
    */
-  def apply(name: String, initial: FiniteDuration, rule: TimeoutRule, debug: FiniteDuration = 1000 seconds): TimeoutPolicy = {
+  def apply(name: String, initial: FiniteDuration, rule: TimeoutRule, debug: FiniteDuration = 1000 seconds, miniSamples: Int = 1000): TimeoutPolicy = {
     require(initial != null, "initial is required")
     require(debug != null, "debug is required")
     if (debugMode) {
-      new FixedTimeoutPolicy(debug)
+      new FixedTimeoutPolicy(name, debug)
     } else {
       val policy = rule match {
-        case FixedTimeoutRule | null => new FixedTimeoutPolicy(initial)
-        case SigmaTimeoutRule(unit) => new EmpiricalTimeoutPolicy(initial, unit)
-        case r: PercentileTimeoutRule => new EmpiricalTimeoutPolicy(initial, r.unit)
+        case FixedTimeoutRule | null => new FixedTimeoutPolicy(name, initial)
+        case SigmaTimeoutRule(unit) => new EmpiricalTimeoutPolicy(name, initial, unit, miniSamples)
+        case r: PercentileTimeoutRule => new EmpiricalTimeoutPolicy(name, initial, r.unit, miniSamples)
       }
 
       if (name != null) policyMap.put(name, policy)
