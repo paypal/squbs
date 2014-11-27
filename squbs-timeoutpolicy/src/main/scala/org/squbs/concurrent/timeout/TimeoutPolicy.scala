@@ -3,7 +3,7 @@ package org.squbs.concurrent.timeout
 import java.lang.management.ManagementFactory
 import MathUtil._
 import akka.agent.Agent
-import akka.event.slf4j.{SLF4JLogging, Logger}
+import akka.event.slf4j.SLF4JLogging
 
 
 import scala.concurrent.ExecutionContext
@@ -14,7 +14,7 @@ import scala.math._
  * Created by miawang on 11/21/14.
  */
 
-case class Metrics(name:String, initial: FiniteDuration, totalTime: Long = 0L, totalCount: Int = 0, timeoutCount: Int = 0, sumSquares: Double = 0.0) {
+case class Metrics(name:String, initial: FiniteDuration, startOverCount: Int, totalTime: Double = 0.0, totalCount: Int = 0, timeoutCount: Int = 0, sumSquares: Double = 0.0) {
 
   lazy val standardDeviation = if (totalCount > 0) sqrt(sumSquares / totalCount) else 0
 
@@ -22,10 +22,18 @@ case class Metrics(name:String, initial: FiniteDuration, totalTime: Long = 0L, t
 
 }
 
-abstract class TimeoutPolicy(name: String, initial: FiniteDuration)(implicit ec: ExecutionContext) extends SLF4JLogging{
+/**
+ *
+ * @param name name of the policy
+ * @param initial initial(also max) value of the timeout duration
+ * @param startOverCount max total transaction count for start over the statistics
+ * @param ec
+ */
+abstract class TimeoutPolicy(name: String, initial: FiniteDuration, startOverCount: Int)(implicit ec: ExecutionContext) extends SLF4JLogging{
   require(initial != null, "initial duration is required")
+  require(startOverCount > 0, "slidePoint should be positive")
 
-  private val agent = Agent(Metrics(name, initial))
+  private val agent = Agent(Metrics(name, initial, startOverCount))
 
   private[timeout] def waitTime: FiniteDuration
 
@@ -42,7 +50,7 @@ abstract class TimeoutPolicy(name: String, initial: FiniteDuration)(implicit ec:
       val timeTaken = System.nanoTime() - start
       if (timeTaken < 0) {
         //TODO only happened if user forgot to call waitTime first, should we throw an exception out?
-        log.warn("call end without call waitTime, ignore this transaction")
+        log.warn("call end without call waitTime first, ignore this transaction")
       } else {
         val isTimeout = timeTaken > timeout.toNanos
         TimeoutPolicy.this.update(timeTaken, isTimeout)
@@ -68,34 +76,40 @@ abstract class TimeoutPolicy(name: String, initial: FiniteDuration)(implicit ec:
    * @param initial
    * @return
    */
-  def reset(initial: FiniteDuration): Metrics = {
+  def reset(initial: FiniteDuration, newStartOverCount: Int = 0): Metrics = {
     val previous = agent()
-    val init = if (initial != null) initial else metrics.initial
-    agent send Metrics(name, init)
+    val init = if (initial != null) initial else previous.initial
+    val slidePoint = if (newStartOverCount > 0) newStartOverCount else previous.startOverCount
+    agent send Metrics(name, init, slidePoint)
     previous
   }
 
   def metrics = agent()
 
-  private[timeout] def update(time: Long, isTimeout: Boolean): Unit = {
+  private[timeout] def update(time: Double, isTimeout: Boolean): Unit = {
     agent send(m => {
-      val timeoutCount = if (isTimeout) m.timeoutCount + 1 else m.timeoutCount
-      val totalCount = m.totalCount + 1
-      val totalTime = m.totalTime + time
-      val sumSquares = if (totalCount > 1) {
-        val y = totalCount * time - totalTime
-        val s = m.sumSquares + y * y / (totalCount * (totalCount - 1).toDouble)
-        if (s < 0) {
-          log.warn(s"addSumSquare(s=${m.sumSquares}, n=${totalCount}, t=${totalTime}, x=${time}) returned negative")
-          m.sumSquares
-        } else s
-      } else time
-      m.copy(totalTime = totalTime, totalCount = totalCount, timeoutCount = timeoutCount, sumSquares = sumSquares)
+      if (m.totalCount < m.startOverCount) {
+        val timeoutCount = if (isTimeout) m.timeoutCount + 1 else m.timeoutCount
+        val totalCount = m.totalCount + 1
+        val totalTime = m.totalTime + time
+        val sumSquares = if (totalCount > 1) {
+          val y = totalCount * time - totalTime
+          val s = m.sumSquares + y * y / (totalCount.toDouble * (totalCount - 1))
+          if (s < 0) {
+            log.warn(s"addSumSquare(s=${m.sumSquares}, n=${totalCount}, t=${totalTime}, x=${time}) returned negative")
+            m.sumSquares
+          } else s
+        } else m.sumSquares
+        m.copy(totalTime = totalTime, totalCount = totalCount, timeoutCount = timeoutCount, sumSquares = sumSquares)
+      } else {
+        // reach the max value, need to reset
+        m.copy(totalTime = time, totalCount = 1, timeoutCount = (if (isTimeout) 1 else 0), sumSquares = 0.0)
+      }
     })
   }
 }
 
-class FixedTimeoutPolicy(name: String, initial: FiniteDuration)(implicit ec:ExecutionContext) extends TimeoutPolicy(name, initial)(ec) {
+class FixedTimeoutPolicy(name: String, initial: FiniteDuration, startOverCount:Int)(implicit ec:ExecutionContext) extends TimeoutPolicy(name, initial, startOverCount)(ec) {
   override def waitTime: FiniteDuration = metrics.initial
 
 }
@@ -106,7 +120,7 @@ class FixedTimeoutPolicy(name: String, initial: FiniteDuration)(implicit ec:Exec
  * @param initial
  * @param sigmaUnits
  */
-class EmpiricalTimeoutPolicy(name: String, initial: FiniteDuration, sigmaUnits: Double, minSamples: Int)(implicit ec:ExecutionContext) extends TimeoutPolicy(name, initial)(ec) {
+class EmpiricalTimeoutPolicy(name: String, initial: FiniteDuration, startOverCount:Int, sigmaUnits: Double, minSamples: Int)(implicit ec:ExecutionContext) extends TimeoutPolicy(name, initial, startOverCount)(ec) {
   require(minSamples > 0, "miniSamples should be positive")
   require(sigmaUnits > 0, "sigmaUnits should be positive")
 
@@ -116,7 +130,7 @@ class EmpiricalTimeoutPolicy(name: String, initial: FiniteDuration, sigmaUnits: 
     val waitTime = if (metrics.totalCount > minSamples) {
       val standardDeviation = metrics.standardDeviation
       val averageTime = metrics.averageTime
-      (averageTime + sigmaUnits * standardDeviation).toLong nanoseconds
+      (averageTime + sigmaUnits * standardDeviation).ceil nanoseconds
     } else metrics.initial
     if (waitTime > metrics.initial) metrics.initial else waitTime
   }
@@ -160,17 +174,17 @@ object TimeoutPolicy extends SLF4JLogging{
    * @param rule
    * @return
    */
-  def apply(name: String, initial: FiniteDuration, rule: TimeoutRule, debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000)(implicit ec: ExecutionContext): TimeoutPolicy = {
+  def apply(name: String, initial: FiniteDuration, rule: TimeoutRule, debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)(implicit ec: ExecutionContext): TimeoutPolicy = {
     require(initial != null, "initial is required")
     require(debug != null, "debug is required")
     if (debugMode) {
       log.warn("running in debug mode, use the debug duration instead")
-      new FixedTimeoutPolicy(name, debug)(ec)
+      new FixedTimeoutPolicy(name, debug, startOverCount)
     } else {
       val policy = rule match {
-        case FixedTimeoutRule | null => new FixedTimeoutPolicy(name, initial)(ec)
-        case SigmaTimeoutRule(unit) => new EmpiricalTimeoutPolicy(name, initial, unit, minSamples)(ec)
-        case r: PercentileTimeoutRule => new EmpiricalTimeoutPolicy(name, initial, r.unit, minSamples)(ec)
+        case FixedTimeoutRule | null => new FixedTimeoutPolicy(name, initial, startOverCount)
+        case SigmaTimeoutRule(unit) => new EmpiricalTimeoutPolicy(name, initial, startOverCount, unit, minSamples)
+        case r: PercentileTimeoutRule => new EmpiricalTimeoutPolicy(name, initial, startOverCount, r.unit, minSamples)
       }
 
       if (name != null) policyMap.put(name, policy)
