@@ -39,11 +39,9 @@ abstract class TimeoutPolicy(name: String, initial: FiniteDuration, startOverCou
 
   class TimeoutTransaction() {
     lazy val start = System.nanoTime()
-    lazy val timeout = TimeoutPolicy.this.waitTime
-
-    def waitTime: FiniteDuration = {
-      start // set the start time
-      timeout
+    lazy val waitTime = {
+      start
+      TimeoutPolicy.this.waitTime
     }
 
     def end: Unit = {
@@ -52,7 +50,7 @@ abstract class TimeoutPolicy(name: String, initial: FiniteDuration, startOverCou
         //TODO only happened if user forgot to call waitTime first, should we throw an exception out?
         log.warn("call end without call waitTime first, ignore this transaction")
       } else {
-        val isTimeout = timeTaken > timeout.toNanos
+        val isTimeout = timeTaken > waitTime.toNanos
         TimeoutPolicy.this.update(timeTaken, isTimeout)
       }
 
@@ -76,7 +74,7 @@ abstract class TimeoutPolicy(name: String, initial: FiniteDuration, startOverCou
    * @param initial
    * @return
    */
-  def reset(initial: FiniteDuration, newStartOverCount: Int = 0): Metrics = {
+  def reset(initial: FiniteDuration = null, newStartOverCount: Int = 0): Metrics = {
     val previous = agent()
     val init = if (initial != null) initial else previous.initial
     val slidePoint = if (newStartOverCount > 0) newStartOverCount else previous.startOverCount
@@ -174,7 +172,7 @@ object TimeoutPolicy extends SLF4JLogging{
    * @param rule
    * @return
    */
-  def apply(name: String, initial: FiniteDuration, rule: TimeoutRule, debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)(implicit ec: ExecutionContext): TimeoutPolicy = {
+  def apply(name: String, initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule, debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)(implicit ec: ExecutionContext): TimeoutPolicy = {
     require(initial != null, "initial is required")
     require(debug != null, "debug is required")
     if (debugMode) {
@@ -205,8 +203,8 @@ object TimeoutPolicy extends SLF4JLogging{
    * @param initial new initial value, use previously if it's null
    * @return previous metrics
    */
-  def resetPolicy(name: String, initial: FiniteDuration): Option[Metrics] = {
-    policyMap.get(name).map(_.reset(initial))
+  def resetPolicy(name: String, initial: FiniteDuration = null, startOverCount: Int = 0): Option[Metrics] = {
+    policyMap.get(name).map(_.reset(initial, startOverCount))
   }
 }
 

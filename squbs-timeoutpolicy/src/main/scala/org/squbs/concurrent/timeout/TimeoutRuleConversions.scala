@@ -26,11 +26,12 @@ trait TimeoutRuleConversions extends Any {
    */
   def percent = percentileRule
 
-  def sigma[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(sigma)
-  def σ[C](c: C)(implicit ev: Classifier[C]): ev.R = sigma(c)
-  def `%ile`[C](c: C)(implicit ev: Classifier[C]): ev.R = sigma(c)
-
   def percent[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(percent)
+
+  def sigma[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(sigma)
+  def σ[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(sigma)
+  def `%ile`[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(sigma)
+
 }
 
 object TimeoutRuleConversions {
