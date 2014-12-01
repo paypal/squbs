@@ -37,7 +37,10 @@ private[actormonitor] object ActorMonitorBean {
 
   def unregisterBean(actor: ActorRef) (implicit context: ActorContext) = unregister(objName(actor))
 
-  def objName(actor: ActorRef) (implicit context: ActorContext) = prefix + Pattern + actor.path.toString.split(s"${actor.path.root}user/").mkString("")
+  def objName(actor: ActorRef) (implicit context: ActorContext) = {
+    prefix + Pattern + actor.path.toString.split(s"${actor.path.root}").mkString("")
+
+  }
 
   def getDescendant(actor: ActorRef) = getPrivateValue(actor, List("children")).map(_.asInstanceOf[Iterable[ActorRef]]).map(_.toList).getOrElse(List.empty[ActorRef])
 
