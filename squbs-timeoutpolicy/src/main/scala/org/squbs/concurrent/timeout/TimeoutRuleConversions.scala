@@ -14,11 +14,7 @@ trait TimeoutRuleConversions extends Any {
    */
   def σ       = sigma
 
-  /**
-   * another alias of sigma
-   * @return
-   */
-  def `%ile`  = sigma
+
 
   /**
    * I'd like to use % directly, however, it's conflict with default operator % on number
@@ -26,11 +22,19 @@ trait TimeoutRuleConversions extends Any {
    */
   def percent = percentileRule
 
-  def percent[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(percent)
+  /**
+   * alias of percent
+   * @return
+   */
+  def `%ile`  = percentileRule
+
+
 
   def sigma[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(sigma)
   def σ[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(sigma)
-  def `%ile`[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(sigma)
+
+  def `%ile`[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(percentileRule)
+  def percent[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(percent)
 
 }
 

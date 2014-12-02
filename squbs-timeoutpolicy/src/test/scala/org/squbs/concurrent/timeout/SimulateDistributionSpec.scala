@@ -14,7 +14,7 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
 
   "Random.nextGaussian" should "work as expect" in {
     import scala.concurrent.ExecutionContext.Implicits.global
-    val timeoutPolicy = TimeoutPolicy("test", initial = 1 seconds, rule = 3 `%ile`)
+    val timeoutPolicy = TimeoutPolicy("test", initial = 1 seconds, rule = 3 sigma)
     val sigma = 30
     val mean = 50
     for (i <- 0 until 10000) {
@@ -50,7 +50,7 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
     val delay = getDelay(truncate = truncate, cycleMin = 20 millis, cycleMean = 30 millis, cycleMax = 80 milliseconds, random = new TestRandom())
 
     import scala.concurrent.ExecutionContext.Implicits.global
-    val timeoutPolicy = TimeoutPolicy("test", initial = 1 seconds, rule = 3 `%ile`)
+    val timeoutPolicy = TimeoutPolicy("test", initial = 1 seconds, rule = 3 sigma)
     for (i <- 0 until 10000) {
       val tx = timeoutPolicy.transaction
       Try{
