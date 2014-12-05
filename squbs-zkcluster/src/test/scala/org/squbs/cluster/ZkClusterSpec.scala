@@ -29,11 +29,13 @@ import org.squbs.unicomplex.{ConfigUtil, Unicomplex}
 
 import scala.concurrent.duration._
 
+/**
+ * Created by huzhou on 5/12/14.
+ */
 class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   var preserve:Option[String] = None
   val conf = new File(Unicomplex(system).externalConfigDir, "zkcluster.conf")
-  var zk:ZkActorForTestOnly = null
 
   override def beforeAll = {
 
@@ -44,15 +46,12 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     Files.createParentDirs(conf)
     Files.write(
       s"""
-          |zkCluster {
-          |    connectionString = "localhost:2181"
-          |    namespace = "zkclusterunitest-${System.nanoTime}"
-          |    segments = 16
-          |}
-        """.stripMargin, conf, Charsets.UTF_8)
-
-    zk = new ZkActorForTestOnly(Unicomplex(system).externalConfigDir)
-    zk.startup(2181)
+|zkCluster {
+| connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-3e34.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
+| namespace = "zkclusterunitest-${System.nanoTime}"
+| segments = 16
+|}
+""".stripMargin, conf, Charsets.UTF_8)
   }
 
   override def afterAll = {
@@ -63,24 +62,13 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
 
     safelyDiscard("")(zkClient)
 
-    zk.postStop
-
-    try {
-      Runtime.getRuntime.exec("netstat -anp | grep :2181 | grep ESTABLISHED | awk {'print $7}' | awk -F '/' {'print $1'} | xargs kill -9")
-    }
-    catch{
-      case e:Exception => //ignored
-    }
-
-    system.awaitTermination
-
     //find zk process if it sticks
 
     preserve match {
       case None => conf.delete
       case Some(value) => Files.write(value, conf, Charsets.UTF_8)
     }
-    system.awaitTermination()
+    system.awaitTermination
 
     println("ActorSystem zkcluster shutdown.")
   }
@@ -153,6 +141,8 @@ class ZkClusterSpec extends TestKit(ActorSystem("zkcluster")) with FlatSpecLike 
     if (members.nonEmpty) {
       extension.zkClientWithNs.delete.forPath(s"$zkPath/${members.head}")
       expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq.empty[Address]))
+      //this is because we now restore the partition
+      expectMsgType[ZkPartitionDiff].diff should equal(Map(partitionKey -> Seq(extension.zkAddress)))
     }
 
     //this forces to trigger a rebalance
