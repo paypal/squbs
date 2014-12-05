@@ -245,14 +245,14 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
       import ActorMonitorSpec._
       assert(getActorMonitorConfigBean("MaxCount") == 500)
       assert(getActorMonitorConfigBean("MaxChildrenDisplay") == 20)
-      assert(getActorMonitorConfigBean("Count") == 12)
+      val originalNum = getActorMonitorConfigBean("Count").asInstanceOf[Int]
       assert(before != null)
       system.actorSelection("/user/TestCube/TestActor1") ! PoisonPill
       receiveOne(2 seconds) match {
         case msg =>
             val after = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor")
             assert(after == null)
-            assert(getActorMonitorConfigBean("Count") == 11)
+            assert(getActorMonitorConfigBean("Count") == originalNum - 1)
       }
     }
 
