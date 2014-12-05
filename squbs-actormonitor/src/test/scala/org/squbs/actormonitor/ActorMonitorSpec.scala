@@ -39,7 +39,7 @@ import scala.concurrent.duration._
 
 object ActorMonitorSpec {
 
-  val dummyJarsDir = "src/test/resources/classpaths"
+  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
   val classPaths = Array(
    "ActorMonitorCube",
@@ -100,159 +100,159 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
   "ActorMonitor" must {
 
     "1) getActor of TestCube/TestActor" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor", "Actor")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Actor")
       assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"))
     }
 
     "2.1) getClassName of TestCube/TestActor" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor", "ClassName")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "ClassName")
       assert(bean == "org.squbs.actormonitor.testcube.TestActor")
     }
 
     "2.2) getRouteConfig of TestCube/TestActor" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor", "RouteConfig")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "RouteConfig")
       assert(bean == "NoRouter")
     }
 
     "2.3) getParent of TestCube/TestActor" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor", "Parent")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Parent")
       assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube#"))
     }
 
     "2.4) getChildren of TestCube/TestActor" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor", "Children")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Children")
       assert(bean == "")
     }
 
     "2.5) getDispatcher of TestCube/TestActor" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor", "Dispatcher")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Dispatcher")
       assert(bean == "akka.actor.default-dispatcher")
     }
 
     "2.6) getMailBoxSize of TestCube/TestActor" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor", "MailBoxSize")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "MailBoxSize")
       assert(bean == "0")
     }
 
     "3.0) getActor of TestCube" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube", "Actor")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Actor")
       assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube#"))
     }
 
     "3.1) check ActorBean ClassName of TestCube" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube", "ClassName")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "ClassName")
       assert(bean == "org.squbs.unicomplex.CubeSupervisor")
     }
 
     "3.2) getRouteConfig of TestCube" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube", "RouteConfig")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "RouteConfig")
       assert(bean == "NoRouter")
     }
 
     "3.3) getParent of TestCube" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube", "Parent")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Parent")
       assert(bean == "Actor[akka://ActorMonitorSpec/user]")
     }
 
     "3.4) getChildren of TestCube" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube", "Children")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Children")
       assert(bean.contains("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#") && bean.contains("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"))
     }
 
     "3.5) getDispatcher of TestCube" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube", "Dispatcher")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Dispatcher")
       assert(bean == "akka.actor.default-dispatcher")
     }
 
     "3.6) getMailBoxSize of TestCube" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube", "MailBoxSize")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "MailBoxSize")
       assert(bean == "N/A")
     }
 
     "4.0) getActor of TestCube/TestActorWithRoute" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute", "Actor")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Actor")
       assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"))
     }
 
     "4.1) getClassName of TestCube/TestActorWithRoute" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute", "ClassName")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "ClassName")
       assert(bean == "akka.routing.RouterActor")
     }
 
     "4.2) getRouteConfig of TestCube/TestActorWithRoute" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute", "RouteConfig")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "RouteConfig")
       assert(bean == "RoundRobinPool(1,Some(DefaultResizer(1,10,1,0.2,0.3,0.1,10)),OneForOneStrategy(-1,Duration.Inf,true),akka.actor.default-dispatcher,false)")
     }
 
     "4.3) getParent of TestCube/TestActorWithRoute" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute", "Parent")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Parent")
       assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube#"))
     }
 
     "4.4) getChildren of TestCube/TestActorWithRoute" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute", "Children")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Children")
       assert(bean.contains("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#"))
     }
 
     "4.5) getDispatcher of TestCube/TestActorWithRoute" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor", "Dispatcher")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Dispatcher")
       assert(bean == "akka.actor.default-dispatcher")
     }
 
     "4.6) getMailBoxSize of TestCube/TestActorWithRoute" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor", "MailBoxSize")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "MailBoxSize")
       assert(bean == "0")
     }
 
     "5.0) getActor of TestCube/TestActorWithRoute/$a" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute/$a", "Actor")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Actor")
       assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#"))
     }
 
     "5.1) getClassName of TestCube/TestActorWithRoute/$a" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute/$a", "ClassName")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "ClassName")
       assert(bean == "org.squbs.actormonitor.testcube.TestActorWithRoute")
     }
 
     "5.2) getRouteConfig of TestCube/TestActorWithRoute/$a" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute/$a", "RouteConfig")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "RouteConfig")
       assert(bean == "NoRouter")
     }
 
     "5.3) getParent of TestCube/TestActorWithRoute/$a" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute/$a", "Parent")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Parent")
       assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"))
     }
 
     "5.4) getChildren of TestCube/TestActorWithRoute/$a" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute/$a", "Children")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Children")
       assert(bean == "")
     }
 
     "5.5) getDispatcher of TestCube/TestActorWithRoute/$a" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute/$a", "Dispatcher")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Dispatcher")
       assert(bean == "blocking-dispatcher")
     }
 
     "5.6) getMailBoxSize of TestCube/TestActorWithRoute/$a" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActorWithRoute/$a", "MailBoxSize")
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "MailBoxSize")
       assert(bean == "0")
     }
 
 
     "6.0) getBean after actor has been stop" in {
-      val before = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor1", "Actor")
+      val before = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor")
       import ActorMonitorSpec._
       assert(getActorMonitorConfigBean("MaxCount") == 500)
       assert(getActorMonitorConfigBean("MaxChildrenDisplay") == 20)
-      assert(getActorMonitorConfigBean("Count") == 8)
+      assert(getActorMonitorConfigBean("Count") == 12)
       assert(before != null)
       system.actorSelection("/user/TestCube/TestActor1") ! PoisonPill
       receiveOne(2 seconds) match {
         case msg =>
-            val after = ActorMonitorSpec.getActorMonitorBean("TestCube/TestActor1", "Actor")
+            val after = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor")
             assert(after == null)
-            assert(getActorMonitorConfigBean("Count") == 7)
+            assert(getActorMonitorConfigBean("Count") == 11)
       }
     }
 

@@ -33,7 +33,7 @@ import scala.concurrent.duration._
  */
 
 object StopAndStartCubeSpec {
-  val dummyJarsDir = "src/test/resources/classpaths"
+  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
   val classPaths = Array(
     "DummyCube",

@@ -40,7 +40,7 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 object StreamTestSpec {
-  val dummyJarsDir = "src/test/resources/classpaths"
+  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
   val classPaths = Array(
     "StreamCube",
