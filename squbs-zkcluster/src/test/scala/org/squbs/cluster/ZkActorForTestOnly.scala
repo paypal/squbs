@@ -19,10 +19,11 @@ package org.squbs.cluster
 
 import java.io.File
 import java.net.InetAddress
+
 import com.google.common.base.Charsets
 import com.google.common.io.Files
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.apache.zookeeper.server.ZooKeeperServerMain
-import com.typesafe.scalalogging.LazyLogging
 
 class ZkActorForTestOnly(val externalConfigDir:String) extends LazyLogging {
 

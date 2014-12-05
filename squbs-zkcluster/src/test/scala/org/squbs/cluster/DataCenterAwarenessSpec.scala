@@ -29,15 +29,15 @@ class DataCenterAwarenessSpec extends FlatSpec with Matchers with MockitoSugar {
 
   val myAddress = Address("akka.tcp", "pubsub", "10.100.194.253", 8080)
   val correlates = Seq(Address("akka.tcp", "pubsub", "10.100.65.147", 8080),
-                       Address("akka.tcp", "pubsub", "10.100.98.134", 8080))
-  val distances  = Seq(Address("akka.tcp", "pubsub", "10.210.45.119", 8080),
-                       Address("akka.tcp", "pubsub", "10.210.79.201", 8080))
+    Address("akka.tcp", "pubsub", "10.100.98.134", 8080))
+  val distances = Seq(Address("akka.tcp", "pubsub", "10.210.45.119", 8080),
+    Address("akka.tcp", "pubsub", "10.210.79.201", 8080))
 
   "DefaultCorrelation" should "extract ipv4 subnet domain" in {
 
     val mockAddress = Address("akka.tcp", "pubsub", "10.100.194.253", 8080)
 
-    DefaultCorrelation().common(mockAddress) should equal("10.100")
+    DefaultCorrelation().common(mockAddress) should equal("pubsub@10.100")
   }
 
   "CorrelateRoundRobinRoutingLogic" should "prefer routees that correlate with itself" in {

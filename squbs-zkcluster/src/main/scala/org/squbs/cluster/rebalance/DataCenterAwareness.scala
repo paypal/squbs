@@ -17,15 +17,14 @@
  */
 package org.squbs.cluster
 
-import com.typesafe.scalalogging.LazyLogging
+import akka.actor.{ActorSystem, Address, AddressFromURIString}
+import akka.dispatch.Dispatchers
+import akka.routing.{ActorSelectionRoutee, _}
+import akka.util.ByteString
+import com.typesafe.scalalogging.slf4j.LazyLogging
+
 import scala.annotation.tailrec
 import scala.collection.immutable
-import java.net._
-import akka.actor.{ActorSystem, ActorPath, Address}
-import akka.routing._
-import akka.dispatch.Dispatchers
-import akka.routing.ActorSelectionRoutee
-import akka.util.ByteString
 
 trait Correlation[C] {
 
@@ -34,8 +33,7 @@ trait Correlation[C] {
 
 class DefaultCorrelation extends Correlation[String] {
   //for 10.100.254.73 ipv4, we use "10.100" as the common identifier for correlation
-  override def common(address:Address) =
-    InetAddress.getByName(address.host.getOrElse("127.0.0.1")).getHostAddress.split('.').take(2).mkString(".")
+  override def common(address:Address) = address.hostPort.split('.').take(2).mkString(".")
 }
 
 object DefaultCorrelation {
@@ -44,15 +42,18 @@ object DefaultCorrelation {
 
 }
 
-class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlation[C]) extends RoutingLogic with LazyLogging {
+class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlation[C])
+  extends RoutingLogic with LazyLogging {
 
   val fallback = RoundRobinRoutingLogic()
 
   override def select(message: Any, routees: immutable.IndexedSeq[Routee]): Routee = {
 
     val candidates = routees.filter{
-      case ActorSelectionRoutee(selection) if !selection.pathString.startsWith("/") =>
-        correlation.common(zkAddress) == correlation.common(ActorPath.fromString(selection.pathString).address)
+      case ActorSelectionRoutee(selection) if selection.anchorPath != null =>
+        correlation.common(zkAddress) == correlation.common(selection.anchorPath.address)
+      case ActorSelectionRoutee(selection) if !selection.pathString.startsWith("/")=>
+        correlation.common(zkAddress) == correlation.common(AddressFromURIString(selection.pathString))
       case _ =>
         true
     }
