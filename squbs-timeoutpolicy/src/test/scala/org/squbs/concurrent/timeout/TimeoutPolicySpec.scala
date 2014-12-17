@@ -25,7 +25,7 @@ class TimeoutPolicySpec extends FlatSpecLike with Matchers{
 
     val sigmaPolicy = TimeoutPolicy("test", 1 seconds, 2 sigma, minSamples = 1)
 
-    TimeoutPolicy.policyMetrics.get("test") shouldNot be(null)
+    TimeoutPolicy.policyMetrics.get("test") shouldNot be(None)
   }
 
   "Run FixedTimeoutPolicy in function" should "work" in {
