@@ -27,23 +27,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.math._
 
-/**
- * the metrics case class for the TimeoutPolicy statistics
- * @param name same with TimeoutPolicy.name
- * @param initial initial value of the TimeoutPolicy
- * @param startOverCount max count for start over the statistics
- * @param totalTime sum time in nano-second of all of the transactions
- * @param totalCount total count of the transactions
- * @param timeoutCount count of timeout transactions
- * @param sumSquares
- */
-case class Metrics(name:String, initial: FiniteDuration, startOverCount: Int, totalTime: Double = 0.0, totalCount: Int = 0, timeoutCount: Int = 0, sumSquares: Double = 0.0) {
 
-  lazy val standardDeviation = if (totalCount > 0) sqrt(sumSquares / totalCount) else 0
-
-  lazy val averageTime = if (totalCount > 0) totalTime / totalCount else 0
-
-}
 
 /**
  *
@@ -100,33 +84,13 @@ abstract class TimeoutPolicy(name: String, initial: FiniteDuration, startOverCou
    */
   def reset(initial: Option[FiniteDuration] = None, newStartOverCount: Int = 0): Metrics = {
     val previous = agent()
-    val init = initial.getOrElse(previous.initial)
-    val slidePoint = if (newStartOverCount > 0) newStartOverCount else previous.startOverCount
-    agent send Metrics(name, init, slidePoint)
+    agent send {_.reset(initial, newStartOverCount)}
     previous
   }
 
   def metrics = agent()
 
-  private[timeout] def update(time: Double, isTimeout: Boolean): Unit = agent send{m =>
-    if (m.totalCount < m.startOverCount) {
-      val timeoutCount = if (isTimeout) m.timeoutCount + 1 else m.timeoutCount
-      val totalCount = m.totalCount + 1
-      val totalTime = m.totalTime + time
-      val sumSquares = if (totalCount > 1) {
-        val y = totalCount * time - totalTime
-        val s = m.sumSquares + y * y / (totalCount.toDouble * (totalCount - 1))
-        if (s < 0) {
-          log.warn(s"addSumSquare(s=${m.sumSquares}, n=$totalCount, t=$totalTime, x=$time) returned negative")
-          m.sumSquares
-        } else s
-      } else m.sumSquares
-      m.copy(totalTime = totalTime, totalCount = totalCount, timeoutCount = timeoutCount, sumSquares = sumSquares)
-    } else {
-      // reach the max value, need to reset
-      m.copy(totalTime = time, totalCount = 1, timeoutCount = if (isTimeout) 1 else 0, sumSquares = 0.0)
-    }
-  }
+  private[timeout] def update(time: Double, isTimeout: Boolean): Unit = agent send {_.update(time, isTimeout)}
 }
 
 class FixedTimeoutPolicy(name: String, initial: FiniteDuration, startOverCount:Int)(implicit ec:ExecutionContext) extends TimeoutPolicy(name, initial, startOverCount) {
