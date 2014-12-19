@@ -1,24 +1,35 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.concurrent.timeout
 
-import org.scalatest.{Matchers, FlatSpecLike}
-import org.squbs.concurrent.timeout._
+import org.scalatest.{FlatSpecLike, Matchers}
 
-import scala.concurrent.duration._
-
-/**
- * Created by miawang on 11/28/14.
- */
 class TimeoutRuleConversionsSpec extends FlatSpecLike with Matchers{
 
   "Implicit Conversions" should "work" in {
 
-    (1 sigma).asInstanceOf[StandardDeviationRule].unit should be(1.0)
-    (1 σ).asInstanceOf[StandardDeviationRule].unit should be(1.0)
+    (1 sigma).asInstanceOf[SigmaTimeoutRule].unit should be(1.0)
+    (1 σ).asInstanceOf[SigmaTimeoutRule].unit should be(1.0)
 
     // around 2.99
-    ((99.7 percent).asInstanceOf[StandardDeviationRule].unit * 10).round should be(30)
-    ((99.7 `%ile`).asInstanceOf[StandardDeviationRule].unit * 10).round should be(30)
-    ((99.7 percentile).asInstanceOf[StandardDeviationRule].unit * 10).round should be(30)
+    ((99.7 percent).asInstanceOf[SigmaTimeoutRule].unit * 10).round should be(30)
+    ((99.7 `%ile`).asInstanceOf[SigmaTimeoutRule].unit * 10).round should be(30)
+    ((99.7 percentile).asInstanceOf[SigmaTimeoutRule].unit * 10).round should be(30)
 
     fixedRule should be(FixedTimeoutRule)
   }

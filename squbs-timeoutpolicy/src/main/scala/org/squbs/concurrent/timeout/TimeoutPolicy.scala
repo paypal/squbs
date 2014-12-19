@@ -18,16 +18,12 @@
 package org.squbs.concurrent.timeout
 
 import java.lang.management.ManagementFactory
-import MathUtil._
+
 import akka.agent.Agent
 import akka.event.slf4j.SLF4JLogging
 
-
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.math._
-
-
 
 /**
  *
@@ -36,7 +32,8 @@ import scala.math._
  * @param startOverCount max total transaction count for start over the statistics
  * @param ec implicit parameter of ExecutionContext
  */
-abstract class TimeoutPolicy(name: String, initial: FiniteDuration, startOverCount: Int)(implicit ec: ExecutionContext) extends SLF4JLogging{
+abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, startOverCount: Int)
+                            (implicit ec: ExecutionContext) extends SLF4JLogging{
   require(initial != null, "initial duration is required")
   require(startOverCount > 0, "slidePoint should be positive")
 
@@ -93,7 +90,8 @@ abstract class TimeoutPolicy(name: String, initial: FiniteDuration, startOverCou
   private[timeout] def update(time: Double, isTimeout: Boolean): Unit = agent send {_.update(time, isTimeout)}
 }
 
-class FixedTimeoutPolicy(name: String, initial: FiniteDuration, startOverCount:Int)(implicit ec:ExecutionContext) extends TimeoutPolicy(name, initial, startOverCount) {
+class FixedTimeoutPolicy(name: Option[String], initial: FiniteDuration, startOverCount:Int)(implicit ec:ExecutionContext)
+    extends TimeoutPolicy(name, initial, startOverCount) {
   override def waitTime: FiniteDuration = metrics.initial
 
 }
@@ -107,7 +105,9 @@ class FixedTimeoutPolicy(name: String, initial: FiniteDuration, startOverCount:I
  * @param sigmaUnits unit of sigma, must be positive
  * @param minSamples min sample for the policy take effect
  */
-class EmpiricalTimeoutPolicy(name: String, initial: FiniteDuration, startOverCount:Int, sigmaUnits: Double, minSamples: Int)(implicit ec:ExecutionContext) extends TimeoutPolicy(name, initial, startOverCount) {
+class EmpiricalTimeoutPolicy(name: Option[String], initial: FiniteDuration, startOverCount:Int, sigmaUnits: Double,
+                             minSamples: Int)(implicit ec:ExecutionContext)
+    extends TimeoutPolicy(name, initial, startOverCount) {
   require(minSamples > 0, "miniSamples should be positive")
   require(sigmaUnits > 0, "sigmaUnits should be positive")
 
@@ -117,7 +117,7 @@ class EmpiricalTimeoutPolicy(name: String, initial: FiniteDuration, startOverCou
     val waitTime = if (metrics.totalCount > minSamples) {
       val standardDeviation = metrics.standardDeviation
       val averageTime = metrics.averageTime
-      (averageTime + sigmaUnits * standardDeviation).ceil nanoseconds
+      (averageTime + sigmaUnits * standardDeviation).ceil.nanoseconds
     } else metrics.initial
     if (waitTime > metrics.initial) metrics.initial else waitTime
   }
@@ -127,36 +127,31 @@ trait TimeoutRule
 
 object FixedTimeoutRule extends TimeoutRule
 
-trait StandardDeviationRule extends TimeoutRule {
-  /**
-   * unit of Standard Deviation
-   * @return
-   */
-  def unit: Double
-}
-
-case class SigmaTimeoutRule(unit: Double) extends StandardDeviationRule {
+case class SigmaTimeoutRule(unit: Double) extends TimeoutRule {
   require(unit > 0, "unit should be positive")
 }
 
-case class PercentileTimeoutRule(percent: Double) extends StandardDeviationRule {
-  require(percent > 0 && percent < 1, "percent should in (0-1)")
+object PercentileTimeoutRule {
 
   /**
-   * percent = erf(x/sqrt(2)), therefore, x = erfInv(percent) * (sqrt(2))
-   * http://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule
+   * Creates a SigmaTimeoutRule from percentiles.
+   * @param percent The percentile
+   * @return The new SigmaTimeoutRule based on these percentiles.
    */
-  val unit = erfInv(percent) * math.sqrt(2)
+  def apply(percent: Double) = {
+    require(percent > 0 && percent < 1, "percent should be in (0-1)")
+    new SigmaTimeoutRule(MathUtil.erfInv(percent) * math.sqrt(2))
+  }
 }
 
-object TimeoutPolicy extends SLF4JLogging{
+object TimeoutPolicy extends SLF4JLogging {
   val debugMode = ManagementFactory.getRuntimeMXBean.getInputArguments.toString.indexOf("jdwp") >= 0
 
   private val policyMap = new collection.mutable.WeakHashMap[String, TimeoutPolicy]
 
   /**
-   *
-   * @param name name of the timeout policy
+   * Creates a new TimeoutPolicy
+   * @param name optional name of the timeout policy
    * @param initial the initial value of timeout duration, also would be the max value on using non-FixedTimeoutRule
    * @param rule rule for the timeout policy, default is FixedTimeoutRule
    * @param debug the timeout duration in debug mode
@@ -164,7 +159,9 @@ object TimeoutPolicy extends SLF4JLogging{
    * @param startOverCount the max count for start over the statistics, default is Int.MaxValue
    * @return timeout policy
    */
-  def apply(name: String, initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule, debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)(implicit ec: ExecutionContext): TimeoutPolicy = {
+  def apply(name: Option[String], initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
+            debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)
+           (implicit ec: ExecutionContext): TimeoutPolicy = {
     require(initial != null, "initial is required")
     require(debug != null, "debug is required")
     if (debugMode) {
@@ -174,23 +171,26 @@ object TimeoutPolicy extends SLF4JLogging{
       val policy = rule match {
         case FixedTimeoutRule => new FixedTimeoutPolicy(name, initial, startOverCount)
         case SigmaTimeoutRule(unit) => new EmpiricalTimeoutPolicy(name, initial, startOverCount, unit, minSamples)
-        case r: PercentileTimeoutRule => new EmpiricalTimeoutPolicy(name, initial, startOverCount, r.unit, minSamples)
       }
 
-      if (name != null) policyMap.put(name, policy)
+      name foreach (n => policyMap += (n -> policy))
 
       policy
     }
   }
 
+  def apply(initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
+            debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue) =
+    apply(None, initial, rule, debug, minSamples, startOverCount)
+
   /**
    *
    * @return all of the metrics
    */
-  def policyMetrics = policyMap.map(entry => (entry._1, entry._2.metrics)).toMap
+  def policyMetrics = policyMap mapValues (_.metrics)
 
   /**
-   * reset the timeout Policy
+   * Reset the timeout policy.
    * @param name name of the policy
    * @param initial new initial value, use previously if it's None
    * @return previous metrics

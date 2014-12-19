@@ -30,7 +30,8 @@ import scala.math._
  * @param timeoutCount count of timeout transactions
  * @param sumSquares sum of variation of response times
  */
-case class Metrics(name:String, initial: FiniteDuration, startOverCount: Int, totalTime: Double = 0.0, totalCount: Int = 0, timeoutCount: Int = 0, sumSquares: Double = 0.0) {
+case class Metrics(name: Option[String], initial: FiniteDuration, startOverCount: Int, totalTime: Double = 0.0,
+                   totalCount: Int = 0, timeoutCount: Int = 0, sumSquares: Double = 0.0) {
 
   lazy val standardDeviation = if (totalCount > 0) sqrt(sumSquares / totalCount) else 0
 

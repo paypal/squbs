@@ -1,20 +1,33 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.concurrent.timeout
 
-import org.scalatest.{Matchers, FlatSpecLike}
-import org.squbs.concurrent.util.{Random => TestRandom}
+import org.scalatest.{FlatSpecLike, Matchers}
 
-import scala.concurrent.{Future, Await}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.util.{Random, Try}
 
-/**
- * Created by miawang on 11/27/14.
- */
 class SimulateDistributionSpec extends FlatSpecLike with Matchers{
 
-  "Random.nextGaussian" should "work as expect" in {
+  "Random.nextGaussian" should "work as expected" in {
     import scala.concurrent.ExecutionContext.Implicits.global
-    val timeoutPolicy = TimeoutPolicy("test", initial = 1 seconds, rule = 3 sigma)
+    val timeoutPolicy = TimeoutPolicy(Some("test"), initial = 1 seconds, rule = 3 sigma)
     val sigma = 30
     val mean = 50
     for (i <- 0 until 10000) {
@@ -25,7 +38,7 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
           Thread.sleep(s)
         }, tx.waitTime)
       }
-      tx.end
+      tx.end()
       //      val metrics = timeoutPolicy.metrics
       //      println(s"average=${metrics.averageTime}, standardDeviation=${metrics.standardDeviation}")
     }
@@ -39,18 +52,18 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
   }
 
   "NegativeExponentialTruncated" should "works fine with TimeoutPolicy " in {
-    negativeExponential(true)
+    negativeExponential(truncate = true)
   }
 
   "NegativeExponentialNotTruncated" should "works fine with TimeoutPolicy " in {
-    negativeExponential(false)
+    negativeExponential(truncate = false)
   }
 
   def negativeExponential(truncate: Boolean): Unit = {
-    val delay = getDelay(truncate = truncate, cycleMin = 20 millis, cycleMean = 30 millis, cycleMax = 80 milliseconds, random = new TestRandom())
+    val delay = getDelay(truncate = truncate, cycleMin = 20 millis, cycleMean = 30 millis, cycleMax = 80 milliseconds)
 
     import scala.concurrent.ExecutionContext.Implicits.global
-    val timeoutPolicy = TimeoutPolicy("test", initial = 1 seconds, rule = 3 sigma)
+    val timeoutPolicy = TimeoutPolicy(Some("test"), initial = 1 seconds, rule = 3 sigma)
     for (i <- 0 until 10000) {
       val tx = timeoutPolicy.transaction
       Try{
@@ -59,7 +72,7 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
           Thread.sleep(s)
         }, tx.waitTime)
       }
-      tx.end
+      tx.end()
 //      val metrics = timeoutPolicy.metrics
     }
 
@@ -75,8 +88,7 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
   def getDelay(truncate: Boolean = true,
                cycleMin: FiniteDuration = 0 seconds,
                cycleMean: FiniteDuration = 1 seconds,
-               cycleMax: FiniteDuration = 5 seconds,
-               random: TestRandom):() => FiniteDuration = {
+               cycleMax: FiniteDuration = 5 seconds): () => FiniteDuration = {
     var mean = cycleMean.toNanos
     var shift = 0L
 
@@ -88,7 +100,7 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
     () => {
       var delay = 0L
       if (cycleMean.toNanos > 0) {
-        var x:Double = random.drandom(0.0, 1.0)
+        var x = Random.nextDouble()
         if (x == 0) {
           x = 1e-20d
         }

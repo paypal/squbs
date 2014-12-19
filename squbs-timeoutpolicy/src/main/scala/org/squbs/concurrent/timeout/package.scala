@@ -17,12 +17,35 @@
  */
 package org.squbs.concurrent
 
-import org.squbs.concurrent.timeout.TimeoutRule
-
-
 package object timeout {
 
   val fixedRule = FixedTimeoutRule
+
+  trait TimeoutRuleConversions extends Any {
+
+    def sigma: TimeoutRule
+
+    def percentile: TimeoutRule
+
+    /**
+     * alias of sigma
+     * @return
+     */
+    def σ = sigma
+
+
+    /**
+     * alias of percentile
+     * @return
+     */
+    def percent = percentile
+
+    /**
+     * alias of percentile
+     * @return
+     */
+    def `%ile` = percentile
+  }
 
   implicit final class TimeoutRuleInt(private val n: Int) extends AnyVal with TimeoutRuleConversions{
     override def sigma: TimeoutRule = SigmaTimeoutRule(n)
@@ -35,29 +58,4 @@ package object timeout {
 
     override def percentile: TimeoutRule = PercentileTimeoutRule(n / 100)
   }
-}
-
-trait TimeoutRuleConversions extends Any {
-
-  def sigma: TimeoutRule
-  def percentile: TimeoutRule
-
-  /**
-   * alias of sigma
-   * @return
-   */
-  def σ       = sigma
-
-
-  /**
-   * alias of percentile
-   * @return
-   */
-  def percent = percentile
-
-  /**
-   * alias of percentile
-   * @return
-   */
-  def `%ile`  = percentile
 }
