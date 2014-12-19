@@ -27,10 +27,10 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
 
   "Random.nextGaussian" should "work as expected" in {
     import scala.concurrent.ExecutionContext.Implicits.global
-    val timeoutPolicy = TimeoutPolicy(Some("test"), initial = 1 seconds, rule = 3 sigma)
+    val timeoutPolicy = TimeoutPolicy(Some("test"), initial = 1 seconds, rule = 3 sigma, minSamples = 100, startOverCount = 500)
     val sigma = 30
     val mean = 50
-    for (i <- 0 until 10000) {
+    for (i <- 0 until 1000) {
       val tx = timeoutPolicy.transaction
       Try{
         Await.ready(Future{
@@ -60,11 +60,11 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
   }
 
   def negativeExponential(truncate: Boolean): Unit = {
-    val delay = getDelay(truncate = truncate, cycleMin = 20 millis, cycleMean = 30 millis, cycleMax = 80 milliseconds)
+    val delay = getDelay(truncate = truncate, cycleMin = 20 millis, cycleMean = 30 millis, cycleMax = 50 milliseconds)
 
     import scala.concurrent.ExecutionContext.Implicits.global
     val timeoutPolicy = TimeoutPolicy(Some("test"), initial = 1 seconds, rule = 3 sigma)
-    for (i <- 0 until 10000) {
+    for (i <- 0 until 1000) {
       val tx = timeoutPolicy.transaction
       Try{
         Await.ready(Future{

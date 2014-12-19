@@ -56,6 +56,10 @@ class TimeoutPolicySpec extends FlatSpecLike with Matchers{
     metrics.name should contain ("test")
     metrics.initial should be (1 second)
     metrics.totalCount should be (10)
+    TimeoutPolicy.resetPolicy("test")
+
+    Thread.sleep(500)
+    policy.metrics.totalCount should be(0)
   }
 
   "Run SigmaTimeoutPolicy in explicit transaction" should "work" in {
