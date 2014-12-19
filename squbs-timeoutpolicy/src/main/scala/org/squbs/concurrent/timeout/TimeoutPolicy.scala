@@ -159,7 +159,7 @@ object TimeoutPolicy extends SLF4JLogging {
    * @param startOverCount the max count for start over the statistics, default is Int.MaxValue
    * @return timeout policy
    */
-  def apply(name: Option[String], initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
+  def apply(name: Option[String] = None, initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
             debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)
            (implicit ec: ExecutionContext): TimeoutPolicy = {
     require(initial != null, "initial is required")
@@ -179,9 +179,15 @@ object TimeoutPolicy extends SLF4JLogging {
     }
   }
 
-  def apply(initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
-            debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue) =
-    apply(None, initial, rule, debug, minSamples, startOverCount)
+//  def create(initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
+//            debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)
+//           (implicit ec: ExecutionContext): TimeoutPolicy =
+//    apply(None, initial, rule, debug, minSamples, startOverCount)
+//
+//  def createWithName(name: String, initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
+//            debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)
+//           (implicit ec: ExecutionContext): TimeoutPolicy =
+//    apply(Option(name), initial, rule, debug, minSamples, startOverCount)
 
   /**
    *
