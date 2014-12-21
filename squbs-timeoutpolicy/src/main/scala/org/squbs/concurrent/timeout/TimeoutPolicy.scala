@@ -41,13 +41,27 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
 
   private[timeout] def waitTime: FiniteDuration
 
+  /**
+   * The TimeoutTransaction allows for demarcating a unit of execution where time is measured.
+   */
   class TimeoutTransaction() {
-    lazy val start = System.nanoTime()
+
+    /**
+     * Demarcates the start of the transaction
+     */
+    private lazy val start = System.nanoTime()
+
+    /**
+     * The wait time or timeout needed for this transaction.
+     */
     lazy val waitTime = {
       start
       TimeoutPolicy.this.waitTime
     }
 
+    /**
+     * Demarcates the end of the transaction.
+     */
     def end(): Unit = {
       val timeTaken = System.nanoTime() - start
       if (timeTaken < 0) {
@@ -61,6 +75,12 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
     }
   }
 
+  /**
+   * Executes a piece of logic without a timeout transaction
+   * @param f The logic to be executed, taking the intended wait time as an input
+   * @tparam T The return type of the function f, and therefore the return type of this execution
+   * @return The output of the function f
+   */
   def execute[T](f: FiniteDuration => T): T = {
     val tx = this.transaction
     try {
@@ -70,6 +90,10 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
     }
   }
 
+  /**
+   * Obtains a new TimeoutTransaction object.
+   * @return The newly created TimeoutTransaction object associated with this TimeoutPolicy.
+   */
   def transaction = new TimeoutTransaction()
 
 
@@ -85,11 +109,22 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
     previous
   }
 
+  /**
+   * The metrics reference holding the stats of past transactions.
+   * @return
+   */
   def metrics = agent()
 
   private[timeout] def update(time: Double, isTimeout: Boolean): Unit = agent send {_.update(time, isTimeout)}
 }
 
+/**
+ * The timeout policy for a fixed timeout.
+ * @param name name of the policy
+ * @param initial initial(also max) value of the timeout duration
+ * @param startOverCount max total transaction count for start over the statistics
+ * @param ec implicit parameter of ExecutionContext
+ */
 class FixedTimeoutPolicy(name: Option[String], initial: FiniteDuration, startOverCount:Int)(implicit ec:ExecutionContext)
     extends TimeoutPolicy(name, initial, startOverCount) {
   override def waitTime: FiniteDuration = metrics.initial
@@ -97,7 +132,7 @@ class FixedTimeoutPolicy(name: Option[String], initial: FiniteDuration, startOve
 }
 
 /**
- * Timeout Policy by following sigma rules
+ * Timeout Policy by following sigma rules.
  * http://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule
  * @param name name of the policy
  * @param initial initial value of duration
@@ -123,10 +158,20 @@ class EmpiricalTimeoutPolicy(name: Option[String], initial: FiniteDuration, star
   }
 }
 
+/**
+ * Super type of all timeout rules.
+ */
 trait TimeoutRule
 
+/**
+ * Fixed timeout rule.
+ */
 object FixedTimeoutRule extends TimeoutRule
 
+/**
+ * Sigma or standard deviation-based timeout rule.
+ * @param unit The units of sigme to allow
+ */
 case class SigmaTimeoutRule(unit: Double) extends TimeoutRule {
   require(unit > 0, "unit should be positive")
 }
@@ -144,6 +189,9 @@ object PercentileTimeoutRule {
   }
 }
 
+/**
+ * Factories for the Timeout policies.
+ */
 object TimeoutPolicy extends SLF4JLogging {
   val debugMode = ManagementFactory.getRuntimeMXBean.getInputArguments.toString.indexOf("jdwp") >= 0
 

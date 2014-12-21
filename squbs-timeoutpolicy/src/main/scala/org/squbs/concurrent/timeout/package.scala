@@ -23,8 +23,15 @@ package object timeout {
 
   trait TimeoutRuleConversions extends Any {
 
+    /**
+     * Timeout rule based on a given sigma (standard deviation) of previous response times.
+     * @return the timeout rule
+     */
     def sigma: TimeoutRule
 
+      /**
+       * Timeout rule based on the
+       */
     def percentile: TimeoutRule
 
     /**
@@ -47,13 +54,13 @@ package object timeout {
     def `%ile` = percentile
   }
 
-  implicit final class TimeoutRuleInt(private val n: Int) extends AnyVal with TimeoutRuleConversions{
+  implicit final class TimeoutRuleInt(private val n: Int) extends AnyVal with TimeoutRuleConversions {
     override def sigma: TimeoutRule = SigmaTimeoutRule(n)
 
     override def percentile: TimeoutRule = PercentileTimeoutRule(n.toDouble / 100)
   }
 
-  implicit final class TimeoutRuleDouble(private val n: Double) extends AnyVal with TimeoutRuleConversions{
+  implicit final class TimeoutRuleDouble(private val n: Double) extends AnyVal with TimeoutRuleConversions {
     override def sigma: TimeoutRule = SigmaTimeoutRule(n)
 
     override def percentile: TimeoutRule = PercentileTimeoutRule(n / 100)
