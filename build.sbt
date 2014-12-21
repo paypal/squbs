@@ -33,3 +33,5 @@ lazy val `squbs-pattern` = project
 lazy val `squbs-actorregistry` = project dependsOn `squbs-unicomplex`
 
 lazy val `squbs-actormonitor` = project dependsOn `squbs-unicomplex`
+
+lazy val `squbs-timeoutpolicy` = project
