@@ -39,7 +39,7 @@ import scala.util.{Failure, Success, Try}
 
 object ActorRegistrySpec {
 
-  val dummyJarsDir = "src/test/resources/classpaths"
+  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
   val classPaths = Array(
    "ActorRegistryCube",

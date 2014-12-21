@@ -17,16 +17,15 @@
  */
 package org.squbs.unicomplex
 
+import akka.actor.{ActorRef, ActorSystem}
+import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import akka.actor.{ ActorRef, ActorSystem }
-import akka.testkit.{ ImplicitSender, TestKit }
 import org.scalatest._
 import org.squbs.lifecycle.GracefulStop
-import scala.concurrent.Await
 
 object SystemStatusTest {
 
-	val dummyJarsDir = "src/test/resources/classpaths"
+	val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
 	val classPaths = Array(
 		"InitBlockCube",
@@ -34,7 +33,7 @@ object SystemStatusTest {
 		"InitCubeB",
 		"InitFailCube") map (dummyJarsDir + "/" + _)
 
-	import collection.JavaConversions._
+	import scala.collection.JavaConversions._
 
 	val mapConfig = ConfigFactory.parseMap(
 		Map(

@@ -34,8 +34,8 @@ private[actormonitor] class ActorMonitor(monitorConfig: ActorMonitorConfig) exte
   val configBean =  "org.squbs.unicomplex:type=ActorMonitor"
 
   register(new ActorMonitorConfigBean(monitorConfig, context), prefix + configBean )
-  context.actorSelection(s"/user/*") ! Identify(monitorConfig)
-
+  context.actorSelection(s"/*") ! Identify(monitorConfig)
+ 
   override def postStop() {
     unregister(prefix + configBean)
     totalBeans.foreach {unregister(_)}
