@@ -253,7 +253,7 @@ object UnicomplexBoot {
         val actorClass = clazz asSubclass classOf[Actor]
 
         // Create and the props for this actor to be started, optionally enabling the router.
-        val props = if (withRouter) Props(actorClass) withRouter FromConfig() else Props(actorClass)
+        val props = if (withRouter) Props.create(actorClass) withRouter FromConfig() else Props.create(actorClass)
 
         // Send the props to be started by the cube.
         cubeSupervisor ! StartCubeActor(props, name,initRequired)
