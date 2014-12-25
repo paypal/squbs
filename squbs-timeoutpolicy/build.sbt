@@ -1,6 +1,6 @@
 import de.johoop.findbugs4sbt.FindBugs._
 
-name := "squbs-pattern"
+name := "squbs-timeoutpolicy"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka"         %% "akka-slf4j"           % "2.3.6",
