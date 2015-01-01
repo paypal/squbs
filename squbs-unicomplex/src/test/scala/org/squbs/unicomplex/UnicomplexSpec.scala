@@ -209,9 +209,9 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
     "preInit, init and postInit all extenstions" in {
       boot.extensions.size should be (2)
-      boot.extensions.forall(_._3.isInstanceOf[DummyExtension]) should be (true)
-      boot.extensions(0)._3.asInstanceOf[DummyExtension].state should be ("AstartpreInitinitpostInit")
-      boot.extensions(1)._3.asInstanceOf[DummyExtension].state should be ("BstartpreInitinitpostInit")
+      boot.extensions.forall(_.extLifecycle.get.isInstanceOf[DummyExtension]) should be (true)
+      boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("AstartpreInitinitpostInit")
+      boot.extensions(1).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("BstartpreInitinitpostInit")
     }
   }
 }

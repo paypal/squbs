@@ -104,16 +104,16 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
 			Unicomplex(system).uniActor ! ReportStatus
 			val (systemState, cubes) = expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])])]
 			systemState should be(Failed)
-			val cubeAReport = cubes.values.find(_._1.name == "CubeA").flatMap(_._2)
+			val cubeAReport = cubes.values.find(_._1.info.name == "CubeA").flatMap(_._2)
 			cubeAReport should not be (None)
 			cubeAReport.get.state should be(Active)
-			val cubeBReport = cubes.values.find(_._1.name == "CubeB").flatMap(_._2)
+			val cubeBReport = cubes.values.find(_._1.info.name == "CubeB").flatMap(_._2)
 			cubeBReport should not be (None)
 			cubeBReport.get.state should be(Active)
-			val initFailReport = cubes.values.find(_._1.name == "InitFail").flatMap(_._2)
+			val initFailReport = cubes.values.find(_._1.info.name == "InitFail").flatMap(_._2)
 			initFailReport should not be (None)
 			initFailReport.get.state should be(Failed)
-			val initBlockReport = cubes.values.find(_._1.name == "InitBlock").flatMap(_._2)
+			val initBlockReport = cubes.values.find(_._1.info.name == "InitBlock").flatMap(_._2)
 			initBlockReport should not be (None)
 			initBlockReport.get.state should be(Initializing)
 		}

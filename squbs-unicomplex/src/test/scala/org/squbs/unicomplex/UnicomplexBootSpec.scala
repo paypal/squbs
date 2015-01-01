@@ -30,9 +30,9 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
 
     it ("Should handle non-duplication in cube short names") {
       val cubeList = Seq(
-        Cube("don't care", "com.foo.foobar.bar", "bar", "1.0.0", Map.empty),
-        Cube("don't care", "com.foo.baz.foo", "foo", "1.0.0", Map.empty),
-        Cube("don't care", "com.foo.baz.foobar", "foobar", "1.0.0", Map.empty)
+        CubeInit(Cube("bar", "com.foo.foobar.bar", "1.0.0", "don't care"), Map.empty),
+        CubeInit(Cube("foo", "com.foo.baz.foo", "1.0.0", "don't care"), Map.empty),
+        CubeInit(Cube("foobar", "com.foo.baz.foobar", "1.0.0", "don't care"), Map.empty)
       )
 
       val newList = resolveAliasConflicts(cubeList)
@@ -42,26 +42,26 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
 
     it ("Should handle duplication in cube short names") {
       val cubeList = Seq(
-        Cube("don't care", "com.foo.foobar.bar", "bar", "1.0.0", Map.empty),
-        Cube("don't care", "com.foo.baz.bar", "bar", "1.0.0", Map.empty),
-        Cube("don't care", "com.foo.bar.bar", "bar", "1.0.0", Map.empty)
+        CubeInit(Cube("bar", "com.foo.foobar.bar", "1.0.0", "don't care"), Map.empty),
+        CubeInit(Cube("bar", "com.foo.baz.bar", "1.0.0", "don't care"), Map.empty),
+        CubeInit(Cube("bar", "com.foo.bar.bar", "1.0.0", "don't care"), Map.empty)
       )
       val newList = resolveAliasConflicts(cubeList)
       newList should not be theSameInstanceAs (cubeList)
-      val newAliases = newList map (_.alias)
+      val newAliases = newList map (_.info.name)
       val refAliases = Seq("foobar.bar", "baz.bar", "bar.bar")
       newAliases should be (refAliases)
     }
 
     it ("Should handle some duplication in cube names") {
       val cubeList = Seq(
-        Cube("don't care", "com.bar.baz.bar", "bar", "1.0.0", Map.empty),
-        Cube("don't care", "com.foo.baz.bar", "bar", "1.0.0", Map.empty),
-        Cube("don't care", "com.foo.bar.bar", "bar", "1.0.0", Map.empty)
+        CubeInit(Cube("bar", "com.bar.baz.bar", "1.0.0", "don't care"), Map.empty),
+        CubeInit(Cube("bar", "com.foo.baz.bar", "1.0.0", "don't care"), Map.empty),
+        CubeInit(Cube("bar", "com.foo.bar.bar", "1.0.0", "don't care"), Map.empty)
       )
       val newList = resolveAliasConflicts(cubeList)
       newList should not be theSameInstanceAs (cubeList)
-      val newAliases = newList map (_.alias)
+      val newAliases = newList map (_.info.name)
       val refAliases = Seq("bar.baz.bar", "foo.baz.bar", "bar.bar")
       newAliases should be (refAliases)
     }
@@ -235,8 +235,8 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
         """.stripMargin
       val appConf = ConfigFactory.parseString(appConfDef)
       val cubeList = Seq(
-        Cube("don't care", "com.foo.bar", "foo", "1.0.0", Map(StartupType.SERVICES -> Seq(route1))),
-        Cube("don't care", "com.foo.bar", "bar", "1.0.0", Map(StartupType.SERVICES -> Seq(route2, route3))))
+        CubeInit(Cube("foo", "com.foo.bar", "1.0.0", "don't care"), Map(StartupType.SERVICES -> Seq(route1))),
+        CubeInit(Cube("bar", "com.foo.bar", "1.0.0", "don't care"), Map(StartupType.SERVICES -> Seq(route2, route3))))
 
       val (activeAliases, activeListeners, missingListeners) = findListeners(appConf, cubeList)
       activeAliases map (_._1) should contain only ("secure-listener", "secure2-listener")

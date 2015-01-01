@@ -38,6 +38,7 @@ object JMX {
 
   val systemStateName = "org.squbs.unicomplex:type=SystemState"
   val cubesName       = "org.squbs.unicomplex:type=Cubes"
+  val extensionsName  = "org.squbs.unicomplex:type=Extensions"
   val cubeStateName   = "org.squbs.unicomplex:type=CubeState,name="
   val listenersName    = "org.squbs.unicomplex:type=Listeners"
   val serverStats = "org.squbs.unicomplex:type=serverStats,listener="
@@ -95,9 +96,15 @@ case class ListenerInfo @ConstructorProperties(Array("listener", "context", "act
                                           @BeanProperty context: String,
                                           @BeanProperty actorPath: String)
 case class SystemSetting @ConstructorProperties(Array("key", "value"))(
-                                                                    @BeanProperty key: String,
-                                                                    @BeanProperty value: String
-                                                                    )
+                                          @BeanProperty key: String,
+                                          @BeanProperty value: String)
+
+
+case class ExtensionInfo @ConstructorProperties(Array("cube", "phase", "error"))(
+                                          @BeanProperty cube: String,
+                                          @BeanProperty phase: String,
+                                          @BeanProperty error: String)
+
 // $COVERAGE-ON$
                                           
 @MXBean
@@ -110,7 +117,12 @@ trait SystemStateMXBean {
 
 @MXBean
 trait CubesMXBean {
-  def getCubes: java.util.List[CubeInfo]
+  def getCubes: util.List[CubeInfo]
+}
+
+@MXBean
+trait ExtensionsMXBean {
+  def getExtensions: util.List[ExtensionInfo]
 }
 
 @MXBean

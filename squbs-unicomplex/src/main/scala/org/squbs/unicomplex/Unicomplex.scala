@@ -20,21 +20,23 @@ package org.squbs.unicomplex
 
 import java.util
 import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
+
 import akka.actor.SupervisorStrategy._
-import akka.actor._
-import akka.pattern._
+import akka.actor.{Extension => AkkaExtension, _}
 import akka.agent.Agent
+import akka.pattern._
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
-import org.squbs.unicomplex.JMX._
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import spray.can.Http
+
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.Try
 
 
-class UnicomplexExtension(system: ExtendedActorSystem) extends Extension {
+class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
 
   val uniActor = system.actorOf(Props[Unicomplex], "unicomplex")
 
@@ -72,9 +74,9 @@ object Unicomplex extends ExtensionId[UnicomplexExtension] with ExtensionIdProvi
   def apply()(implicit context: ActorContext): ActorRef = apply(context.system).uniActor
 
   // Unicomplex actor registry so we can find it without setting up remote or having an actor system (needed on shutdown)
-  private[unicomplex] val actors = new mutable.HashMap[String, ActorRef] with mutable.SynchronizedMap[String, ActorRef]
+  private[unicomplex] val actors = new ConcurrentHashMap[String, ActorRef]
 
-  def apply(actorSystemName: String): ActorRef = actors(actorSystemName)
+  def apply(actorSystemName: String): ActorRef = actors.get(actorSystemName)
 
 }
 
@@ -92,9 +94,12 @@ private[unicomplex] case object CheckInitStatus
 private[unicomplex] case class  InitReports(state: LifecycleState, reports: Map[ActorRef, Option[InitReport]])
 private[unicomplex] case object Started
 private[unicomplex] case object Activate
-private[unicomplex] case class  CubeRegistration(name: String, fullName: String, version: String, cubeSupervisor: ActorRef)
-private[unicomplex] case object ShutdownTimedout
-private[unicomplex] case class Extensions(exts: Seq[(String, String, ExtensionLifecycle)])
+private[unicomplex] case object ShutdownTimedOut
+private[unicomplex] case class Cube(name: String, fullName: String, version: String, jarPath: String)
+private[unicomplex] case class CubeRegistration(info: Cube, cubeSupervisor: ActorRef)
+private[unicomplex] case class Extension(info: Cube, extLifecycle: Option[ExtensionLifecycle],
+                                         exceptions: Seq[(String, Throwable)])
+private[unicomplex] case class Extensions(extensions: Seq[Extension])
 
 
 sealed trait LifecycleState
@@ -150,7 +155,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   private var cubes = Map.empty[ActorRef, (CubeRegistration, Option[InitReports])]
 
-  private var extensions = Seq.empty[(String, String, ExtensionLifecycle)]
+  private var extensions = Seq.empty[Extension]
 
   private var lifecycleListeners = Seq.empty[(ActorRef, Seq[LifecycleState], Boolean)] // Last boolean is flag whether to remove
 
@@ -193,7 +198,16 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     override def getCubes: util.List[CubeInfo] = {
       import scala.collection.JavaConversions._
 
-      cubes.values.toSeq map { c => CubeInfo(c._1.name, c._1.fullName, c._1.version, c._1.cubeSupervisor.toString) }
+      cubes.values.toSeq map { c =>
+        CubeInfo(c._1.info.name, c._1.info.fullName, c._1.info.version, c._1.cubeSupervisor.toString())
+      }
+    }
+  }
+
+  class ExtensionsBean extends ExtensionsMXBean {
+    override def getExtensions: util.List[ExtensionInfo] = {
+      import scala.collection.JavaConversions._
+      extensions map { e => ExtensionInfo(e.info.name, e.exceptions.head._1, e.exceptions.head._2.toString) }
     }
   }
 
@@ -201,23 +215,24 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   private val stateMXBean = new SystemStateBean
 
 
-
   override def preStart() {
-    Unicomplex.actors += context.system.name -> self
+    Unicomplex.actors.put(context.system.name, self)
 
-    import JMX._
+    import org.squbs.unicomplex.JMX._
     register(stateMXBean, prefix + systemStateName)
     register(new CubesBean, prefix + cubesName)
     register(new SystemSettingBean(context.system.settings.config), prefix + systemSettingName)
+    register(new ExtensionsBean, prefix + extensionsName)
   }
 
   override def postStop() {
-    import JMX._ // JMX registrations
+    import org.squbs.unicomplex.JMX._ // JMX registrations
+    unregister(prefix + extensionsName)
     unregister(prefix + cubesName)
     unregister(prefix + systemStateName)
     unregister(prefix + systemSettingName)
 
-    Unicomplex.actors -= context.system.name
+    Unicomplex.actors.remove(context.system.name)
   }
 
   private def shutdownState: Receive = {
@@ -244,7 +259,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         context.system.shutdown()
       }
 
-    case ShutdownTimedout => log.warning("Graceful shutdown timed out.")
+    case ShutdownTimedOut => log.warning("Graceful shutdown timed out.")
       updateSystemState(Stopped)
       context.system.shutdown()
   }
@@ -252,7 +267,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   def shutdownBehavior: Receive = {
     case StopTimeout(timeout) => if (shutdownTimeout < timeout) shutdownTimeout = timeout
 
-    case GracefulStop => import JMX._
+    case GracefulStop => import org.squbs.unicomplex.JMX._
       log.info(s"got GracefulStop from ${sender().path}.")
       updateSystemState(Stopping)
       if (servicesStarted) {
@@ -267,13 +282,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       cubes.foreach(_._1 ! GracefulStop)
       context.become(shutdownState)
       log.info(s"Set shutdown timeout $shutdownTimeout")
-      context.system.scheduler.scheduleOnce(shutdownTimeout, self, ShutdownTimedout)
+      context.system.scheduler.scheduleOnce(shutdownTimeout, self, ShutdownTimedOut)
   }
 
   def stopAndStartCube: Receive = {
     case StopCube(name) =>
-      val responder = sender
-      boot.get.cubes.find(_.alias == name) flatMap {cube =>
+      val responder = sender()
+      boot.get().cubes.find(_.info.name == name) flatMap {cube =>
         cube.components.get(StartupType.SERVICES)
       } map {configs =>
         configs.map(_.getString("web-context"))
@@ -286,50 +301,50 @@ class Unicomplex extends Actor with Stash with ActorLogging {
           context.actorSelection(s"/user/$name") ! Identify(name)
           context.become({
             case ActorIdentity(`name`, Some(cubeSupervisor)) =>
-              (cubes get cubeSupervisor) match {
+              cubes get cubeSupervisor match {
                 case Some(cube) =>
                   cubes -= cubeSupervisor
                   cubeSupervisor ! GracefulStop
                   context.become({
                     case Terminated(`cubeSupervisor`) =>
                       responder ! Ack
-                      unstashAll
-                      context.unbecome
-                    case other => stash
+                      unstashAll()
+                      context.unbecome()
+                    case other => stash()
                   }, true)
                 case None =>
-                  unstashAll
-                  context.unbecome
+                  unstashAll()
+                  context.unbecome()
               }
             case ActorIdentity(`name`, None) =>
               log.warning(s"Cube $name does not exist")
-              unstashAll
-              context.unbecome
-            case other => stash
+              unstashAll()
+              context.unbecome()
+            case other => stash()
           }, true)
         case Status.Failure(e) =>
-          log.warning(s"Failed to deregistered web-contexts. Cause: $e")
-          unstashAll
-          context.unbecome
-        case other => stash
+          log.warning(s"Failed to unregister web-contexts. Cause: $e")
+          unstashAll()
+          context.unbecome()
+        case other => stash()
       }, false)
 
     case StartCube(name) =>
-      val responder = sender
+      val responder = sender()
       context.actorSelection(s"/user/$name") ! Identify(name)
       context.become({
-        case ActorIdentity(name, Some(cubeSupervisor)) =>
-          log.warning(s"Cube $name is already started")
-          unstashAll
-          context.unbecome
+        case ActorIdentity(cubeName, Some(cubeSupervisor)) =>
+          log.warning(s"Cube $cubeName is already started")
+          unstashAll()
+          context.unbecome()
         case ActorIdentity(`name`, None) =>
-          boot.get.cubes.find(_.alias == name) foreach {cube =>
-            UnicomplexBoot.startComponents(cube, boot.get.listenerAliases)(context.system)
+          boot.get().cubes.find(_.info.name == name) foreach {cube =>
+            UnicomplexBoot.startComponents(cube, boot.get().listenerAliases)(context.system)
           }
           responder ! Ack
-          unstashAll
-          context.unbecome
-        case other => stash
+          unstashAll()
+          context.unbecome()
+        case other => stash()
       }, false)
   }
 
@@ -355,11 +370,11 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     case RegisterContext(listeners, webContext, actor) =>
       serviceRegistry.registerContext(listeners, webContext, actor)
 
-    case StartListener(name, config) => // Sent from Bootstrap to start the web service infrastructure.
-      val serviceRef = serviceRegistry.startListener(name, config, notifySender = sender())
+    case StartListener(name, conf) => // Sent from Bootstrap to start the web service infrastructure.
+      val serviceRef = serviceRegistry.startListener(name, conf, notifySender = sender())
       context.become ({
-        case b: Http.Bound => import JMX._
-          JMX.register(new SeverStats(name, sender), prefix + serverStats + name)
+        case b: Http.Bound => import org.squbs.unicomplex.JMX._
+          JMX.register(new SeverStats(name, sender()), prefix + serverStats + name)
           serviceListeners = serviceListeners + (name -> Some((serviceRef, sender())))
           if (serviceListeners.size == serviceRegistry.listenerRoutes.size) {
             listenersBound = true
@@ -453,6 +468,10 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     }
     else if (serviceListeners.values exists (_ == None)) {
       if (systemState != Failed) log.warning("Some listeners failed to initialize. Marking system state as Failed")
+      Failed
+    }
+    else if (extensions exists (_.exceptions.nonEmpty)) {
+      if (systemState != Failed) log.warning("Some extensions failed to initialize. Marking the system state as Failed")
       Failed
     }
     else if (states exists (_ == Initializing)) Initializing
@@ -604,7 +623,5 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       sender ! (InitReports(cubeState, initMap.toMap), true)
 
   }
-
-
 }
 
