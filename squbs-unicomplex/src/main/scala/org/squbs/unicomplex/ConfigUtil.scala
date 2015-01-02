@@ -73,8 +73,9 @@ object ConfigUtil {
       list map (_.toSeq)
     }
 
-    def getOptionalDuration(path: String, unit: TimeUnit): Option[Duration] = {
-      Try(Duration(underlying.getDuration(path, unit), unit)).toOption
+    def getOptionalDuration(path: String): Option[Duration] = {
+      import scala.concurrent.duration._
+      Try(Duration(underlying.getDuration(path, MILLISECONDS), MILLISECONDS)).toOption
     }
   }
 
