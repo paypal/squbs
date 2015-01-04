@@ -33,6 +33,7 @@ import org.squbs.unicomplex.dummyextensions.DummyExtension
 import org.squbs.unicomplex.dummysvcactor.GetWebContext
 import spray.can.Http
 import spray.http._
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -45,6 +46,7 @@ object UnicomplexSpec {
     "DummyCubeSvc",
     "DummySvc",
     "DummySvcActor",
+    "StashCube",
     "DummyExtensions.jar"
   ) map (dummyJarsDir + "/" + _)
 
@@ -79,7 +81,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
   val port = system.settings.config getInt "default-listener.bind-port"
 
   implicit val executionContext = system.dispatcher
-  
+
   override def afterAll() {
     Unicomplex(system).uniActor ! GracefulStop
   }
@@ -118,11 +120,17 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
         w.dismiss()
       })
       w.await()
+
+      system.actorSelection("/user/StashCube").resolveOne().onComplete( result => {
+        w {assert(result.isSuccess)}
+        w.dismiss()
+      })
+      w.await()
     }
 
     "start all services" in {
       val services = boot.cubes flatMap { cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty) }
-      assert(services.size == 3)
+      assert(services.size == 4)
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvc/msg/hello")))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
@@ -150,6 +158,22 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("pong")
       }
+
+      (IO(Http) ! HttpRequest(HttpMethods.POST, Uri(s"http://127.0.0.1:$port/withstash/"), entity = HttpEntity("request message")))
+      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/withstash/")))
+			within(timeout.duration) {
+        val resp1 = expectMsgType[HttpResponse]
+        resp1.status shouldBe StatusCodes.OK
+        resp1.entity.asString shouldBe Seq.empty[String].toString
+      }
+
+      (IO(Http) ! HttpRequest(HttpMethods.PUT, Uri(s"http://127.0.0.1:$port/withstash/")))
+      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/withstash/")))
+			within(timeout.duration) {
+				val resp2 = expectMsgType[HttpResponse]
+				resp2.status shouldBe StatusCodes.OK
+				resp2.entity.asString shouldBe Seq("request message").toString
+			}
     }
 
     "service actor with WebContext must have a WebContext" in {
@@ -171,8 +195,8 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val cubesObjName = new ObjectName(prefix(system) + cubesName)
       val attr = mbeanServer.getAttribute(cubesObjName, "Cubes")
       attr shouldBe a [Array[javax.management.openmbean.CompositeData]]
-      // 5 cubes registered above.
-      attr.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 5
+      // 6 cubes registered above.
+      attr.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 6
     }
 
     "check cube state MXbean" in {
@@ -202,8 +226,8 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val listenersObjName = new ObjectName(prefix(system) + listenersName)
       val listeners = mbeanServer.getAttribute(listenersObjName, "Listeners")
       listeners shouldBe a [Array[javax.management.openmbean.CompositeData]]
-      // 3 services registered on one listener
-      listeners.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 3
+      // 4 services registered on one listener
+      listeners.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 4
 
     }
 

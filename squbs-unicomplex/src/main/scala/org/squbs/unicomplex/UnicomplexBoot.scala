@@ -249,10 +249,10 @@ object UnicomplexBoot {
 
       try {
         val clazz = Class.forName(className, true, getClass.getClassLoader)
-        val actorClass = clazz asSubclass classOf[Actor]
+        clazz asSubclass classOf[Actor]
 
         // Create and the props for this actor to be started, optionally enabling the router.
-        val props = if (withRouter) Props(actorClass) withRouter FromConfig() else Props(actorClass)
+        val props = if (withRouter) Props(clazz) withRouter FromConfig() else Props(clazz)
 
         // Send the props to be started by the cube.
         cubeSupervisor ! StartCubeActor(props, name,initRequired)
@@ -282,11 +282,18 @@ object UnicomplexBoot {
       }
     }
 
+    // This same creator class is available in Akka's Props.scala but it is inaccessible to us.
+    class TypedCreatorFunctionConsumer(clz: Class[_ <: Actor], creator: () => Actor) extends IndirectActorProducer {
+      override def actorClass = clz
+      override def produce() = creator()
+    }
+
     def startServiceActor(clazz: Class[_], webContext: String, listeners: Seq[String],
                           initRequired: Boolean) = {
       try {
         val actorClass = clazz asSubclass classOf[Actor]
-        val props = Props { WebContext.createWithContext(webContext){ actorClass.newInstance() } }
+        def actorCreator: Actor = WebContext.createWithContext[Actor](webContext) { actorClass.newInstance() }
+        val props = Props(classOf[TypedCreatorFunctionConsumer], clazz, actorCreator _)
         val className = clazz.getSimpleName
         val actorName = if (webContext.length > 0) s"$webContext-$className-handler" else s"root-$className-handler"
         cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, initRequired)
