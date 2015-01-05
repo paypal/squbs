@@ -18,9 +18,12 @@
 package org.squbs.util.threadless
 
 import org.scalatest.{FunSpec, Matchers}
-import scala.util.{Failure, Success}
+import scala.util.{Try, Failure, Success}
 import scala.language.postfixOps
 import java.util.NoSuchElementException
+import java.lang.{RuntimeException, IllegalArgumentException}
+import scala.IllegalArgumentException
+import scala.RuntimeException
 
 class FutureSpec extends FunSpec with Matchers {
 
@@ -314,6 +317,103 @@ class FutureSpec extends FunSpec with Matchers {
       case Some(Failure(ex)) => ex.getClass should equal(classOf[NoSuchElementException])
       case _ => fail("should have got failure due to empty list reducing")
     }
+  }
+
+  it("should support functions: filter, collect, fallback") {
+    var p = Promise[String]()
+    var f = p.future
+
+    p.success("abc")
+
+    var newFuture = f.filter(s => s.equals("abc"))
+    newFuture.value.get.get should be("abc")
+    newFuture = f.withFilter(s => s.equals("abc"))
+    newFuture.value.get.get should be("abc")
+
+    newFuture = f.filter(s => s.equals("abcd"))
+    newFuture.value.get.failed.get shouldBe a[NoSuchElementException]
+    newFuture.value.get.failed.get.getMessage should be("Future.filter predicate is not satisfied")
+
+    newFuture = f.collect{
+      case "abc" => "OK"
+    }
+    newFuture.value.get.get should be("OK")
+    newFuture = f.collect{
+      case "abcd" => "OK"
+    }
+    newFuture.value.get.failed.get shouldBe a[NoSuchElementException]
+    newFuture.value.get.failed.get.getMessage should be("Future.collect partial function is not defined at: abc")
+
+    newFuture = f.fallbackTo(Future.successful("haha"))
+    newFuture.value.get.get should be("abc")
+
+    p = Promise[String]()
+    f = p.future
+
+    p.failure(new RuntimeException("BadMan"))
+    newFuture = f.filter(s => s.equals("abc"))
+    newFuture.value.get.failed.get shouldBe a[RuntimeException]
+    newFuture.value.get.failed.get.getMessage should be("BadMan")
+
+    newFuture = f.collect{
+      case "abcd" => "OK"
+    }
+    newFuture.value.get.failed.get shouldBe a[RuntimeException]
+    newFuture.value.get.failed.get.getMessage should be("BadMan")
+
+    newFuture = f.fallbackTo(Future.successful("haha"))
+    newFuture.value.get.get should be("haha")
+
+  }
+
+
+  it("should support functions: failed ,apply ,foreach, transform") {
+    var p = Promise[String]()
+    var f = p.future
+
+    val func : Try[Throwable] => String = {
+      case Success(v) => v.getMessage
+      case Failure(t) => t.getMessage
+    }
+
+    p.success("abc")
+
+
+    var result : String = null
+    f.foreach {
+      a => result =a.toUpperCase
+    }
+    result should be("ABC")
+
+    var transFuture = f.transform(s => s + "def", t => new IllegalArgumentException(t))
+    transFuture.value.get should be(Success("abcdef"))
+
+    f.failed.value.map(func).get should be ("Future.failed not completed with a throwable.")
+    f() should be("abc")
+
+
+    p = Promise[String]()
+    f = p.future
+
+    the[NoSuchElementException] thrownBy {
+      f()
+    } should have message("Future not completed.")
+
+    p.failure(new RuntimeException("BadMan"))
+
+    result = "aaa"
+    f.foreach {
+      a => result =a.toUpperCase
+    }
+    result should be("aaa")
+
+    transFuture = f.transform(s => s + "def", t => new IllegalArgumentException(t))
+    transFuture.value.get.failed.get shouldBe a[IllegalArgumentException]
+    transFuture.value.get.failed.get.getCause shouldBe a[RuntimeException]
+
+    an [RuntimeException] should be thrownBy f()
+    f.failed.value.map(func).get should be ("BadMan")
+
   }
 
   it("should support traversal") {
