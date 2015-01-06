@@ -91,40 +91,40 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
     "start all cube actors" in {
       val w = new Waiter
 
-      system.actorSelection("/user/DummyCube").resolveOne().onComplete(result => {
+      system.actorSelection("/user/DummyCube").resolveOne().onComplete { result =>
         w {assert(result.isSuccess)}
         w.dismiss()
-      })
+      }
       w.await()
 
-      system.actorSelection("/user/DummyCubeSvc").resolveOne().onComplete(result => {
+      system.actorSelection("/user/DummyCubeSvc").resolveOne().onComplete { result =>
         w {assert(result.isSuccess)}
         w.dismiss()
-      })
+      }
       w.await()
 
-      system.actorSelection("/user/DummyCube/Appender").resolveOne().onComplete(result => {
+      system.actorSelection("/user/DummyCube/Appender").resolveOne().onComplete { result =>
         w {assert(result.isSuccess)}
         w.dismiss()
-      })
+      }
       w.await()
 
-      system.actorSelection("/user/DummyCube/Prepender").resolveOne().onComplete(result => {
+      system.actorSelection("/user/DummyCube/Prepender").resolveOne().onComplete { result =>
         w {assert(result.isSuccess)}
         w.dismiss()
-      })
+      }
       w.await()
 
-      system.actorSelection("/user/DummyCubeSvc/PingPongPlayer").resolveOne().onComplete(result => {
+      system.actorSelection("/user/DummyCubeSvc/PingPongPlayer").resolveOne().onComplete { result =>
         w {assert(result.isSuccess)}
         w.dismiss()
-      })
+      }
       w.await()
 
-      system.actorSelection("/user/StashCube").resolveOne().onComplete( result => {
+      system.actorSelection("/user/StashCube").resolveOne().onComplete { result =>
         w {assert(result.isSuccess)}
         w.dismiss()
-      })
+      }
       w.await()
     }
 
