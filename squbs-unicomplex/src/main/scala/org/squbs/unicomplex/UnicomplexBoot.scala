@@ -532,6 +532,8 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     val postInitExtensions = extensions map extensionOp("postInit", _.postInit())
 
+    // Update the extension errors in Unicomplex actor, in case there are errors.
+    uniActor ! Extensions(postInitExtensions)
 
     {
       // Tell Unicomplex we're done.

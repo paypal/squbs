@@ -22,6 +22,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.squbs.lifecycle.GracefulStop
+import org.squbs.unicomplex.dummyfailedextensions.{DummyFailedExtensionA, DummyFailedExtensionB}
 
 object SystemStatusTest {
 
@@ -31,7 +32,8 @@ object SystemStatusTest {
 		"InitBlockCube",
 		"InitCubeA",
 		"InitCubeB",
-		"InitFailCube") map (dummyJarsDir + "/" + _)
+		"InitFailCube",
+    "DummyFailedExtensions") map (dummyJarsDir + "/" + _)
 
 	import scala.collection.JavaConversions._
 
@@ -62,9 +64,9 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
 				
 			Unicomplex(system).uniActor ! ReportStatus
 
-			val (state, msg) = expectMsgType[(LifecycleState, _)]
+			val (state, _, _) = expectMsgType[(LifecycleState, _, _)]
 
-			if ((Seq[LifecycleState](Active, Stopped, Failed) indexOf (state)) >= 0) {
+			if ((Seq[LifecycleState](Active, Stopped, Failed) indexOf state) >= 0) {
 				return
 			}
 		}
@@ -90,6 +92,10 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
 			report.reports.size should be(1)
 		}
 
+    "get extension fail report when extensions fail to initialize" in {
+
+    }
+
 		"deal with the situation that cube actors are not able to send the reports" in {
 			system.actorSelection("/user/InitBlock") ! CheckInitStatus
 			val report = expectMsgType[(InitReports, Boolean)]._1
@@ -102,20 +108,40 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
 
 		"get cube init reports" in {
 			Unicomplex(system).uniActor ! ReportStatus
-			val (systemState, cubes) = expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])])]
+			val (systemState, cubes, extensions) =
+        expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])], Seq[Extension])]
 			systemState should be(Failed)
+
 			val cubeAReport = cubes.values.find(_._1.info.name == "CubeA").flatMap(_._2)
-			cubeAReport should not be (None)
+			cubeAReport should not be None
 			cubeAReport.get.state should be(Active)
+
 			val cubeBReport = cubes.values.find(_._1.info.name == "CubeB").flatMap(_._2)
-			cubeBReport should not be (None)
+			cubeBReport should not be None
 			cubeBReport.get.state should be(Active)
+
 			val initFailReport = cubes.values.find(_._1.info.name == "InitFail").flatMap(_._2)
-			initFailReport should not be (None)
+			initFailReport should not be None
 			initFailReport.get.state should be(Failed)
+
 			val initBlockReport = cubes.values.find(_._1.info.name == "InitBlock").flatMap(_._2)
-			initBlockReport should not be (None)
+			initBlockReport should not be None
 			initBlockReport.get.state should be(Initializing)
-		}
+
+      val extensionFailedReportA = extensions find (_.extLifecycle.exists(_.isInstanceOf[DummyFailedExtensionA]))
+      extensionFailedReportA should not be None
+      extensionFailedReportA.get.exceptions should have size 1
+      extensionFailedReportA.get.exceptions exists (_._1 == "preInit") should be (true)
+
+      val extensionFailedReportB = extensions find (_.extLifecycle.exists(_.isInstanceOf[DummyFailedExtensionB]))
+      extensionFailedReportB should not be None
+      extensionFailedReportB.get.exceptions should have size 1
+      extensionFailedReportB.get.exceptions exists (_._1 == "postInit") should be (true)
+
+      val extensionFailedReportC = extensions find (_.extLifecycle == None)
+      extensionFailedReportC should not be None
+      extensionFailedReportC.get.exceptions should have size 1
+      extensionFailedReportC.get.exceptions exists (_._1 == "load") should be (true)
+    }
 	}
 }
