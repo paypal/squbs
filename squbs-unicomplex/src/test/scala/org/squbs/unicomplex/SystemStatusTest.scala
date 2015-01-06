@@ -140,6 +140,16 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
       extensionFailedReportC should not be None
       extensionFailedReportC.get.exceptions should have size 1
       extensionFailedReportC.get.exceptions exists (_._1 == "load") should be (true)
+
+      Unicomplex(system).uniActor ! InitReports(Failed, Map.empty)
+
+      Unicomplex(system).uniActor ! SystemState
+      expectMsg(Failed)
+
+      Unicomplex(system).uniActor ! ObtainLifecycleEvents(Active)
+
+      Unicomplex(system).uniActor ! LifecycleTimesRequest
+      expectMsgClass(classOf[LifecycleTimes])
     }
 	}
 }

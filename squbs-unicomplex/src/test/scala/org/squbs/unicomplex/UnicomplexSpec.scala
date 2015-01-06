@@ -33,7 +33,6 @@ import org.squbs.unicomplex.dummyextensions.DummyExtension
 import org.squbs.unicomplex.dummysvcactor.GetWebContext
 import spray.can.Http
 import spray.http._
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -241,7 +240,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
     "ReportStatus" in {
       Unicomplex(system).uniActor ! ReportStatus
       expectMsgPF(){
-        case (state, b) =>
+        case (state, b, exts) =>
           state should be(Active)
       }
     }
