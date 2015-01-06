@@ -241,5 +241,5 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
           state should be(Active)
       }
     }
-   }
+  }
 }
