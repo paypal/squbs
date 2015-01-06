@@ -213,5 +213,13 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("AstartpreInitinitpostInit")
       boot.extensions(1).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("BstartpreInitinitpostInit")
     }
-  }
+
+    "ReportStatus" in {
+      Unicomplex(system).uniActor ! ReportStatus
+      expectMsgPF(){
+        case (state, b) =>
+          state should be(Active)
+      }
+    }
+   }
 }

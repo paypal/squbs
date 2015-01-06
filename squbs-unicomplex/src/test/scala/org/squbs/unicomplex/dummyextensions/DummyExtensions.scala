@@ -37,12 +37,28 @@ trait DummyExtension extends ExtensionLifecycle {
     _state += "postInit"
   }
 }
-class DummyExtensionA extends DummyExtension{
+
+class DummyExtensionA extends DummyExtension {
 
   def state = "A" + _state
 }
 
-class DummyExtensionB extends DummyExtension{
+class DummyExtensionB extends DummyExtension {
 
   def state = "B" + _state
+}
+
+class DummyExtensionC extends DummyExtension {
+
+  def state = "C" + _state
+
+  override def init() {
+    throw new RuntimeException("BadInit", new RuntimeException("BadInitRootCause"))
+  }
+
+  override def shutdown() {
+    println("DummyExtensionC shutdown...")
+    throw new RuntimeException("BadShutdown")
+  }
+
 }

@@ -19,11 +19,11 @@ package org.squbs.unicomplex.cubeA
 
 import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
 import scala.util.Try
-import org.squbs.unicomplex.Initialized
+import org.squbs.unicomplex.{StopTimeout, Initialized}
 import org.squbs.unicomplex.Unicomplex.InitReport
-import akka.actor.{Actor, ActorLogging}
+import akka.actor.{Props, Actor, ActorLogging}
 
-class InitCubeActorA1 extends Actor with ActorLogging with GracefulStopHelper{
+class InitCubeActorA1 extends Actor with ActorLogging with GracefulStopHelper {
 
   // do initialization
   def init: InitReport = {
@@ -44,7 +44,7 @@ class InitCubeActorA1 extends Actor with ActorLogging with GracefulStopHelper{
 
 }
 
-class InitCubeActorA2 extends Actor with ActorLogging with GracefulStopHelper{
+class InitCubeActorA2 extends Actor with ActorLogging with GracefulStopHelper {
 
   // do initialization
   def init: InitReport = {
@@ -59,6 +59,50 @@ class InitCubeActorA2 extends Actor with ActorLogging with GracefulStopHelper{
 
   def receive = {
     case GracefulStop => defaultLeafActorStop
+
+    case other => sender ! other
+  }
+
+}
+
+class InitCubeActorA3 extends Actor with ActorLogging with GracefulStopHelper {
+
+  import scala.concurrent.duration._
+
+  // do initialization
+  def init: InitReport = {
+    log.info("initializing")
+    Try {
+      // do some tasks
+      Some("InitCubeActorA3")
+    }
+  }
+
+  val dummySender = context.actorOf(Props(new Actor {
+    def receive: Actor.Receive = {
+      case _ =>
+    }
+  }))
+
+
+  override def preStart(): Unit = {
+    context.parent tell(Initialized(init), dummySender)
+
+    context.parent tell(GracefulStop, dummySender)
+
+    context.parent tell(StopTimeout(3001.millisecond), dummySender)
+
+    self ! "Boom"
+  }
+
+  override def postRestart(reason: Throwable): Unit = {
+
+  }
+
+  def receive = {
+    case GracefulStop => defaultLeafActorStop
+
+    case "Boom" => throw new RuntimeException("Boom")
 
     case other => sender ! other
   }

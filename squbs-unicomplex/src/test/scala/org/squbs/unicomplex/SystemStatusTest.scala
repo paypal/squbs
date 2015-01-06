@@ -25,97 +25,110 @@ import org.squbs.lifecycle.GracefulStop
 
 object SystemStatusTest {
 
-	val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
+  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
-	val classPaths = Array(
-		"InitBlockCube",
-		"InitCubeA",
-		"InitCubeB",
-		"InitFailCube") map (dummyJarsDir + "/" + _)
+  val classPaths = Array(
+    "InitBlockCube",
+    "InitCubeA",
+    "InitCubeB",
+    "InitFailCube") map (dummyJarsDir + "/" + _)
 
-	import scala.collection.JavaConversions._
+  import scala.collection.JavaConversions._
 
-	val mapConfig = ConfigFactory.parseMap(
-		Map(
-			"squbs.actorsystem-name" -> "SystemStatusTest",
-			"squbs." + JMX.prefixConfig -> Boolean.box(true),
-			"default-listener.bind-service" -> Boolean.box(false)))
+  val mapConfig = ConfigFactory.parseMap(
+    Map(
+      "squbs.actorsystem-name" -> "SystemStatusTest",
+      "squbs." + JMX.prefixConfig -> Boolean.box(true),
+      "default-listener.bind-service" -> Boolean.box(false)))
 
-	val boot = UnicomplexBoot(mapConfig)
-		.createUsing { (name, config) => ActorSystem(name, config) }
-		.scanComponents(classPaths)
-		.initExtensions.start()
+  val boot = UnicomplexBoot(mapConfig)
+    .createUsing {
+    (name, config) => ActorSystem(name, config)
+  }
+    .scanComponents(classPaths)
+    .initExtensions.start()
 
 }
 
 class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with ImplicitSender
-	with WordSpecLike with Matchers with BeforeAndAfterAll
-	with SequentialNestedSuiteExecution {
+with WordSpecLike with Matchers with BeforeAndAfterAll
+with SequentialNestedSuiteExecution {
 
-	override def beforeAll() {
-		while (true) {
-			try {
-				Thread.sleep(5)
-			} catch {
-				case e: Throwable =>
-			}
-				
-			Unicomplex(system).uniActor ! ReportStatus
+  override def beforeAll() {
+    while (true) {
+      try {
+        Thread.sleep(5)
+      } catch {
+        case e: Throwable =>
+      }
 
-			val (state, msg) = expectMsgType[(LifecycleState, _)]
+      Unicomplex(system).uniActor ! ReportStatus
 
-			if ((Seq[LifecycleState](Active, Stopped, Failed) indexOf (state)) >= 0) {
-				return
-			}
-		}
-	}
+      val (state, msg) = expectMsgType[(LifecycleState, _)]
 
-	override def afterAll() {
-		Unicomplex(system).uniActor ! GracefulStop
-	}
+      if ((Seq[LifecycleState](Active, Stopped, Failed) indexOf (state)) >= 0) {
+        return
+      }
+    }
+  }
 
-	"CubeSupervisor" must {
+  override def afterAll() {
+    Unicomplex(system).uniActor ! GracefulStop
+  }
 
-		"get init reports from cube actors" in {
-			system.actorSelection("/user/CubeA") ! CheckInitStatus
-			val report = expectMsgType[(InitReports, Boolean)]._1
-			report.state should be(Active)
-			report.reports.size should be(2)
-		}
+  "CubeSupervisor" must {
 
-		"get init reports from cube actors even if the actor failed in init" in {
-			system.actorSelection("/user/InitFail") ! CheckInitStatus
-			val report = expectMsgType[(InitReports, Boolean)]._1
-			report.state should be(Failed)
-			report.reports.size should be(1)
-		}
+    "get init reports from cube actors" in {
+      system.actorSelection("/user/CubeA") ! CheckInitStatus
+      val report = expectMsgType[(InitReports, Boolean)]._1
+      report.state should be(Active)
+      report.reports.size should be(2)
+    }
 
-		"deal with the situation that cube actors are not able to send the reports" in {
-			system.actorSelection("/user/InitBlock") ! CheckInitStatus
-			val report = expectMsgType[(InitReports, Boolean)]._1
-			report.state should be(Initializing)
-			report.reports.size should be(1)
-		}
-	}
+    "get init reports from cube actors even if the actor failed in init" in {
+      system.actorSelection("/user/InitFail") ! CheckInitStatus
+      val report = expectMsgType[(InitReports, Boolean)]._1
+      report.state should be(Failed)
+      report.reports.size should be(1)
+    }
 
-	"UniComplex" must {
+    "deal with the situation that cube actors are not able to send the reports" in {
+      system.actorSelection("/user/InitBlock") ! CheckInitStatus
+      val report = expectMsgType[(InitReports, Boolean)]._1
+      report.state should be(Initializing)
+      report.reports.size should be(1)
+    }
+  }
 
-		"get cube init reports" in {
-			Unicomplex(system).uniActor ! ReportStatus
-			val (systemState, cubes) = expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])])]
-			systemState should be(Failed)
-			val cubeAReport = cubes.values.find(_._1.info.name == "CubeA").flatMap(_._2)
-			cubeAReport should not be (None)
-			cubeAReport.get.state should be(Active)
-			val cubeBReport = cubes.values.find(_._1.info.name == "CubeB").flatMap(_._2)
-			cubeBReport should not be (None)
-			cubeBReport.get.state should be(Active)
-			val initFailReport = cubes.values.find(_._1.info.name == "InitFail").flatMap(_._2)
-			initFailReport should not be (None)
-			initFailReport.get.state should be(Failed)
-			val initBlockReport = cubes.values.find(_._1.info.name == "InitBlock").flatMap(_._2)
-			initBlockReport should not be (None)
-			initBlockReport.get.state should be(Initializing)
-		}
-	}
+  "UniComplex" must {
+
+    "get cube init reports" in {
+      Unicomplex(system).uniActor ! ReportStatus
+      val (systemState, cubes) = expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])])]
+      systemState should be(Failed)
+      val cubeAReport = cubes.values.find(_._1.info.name == "CubeA").flatMap(_._2)
+      cubeAReport should not be (None)
+      cubeAReport.get.state should be(Active)
+      val cubeBReport = cubes.values.find(_._1.info.name == "CubeB").flatMap(_._2)
+      cubeBReport should not be (None)
+      cubeBReport.get.state should be(Active)
+      val initFailReport = cubes.values.find(_._1.info.name == "InitFail").flatMap(_._2)
+      initFailReport should not be (None)
+      initFailReport.get.state should be(Failed)
+      val initBlockReport = cubes.values.find(_._1.info.name == "InitBlock").flatMap(_._2)
+      initBlockReport should not be (None)
+      initBlockReport.get.state should be(Initializing)
+
+      Unicomplex(system).uniActor ! InitReports(Failed, Map.empty)
+
+      Unicomplex(system).uniActor ! SystemState
+      expectMsg(Failed)
+
+      Unicomplex(system).uniActor ! ObtainLifecycleEvents(Active)
+
+      Unicomplex(system).uniActor ! LifecycleTimesRequest
+      expectMsgClass(classOf[LifecycleTimes])
+
+    }
+  }
 }
