@@ -43,10 +43,12 @@ object SystemStatusTest {
 			"squbs." + JMX.prefixConfig -> Boolean.box(true),
 			"default-listener.bind-service" -> Boolean.box(false)))
 
-	val boot = UnicomplexBoot(mapConfig)
-		.createUsing { (name, config) => ActorSystem(name, config) }
-		.scanComponents(classPaths)
-		.initExtensions.start()
+  val boot = UnicomplexBoot(mapConfig)
+    .createUsing {
+    (name, config) => ActorSystem(name, config)
+  }
+    .scanComponents(classPaths)
+    .initExtensions.start()
 
 }
 
@@ -138,6 +140,16 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
       extensionFailedReportC should not be None
       extensionFailedReportC.get.exceptions should have size 1
       extensionFailedReportC.get.exceptions map (_._1) should contain ("load")
+
+      Unicomplex(system).uniActor ! InitReports(Failed, Map.empty)
+
+      Unicomplex(system).uniActor ! SystemState
+      expectMsg(Failed)
+
+      Unicomplex(system).uniActor ! ObtainLifecycleEvents(Active)
+
+      Unicomplex(system).uniActor ! LifecycleTimesRequest
+      expectMsgClass(classOf[LifecycleTimes])
     }
 	}
 }

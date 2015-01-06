@@ -64,6 +64,17 @@ object MutliListenerSpecActorSystem {
           client-authn = false
           ssl-context = default
         }
+        third-listener {
+          type = squbs.listener
+          aliases = []
+          bind-address = "0.111.0.0"
+          full-address = false
+          bind-port =  $port2
+          bind-service = true
+          secure = false
+          client-authn = false
+          ssl-context = default
+        }
       """.stripMargin)
     val boot = UnicomplexBoot(config)
     		.createUsing { (name, config) => ActorSystem(name, config)}
