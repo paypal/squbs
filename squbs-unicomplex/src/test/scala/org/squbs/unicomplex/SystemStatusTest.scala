@@ -92,10 +92,6 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
 			report.reports.size should be(1)
 		}
 
-    "get extension fail report when extensions fail to initialize" in {
-
-    }
-
 		"deal with the situation that cube actors are not able to send the reports" in {
 			system.actorSelection("/user/InitBlock") ! CheckInitStatus
 			val report = expectMsgType[(InitReports, Boolean)]._1
