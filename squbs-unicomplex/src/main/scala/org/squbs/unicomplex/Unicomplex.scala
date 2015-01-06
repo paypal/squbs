@@ -409,7 +409,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     case ReportStatus => // Status report request from admin tooling
       if (systemState == Active) // Stable state.
-        sender ! (systemState, cubes)
+        sender ! (systemState, cubes, extensions)
       else {
         val requester = sender()
         var pendingCubes = cubes collect {
@@ -426,7 +426,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
             updateCubes(ir)
             pendingCubes = pendingCubes.filter(_ != sender)
             if (pendingCubes.isEmpty) {
-              requester ! (systemState, cubes)
+              requester ! (systemState, cubes, extensions)
               unstashAll()
               context.unbecome()
             }
