@@ -12,7 +12,7 @@ import com.typesafe.config.{ConfigException, Config}
 import scala.collection.mutable
 import java.net.NetworkInterface
 
-import scala.concurrent.duration.{TimeUnit, Duration}
+import scala.concurrent.duration.{FiniteDuration, TimeUnit, Duration}
 import scala.util.Try
 
 object ConfigUtil {
@@ -73,9 +73,9 @@ object ConfigUtil {
       list map (_.toSeq)
     }
 
-    def getOptionalDuration(path: String): Option[Duration] = {
+    def getOptionalDuration(path: String): Option[FiniteDuration] = {
       import scala.concurrent.duration._
-      Try(Duration(underlying.getDuration(path, MILLISECONDS), MILLISECONDS)).toOption
+      Try(Duration.create(underlying.getDuration(path, MILLISECONDS), MILLISECONDS)).toOption
     }
   }
 
