@@ -26,7 +26,7 @@ import org.squbs.unicomplex.dummyfailedextensions.{DummyFailedExtensionA, DummyF
 
 object SystemStatusTest {
 
-  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
+	val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
 	val classPaths = Array(
 		"InitBlockCube",
@@ -35,13 +35,13 @@ object SystemStatusTest {
 		"InitFailCube",
     "DummyFailedExtensions") map (dummyJarsDir + "/" + _)
 
-  import scala.collection.JavaConversions._
+	import scala.collection.JavaConversions._
 
-  val mapConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name" -> "SystemStatusTest",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-service" -> Boolean.box(false)))
+	val mapConfig = ConfigFactory.parseMap(
+		Map(
+			"squbs.actorsystem-name" -> "SystemStatusTest",
+			"squbs." + JMX.prefixConfig -> Boolean.box(true),
+			"default-listener.bind-service" -> Boolean.box(false)))
 
   val boot = UnicomplexBoot(mapConfig)
     .createUsing {
@@ -129,17 +129,17 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
       val extensionFailedReportA = extensions find (_.extLifecycle.exists(_.isInstanceOf[DummyFailedExtensionA]))
       extensionFailedReportA should not be None
       extensionFailedReportA.get.exceptions should have size 1
-      extensionFailedReportA.get.exceptions exists (_._1 == "preInit") should be (true)
+      extensionFailedReportA.get.exceptions map (_._1) should contain ("preInit")
 
       val extensionFailedReportB = extensions find (_.extLifecycle.exists(_.isInstanceOf[DummyFailedExtensionB]))
       extensionFailedReportB should not be None
       extensionFailedReportB.get.exceptions should have size 1
-      extensionFailedReportB.get.exceptions exists (_._1 == "postInit") should be (true)
+      extensionFailedReportB.get.exceptions map (_._1) should contain ("postInit")
 
       val extensionFailedReportC = extensions find (_.extLifecycle == None)
       extensionFailedReportC should not be None
       extensionFailedReportC.get.exceptions should have size 1
-      extensionFailedReportC.get.exceptions exists (_._1 == "load") should be (true)
+      extensionFailedReportC.get.exceptions map (_._1) should contain ("load")
 
       Unicomplex(system).uniActor ! InitReports(Failed, Map.empty)
 

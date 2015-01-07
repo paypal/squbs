@@ -20,10 +20,11 @@ package org.squbs.unicomplex
 import java.lang.management.ManagementFactory
 import java.util.concurrent.TimeUnit
 import javax.management.ObjectName
+
 import akka.actor.ActorSystem
 import akka.io.IO
-import akka.testkit.{ImplicitSender, TestKit}
 import akka.pattern.ask
+import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
@@ -33,6 +34,7 @@ import org.squbs.unicomplex.dummyextensions.DummyExtension
 import org.squbs.unicomplex.dummysvcactor.GetWebContext
 import spray.can.Http
 import spray.http._
+
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -55,7 +57,7 @@ object UnicomplexSpec {
     Map(
       "squbs.actorsystem-name"    -> "unicomplexSpec",
       "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-port" -> org.squbs.nextPort.toString
+      "default-listener.bind-port" -> org.squbs.nextPort().toString
     )
   )
 
@@ -67,7 +69,7 @@ object UnicomplexSpec {
 }
 
 class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with ImplicitSender
-                             with WordSpecLike with Matchers with BeforeAndAfterAll
+                             with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll
                              with AsyncAssertions {
 
   import org.squbs.unicomplex.UnicomplexSpec._
@@ -130,44 +132,44 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
     "start all services" in {
       val services = boot.cubes flatMap { cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty) }
       assert(services.size == 4)
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvc/msg/hello")))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvc/msg/hello"))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("^hello$")
       }
 
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/ping")))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/ping"))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("Pong")
       }
 
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/pong")))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/pong"))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("Ping")
       }
 
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvcactor/ping")))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvcactor/ping"))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("pong")
       }
 
-      (IO(Http) ! HttpRequest(HttpMethods.POST, Uri(s"http://127.0.0.1:$port/withstash/"), entity = HttpEntity("request message")))
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/withstash/")))
+      IO(Http) ! HttpRequest(HttpMethods.POST, Uri(s"http://127.0.0.1:$port/withstash/"), entity = HttpEntity("request message"))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/withstash/"))
 			within(timeout.duration) {
         val resp1 = expectMsgType[HttpResponse]
         resp1.status shouldBe StatusCodes.OK
         resp1.entity.asString shouldBe Seq.empty[String].toString
       }
 
-      (IO(Http) ! HttpRequest(HttpMethods.PUT, Uri(s"http://127.0.0.1:$port/withstash/")))
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/withstash/")))
+      IO(Http) ! HttpRequest(HttpMethods.PUT, Uri(s"http://127.0.0.1:$port/withstash/"))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/withstash/"))
 			within(timeout.duration) {
 				val resp2 = expectMsgType[HttpResponse]
 				resp2.status shouldBe StatusCodes.OK
@@ -177,7 +179,6 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
     "service actor with WebContext must have a WebContext" in {
       val w = new Waiter
-      val webContext =
       for {
         svcActor <- system.actorSelection("/user/DummySvcActor/dummysvcactor-DummySvcActor-handler").resolveOne()
         result   <- (svcActor ? GetWebContext).mapTo[String]
@@ -189,7 +190,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
     }
 
     "check cube MXbean" in {
-      import JMX._
+      import org.squbs.unicomplex.JMX._
       val mbeanServer = ManagementFactory.getPlatformMBeanServer
       val cubesObjName = new ObjectName(prefix(system) + cubesName)
       val attr = mbeanServer.getAttribute(cubesObjName, "Cubes")
@@ -199,7 +200,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
     }
 
     "check cube state MXbean" in {
-      import JMX._
+      import org.squbs.unicomplex.JMX._
       val cubeName = "DummyCube"
       val mbeanServer = ManagementFactory.getPlatformMBeanServer
       val cubesObjName = new ObjectName(prefix(system) + cubeStateName + cubeName)
@@ -211,16 +212,12 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
       val WellKnownActors = mbeanServer.getAttribute(cubesObjName, "WellKnownActors").asInstanceOf[String]
       println(WellKnownActors)
-      val b1 = WellKnownActors.contains("Actor[akka://unicomplexSpec/user/DummyCube/Prepender#")
-      b1 should be (true)
-      val b2 =WellKnownActors.contains("Actor[akka://unicomplexSpec/user/DummyCube/Appender#")
-      b2 should be (true)
-
-
+      WellKnownActors should include ("Actor[akka://unicomplexSpec/user/DummyCube/Prepender#")
+      WellKnownActors should include ("Actor[akka://unicomplexSpec/user/DummyCube/Appender#")
     }
 
     "check listener MXbean" in {
-      import JMX._
+      import org.squbs.unicomplex.JMX._
       val mbeanServer = ManagementFactory.getPlatformMBeanServer
       val listenersObjName = new ObjectName(prefix(system) + listenersName)
       val listeners = mbeanServer.getAttribute(listenersObjName, "Listeners")
@@ -232,7 +229,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
     "preInit, init and postInit all extenstions" in {
       boot.extensions.size should be (2)
-      boot.extensions.forall(_.extLifecycle.get.isInstanceOf[DummyExtension]) should be (true)
+      forAll (boot.extensions) { _.extLifecycle.get shouldBe a [DummyExtension]}
       boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("AstartpreInitinitpostInit")
       boot.extensions(1).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("BstartpreInitinitpostInit")
     }
@@ -244,5 +241,5 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
           state should be(Active)
       }
     }
-   }
+  }
 }
