@@ -33,7 +33,7 @@ import spray.can.Http
 
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 
 class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
@@ -89,7 +89,7 @@ private[unicomplex] case class  StartListener(name: String, config: Config)
 private[unicomplex] case object RoutesStarted
 private[unicomplex] case class  StartCubeActor(props: Props, name: String = "", initRequired: Boolean = false)
 private[unicomplex] case class  StartCubeService(webContext: String, listeners: Seq[String], props: Props,
-                                                 name: String = "", initRequired: Boolean = false)
+                                                 name: String = "", proxyName : Option[String] = None, initRequired: Boolean = false)
 private[unicomplex] case object CheckInitStatus
 private[unicomplex] case class  InitReports(state: LifecycleState, reports: Map[ActorRef, Option[InitReport]])
 private[unicomplex] case object Started
@@ -578,8 +578,27 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
 
-    case StartCubeService(webContext, listeners, props, name, initRequired) =>
-      val cubeActor = context.actorOf(props, name)
+    case StartCubeService(webContext, listeners, props, name, proxyName, initRequired) =>
+
+      val globalConfig = context.system.settings.config
+
+      val cubeActor = proxyName match {
+        case None => context.actorOf(props, name)
+        case Some(pName) =>
+          try {
+            val proxyConfig = globalConfig.getConfig("squbs.proxy." + pName)
+            val providerClassName = proxyConfig.getString("provider")
+            val settings = Try {
+              proxyConfig.getConfig("settings")
+            }.toOption
+            val providerClass = Class.forName(providerClassName, true, getClass.getClassLoader)
+            context.actorOf(Props(providerClass, settings, props), name)
+          } catch {
+            case t: Throwable =>
+              log.error(t, "Failed to init proxy: " + pName)
+              context.actorOf(props, name) //fallback
+          }
+      }
 
       if (initRequired) initMap += cubeActor -> None
       Unicomplex() ! RegisterContext(listeners, webContext, cubeActor)

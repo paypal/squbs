@@ -269,13 +269,13 @@ object UnicomplexBoot {
       }
     }
 
-    def startServiceRoute(clazz: Class[_], webContext: String, listeners: Seq[String]) = {
+    def startServiceRoute(clazz: Class[_], proxyName : Option[String], webContext: String, listeners: Seq[String]) = {
       try {
         val routeClass = clazz asSubclass classOf[RouteDefinition]
         val props = Props(classOf[RouteActor], webContext, routeClass)
         val className = clazz.getSimpleName
         val actorName = if (webContext.length > 0) s"$webContext-$className-route" else s"root-$className-route"
-        cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, initRequired = true)
+        cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, proxyName, initRequired = true)
         Some((fullName, name, version, clazz))
       } catch {
         case e: ClassCastException => None
@@ -288,7 +288,7 @@ object UnicomplexBoot {
       override def produce() = creator()
     }
 
-    def startServiceActor(clazz: Class[_], webContext: String, listeners: Seq[String],
+    def startServiceActor(clazz: Class[_], proxyName : Option[String], webContext: String, listeners: Seq[String],
                           initRequired: Boolean) = {
       try {
         val actorClass = clazz asSubclass classOf[Actor]
@@ -296,18 +296,27 @@ object UnicomplexBoot {
         val props = Props(classOf[TypedCreatorFunctionConsumer], clazz, actorCreator _)
         val className = clazz.getSimpleName
         val actorName = if (webContext.length > 0) s"$webContext-$className-handler" else s"root-$className-handler"
-        cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, initRequired)
+        cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, proxyName, initRequired)
         Some((fullName, name, version, actorClass))
       } catch {
         case e: ClassCastException => None
       }
     }
 
+    def getProxyName(serviceConfig: Config): Option[String] = {
+      Try {
+        serviceConfig.getString("proxy-name")
+      } match {
+        case Success(proxyName) => Some(proxyName)
+        case Failure(t) => None // not defined
+      }
+    }
+
     def startService(serviceConfig: Config): Option[(String, String, String, Class[_])] =
     try {
       val className = serviceConfig.getString("class-name")
-      val clazz = Class.forName(serviceConfig.getString("class-name"), true, getClass.getClassLoader)
-
+      val clazz = Class.forName(className, true, getClass.getClassLoader)
+      val proxyName = getProxyName(serviceConfig)
       val webContext = serviceConfig.getString("web-context")
 
       val listeners = serviceConfig.getOptionalStringList("listeners").fold(Seq("default-listener"))({ list =>
@@ -327,8 +336,8 @@ object UnicomplexBoot {
         else listenerMapping collect { case (entry, Some(listener)) => listener }
       })
 
-      val service = startServiceRoute(clazz, webContext, listeners) orElse startServiceActor(
-        clazz, webContext, listeners, serviceConfig getOptionalBoolean "init-required" getOrElse false)
+      val service = startServiceRoute(clazz, proxyName,webContext, listeners) orElse startServiceActor(
+        clazz, proxyName, webContext, listeners, serviceConfig getOptionalBoolean "init-required" getOrElse false)
 
       if (service == None) throw new ClassCastException(s"Class $className is neither a RouteDefinition nor an Actor.")
       service
