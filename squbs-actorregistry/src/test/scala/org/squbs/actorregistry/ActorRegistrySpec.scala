@@ -109,7 +109,7 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
 
     "1.1) check ActorRegistryConfigBean " in {
       assert(ActorRegistrySpec.getActorRegistryConfigBean("Count") == 2)
-      assert(ActorRegistrySpec.getActorRegistryConfigBean("Timeout") == 10)
+      assert(ActorRegistrySpec.getActorRegistryConfigBean("Timeout") == 1000)
     }
 
     "2) check TestActor" in {

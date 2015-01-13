@@ -35,6 +35,7 @@ import scala.concurrent.Await
 object MutliListenerSpecActorSystem {
   val port1 = nextPort()
   val port2 = nextPort()
+  val port3 = nextPort()
   
   val config = ConfigFactory.parseString(
       s"""
@@ -69,7 +70,7 @@ object MutliListenerSpecActorSystem {
           aliases = []
           bind-address = "0.111.0.0"
           full-address = false
-          bind-port =  $port2
+          bind-port =  $port3
           bind-service = true
           secure = false
           client-authn = false
