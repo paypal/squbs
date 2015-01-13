@@ -119,6 +119,66 @@ with AsyncAssertions {
 
   "UnicomplexBoot" must {
 
+    "start all cube actors" in {
+      val w = new Waiter
+
+      system.actorSelection("/user/ServiceProxyRoute").resolveOne().onComplete {
+        result =>
+          w {
+            assert(result.isSuccess)
+          }
+          w.dismiss()
+      }
+      w.await()
+
+      system.actorSelection("/user/ServiceProxyActor").resolveOne().onComplete {
+        result =>
+          w {
+            assert(result.isSuccess)
+          }
+          w.dismiss()
+      }
+      w.await()
+
+      system.actorSelection("/user/PipedServiceProxyActor").resolveOne().onComplete {
+        result =>
+          w {
+            assert(result.isSuccess)
+          }
+          w.dismiss()
+      }
+      w.await()
+
+      system.actorSelection("/user/ServiceProxyRoute/serviceproxyroute-ServiceProxyRoute-route").resolveOne().onComplete {
+        result =>
+          w {
+            assert(result.isSuccess)
+          }
+          w.dismiss()
+      }
+      w.await()
+
+      system.actorSelection("/user/ServiceProxyActor/serviceproxyactor-ServiceProxyActor-handler").resolveOne().onComplete {
+        result =>
+          w {
+            assert(result.isSuccess)
+          }
+          w.dismiss()
+      }
+      w.await()
+
+      system.actorSelection("/user/PipedServiceProxyActor/pipedserviceproxyactor-PipedServiceProxyActor-handler").resolveOne().onComplete {
+        result =>
+          w {
+            assert(result.isSuccess)
+          }
+          w.dismiss()
+      }
+      w.await()
+
+    }
+
+
     "start all services" in {
       val services = boot.cubes flatMap {
         cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty)
