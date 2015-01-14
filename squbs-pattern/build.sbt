@@ -4,6 +4,9 @@ name := "squbs-pattern"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+  "com.typesafe.akka" %% "akka-actor" % "2.3.6" % "test",
+  "com.typesafe.akka" %% "akka-testkit" % "2.3.6" % "test",
+  "com.typesafe.akka" %% "akka-contrib" % "2.3.6" % "test" intransitive(),
   "org.scalatest" %% "scalatest" % "2.2.1" % "test->*"
 )
 
