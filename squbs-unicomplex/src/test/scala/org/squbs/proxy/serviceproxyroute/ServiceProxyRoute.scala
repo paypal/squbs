@@ -4,7 +4,7 @@ import org.squbs.unicomplex._
 import spray.routing.Directives._
 import spray.http.HttpEntity
 import spray.http.MediaTypes._
-import akka.actor.Props
+import akka.actor.ActorRef
 import com.typesafe.config.Config
 import scala.concurrent.{Promise, Future}
 import spray.http.HttpResponse
@@ -30,7 +30,7 @@ class ServiceProxyRoute extends RouteDefinition with WebContext {
   }
 }
 
-class DummyServiceProxyForRoute(settings: Option[Config], hostActorProps: Props) extends SimpleServiceProxy(settings, hostActorProps) {
+class DummyServiceProxyForRoute(settings: Option[Config], hostActor: ActorRef) extends SimpleServiceProxy(settings, hostActor) {
 
 
   def processRequest(reqCtx: RequestContext): Future[RequestContext] = {

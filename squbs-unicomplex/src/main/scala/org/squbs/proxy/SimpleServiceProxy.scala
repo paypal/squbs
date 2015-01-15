@@ -17,7 +17,7 @@ import scala.util.Success
  */
 
 
-abstract class SimpleServiceProxy(settings: Option[Config], hostActorProps: Props) extends ServiceProxy(settings, hostActorProps) {
+abstract class SimpleServiceProxy(settings: Option[Config], hostActor: ActorRef) extends ServiceProxy(settings, hostActor) {
 
   def handleRequest(requestCtx: RequestContext, responder: ActorRef)(implicit actorContext: ActorContext): Unit = {
     val actor = actorContext.actorOf(Props(new InnerActor(responder)))

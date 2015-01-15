@@ -1,7 +1,7 @@
 package org.squbs.proxy
 
 import com.typesafe.config.Config
-import akka.actor.Props
+import akka.actor.ActorRef
 import scala.concurrent.{Promise, Future}
 
 /**
@@ -19,7 +19,7 @@ case class PipeLineConfig(
                            outbound: Seq[PipeHandler] = Seq.empty
                            )
 
-abstract class PipedServiceProxy(settings: Option[Config], hostActorProps: Props) extends SimpleServiceProxy(settings, hostActorProps) {
+abstract class PipedServiceProxy(settings: Option[Config], hostActor: ActorRef) extends SimpleServiceProxy(settings, hostActor) {
   //inbound processing
 
   import context.dispatcher

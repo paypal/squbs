@@ -9,7 +9,6 @@ import spray.http.ChunkedRequestStart
 import scala.Some
 import spray.http.HttpResponse
 import scala.util.Try
-import org.squbs.unicomplex.Initialized
 
 /**
  * Created by lma on 15-1-7.
@@ -105,21 +104,13 @@ object NormalProxyResponse {
 }
 
 
-abstract class ServiceProxy(settings: Option[Config], hostActorProps: Props) extends Actor with ActorLogging {
+abstract class ServiceProxy(settings: Option[Config], hostActor: ActorRef) extends Actor with ActorLogging {
 
   import context.dispatcher
-
-  val hostActor = context.actorOf(hostActorProps)
-
 
   def handleRequest(requestCtx: RequestContext, responder: ActorRef)(implicit actorContext: ActorContext): Unit
 
   def receive: Actor.Receive = {
-
-
-    //forward msg from route definition
-    case Initialized(report) =>
-      context.parent ! Initialized(report)
 
     case req: HttpRequest =>
       val client = sender()

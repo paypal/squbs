@@ -592,11 +592,12 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
               proxyConfig.getConfig("settings")
             }.toOption
             val providerClass = Class.forName(providerClassName, true, getClass.getClassLoader)
-            context.actorOf(Props(providerClass, settings, props), name)
+            val hostActor = context.actorOf(props)
+            context.actorOf(Props(providerClass, settings, hostActor), name)
           } catch {
             case t: Throwable =>
               log.error(t, "Failed to init proxy: " + pName)
-              context.actorOf(props, name) //fallback
+              context.actorOf(props, name) //TODO fallback or throw error
           }
       }
 

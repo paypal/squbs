@@ -119,7 +119,7 @@ class ChunkHandler(client: ActorRef, start: ChunkedRequestStart) extends Actor w
 }
 
 
-class DummyServiceProxyForActor(settings: Option[Config], hostActorProps: Props) extends SimpleServiceProxy(settings, hostActorProps) {
+class DummyServiceProxyForActor(settings: Option[Config], hostActor: ActorRef) extends SimpleServiceProxy(settings, hostActor) {
 
   override def processResponseChunk(chunk: MessageChunk): MessageChunk = {
     val raw = new String(chunk.data.toByteArray)
