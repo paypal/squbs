@@ -191,6 +191,27 @@ The wildcard value `"*"` (note, it has to be quoted or will not be properly be i
     listeners = [ default-listener, "*" ]
 ```
 
+### Runtime Access to Web Context
+While the web context is configured in metadata, both the route and the actor will sometimes need to know what web context it is serving. To do so, any service class (route or actor) may want to mix in the `org.squbs.unicomplex.WebContext` trait. Doing so will add the following field to your object
+
+```
+    val webContext: String
+```
+
+The webContext field is initialized to the value of the configured web context as set in Metadata upon construction of the object as shown below:
+
+```
+class MySvcActor extends Actor with WebContext {
+  def receive = {
+    case HttpRequest(HttpMethods.GET, Uri.Path(p), _, _, _)
+        if p.startsWith(s"/$webContext") =>
+      // handle request...
+  }
+}
+```
+
+The `webContext` field will automatically be made available to the logic in this class
+
 ##Extensions
 
 Extensions for squbs are low level facilities that need to be started for the environment. The extension initializer

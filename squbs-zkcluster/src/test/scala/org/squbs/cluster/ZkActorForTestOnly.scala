@@ -1,22 +1,33 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.cluster
 
 import java.io.File
 import java.net.InetAddress
 
-import akka.actor.{ActorRef, Actor}
 import com.google.common.base.Charsets
 import com.google.common.io.Files
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.apache.zookeeper.server.ZooKeeperServerMain
-import org.apache.zookeeper.server.quorum.QuorumPeerMain
-import org.slf4j.LoggerFactory
-import org.squbs.unicomplex.Unicomplex
 
-/**
- * Created by huzhou on 4/21/14.
- */
-class ZkActorForTestOnly(val externalConfigDir:String) {
+class ZkActorForTestOnly(val externalConfigDir:String) extends LazyLogging {
 
-  private val log = LoggerFactory.getLogger(this.getClass)
+  private val log = logger
   private var zkThread:Thread = null
 
   def startup(port:Int = 2181) = {

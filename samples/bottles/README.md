@@ -22,9 +22,9 @@ Getting Started
 
 3. Clone this git repo.
 
-4. Build all the modules by running "sbt clean update package".
+4. Build the whole project with "sbt clean update package" from the directory.
 
-5. Start the server using "sbt bottlesvc/run" from the project.
+5. Start the server using "sbt bottlesvc/run" from the root directory.
 
 6. Go to http://localhost:8080/bottles/index.html
 

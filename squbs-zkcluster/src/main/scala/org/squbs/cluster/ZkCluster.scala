@@ -1,3 +1,20 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.cluster
 
 import java.io.File
@@ -7,7 +24,7 @@ import akka.actor._
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
 import com.typesafe.config.ConfigFactory
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.apache.curator.RetryPolicy
 import org.apache.curator.framework.api._
 import org.apache.curator.framework.recipes.leader.LeaderLatch
@@ -34,7 +51,8 @@ class ZkCluster(system: ActorSystem,
                 zkNamespace: String,
                 implicit val segmentationLogic: SegmentationLogic,
                 retryPolicy: RetryPolicy = new ExponentialBackoffRetry(1000, 3),
-                rebalanceLogic:RebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = false)) extends Extension with Logging {
+                rebalanceLogic:RebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = false))
+  extends Extension with LazyLogging {
 
   private[this] implicit val log = logger
   private[this] var zkClient = CuratorFrameworkFactory.newClient(zkConnectionString, retryPolicy)
@@ -71,8 +89,8 @@ class ZkCluster(system: ActorSystem,
   private[cluster] def initialize = {
 
     //make sure /leader, /members, /segments znodes are available
-    guarantee("/leader",   Some(Array[Byte]()), CreateMode.PERSISTENT)
-    guarantee("/members",  Some(Array[Byte]()), CreateMode.PERSISTENT)
+    guarantee("/leader", Some(Array[Byte]()), CreateMode.PERSISTENT)
+    guarantee("/members", Some(Array[Byte]()), CreateMode.PERSISTENT)
     guarantee("/segments", Some(Array[Byte]()), CreateMode.PERSISTENT)
 
     val segmentsSize = zkClientWithNs.getChildren.forPath("/segments").size()
@@ -121,7 +139,7 @@ private[cluster] case object ZkSnapshotPartitions
 private[cluster] class ZkMembershipMonitor(implicit var zkClient: CuratorFramework,
                                            zkClusterActor: ActorRef,
                                            zkAddress: Address,
-                                           var zkLeaderLatch: LeaderLatch) extends Actor with Logging {
+                                           var zkLeaderLatch: LeaderLatch) extends Actor with LazyLogging {
 
   private[this] implicit val log = logger
   private[this] var stopped = false
@@ -242,7 +260,8 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
                                            zkClusterActor: ActorRef,
                                            zkAddress: Address,
                                            rebalanceLogic: RebalanceLogic,
-                                           implicit val segmentationLogic:SegmentationLogic) extends Actor with Logging {
+                                           implicit val segmentationLogic:SegmentationLogic)
+  extends Actor with LazyLogging {
 
   import org.squbs.cluster.ZkPartitionsManager._
   import segmentationLogic._
@@ -527,14 +546,17 @@ object ZkPartitionsManager {
 }
 
 case object ZkRebalanceRetry
+
 /**
  * The main Actor of ZkCluster
- * @param zkClient
  * @param zkAddress
+ * @param rebalanceLogic
+ * @param segmentationLogic
  */
 class ZkClusterActor(zkAddress:Address,
                      rebalanceLogic:RebalanceLogic,
-                     implicit val segmentationLogic:SegmentationLogic) extends FSM[ZkClusterState, ZkClusterData] with Stash with Logging {
+                     implicit val segmentationLogic:SegmentationLogic)
+  extends FSM[ZkClusterState, ZkClusterData] with Stash with LazyLogging {
 
   import org.squbs.cluster.ZkCluster._
   import segmentationLogic._
@@ -840,7 +862,7 @@ class ZkClusterActor(zkAddress:Address,
   }
 }
 
-object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Logging {
+object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with LazyLogging {
 
   private[cluster] var whenZkClientUpdated = Seq.empty[ActorPath]
   private[cluster] var whenZkLeadershipUpdated = Set.empty[ActorPath]

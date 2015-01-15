@@ -1,10 +1,10 @@
-scalaVersion := "2.10.4"
+scalaVersion := "2.11.2"
 
 name := "pubsub"
 
 organization in ThisBuild := "org.squbs.samples"
 
-version in ThisBuild := "0.0.1-SNAPSHOT"
+version in ThisBuild := "0.6.0-SNAPSHOT"
 
 publishArtifact := false
 

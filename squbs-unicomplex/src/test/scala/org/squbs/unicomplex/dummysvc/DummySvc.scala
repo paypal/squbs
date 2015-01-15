@@ -1,20 +1,31 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.unicomplex.dummysvc
 
-import org.squbs.unicomplex.RouteDefinition
+import org.squbs.unicomplex._
 import akka.actor.{Props, ActorRef, Actor, ActorLogging}
 import spray.routing._
 import Directives._
 import spray.http.HttpEntity
 import spray.http.MediaTypes._
 import spray.http.HttpResponse
-import org.squbs.unicomplex.AppendedMsg
-import org.squbs.unicomplex.PrependedMsg
-import org.squbs.unicomplex.EchoMsg
 
-/**
- * Created by zhuwang on 2/21/14.
- */
-class DummySvc extends RouteDefinition{
+class DummySvc extends RouteDefinition with WebContext {
   def route = path("msg" / Segment) {param =>
     get {ctx =>
       context.actorOf(Props[DummyClient]).tell(EchoMsg(param), ctx.responder)

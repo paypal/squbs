@@ -1,12 +1,24 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org
 
-/**
- * Created by huzhou on 4/3/14.
- */
-
-import java.net.{InetSocketAddress, Socket}
 import java.io.IOException
-import scala.util.control.NonFatal
+import java.net.ServerSocket
 
 /**
  * copied from twitter util for testing purpose only.
@@ -18,32 +30,14 @@ package object squbs {
    * A generator of random local [[java.net.InetSocketAddress]] objects with
    * ephemeral ports.
    */
-  private[this] def localSocketOnPort(port: Int) =
-    new InetSocketAddress(port)
-
-  private[this] val ephemeralSocketAddress = localSocketOnPort(0)
-
-  def apply() = nextAddress()
-
-  def nextAddress(): InetSocketAddress =
-    localSocketOnPort(nextPort())
-
   def nextPort(): Int = {
-
-    val s = new Socket
-    s.setReuseAddress(true)
+    val s = new ServerSocket(0)
     try {
-      s.bind(ephemeralSocketAddress)
       s.getLocalPort
-    }
-    catch {
-      case NonFatal(e) =>
-        if (e.getClass == classOf[IOException] || e.getClass == classOf[IllegalArgumentException])
+    } catch {
+      case e:Throwable =>
           throw new Exception("Couldn't find an open port: %s".format(e.getMessage))
-        else
-          throw e
-    }
-    finally {
+    } finally {
       s.close()
     }
   }

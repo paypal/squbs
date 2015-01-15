@@ -1,0 +1,13 @@
+squbs 
+
+Original Author
+----------------
+eBay Software Foundation
+(c) 2014 
+
+Maintainer
+----------
+
+TypeSafe
+https://typesafe.com/
+
