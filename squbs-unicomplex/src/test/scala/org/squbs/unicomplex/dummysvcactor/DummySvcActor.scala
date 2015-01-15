@@ -17,7 +17,7 @@
  */
 package org.squbs.unicomplex.dummysvcactor
 
-import akka.actor.{Props, ActorLogging, Actor}
+import akka.actor.{ActorRef, Props, ActorLogging, Actor}
 import org.squbs.unicomplex.WebContext
 import spray.can.Http.RegisterChunkHandler
 import spray.http.StatusCodes._

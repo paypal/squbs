@@ -19,7 +19,7 @@ import scala.util.Try
 
 object UnicomplexTimeoutSpec {
 
-  val dummyJarsDir = "squbs-unicomplex/src/test/resources/classpaths"
+  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
   val classPaths = Array(
     "DummySvcActor"
@@ -67,7 +67,7 @@ with AsyncAssertions {
 
     "Cause a timeout event" in {
       system.settings.config getString "spray.can.server.request-timeout" should be ("5s")
-      system.actorSelection("/user/DummySvcActor/dummysvcactor-handler") ! RegisterTimeoutHandler
+      system.actorSelection("/user/DummySvcActor/dummysvcactor-DummySvcActor-handler") ! RegisterTimeoutHandler
       val path = "/dummysvcactor/timeout"
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port$path")))
       within(timeout.duration) {
