@@ -9,14 +9,14 @@ Await.ready(future, timeout.duration)
 ```
 Should be changed to:
 ```
-val policy = TimeoutPolicy(name = "mypolicy", initial = 1 second)
+val policy = TimeoutPolicy(name = Some("mypolicy"), initial = 1 second)
 val tx = policy.transaction
 Await.ready(future, tx.waitTime)
 tx.end
 ```
 or
 ```
-val policy = TimeoutPolicy(name = "mypolicy", initial = 1 second)
+val policy = TimeoutPolicy(name = Some("mypolicy"), initial = 1 second)
 val result = policy.execute(duration => {
   Await.ready(future, duration)
 })
