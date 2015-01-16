@@ -17,13 +17,15 @@
  */
 package org.squbs.httpclient
 
-import spray.can.client.HostConnectorSettings
-import spray.can.Http.ClientConnectionType
 import javax.net.ssl.SSLContext
+
 import com.typesafe.config.ConfigFactory
-import scala.concurrent.duration._
-import spray.http.HttpResponse
 import org.squbs.httpclient.pipeline.Pipeline
+import spray.can.Http.ClientConnectionType
+import spray.can.client.HostConnectorSettings
+import spray.http.HttpResponse
+
+import scala.concurrent.duration._
 
 case class Configuration(pipeline: Option[Pipeline] = None,
                          hostSettings: HostConnectorSettings = Configuration.defaultHostSettings,
