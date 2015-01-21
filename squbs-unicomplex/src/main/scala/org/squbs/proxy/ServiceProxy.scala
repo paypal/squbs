@@ -1,3 +1,20 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.proxy
 
 import akka.actor._
@@ -10,9 +27,6 @@ import scala.Some
 import spray.http.HttpResponse
 import scala.util.Try
 
-/**
- * Created by lma on 15-1-7.
- */
 
 case class RequestContext(
                            request: HttpRequest,
@@ -20,7 +34,7 @@ case class RequestContext(
                            response: ProxyResponse = ResponseNotReady,
                            attributes: Map[String, Any] = Map.empty //Store any other data
                            ) {
-  def getAttribute[T](key: String): Option[T] = {
+  def attribute[T](key: String): Option[T] = {
     attributes.get(key) match {
       case None => None
       case Some(null) => None
@@ -75,7 +89,7 @@ case class NormalProxyResponse(
       }
     }
 
-  def getHttpResponse: Option[HttpResponse] = {
+  def httpResponse: Option[HttpResponse] = {
     if (data.isInstanceOf[HttpResponse]) {
       Some(data.asInstanceOf[HttpResponse])
     } else {
@@ -89,15 +103,15 @@ object NormalProxyResponse {
 
   def apply(resp: HttpResponse): NormalProxyResponse = new NormalProxyResponse(data = resp)
 
-  def apply(chunkStart: ChunkedResponseStart): NormalProxyResponse = new NormalProxyResponse(isChunkStart = true, data = chunkStart.response)
+  def apply(chunkStart: ChunkedResponseStart): NormalProxyResponse = NormalProxyResponse(isChunkStart = true, data = chunkStart.response)
 
   def apply(chunkMsg: MessageChunk): NormalProxyResponse = new NormalProxyResponse(data = chunkMsg)
 
   def apply(chunkEnd: ChunkedMessageEnd): NormalProxyResponse = new NormalProxyResponse(data = chunkEnd)
 
   def apply(confirm: Confirmed, from: ActorRef): NormalProxyResponse = confirm match {
-    case Confirmed(ChunkedResponseStart(resp), ack) => new NormalProxyResponse(source = from, confirmAck = Some(ack), isChunkStart = true, data = resp)
-    case Confirmed(r@(_: HttpResponsePart), ack) => new NormalProxyResponse(source = from, confirmAck = Some(ack), isChunkStart = false, data = r)
+    case Confirmed(ChunkedResponseStart(resp), ack) => NormalProxyResponse(source = from, confirmAck = Some(ack), isChunkStart = true, data = resp)
+    case Confirmed(r@(_: HttpResponsePart), ack) => NormalProxyResponse(source = from, confirmAck = Some(ack), isChunkStart = false, data = r)
     case other => throw new IllegalArgumentException("Unsupported confirmed message: " + confirm.messagePart)
   }
 
