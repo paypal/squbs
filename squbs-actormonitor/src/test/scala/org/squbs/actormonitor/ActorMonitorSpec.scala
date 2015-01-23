@@ -68,7 +68,7 @@ object ActorMonitorSpec {
       ManagementFactory.getPlatformMBeanServer.getAttribute(getObjName(actorName), att).asInstanceOf[String]
     } catch {
       case e: Exception =>
-        println("exception => " + e.getMessage)
+      //  println("exception => " + e.getMessage)
        null
     }
 
@@ -99,7 +99,14 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
   "ActorMonitor" must {
 
-    "1) getActor of TestCube/TestActor" in {
+    "1.0) ActorMonitorConfigBean" in {
+      import ActorMonitorSpec._
+      assert(getActorMonitorConfigBean("MaxCount") == 500)
+      assert(getActorMonitorConfigBean("MaxChildrenDisplay") == 20)
+      assert(getActorMonitorConfigBean("Count") == 12)
+    }
+
+    "1.1) getActor of TestCube/TestActor" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Actor")
       assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"))
     }
@@ -239,20 +246,17 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
       assert(bean == "0")
     }
 
-
-    "6.0) getBean after actor has been stop" in {
+    "6.1) getBean after actor has been stop" in {
       val before = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor")
       import ActorMonitorSpec._
-      assert(getActorMonitorConfigBean("MaxCount") == 500)
-      assert(getActorMonitorConfigBean("MaxChildrenDisplay") == 20)
-      val originalNum = getActorMonitorConfigBean("Count").asInstanceOf[Int]
+      val originalNum = getActorMonitorConfigBean("Count")
       assert(before != null)
       system.actorSelection("/user/TestCube/TestActor1") ! PoisonPill
       receiveOne(2 seconds) match {
         case msg =>
-            val after = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor")
-            assert(after == null)
-            assert(getActorMonitorConfigBean("Count") == originalNum - 1)
+          val after = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor")
+          assert(after == null)
+          assert(getActorMonitorConfigBean("Count") == 12)
       }
     }
 
@@ -267,5 +271,6 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
   }
 }
+
 
 
