@@ -99,17 +99,11 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
   "ActorMonitor" must {
 
-    "1.0) ActorMonitorConfigBean" in {
-      import ActorMonitorSpec._
-      assert(getActorMonitorConfigBean("MaxCount") == 500)
-      assert(getActorMonitorConfigBean("MaxChildrenDisplay") == 20)
-      assert(getActorMonitorConfigBean("Count") == 12)
-    }
-
     "1.1) getActor of TestCube/TestActor" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Actor")
       assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"))
     }
+
 
     "2.1) getClassName of TestCube/TestActor" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "ClassName")
@@ -256,11 +250,18 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
         case msg =>
           val after = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor")
           assert(after == null)
-          assert(getActorMonitorConfigBean("Count") == 12)
+          assert(getActorMonitorConfigBean("Count") == 11)
       }
     }
 
-    "7.0) kill ActorMonitor" in {
+    "7.0) ActorMonitorConfigBean" in {
+      import ActorMonitorSpec._
+      assert(getActorMonitorConfigBean("MaxCount") == 500)
+      assert(getActorMonitorConfigBean("MaxChildrenDisplay") == 20)
+      assert(getActorMonitorConfigBean("Count") == 11)
+    }
+
+    "7.1) kill ActorMonitor" in {
       system.actorSelection("/user/*") ! PoisonPill
       receiveOne(timeout.duration) match {
         case msg =>
