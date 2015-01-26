@@ -261,16 +261,8 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
       assert(getActorMonitorConfigBean("Count") == 11)
     }
 
-    "7.1) kill ActorMonitor" in {
-      system.actorSelection("/user/*") ! PoisonPill
-      receiveOne(timeout.duration) match {
-        case msg =>
-          val after = ManagementFactory.getPlatformMBeanServer.queryNames(ActorMonitorSpec.getObjName("*"), null)
-          assert(after.size == 0)
-      }
-    }
-
   }
+
 }
 
 
