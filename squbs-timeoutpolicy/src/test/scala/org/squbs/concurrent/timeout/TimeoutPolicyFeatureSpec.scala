@@ -71,7 +71,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
 
   "Random.nextGaussian" should "work as expected" in {
     //import scala.concurrent.ExecutionContext.Implicits.global
-    val timeoutPolicy = TimeoutPolicy(name = Some("test"), initial = 1 seconds, rule = 3 sigma, minSamples = 50, startOverCount = 500)
+    val timeoutPolicy = TimeoutPolicy(name = Some("test"), initial = 1 seconds, rule = 3 sigma, git  = 50, startOverCount = 500)
     val sigma = 30
     val mean = 50
     val random = new Random(100)
