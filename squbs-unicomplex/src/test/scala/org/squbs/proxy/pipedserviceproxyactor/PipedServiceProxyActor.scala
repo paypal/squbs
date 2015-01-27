@@ -18,7 +18,7 @@
 package org.squbs.proxy.pipedserviceproxyactor
 
 import org.squbs.unicomplex.WebContext
-import akka.actor.{ActorRef, Props, ActorLogging, Actor}
+import akka.actor.{ActorRef, ActorLogging, Actor}
 import spray.http.StatusCodes._
 import spray.http._
 import spray.http.HttpMethods._
@@ -29,7 +29,7 @@ import spray.http.HttpRequest
 import spray.http.HttpResponse
 import org.squbs.proxy.RequestContext
 import spray.http.HttpHeaders.RawHeader
-import org.squbs.proxy.PipeLineConfig
+import org.squbs.proxy.PipelineConfig
 import scala.Some
 
 class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
@@ -54,8 +54,8 @@ class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
 
 class DummyPipedServiceProxyForActor(settings: Option[Config], hostActor: ActorRef) extends PipedServiceProxy(settings, hostActor) {
 
-  def createPipeConfig(): PipeLineConfig = {
-    PipeLineConfig(Seq(RequestHandler1, RequestHandler2), Seq(ResponseHandler1, ResponseHandler2))
+  def createPipeConfig(): PipelineConfig = {
+    PipelineConfig(Seq(RequestHandler1, RequestHandler2), Seq(ResponseHandler1, ResponseHandler2))
   }
 
   object RequestHandler1 extends PipelineHandler {
@@ -74,9 +74,11 @@ class DummyPipedServiceProxyForActor(settings: Option[Config], hostActor: ActorR
 
   object ResponseHandler1 extends PipelineHandler {
     def process(reqCtx: RequestContext): Future[RequestContext] = {
+
       val newCtx = reqCtx.response match {
-        case npr@NormalProxyResponse(_, _, _, rrr@(_: HttpResponse)) =>
-          reqCtx.copy(response = npr.copy(data = rrr.copy(headers = RawHeader("dummyRespHeader1", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: rrr.headers)))
+        case nr@NormalResponse(r) =>
+          reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader1", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: r.headers)))
+
         case other => reqCtx
       }
       Promise.successful(newCtx).future
@@ -86,8 +88,9 @@ class DummyPipedServiceProxyForActor(settings: Option[Config], hostActor: ActorR
   object ResponseHandler2 extends PipelineHandler {
     def process(reqCtx: RequestContext): Future[RequestContext] = {
       val newCtx = reqCtx.response match {
-        case npr@NormalProxyResponse(_, _, _, rrr@(_: HttpResponse)) =>
-          reqCtx.copy(response = npr.copy(data = rrr.copy(headers = RawHeader("dummyRespHeader2", reqCtx.attribute[String]("key2").getOrElse("Unknown")) :: rrr.headers)))
+        case nr@NormalResponse(r) =>
+          reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader2", reqCtx.attribute[String]("key2").getOrElse("Unknown")) :: r.headers)))
+
         case other => reqCtx
       }
       Promise.successful(newCtx).future

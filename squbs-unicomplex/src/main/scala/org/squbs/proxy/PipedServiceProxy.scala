@@ -27,13 +27,12 @@ trait PipelineHandler {
 
 }
 
-case class PipeLineConfig(
+case class PipelineConfig(
                            inbound: Seq[PipelineHandler] = Seq.empty,
                            outbound: Seq[PipelineHandler] = Seq.empty
                            )
 
 abstract class PipedServiceProxy(settings: Option[Config], hostActor: ActorRef) extends SimpleServiceProxy(settings, hostActor) {
-  //inbound processing
 
   import context.dispatcher
 
@@ -41,8 +40,9 @@ abstract class PipedServiceProxy(settings: Option[Config], hostActor: ActorRef) 
 
   //override to have your own logic, probably use settings
   //TODO generate pipeline from config
-  def createPipeConfig(): PipeLineConfig
+  def createPipeConfig(): PipelineConfig
 
+  //inbound processing
   def processRequest(reqCtx: RequestContext): Future[RequestContext] = {
     pipeConfig.inbound.foldLeft(Promise.successful(reqCtx).future)((ctx, handler) => ctx.flatMap(handler.process(_)))
   }

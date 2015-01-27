@@ -27,7 +27,7 @@ import scala.concurrent.{Promise, Future}
 import spray.http.HttpResponse
 import spray.http.HttpHeaders.RawHeader
 import scala.Some
-import org.squbs.proxy.{NormalProxyResponse, SimpleServiceProxy, RequestContext}
+import org.squbs.proxy.{NormalResponse, SimpleServiceProxy, RequestContext}
 
 class ServiceProxyRoute extends RouteDefinition with WebContext {
   def route = path("msg" / Segment) {
@@ -57,8 +57,9 @@ class DummyServiceProxyForRoute(settings: Option[Config], hostActor: ActorRef) e
   //outbound processing
   def processResponse(reqCtx: RequestContext): Future[RequestContext] = {
     val newCtx = reqCtx.response match {
-      case npr@NormalProxyResponse(_, _, _, rrr@(_: HttpResponse)) =>
-        reqCtx.copy(response = npr.copy(data = rrr.copy(headers = RawHeader("dummyRespHeader", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: rrr.headers)))
+      case nr@NormalResponse(r) =>
+        reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: r.headers)))
+
       case other => reqCtx
     }
     val promise = Promise[RequestContext]()

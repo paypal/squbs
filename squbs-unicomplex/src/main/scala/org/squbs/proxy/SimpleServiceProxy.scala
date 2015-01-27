@@ -24,15 +24,15 @@ import com.typesafe.config.Config
 import spray.can.Http.RegisterChunkHandler
 import spray.http.Confirmed
 import spray.http.ChunkedRequestStart
-import scala.util.Failure
+import scala.util.{Failure, Success}
 import spray.http.ChunkedResponseStart
 import spray.http.HttpResponse
-import scala.util.Success
 
 
 abstract class SimpleServiceProxy(settings: Option[Config], hostActor: ActorRef) extends ServiceProxy(settings, hostActor) {
 
   def handleRequest(requestCtx: RequestContext, responder: ActorRef)(implicit actorContext: ActorContext): Unit = {
+    //val actor = actorContext.actorOf(Props(classOf[InnerActor], responder))
     val actor = actorContext.actorOf(Props(new InnerActor(responder)))
     actor ! requestCtx
   }
@@ -77,7 +77,7 @@ abstract class SimpleServiceProxy(settings: Option[Config], hostActor: ActorRef)
   //user can override this to generate customized error when failed in processing response
   def onResponseError(reqCtx: RequestContext, t: Throwable): RequestContext = {
     val rawResp = reqCtx.response match {
-      case r: NormalProxyResponse => Some(r)
+      case r: NormalResponse => Some(r)
       case other => None
     }
     reqCtx.copy(response = ExceptionalResponse(t, rawResp))
@@ -107,7 +107,7 @@ abstract class SimpleServiceProxy(settings: Option[Config], hostActor: ActorRef)
               case true => ChunkedRequestStart(result.request)
               case false => result.request
             }
-            hostActor tell(payload, self)
+            hostActor ! payload
             context.become(onResponse(result) orElse onPostProcess)
           case Failure(t) =>
             log.error(t, "Error in processing request")
@@ -119,7 +119,7 @@ abstract class SimpleServiceProxy(settings: Option[Config], hostActor: ActorRef)
     def onResponse(reqCtx: RequestContext): Actor.Receive = {
 
       case resp: HttpResponse =>
-        val newCtx = reqCtx.copy(response = NormalProxyResponse(resp))
+        val newCtx = reqCtx.copy(response = NormalResponse(resp))
         processResponse(newCtx) onComplete {
           case Success(result) =>
             self ! PostProcess(result)
@@ -129,15 +129,15 @@ abstract class SimpleServiceProxy(settings: Option[Config], hostActor: ActorRef)
         }
 
       case ReadyToChunk(ctx) =>
+        postProcess(ctx)
         unstashAll()
         context.become(onChunk(ctx) orElse onPostProcess)
 
 
       case respStart: ChunkedResponseStart =>
-        val newCtx = reqCtx.copy(response = NormalProxyResponse(respStart))
+        val newCtx = reqCtx.copy(response = NormalResponse(respStart))
         processResponse(newCtx) onComplete {
           case Success(result) =>
-            self ! PostProcess(result)
             self ! ReadyToChunk(result)
           case Failure(t) =>
             log.error(t, "Error in processing ChunkedResponseStart")
@@ -145,10 +145,9 @@ abstract class SimpleServiceProxy(settings: Option[Config], hostActor: ActorRef)
         }
 
       case data@Confirmed(ChunkedResponseStart(resp), ack) =>
-        val newCtx = reqCtx.copy(response = NormalProxyResponse(data, sender()))
+        val newCtx = reqCtx.copy(response = NormalResponse(data, sender()))
         processResponse(newCtx) onComplete {
           case Success(result) =>
-            self ! PostProcess(result)
             self ! ReadyToChunk(result)
           case Failure(t) =>
             log.error(t, "Error in processing confirmed ChunkedResponseStart")
@@ -163,6 +162,7 @@ abstract class SimpleServiceProxy(settings: Option[Config], hostActor: ActorRef)
       case Confirmed(data, ack) => stash()
 
       case rch@RegisterChunkHandler(handler) =>
+        //val chunkHandler = context.actorOf(Props(classOf[ChunkHandler], handler, self))
         val chunkHandler = context.actorOf(Props(new ChunkHandler(handler, self)))
         responder ! RegisterChunkHandler(chunkHandler)
 
@@ -171,14 +171,14 @@ abstract class SimpleServiceProxy(settings: Option[Config], hostActor: ActorRef)
     def onChunk(reqCtx: RequestContext): Actor.Receive = {
 
       case chunk: MessageChunk =>
-        postProcess(reqCtx.copy(response = NormalProxyResponse(processResponseChunk(chunk))))
+        postProcess(reqCtx.copy(response = NormalResponse(processResponseChunk(chunk))))
 
       case chunkEnd: ChunkedMessageEnd =>
-        postProcess(reqCtx.copy(response = NormalProxyResponse(processResponseChunkEnd(chunkEnd))))
+        postProcess(reqCtx.copy(response = NormalResponse(processResponseChunkEnd(chunkEnd))))
 
       case data@Confirmed(mc@(_: MessageChunk), ack) =>
         val newChunk = processResponseChunk(mc)
-        postProcess(reqCtx.copy(response = NormalProxyResponse(Confirmed(newChunk, ack), sender())))
+        postProcess(reqCtx.copy(response = NormalResponse(Confirmed(newChunk, ack), sender())))
 
       case AckInfo(rawAck, receiver) =>
         receiver tell(rawAck, self)
@@ -194,13 +194,8 @@ abstract class SimpleServiceProxy(settings: Option[Config], hostActor: ActorRef)
     private def finalOutput(ctx: RequestContext): Unit = {
 
       ctx.response match {
-        case r: NormalProxyResponse =>
-          val response = r.buildRealResponse match {
-            case Success(resp) => resp
-            case Failure(t) =>
-              log.error(t, "Error in getting proxy response")
-              ExceptionalResponse.defaultErrorResponse
-          }
+        case r: NormalResponse =>
+          val response = r.responseMessage
           responder ! response
           response match {
             case r@(_: HttpResponse | _: ChunkedMessageEnd) => context stop self
@@ -219,17 +214,18 @@ abstract class SimpleServiceProxy(settings: Option[Config], hostActor: ActorRef)
 
     }
 
-    private class ChunkHandler(realHandler: ActorRef, caller: ActorRef) extends Actor {
-      def receive: Actor.Receive = {
-        case chunk: MessageChunk => realHandler tell(processRequestChunk(chunk), caller)
 
-        case chunkEnd: ChunkedMessageEnd => realHandler tell(processRequestChunkEnd(chunkEnd), caller)
+  }
 
-        case other => realHandler tell(other, caller)
+  private class ChunkHandler(realHandler: ActorRef, caller: ActorRef) extends Actor {
+    def receive: Actor.Receive = {
+      case chunk: MessageChunk => realHandler tell(processRequestChunk(chunk), caller)
 
-      }
+      case chunkEnd: ChunkedMessageEnd => realHandler tell(processRequestChunkEnd(chunkEnd), caller)
+
+      case other => realHandler tell(other, caller)
+
     }
-
   }
 
 }

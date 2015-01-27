@@ -25,7 +25,6 @@ import spray.http.HttpRequest
 import spray.http.ChunkedRequestStart
 import scala.Some
 import spray.http.HttpResponse
-import scala.util.Try
 
 
 case class RequestContext(
@@ -43,14 +42,14 @@ case class RequestContext(
   }
 }
 
-trait ProxyResponse
+sealed trait ProxyResponse
 
 object ResponseNotReady extends ProxyResponse
 
 case class ExceptionalResponse(
                                 response: HttpResponse = ExceptionalResponse.defaultErrorResponse,
                                 cause: Option[Throwable] = None,
-                                original: Option[NormalProxyResponse] = None) extends ProxyResponse
+                                original: Option[NormalResponse] = None) extends ProxyResponse
 
 object ExceptionalResponse {
 
@@ -58,7 +57,7 @@ object ExceptionalResponse {
 
   def apply(t: Throwable): ExceptionalResponse = apply(t, None)
 
-  def apply(t: Throwable, originalResp: Option[NormalProxyResponse]): ExceptionalResponse = {
+  def apply(t: Throwable, originalResp: Option[NormalResponse]): ExceptionalResponse = {
     val message = t.getMessage match {
       case null | "" => "Service Error!"
       case other => other
@@ -71,48 +70,65 @@ object ExceptionalResponse {
 
 case class AckInfo(rawAck: Any, receiver: ActorRef)
 
-case class NormalProxyResponse(
-                                source: ActorRef = ActorRef.noSender,
-                                confirmAck: Option[Any] = None,
-                                isChunkStart: Boolean = false,
-                                data: HttpResponsePart) extends ProxyResponse {
+sealed trait NormalResponse extends ProxyResponse {
+  def responseMessage: HttpMessagePartWrapper
 
-  def buildRealResponse: Try[HttpMessagePartWrapper] =
-    Try {
-      this match {
-        case NormalProxyResponse(_, None, false, r@(_: HttpResponse)) => r
-        case NormalProxyResponse(_, None, true, r@(_: HttpResponse)) => ChunkedResponseStart(r)
-        case NormalProxyResponse(_, None, _, r@(_: MessageChunk | _: ChunkedMessageEnd)) => r
-        case NormalProxyResponse(_, Some(ack), true, r@(_: HttpResponse)) => Confirmed(ChunkedResponseStart(r), AckInfo(ack, source))
-        case NormalProxyResponse(_, Some(ack), _, r@(_: MessageChunk | _: ChunkedMessageEnd)) => Confirmed(r, AckInfo(ack, source))
-        case other => throw new IllegalArgumentException("Illegal ProxyResponse: " + this)
-      }
-    }
+  def data: HttpResponsePart
 
-  def httpResponse: Option[HttpResponse] = {
-    if (data.isInstanceOf[HttpResponse]) {
-      Some(data.asInstanceOf[HttpResponse])
-    } else {
-      None
+  def update(newData: HttpResponsePart): NormalResponse
+}
+
+sealed abstract class BaseNormalResponse(data: HttpResponsePart) extends NormalResponse {
+
+  def validateUpdate(newData: HttpResponsePart): HttpResponsePart = {
+    data match {
+      case r: ChunkedResponseStart if newData.isInstanceOf[HttpResponse] => ChunkedResponseStart(newData.asInstanceOf[HttpResponse])
+      case other if newData.getClass == data.getClass => newData
+      case other => throw new IllegalArgumentException(s"The updated data has type:${newData.getClass}, but the original data has type:${data.getClass}")
     }
   }
 
 }
 
-object NormalProxyResponse {
+private case class DirectResponse(data: HttpResponsePart) extends BaseNormalResponse(data) {
+  def responseMessage: HttpMessagePartWrapper = data
 
-  def apply(resp: HttpResponse): NormalProxyResponse = new NormalProxyResponse(data = resp)
+  def update(newData: HttpResponsePart): NormalResponse = copy(validateUpdate(newData))
 
-  def apply(chunkStart: ChunkedResponseStart): NormalProxyResponse = NormalProxyResponse(isChunkStart = true, data = chunkStart.response)
+}
 
-  def apply(chunkMsg: MessageChunk): NormalProxyResponse = new NormalProxyResponse(data = chunkMsg)
+private case class ConfirmedResponse(
+                              data: HttpResponsePart,
+                              ack: Any,
+                              source: ActorRef
+                              ) extends BaseNormalResponse(data) {
+  override def responseMessage: HttpMessagePartWrapper = Confirmed(data, AckInfo(ack, source))
 
-  def apply(chunkEnd: ChunkedMessageEnd): NormalProxyResponse = new NormalProxyResponse(data = chunkEnd)
+  def update(newData: HttpResponsePart): NormalResponse = copy(validateUpdate(newData))
 
-  def apply(confirm: Confirmed, from: ActorRef): NormalProxyResponse = confirm match {
-    case Confirmed(ChunkedResponseStart(resp), ack) => NormalProxyResponse(source = from, confirmAck = Some(ack), isChunkStart = true, data = resp)
-    case Confirmed(r@(_: HttpResponsePart), ack) => NormalProxyResponse(source = from, confirmAck = Some(ack), isChunkStart = false, data = r)
+}
+
+object NormalResponse {
+
+  def apply(resp: HttpResponse): NormalResponse = DirectResponse(resp)
+
+  def apply(chunkStart: ChunkedResponseStart): NormalResponse = DirectResponse(chunkStart)
+
+  def apply(chunkMsg: MessageChunk): NormalResponse = DirectResponse(chunkMsg)
+
+  def apply(chunkEnd: ChunkedMessageEnd): NormalResponse = DirectResponse(chunkEnd)
+
+  def apply(confirm: Confirmed, from: ActorRef): NormalResponse = confirm match {
+    case Confirmed(r@(_: HttpResponsePart), ack) => ConfirmedResponse(r, ack, from)
     case other => throw new IllegalArgumentException("Unsupported confirmed message: " + confirm.messagePart)
+  }
+
+  def unapply(resp: NormalResponse): Option[HttpResponse] = {
+    resp.data match {
+      case r: HttpResponse => Some(r)
+      case ChunkedResponseStart(r) => Some(r)
+      case other => None
+    }
   }
 
 }
