@@ -17,6 +17,7 @@
  */
 package org.squbs.actormonitor
 
+import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 import akka.actor._
 import org.squbs.lifecycle.GracefulStopHelper
@@ -29,11 +30,12 @@ import ActorMonitorBean._
 private[actormonitor] case class ActorMonitorConfig(maxActorCount: Int, maxChildrenDisplay: Int)
 
 
-private[actormonitor] class ActorMonitor(monitorConfig: ActorMonitorConfig) extends Actor with GracefulStopHelper {
+private[actormonitor] class ActorMonitor(_monitorConfig: ActorMonitorConfig) extends Actor with GracefulStopHelper {
 
   val configBean =  "org.squbs.unicomplex:type=ActorMonitor"
+  val monitorConfig = _monitorConfig
 
-  register(new ActorMonitorConfigBean(monitorConfig, context), prefix + configBean )
+  register(new ActorMonitorConfigBean(monitorConfig, self, context), prefix + configBean )
   context.actorSelection(s"/*") ! Identify(monitorConfig)
  
   override def postStop() {
@@ -42,7 +44,10 @@ private[actormonitor] class ActorMonitor(monitorConfig: ActorMonitorConfig) exte
   }
 
   def receive = {
-    case  ActorIdentity(monitorConfig: ActorMonitorConfig , Some(actor))=>
+    case "refresh" =>
+      totalBeans.foreach {unregister(_)}
+      context.actorSelection(s"/*") ! Identify(monitorConfig)
+    case ActorIdentity(monitorConfig: ActorMonitorConfig , Some(actor))=>
       implicit val config = monitorConfig
       process(actor)
 
