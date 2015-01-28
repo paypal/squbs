@@ -511,10 +511,10 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
     //any change inbetween will be silently ignored, as we know leader will rebalance and trigger another event to reach the expected size eventually
     //NOTE, the size must be tested with `EQUAL` other than `LESS OR EQUAL`, due to a corner case, where onboard members happen ahead of dropoff members in a shift (no size change)
     val onboards = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).size == Math.min(try{
-      bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
-    } catch {
-      case _:Throwable => 0 //in case the $size node is being removed
-    }, numOfNodes) &&
+          bytesToInt(zkClient.getData.forPath(sizeOfParZkPath(partitionKey)))
+        } catch {
+          case _:Throwable => 0 //in case the $size node is being removed
+        }, numOfNodes) &&
       partitionsToMembers.getOrElse(partitionKey, Set.empty) != changed.partitions.getOrElse(partitionKey, Set.empty)
     }
     val dropoffs = changed.partitions.keySet.filter{partitionKey => changed.partitions.getOrElse(partitionKey, Set.empty).isEmpty}.filter(impacted.contains(_))

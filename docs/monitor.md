@@ -1,6 +1,6 @@
 ##Overview
 
-Monitoring status of each actor under actor system path "/user/*"
+Monitoring status of each actor under actor system 
 
 * Each actor has a corresponding JMXBean(org.squbs.unicomplex:type=ActorMonitor,name=%actorPath) to expose the actor information:
 ```

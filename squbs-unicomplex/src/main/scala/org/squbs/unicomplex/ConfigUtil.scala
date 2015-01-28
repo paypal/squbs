@@ -22,6 +22,9 @@ import com.typesafe.config.{ConfigException, Config}
 import scala.collection.mutable
 import java.net.NetworkInterface
 
+import scala.concurrent.duration.{FiniteDuration, TimeUnit, Duration}
+import scala.util.Try
+
 object ConfigUtil {
 
   implicit class RichConfig(val underlying: Config) extends AnyVal {
@@ -78,6 +81,11 @@ object ConfigUtil {
           case e: ConfigException.Missing => None
         }
       list map (_.toSeq)
+    }
+
+    def getOptionalDuration(path: String): Option[FiniteDuration] = {
+      import scala.concurrent.duration._
+      Try(Duration.create(underlying.getDuration(path, MILLISECONDS), MILLISECONDS)).toOption
     }
   }
 
