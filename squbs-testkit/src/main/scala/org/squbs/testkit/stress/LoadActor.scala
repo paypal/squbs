@@ -91,7 +91,12 @@ class LoadActor extends Actor {
     // Return the partial function dealing with the receive block.
     {
       case Ping => invoke()
-      case GetStats => sender() ! LoadStats(steadyRequests.toDouble / steady.toSeconds)
+
+      case GetStats =>
+        val timeInSteady = System.nanoTime() - steadyStart
+        if (timeInSteady < 0) sender() ! LoadStats(0d)
+        else if (timeInSteady >= steady.toNanos) sender() ! LoadStats(steadyRequests.toDouble / steady.toSeconds)
+        else sender() ! LoadStats(1000000000l * steadyRequests.toDouble / timeInSteady)
     }
   }
 }
@@ -129,7 +134,7 @@ class CPULoad {
   val mbs    = ManagementFactory.getPlatformMBeanServer
   val name    = ObjectName.getInstance("java.lang:type=OperatingSystem")
 
-  var count = 0
+  var count = 0l
   var sum = 0d
   var sumSquares = 0d
 
@@ -158,7 +163,7 @@ class CPULoad {
     }
   }
 
-  lazy val standardDeviation = if (count > 0) sqrt(sumSquares / count) else 0
+  def standardDeviation = if (count > 0) sqrt(sumSquares / count) else 0d
 
-  lazy val average = if (count > 0) sum / count else 0
+  def average = if (count > 0) sum / count else 0d
 }

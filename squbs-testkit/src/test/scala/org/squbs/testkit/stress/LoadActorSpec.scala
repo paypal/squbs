@@ -17,7 +17,7 @@
  */
 package org.squbs.testkit.stress
 
-import akka.actor.{Actor, ActorSystem, PoisonPill, Props}
+import akka.actor._
 import akka.testkit.{ImplicitSender, TestKit}
 import org.scalatest.{FunSpecLike, Matchers}
 
@@ -34,6 +34,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     val startTime = System.nanoTime()
     val loadActor = system.actorOf(Props[LoadActor])
     val statsActor = system.actorOf(Props[CPUStatsActor])
+    val statLogger = system.actorOf(Props(classOf[StatLogger], startTime, warmUp, steady, loadActor, statsActor))
     loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
       system.actorOf(Props[LoadTestActor]) ! TestPing
     })
@@ -65,6 +66,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     }
     loadActor ! PoisonPill
     statsActor ! PoisonPill
+    statLogger ! PoisonPill
   }
 
   it ("Shall achieve the requested small TPS and report proper CPU statistics") {
@@ -72,6 +74,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     val startTime = System.nanoTime()
     val loadActor = system.actorOf(Props[LoadActor])
     val statsActor = system.actorOf(Props[CPUStatsActor])
+    val statLogger = system.actorOf(Props(classOf[StatLogger], startTime, warmUp, steady, loadActor, statsActor))
     loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
       system.actorOf(Props[LoadTestActor]) ! TestPing
     })
@@ -103,6 +106,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     }
     loadActor ! PoisonPill
     statsActor ! PoisonPill
+    statLogger ! PoisonPill
   }
 }
 
@@ -112,5 +116,23 @@ case object TestPong
 class LoadTestActor extends Actor {
   def receive = {
     case TestPing => sender() ! TestPong
+  }
+}
+
+class StatLogger(startTimeNs: Long, warmUp: FiniteDuration, steady: FiniteDuration,
+                 loadActor: ActorRef, statsActor: ActorRef) extends Actor {
+  import context.dispatcher
+  val scheduler = context.system.scheduler.schedule(warmUp + ((startTimeNs - System.nanoTime()) nanoseconds), 5 seconds,
+    self, TestPing)
+  def receive = {
+    case TestPing =>
+      loadActor ! GetStats
+      statsActor ! GetStats
+      if (((System.nanoTime() - startTimeNs) nanoseconds) > warmUp + steady)
+        scheduler.cancel()
+
+    case LoadStats(tpsSoFar) => println(s"Achieved TPS: $tpsSoFar")
+
+    case CPUStats(avg, sDev) => println(s"CPU load $avg; SDEV $sDev")
   }
 }
