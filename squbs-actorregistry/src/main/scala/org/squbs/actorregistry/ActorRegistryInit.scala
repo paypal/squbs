@@ -37,9 +37,8 @@ private class ActorRegistryInit extends ExtensionLifecycle  {
     import ConfigUtil._
 
     val registryConfig = config.getConfig("squbs-actorregistry")
-    val remoteConfig   = registryConfig.getOptionalConfigList("squbs").map(_.toList).getOrElse(List.empty)
 
-    val cubeActorList = cubes.filterNot(_.info.name == "ActorRegistryCube").flatMap {
+    val cubeActorList = cubes.filterNot(x=> (x.info.name == "ActorRegistryCube" || x.info.name == "RemoteCube")).flatMap {
       cube =>
         cube.components.getOrElse(StartupType.ACTORS, Seq.empty).map {
           config =>
@@ -48,8 +47,7 @@ private class ActorRegistryInit extends ExtensionLifecycle  {
             val messageTypeList = config.getOptionalConfigList("message-class").getOrElse(List.empty[Config]).toList.
               map(x => CubeActorMessageType(x.getOptionalString("request").getOrElse(null), x.getOptionalString("response").getOrElse(null))).toList
 
-            val endpoint = remoteConfig.find(_.getString("name") == cube.info.fullName).map(_.getString("endpoint")).getOrElse("")
-            val path = s"$endpoint/user/${cube.info.name}/$actorName"
+            val path = s"/user/${cube.info.name}/$actorName"
 
             CubeActorInfo(path, messageTypeList)
         }

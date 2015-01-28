@@ -114,9 +114,12 @@ private[actormonitor] trait ActorMonitorConfigMXBean {
   def getMaxChildrenDisplay: Int
 }
 
-private[actormonitor] class ActorMonitorConfigBean(config: ActorMonitorConfig, implicit val context: ActorContext) extends ActorMonitorConfigMXBean {
+private[actormonitor] class ActorMonitorConfigBean(config: ActorMonitorConfig, monitorActor: ActorRef, implicit val context: ActorContext) extends ActorMonitorConfigMXBean {
   def getCount : Int = ActorMonitorBean.totalBeans.size()
   def getMaxCount: Int = config.maxActorCount
-  def getMaxChildrenDisplay: Int = config.maxChildrenDisplay
+  def getMaxChildrenDisplay: Int = {
+    monitorActor ! "refresh"
+    config.maxChildrenDisplay
+  }
 }
 

@@ -84,7 +84,7 @@ case class ServiceResponse(id: Long)
 case class SubmittedOrchestration(request: String, timeNs: Long)
 case class FinishedOrchestration(lastId: Long, request: String, timeNs: Long)
 
-class Orchestrator extends Actor with Aggregator with ActorLogging {
+class Orchestrator extends Actor with Aggregator with RequestFunctions with ActorLogging {
 
   // Expecting the initial request
   expectOnce {
@@ -101,7 +101,7 @@ class Orchestrator extends Actor with Aggregator with ActorLogging {
 
     import Requests._
     import org.squbs.pattern.Orchestration._
-    
+
     val delay = 10 milliseconds
 
     val startTime = System.nanoTime()
@@ -143,6 +143,10 @@ class Orchestrator extends Actor with Aggregator with ActorLogging {
       context stop self
     }
   }
+}
+
+trait RequestFunctions {
+  this: Actor with Aggregator =>
 
   object Requests {
 
