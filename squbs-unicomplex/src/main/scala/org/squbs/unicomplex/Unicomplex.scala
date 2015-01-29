@@ -207,7 +207,12 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   class ExtensionsBean extends ExtensionsMXBean {
     override def getExtensions: util.List[ExtensionInfo] = {
       import scala.collection.JavaConversions._
-      extensions map { e => ExtensionInfo(e.info.name, e.exceptions.head._1, e.exceptions.head._2.toString) }
+      extensions map { e =>
+        val (phase, ex) = e.exceptions.headOption map {
+          case (phase, exception) => (phase, exception.toString())
+        } getOrElse (("", ""))
+        ExtensionInfo(e.info.name, phase, ex)
+      }
     }
   }
 

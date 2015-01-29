@@ -227,7 +227,16 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
     }
 
-    "preInit, init and postInit all extenstions" in {
+    "check extension MBean" in {
+      import org.squbs.unicomplex.JMX._
+      val mbeanServer = ManagementFactory.getPlatformMBeanServer
+      val extensionObjName = new ObjectName(prefix(system) + extensionsName)
+      val extensions = mbeanServer.getAttribute(extensionObjName, "Extensions")
+      extensions shouldBe a [Array[javax.management.openmbean.CompositeData]]
+      extensions.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 2
+    }
+
+    "preInit, init and postInit all extensions" in {
       boot.extensions.size should be (2)
       forAll (boot.extensions) { _.extLifecycle.get shouldBe a [DummyExtension]}
       boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("AstartpreInitinitpostInit")

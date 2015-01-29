@@ -7,7 +7,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.6" % "test",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.6" % "test",
   "com.typesafe.akka" %% "akka-contrib" % "2.3.6" % "test" intransitive(),
-  "org.squbs.testkit" %% "squbs-testkit" % version.value % "test",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test->*"
 )
 
