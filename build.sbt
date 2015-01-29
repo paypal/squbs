@@ -16,7 +16,7 @@ parallelExecution in ScoverageTest := false
 
 lazy val `squbs-unicomplex` = project
 
-lazy val `squbs-zkcluster` = project dependsOn `squbs-unicomplex`
+lazy val `squbs-zkcluster` = project
 
 lazy val `squbs-httpclient` = project dependsOn (`squbs-unicomplex`, `squbs-testkit`)
 
