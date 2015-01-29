@@ -17,9 +17,9 @@
  */
 package org.squbs.cluster
 
-import org.apache.curator.framework.CuratorFramework
-import akka.actor.{ActorPath, Address}
+import akka.actor.Address
 import akka.util.ByteString
+import org.apache.curator.framework.CuratorFramework
 
 /**
  * request for leader identity of the cluster
@@ -57,23 +57,20 @@ case class ZkClientUpdated(zkClient:CuratorFramework)
 /**
  * request for partition members
  * @param partitionKey
- * @param notification a pending message
- * @param createOnMiss how many members are required for the partition to be built when it's missing
- * @param props
+ * @param notification notify the sender along with query result
+ * @param expectedSize create the partition or resize the partition with the suggested size
+ * @param props properties of the partition, plain byte array
  * @param members don't assign anything, used internally
  */
-case class ZkQueryPartition(partitionKey:ByteString, //partition key
-                            notification:Option[Any] = None, //notify the sender() along with query result
-                            createOnMiss:Option[Int] = None, //create partition when it's missing or not, and the size in case it's to be created
-                            props:Array[Byte] = Array[Byte](), //properties of the partition, plain byte array
-                            members:Set[Address] = Set.empty) //used internally
-
-/**
- * request to expand or shrink a partition
- * @param partitionKey
- * @param sizeOf
- */
-case class ZkResizePartition(partitionKey:ByteString, sizeOf:Int)
+case class ZkQueryPartition(partitionKey:ByteString,
+                            notification:Option[Any] = None,
+                            expectedSize:Option[Int] = None,
+                            props:Array[Byte] = Array[Byte](),
+                            members:Set[Address] = Set.empty) {
+  
+  if (expectedSize.nonEmpty) require(expectedSize.get > 0)
+  
+}
 
 /**
  * request to discontinue a partition
@@ -83,22 +80,21 @@ case class ZkRemovePartition(partitionKey:ByteString)
 
 /**
  * subscribe to partition updates
- * @param onDifference
  */
-case class ZkMonitorPartition(onDifference:Set[ActorPath] = Set.empty) //notify me when partitions have changes @see ZkPartitionsChanged
+case object ZkMonitorPartition
 
 /**
  * stop subscription to a partition's updates
- * @param onDifference
  */
-case class ZkStopMonitorPartition(onDifference:Set[ActorPath] = Set.empty) //stop notify me when partitions have changes @see ZkPartitionsChanged
+case object ZkStopMonitorPartition
 
 /**
- * event of a partition updates
- * @param diff
- * @param zkPaths
+ * event of partition update
+ * @param partitionKey
+ * @param onBoardMembers
+ * @param dropOffMembers
  */
-case class ZkPartitionDiff(diff:Map[ByteString, Seq[Address]], zkPaths:Map[ByteString, String])
+case class ZkPartitionDiff(partitionKey: ByteString, onBoardMembers: Set[Address], dropOffMembers: Set[Address])
 
 /**
  * event of a partition removal
@@ -117,6 +113,11 @@ case class ZkPartition(partitionKey:ByteString,
                        members: Seq[Address],   //who have been assigned to be part of this partition
                        zkPath:String,           //where the partition data is stored
                        notification:Option[Any])//optional notification when the query was issued
+/**
+ * response for partition query
+ * @param partitionKey
+ */
+case class ZkPartitionNotFound(partitionKey: ByteString)
 
 /**
  * request for VM's enrolled partitions

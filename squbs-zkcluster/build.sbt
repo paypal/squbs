@@ -29,3 +29,5 @@ org.scalastyle.sbt.ScalastylePlugin.Settings
 instrumentSettings
 
 parallelExecution in ScoverageTest := false
+
+parallelExecution := false
