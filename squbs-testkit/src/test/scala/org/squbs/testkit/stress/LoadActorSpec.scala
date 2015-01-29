@@ -20,6 +20,7 @@ package org.squbs.testkit.stress
 import akka.actor._
 import akka.testkit.{ImplicitSender, TestKit}
 import org.scalatest.{FunSpecLike, Matchers}
+import org.squbs.testkit.{TestPong, TestPing}
 
 import scala.concurrent.duration._
 
@@ -110,8 +111,8 @@ with ImplicitSender with FunSpecLike with Matchers {
   }
 }
 
-case object TestPing
-case object TestPong
+
+
 
 class LoadTestActor extends Actor {
   def receive = {
@@ -122,8 +123,10 @@ class LoadTestActor extends Actor {
 class StatLogger(startTimeNs: Long, warmUp: FiniteDuration, steady: FiniteDuration,
                  loadActor: ActorRef, statsActor: ActorRef) extends Actor {
   import context.dispatcher
-  val scheduler = context.system.scheduler.schedule(warmUp + ((startTimeNs - System.nanoTime()) nanoseconds), 5 seconds,
-    self, TestPing)
+  // Starting 5 seconds early to test stats outside warmUp.
+  val scheduler = context.system.scheduler.schedule(
+    warmUp - (5 seconds) + ((startTimeNs - System.nanoTime()) nanoseconds), 5 seconds, self, TestPing)
+
   def receive = {
     case TestPing =>
       loadActor ! GetStats

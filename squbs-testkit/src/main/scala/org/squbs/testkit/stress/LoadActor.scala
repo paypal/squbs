@@ -65,7 +65,10 @@ class LoadActor extends Actor {
       }
       else {
         val expectedRequests = tps * (nextIntervalStart - startTimeNs) / 1000000000L
-        val requests = (expectedRequests - requestsSoFar).toInt
+        val requests = {
+          val r = (expectedRequests - requestsSoFar).toInt
+          if (r > 0) r else 0
+        }
 
         @tailrec
         def invoke(times: Int) {

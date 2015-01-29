@@ -19,6 +19,8 @@ package org.squbs.testkit
 
 import java.io.File
 
+import akka.actor.{Props, Actor}
+import akka.testkit.ImplicitSender
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Seconds, Span}
@@ -31,7 +33,8 @@ import spray.routing.Directives
 
 import scala.concurrent.Await
 
-class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatSpecLike with Matchers with Eventually {
+class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot)
+with ImplicitSender with FlatSpecLike with Matchers with Eventually {
 
   override implicit val patienceConfig = new PatienceConfig(timeout = Span(3, Seconds))
 
@@ -42,6 +45,11 @@ class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatS
     val pipeline = sendReceive
     val result = Await.result(pipeline(Get(s"http://127.0.0.1:${CustomTestKitSpec.port}/test")), 20 second)
     result.entity.asString should include ("success")
+  }
+
+  it should "return a Pong on a Ping" in {
+    system.actorOf(Props[TestActor]) ! TestPing
+    receiveOne(10 seconds) should be (TestPong)
   }
 }
 
@@ -69,5 +77,11 @@ class Service extends RouteDefinition with Directives {
 
   def route = get {
     complete(StatusCodes.OK, "success")
+  }
+}
+
+class TestActor extends Actor {
+  def receive = {
+    case TestPing => sender() ! TestPong
   }
 }
