@@ -17,9 +17,7 @@
  */
 package org.squbs.proxy
 
-import com.typesafe.config.Config
-import akka.actor.ActorRef
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{ExecutionContext, Promise, Future}
 
 trait PipelineHandler {
 
@@ -32,23 +30,14 @@ case class PipelineConfig(
                            outbound: Seq[PipelineHandler] = Seq.empty
                            )
 
-abstract class PipedServiceProxy(settings: Option[Config], hostActor: ActorRef) extends SimpleServiceProxy(settings, hostActor) {
-
-  import context.dispatcher
-
-  val pipeConfig = createPipeConfig
-
-  //override to have your own logic, probably use settings
-  //TODO generate pipeline from config
-  def createPipeConfig(): PipelineConfig
-
+class PipedServiceProxyProcessor(pipeConfig: PipelineConfig) extends ServiceProxyProcessor {
   //inbound processing
-  def processRequest(reqCtx: RequestContext): Future[RequestContext] = {
+  def processRequest(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
     pipeConfig.inbound.foldLeft(Promise.successful(reqCtx).future)((ctx, handler) => ctx.flatMap(handler.process(_)))
   }
 
   //outbound processing
-  def processResponse(reqCtx: RequestContext): Future[RequestContext] = {
+  def processResponse(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
     pipeConfig.outbound.foldLeft(Promise.successful(reqCtx).future)((ctx, handler) => ctx.flatMap(handler.process(_)))
   }
 }

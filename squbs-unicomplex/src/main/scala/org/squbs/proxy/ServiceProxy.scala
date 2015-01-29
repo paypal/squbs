@@ -19,12 +19,12 @@ package org.squbs.proxy
 
 import akka.actor._
 import scala.concurrent.Future
-import com.typesafe.config.Config
 import spray.http._
 import spray.http.HttpRequest
 import spray.http.ChunkedRequestStart
 import scala.Some
 import spray.http.HttpResponse
+import com.typesafe.config.Config
 
 
 case class RequestContext(
@@ -98,10 +98,10 @@ private case class DirectResponse(data: HttpResponsePart) extends BaseNormalResp
 }
 
 private case class ConfirmedResponse(
-                              data: HttpResponsePart,
-                              ack: Any,
-                              source: ActorRef
-                              ) extends BaseNormalResponse(data) {
+                                      data: HttpResponsePart,
+                                      ack: Any,
+                                      source: ActorRef
+                                      ) extends BaseNormalResponse(data) {
   override def responseMessage: HttpMessagePartWrapper = Confirmed(data, AckInfo(ack, source))
 
   def update(newData: HttpResponsePart): NormalResponse = copy(validateUpdate(newData))
@@ -134,7 +134,7 @@ object NormalResponse {
 }
 
 
-abstract class ServiceProxy(settings: Option[Config], hostActor: ActorRef) extends Actor with ActorLogging {
+abstract class ServiceProxy(hostActor: ActorRef) extends Actor with ActorLogging {
 
   import context.dispatcher
 
@@ -163,4 +163,9 @@ abstract class ServiceProxy(settings: Option[Config], hostActor: ActorRef) exten
   }
 
 
+}
+
+//to create service proxy actor
+trait ServiceProxyFactory {
+  def create(settings: Option[Config], hostActor: ActorRef, actorName: String)(implicit context: ActorContext): ActorRef
 }

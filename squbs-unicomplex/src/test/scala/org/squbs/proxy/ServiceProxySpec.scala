@@ -59,14 +59,22 @@ object ServiceProxySpec {
     """
       |
       |squbs.proxy {
+      |  defaultProvider = org.squbs.proxy.SimpleServiceProxyFactory
       |  MyProxy1 {
-      |    provider = org.squbs.proxy.serviceproxyactor.DummyServiceProxyForActor
+      |    settings {
+      |       processor = org.squbs.proxy.serviceproxyactor.DummyServiceProxyProcessorForActor
+      |    }
       |  }
       |  MyProxy2 {
-      |    provider = org.squbs.proxy.serviceproxyroute.DummyServiceProxyForRoute
+      |    provider = org.squbs.proxy.SimpleServiceProxyFactory
+      |    settings {
+      |       processor = org.squbs.proxy.serviceproxyroute.DummyServiceProxyProcessorForRoute
+      |    }
       |  }
       |  MyProxy3 {
-      |    provider = org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyForActor
+      |    settings {
+      |       processor = org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyProcessorFactoryForActor
+      |    }
       |  }
       |}
       |

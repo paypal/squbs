@@ -25,8 +25,7 @@ import spray.http.HttpMethods._
 import org.jvnet.mimepull.MIMEMessage
 import java.io.ByteArrayInputStream
 import org.apache.commons.io.IOUtils
-import com.typesafe.config.Config
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{ExecutionContext, Promise, Future}
 import spray.http.HttpRequest
 import spray.can.Http.RegisterChunkHandler
 import spray.http.Confirmed
@@ -35,7 +34,8 @@ import spray.http.HttpHeaders.RawHeader
 import spray.http.ChunkedResponseStart
 import scala.Some
 import spray.http.HttpResponse
-import org.squbs.proxy.{NormalResponse, SimpleServiceProxy, RequestContext}
+import org.squbs.proxy.{ServiceProxyProcessorFactory, ServiceProxyProcessor, NormalResponse, RequestContext}
+import com.typesafe.config.Config
 
 class ServiceProxyActor extends Actor with WebContext with ActorLogging {
 
@@ -133,14 +133,16 @@ class ChunkHandler(client: ActorRef, start: ChunkedRequestStart) extends Actor w
 }
 
 
-class DummyServiceProxyForActor(settings: Option[Config], hostActor: ActorRef) extends SimpleServiceProxy(settings, hostActor) {
+class DummyServiceProxyProcessorForActor extends ServiceProxyProcessor with ServiceProxyProcessorFactory {
+
+  def create(settings: Option[Config]): ServiceProxyProcessor = this
 
   override def processResponseChunk(chunk: MessageChunk): MessageChunk = {
     val raw = new String(chunk.data.toByteArray)
     MessageChunk(raw + "a")
   }
 
-  def processRequest(reqCtx: RequestContext): Future[RequestContext] = {
+  def processRequest(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
     reqCtx.request match {
       case HttpRequest(GET, Uri.Path("/serviceproxyactor/msg/processingRequestError"), _, _, _) =>
         val promise = Promise[RequestContext]()
@@ -154,7 +156,7 @@ class DummyServiceProxyForActor(settings: Option[Config], hostActor: ActorRef) e
   }
 
   //outbound processing
-  def processResponse(reqCtx: RequestContext): Future[RequestContext] = {
+  def processResponse(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
     val newCtx = reqCtx.response match {
       case nr@NormalResponse(r) =>
         reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: r.headers)))
@@ -165,6 +167,8 @@ class DummyServiceProxyForActor(settings: Option[Config], hostActor: ActorRef) e
     promise.success(newCtx)
     promise.future
   }
+
+
 }
 
 

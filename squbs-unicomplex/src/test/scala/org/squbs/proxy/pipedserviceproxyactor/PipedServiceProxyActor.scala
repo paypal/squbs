@@ -18,7 +18,7 @@
 package org.squbs.proxy.pipedserviceproxyactor
 
 import org.squbs.unicomplex.WebContext
-import akka.actor.{ActorRef, ActorLogging, Actor}
+import akka.actor.{ActorLogging, Actor}
 import spray.http.StatusCodes._
 import spray.http._
 import spray.http.HttpMethods._
@@ -52,10 +52,10 @@ class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
 }
 
 
-class DummyPipedServiceProxyForActor(settings: Option[Config], hostActor: ActorRef) extends PipedServiceProxy(settings, hostActor) {
+class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcessorFactory {
 
-  def createPipeConfig(): PipelineConfig = {
-    PipelineConfig(Seq(RequestHandler1, RequestHandler2), Seq(ResponseHandler1, ResponseHandler2))
+  def create(settings: Option[Config]): ServiceProxyProcessor = {
+    new PipedServiceProxyProcessor(PipelineConfig(Seq(RequestHandler1, RequestHandler2), Seq(ResponseHandler1, ResponseHandler2)))
   }
 
   object RequestHandler1 extends PipelineHandler {
@@ -96,6 +96,7 @@ class DummyPipedServiceProxyForActor(settings: Option[Config], hostActor: ActorR
       Promise.successful(newCtx).future
     }
   }
+
 
 }
 

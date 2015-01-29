@@ -34,6 +34,7 @@ import spray.can.Http
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
+import org.squbs.proxy.ServiceProxyFactory
 
 
 class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
@@ -587,13 +588,18 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         case Some(pName) =>
           try {
             val proxyConfig = globalConfig.getConfig("squbs.proxy." + pName)
-            val providerClassName = proxyConfig.getString("provider")
+            val providerClassName = Try {
+              proxyConfig.getString("provider")
+            }.toOption match {
+              case None => globalConfig.getString("squbs.proxy.defaultProvider")
+              case Some(v) => v
+            }
+            val serviceProxyFactory = Class.forName(providerClassName, true, getClass.getClassLoader).newInstance().asInstanceOf[ServiceProxyFactory]
             val settings = Try {
               proxyConfig.getConfig("settings")
             }.toOption
-            val providerClass = Class.forName(providerClassName, true, getClass.getClassLoader)
             val hostActor = context.actorOf(props)
-            context.actorOf(Props(providerClass, settings, hostActor), name)
+            serviceProxyFactory.create(settings, hostActor, name)
           } catch {
             case t: Throwable =>
               log.error(t, "Failed to init proxy: " + pName)

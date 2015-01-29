@@ -21,13 +21,12 @@ import org.squbs.unicomplex._
 import spray.routing.Directives._
 import spray.http.HttpEntity
 import spray.http.MediaTypes._
-import akka.actor.ActorRef
-import com.typesafe.config.Config
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{ExecutionContext, Promise, Future}
 import spray.http.HttpResponse
 import spray.http.HttpHeaders.RawHeader
 import scala.Some
-import org.squbs.proxy.{NormalResponse, SimpleServiceProxy, RequestContext}
+import org.squbs.proxy.{ServiceProxyProcessorFactory, ServiceProxyProcessor, NormalResponse, RequestContext}
+import com.typesafe.config.Config
 
 class ServiceProxyRoute extends RouteDefinition with WebContext {
   def route = path("msg" / Segment) {
@@ -44,10 +43,9 @@ class ServiceProxyRoute extends RouteDefinition with WebContext {
   }
 }
 
-class DummyServiceProxyForRoute(settings: Option[Config], hostActor: ActorRef) extends SimpleServiceProxy(settings, hostActor) {
+class DummyServiceProxyProcessorForRoute extends ServiceProxyProcessor with ServiceProxyProcessorFactory {
 
-
-  def processRequest(reqCtx: RequestContext): Future[RequestContext] = {
+  def processRequest(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
     val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader", "eBay") :: reqCtx.request.headers)
     val promise = Promise[RequestContext]()
     promise.success(RequestContext(request = newreq, attributes = Map("key1" -> "CCOE")))
@@ -55,7 +53,7 @@ class DummyServiceProxyForRoute(settings: Option[Config], hostActor: ActorRef) e
   }
 
   //outbound processing
-  def processResponse(reqCtx: RequestContext): Future[RequestContext] = {
+  def processResponse(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
     val newCtx = reqCtx.response match {
       case nr@NormalResponse(r) =>
         reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: r.headers)))
@@ -66,6 +64,8 @@ class DummyServiceProxyForRoute(settings: Option[Config], hostActor: ActorRef) e
     promise.success(newCtx)
     promise.future
   }
+
+  def create(settings: Option[Config]): ServiceProxyProcessor = this
 }
 
 
