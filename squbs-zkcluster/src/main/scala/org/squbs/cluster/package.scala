@@ -18,7 +18,6 @@
 package org.squbs
 
 import java.net.{URLDecoder, URLEncoder, InetAddress}
-import org.squbs.unicomplex.ConfigUtil
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import scala.annotation.tailrec

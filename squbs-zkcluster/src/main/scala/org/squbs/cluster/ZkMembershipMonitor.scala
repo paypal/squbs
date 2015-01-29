@@ -3,7 +3,7 @@ package org.squbs.cluster
 import java.util
 
 import akka.actor.{Address, Actor, AddressFromURIString}
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.api.CuratorWatcher
 import org.apache.curator.framework.recipes.leader.LeaderLatch
 import org.apache.zookeeper.Watcher.Event.EventType
@@ -26,7 +26,7 @@ private[cluster] case class ZkMembersChanged(members: Set[Address])
  * most importantly to enroll the leadership competition and get membership,
  * leadership information immediately after change
  */
-private[cluster] class ZkMembershipMonitor extends Actor with Logging {
+private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
 
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._

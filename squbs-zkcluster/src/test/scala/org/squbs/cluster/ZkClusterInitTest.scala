@@ -2,7 +2,7 @@ package org.squbs.cluster
 
 import akka.testkit.ImplicitSender
 import akka.util.ByteString
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.CuratorFrameworkFactory
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.zookeeper.CreateMode
@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 /**
  * Created by zhuwang on 1/28/15.
  */
-class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitTest") with Logging
+class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitTest") with LazyLogging
   with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with BeforeAndAfterEach {
   import ZkClusterMultiActorSystemTestKit._
   

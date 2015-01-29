@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterEdgeCaseTest")
   with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with BeforeAndAfterEach {
   
-  override val timeout: FiniteDuration = 15 seconds
+  override val timeout: FiniteDuration = 30 seconds
   override val clusterSize: Int = 3
 
   override def afterEach(): Unit = {
@@ -113,7 +113,7 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
     }
   }
 
-  "ZkCluster" should "rebalance if the full member partition if leader dies" in {
+  "ZkCluster" should "rebalance the full member partition if leader dies" in {
     // query the leader
     zkClusterExts(0) tell (ZkQueryLeadership, self)
     val leaderName = expectMsgType[ZkLeadership](timeout).address.system

@@ -3,7 +3,7 @@ package org.squbs.cluster
 import akka.actor._
 import akka.pattern._
 import akka.util.{ByteString, Timeout}
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.api.CuratorWatcher
 import org.apache.zookeeper.KeeperException.NoNodeException
 import org.apache.zookeeper.Watcher.Event.EventType
@@ -30,7 +30,7 @@ private[cluster] case class ZkPurgePartition(partition: ZkPartitionData)
 /**
  * The major responsibility of ZkPartitionsManager is to maintain partitions
  */
-private[cluster] class ZkPartitionsManager extends Actor with Logging {
+private[cluster] class ZkPartitionsManager extends Actor with LazyLogging {
 
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._

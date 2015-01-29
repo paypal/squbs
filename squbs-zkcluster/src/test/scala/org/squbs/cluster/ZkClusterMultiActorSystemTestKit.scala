@@ -5,7 +5,6 @@ import java.net.ServerSocket
 import akka.actor.{ActorSelection, ActorSystem}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.squbs.unicomplex.ConfigUtil
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
@@ -138,7 +137,7 @@ object ZkClusterMultiActorSystemTestKit {
     s"""
       |zkCluster {
       |  connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-3e34.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
-      |  //"127.0.0.1:2181"
+      |  //connectionString = "127.0.0.1:2181"
       |  namespace = "zkclustersystest-$now"
       |  segments = 1
       |}

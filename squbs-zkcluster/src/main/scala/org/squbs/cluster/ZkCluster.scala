@@ -2,13 +2,12 @@ package org.squbs.cluster
 
 import akka.actor._
 import com.typesafe.config.ConfigFactory
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.RetryPolicy
 import org.apache.curator.framework.state.{ConnectionState, ConnectionStateListener}
 import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.zookeeper.CreateMode
-import org.squbs.unicomplex.ConfigUtil
 
 import scala.collection.JavaConversions._
 
@@ -21,7 +20,7 @@ case class ZkCluster(zkAddress: Address,
                      segmentationLogic: SegmentationLogic,
                      retryPolicy: RetryPolicy = new ExponentialBackoffRetry(1000, 3),
                      rebalanceLogic: RebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = false))
-                    (implicit system: ActorSystem) extends Extension with Logging {
+                    (implicit system: ActorSystem) extends Extension with LazyLogging {
   
   private[this] implicit val log = logger
   private[this] var zkClient = CuratorFrameworkFactory.newClient(zkConnectionString, retryPolicy)
@@ -77,7 +76,7 @@ case class ZkCluster(zkAddress: Address,
   }
 }
 
-object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Logging {
+object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with LazyLogging {
 
   override def lookup(): ExtensionId[_ <: Extension] = ZkCluster
 

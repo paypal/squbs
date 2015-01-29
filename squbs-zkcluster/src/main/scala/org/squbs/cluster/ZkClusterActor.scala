@@ -2,7 +2,7 @@ package org.squbs.cluster
 
 import akka.actor._
 import akka.util.ByteString
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.LazyLogging
 
 /**
  * Created by zhuwang on 1/26/15.
@@ -27,7 +27,7 @@ private[cluster] case class ZkClusterData(leader: Option[Address],
 /**
  * The main Actor of ZkCluster
  */
-class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with Logging {
+class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with LazyLogging {
 
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._
