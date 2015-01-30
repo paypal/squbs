@@ -48,10 +48,13 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
     guarantee("/segments", Some(Array[Byte]()), CreateMode.PERSISTENT)
     guarantee("/segments/segment-0", Some(Array[Byte]()), CreateMode.PERSISTENT)
     guarantee(s"/segments/segment-0/${keyToPath(par1)}", Some("myPar1"), CreateMode.PERSISTENT)
+    guarantee(s"/segments/segment-0/${keyToPath(par1)}/servants", None, CreateMode.PERSISTENT)
     guarantee(s"/segments/segment-0/${keyToPath(par1)}/$$size", Some(3), CreateMode.PERSISTENT)
     guarantee(s"/segments/segment-0/${keyToPath(par2)}", Some("myPar2"), CreateMode.PERSISTENT)
+    guarantee(s"/segments/segment-0/${keyToPath(par2)}/servants", None, CreateMode.PERSISTENT)
     guarantee(s"/segments/segment-0/${keyToPath(par2)}/$$size", Some(3), CreateMode.PERSISTENT)
     guarantee(s"/segments/segment-0/${keyToPath(par3)}", Some("myPar3"), CreateMode.PERSISTENT)
+    guarantee(s"/segments/segment-0/${keyToPath(par3)}/servants", None, CreateMode.PERSISTENT)
     guarantee(s"/segments/segment-0/${keyToPath(par3)}/$$size", Some(3), CreateMode.PERSISTENT)
     zkClient.close
   }

@@ -12,7 +12,7 @@ ScoverageKeys.minimumCoverage in ThisBuild := 70
 
 ScoverageKeys.failOnMinimumCoverage in ThisBuild := true
 
-fork in Test in ThisBuild := true
+fork in ThisBuild := true
 
 parallelExecution in ScoverageTest in ThisBuild := false
 

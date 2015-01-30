@@ -1,17 +1,14 @@
 package org.squbs.cluster
 
-import java.util
-
-import akka.actor.{Address, Actor, AddressFromURIString}
+import akka.actor.{Actor, Address, AddressFromURIString}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.api.CuratorWatcher
 import org.apache.curator.framework.recipes.leader.LeaderLatch
 import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
-import org.squbs.cluster.JMX._
 
-import scala.concurrent.duration._
 import scala.collection.JavaConversions._
+import scala.concurrent.duration._
 
 /**
  * Created by zhuwang on 1/26/15.
@@ -34,12 +31,6 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
   private[this] implicit val log = logger
   private[this] var zkLeaderLatch: LeaderLatch = new LeaderLatch(zkClientWithNs, "/leadership")
   private[this] var stopped = false
-
-  class MembersInfoBean extends MembersInfoMXBean {
-    override def getLeader: String = bytesToAddress(zkClientWithNs.getData.forPath("/leader")).toString
-
-    override def getMembers: util.List[String] = zkClientWithNs.getChildren.forPath("/members")
-  }
 
   def initialize = {
     //watch over leader changes
@@ -107,14 +98,12 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
     //enroll in the leadership competition
     zkLeaderLatch.start
     initialize
-    register(new MembersInfoBean, prefix + membersInfoName)
   }
 
   override def postStop = {
     //stop the leader latch to quit the competition
     stopped = true
     zkLeaderLatch.close
-    unregister(prefix + membersInfoName)
   }
 
   def receive: Actor.Receive = {

@@ -110,7 +110,7 @@ case class ZkPartitionRemoval(partitionKey:ByteString)
  * @param notification
  */
 case class ZkPartition(partitionKey:ByteString,
-                       members: Seq[Address],   //who have been assigned to be part of this partition
+                       members: Set[Address],   //who have been assigned to be part of this partition
                        zkPath:String,           //where the partition data is stored
                        notification:Option[Any])//optional notification when the query was issued
 /**
