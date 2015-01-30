@@ -115,7 +115,8 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
 
   "ZkCluster" should "rebalance the full member partition if leader dies" in {
     // query the leader
-    zkClusterExts(0) tell (ZkQueryLeadership, self)
+		/* need to pick an existed first zkext, that the 'member-0' might be purged in the previous case */
+		zkClusterExts.head._2 tell (ZkQueryLeadership, self)
     val leaderName = expectMsgType[ZkLeadership](timeout).address.system
     println(s"Now leader is $leaderName")
     // kill the leader
