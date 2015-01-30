@@ -15,17 +15,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.util.threadless
+package org.squbs.pattern.orchestration
+
+import java.util.NoSuchElementException
 
 import org.scalatest.{FunSpec, Matchers}
-import scala.util.{Try, Failure, Success}
-import scala.language.postfixOps
-import java.util.NoSuchElementException
-import java.lang.{RuntimeException, IllegalArgumentException}
-import scala.IllegalArgumentException
-import scala.RuntimeException
 
-class FutureSpec extends FunSpec with Matchers {
+import scala.language.postfixOps
+import scala.util.{Failure, Success, Try}
+
+class OFutureSpec extends FunSpec with Matchers {
 
   //the key test case follows, as `threadless` indicates, the callbacks (success/failure) should be run within the same thread
   //other than common `scala.concurrent.Future`
@@ -35,7 +34,7 @@ class FutureSpec extends FunSpec with Matchers {
     val threadIdentity = Thread.currentThread
     val accuracy = 1024
 
-    val p = Promise[String]()
+    val p = OPromise[String]()
     val f = p.future
 
     var acks = Seq[Boolean]()
@@ -57,7 +56,7 @@ class FutureSpec extends FunSpec with Matchers {
     val threadIdentity = Thread.currentThread
     val accuracy = 1024
 
-    val p = Promise[String]()
+    val p = OPromise[String]()
     val f = p.future
 
     var acks = Seq[Boolean]()
@@ -80,9 +79,9 @@ class FutureSpec extends FunSpec with Matchers {
 
   it("should compose with for-comprehensions") {
 
-    def async(x: Int) = Future.successful((x * 2).toString)
+    def async(x: Int) = OFuture.successful((x * 2).toString)
 
-    val future0 = Future.successful("five!".length)
+    val future0 = OFuture.successful("five!".length)
 
     val future1 = for {
       a <- future0.mapTo[Int]  // returns 5
@@ -96,8 +95,8 @@ class FutureSpec extends FunSpec with Matchers {
 
     val future2 = for {
       a <- future0.mapTo[Int]
-      b <- Future.successful((a * 2).toString).mapTo[Int]
-      c <- Future.successful((7 * 2).toString)
+      b <- OFuture.successful((a * 2).toString).mapTo[Int]
+      c <- OFuture.successful((7 * 2).toString)
     } yield b + "-" + c
 
     future2 shouldNot be(null)
@@ -110,7 +109,7 @@ class FutureSpec extends FunSpec with Matchers {
 
   it("should be able to recover from exceptions") {
 
-    val future1 = Future.successful(5)
+    val future1 = OFuture.successful(5)
     val future2 = future1 map (_ / 0)
     val future3 = future2 map (_.toString)
 
@@ -152,21 +151,21 @@ class FutureSpec extends FunSpec with Matchers {
     val o = new IllegalStateException("original")
     val r = new IllegalStateException("recovered")
 
-    val r0 = Future.failed[String](o) recoverWith {
-      case _ if false == true => Future.successful("yay")
+    val r0 = OFuture.failed[String](o) recoverWith {
+      case _ if false == true => OFuture.successful("yay")
     }
     r0 shouldNot be(null)
     r0.isCompleted should equal(true)
     r0.value should equal(Some(Failure(o)))
 
-    val recovered = Future.failed[String](o) recoverWith {
-      case _ => Future.successful("yay!")
+    val recovered = OFuture.failed[String](o) recoverWith {
+      case _ => OFuture.successful("yay!")
     }
     recovered.isCompleted should equal(true)
     recovered.value should equal(Some(Success("yay!")))
 
-    val refailed = Future.failed[String](o) recoverWith {
-      case _ => Future.failed[String](r)
+    val refailed = OFuture.failed[String](o) recoverWith {
+      case _ => OFuture.failed[String](r)
     }
     refailed.isCompleted should equal(true)
     refailed.value should equal(Some(Failure(r)))
@@ -175,7 +174,7 @@ class FutureSpec extends FunSpec with Matchers {
   it("andThen should work as expected") {
       val q = new java.util.concurrent.LinkedBlockingQueue[Int]
       for (i <- 1 to 1000) {
-        val chained = Future.successful({
+        val chained = OFuture.successful({
           q.add(1); 3
         }) andThen {
           case _ => q.add(2)
@@ -195,58 +194,58 @@ class FutureSpec extends FunSpec with Matchers {
 
   it("should get firstCompletedOf") {
 
-    def futures = Vector.fill[Future[Int]](10) {
-      Promise[Int]().future
-    } :+ Future.successful[Int](5)
+    def futures = Vector.fill[OFuture[Int]](10) {
+      OPromise[Int]().future
+    } :+ OFuture.successful[Int](5)
 
-    Future.firstCompletedOf(futures).value should equal (Some(Success(5)))
-    Future.firstCompletedOf(futures.iterator).value should equal (Some(Success(5)))
+    OFuture.firstCompletedOf(futures).value should equal (Some(Success(5)))
+    OFuture.firstCompletedOf(futures.iterator).value should equal (Some(Success(5)))
   }
 
   it("should find the future") {
-    val futures = for (i <- 1 to 10) yield Future.successful(i)
+    val futures = for (i <- 1 to 10) yield OFuture.successful(i)
 
-    val result = Future.find[Int](futures)(_ == 3)
+    val result = OFuture.find[Int](futures)(_ == 3)
     result.value should equal (Some(Success(Some(3))))
 
-    val notFound = Future.find[Int](futures.iterator)(_ == 11)
+    val notFound = OFuture.find[Int](futures.iterator)(_ == 11)
     notFound.value should equal(Some(Success(None)))
   }
 
   it("should support zip function") {
     val f = new IllegalStateException("test")
 
-    val zip0 = Future.failed[String](f) zip Future.successful("foo")
+    val zip0 = OFuture.failed[String](f) zip OFuture.successful("foo")
     zip0.value should equal(Some(Failure(f)))
 
-    val zip1 = Future.successful("foo") zip Future.failed[String](f)
+    val zip1 = OFuture.successful("foo") zip OFuture.failed[String](f)
     zip1.value should equal(Some(Failure(f)))
 
-    val zip2 = Future.failed[String](f) zip Future.failed[String](f)
+    val zip2 = OFuture.failed[String](f) zip OFuture.failed[String](f)
     zip2.value should equal(Some(Failure(f)))
 
-    val zip3 = Future.successful("foo") zip Future.successful("foo")
+    val zip3 = OFuture.successful("foo") zip OFuture.successful("foo")
     zip3.value should equal(Some(Success(("foo", "foo"))))
   }
 
   it("should support fold function") {
 
-    def async(add: Int) = Future.successful(add)
+    def async(add: Int) = OFuture.successful(add)
 
     val futures = (0 to 9) map {
       idx => async(idx)
     }
 
-    val folded = Future.fold(futures)(0)(_ + _)
+    val folded = OFuture.fold(futures)(0)(_ + _)
     folded.value should equal(Some(Success(45)))
   }
 
   it("should support fold by composing") {
 
     def futures = (0 to 9) map {
-      idx => Future.successful(idx)
+      idx => OFuture.successful(idx)
     }
-    val folded = futures.foldLeft(Future.successful(0)) {
+    val folded = futures.foldLeft(OFuture.successful(0)) {
       case (fr, fa) => for (r <- fr; a <- fa) yield (r + a)
     }
 
@@ -255,17 +254,17 @@ class FutureSpec extends FunSpec with Matchers {
 
   it("should show exception in the folding process") {
 
-    def async(add: Int):Future[Int] =
+    def async(add: Int):OFuture[Int] =
       if (add == 6)
-        Future.failed(new IllegalArgumentException("shouldFoldResultsWithException: expected"))
+        OFuture.failed(new IllegalArgumentException("shouldFoldResultsWithException: expected"))
       else
-        Future.successful(add)
+        OFuture.successful(add)
 
     def futures = (0 to 9) map {
       idx => async(idx)
     }
 
-    val folded = Future.fold(futures)(0)(_ + _)
+    val folded = OFuture.fold(futures)(0)(_ + _)
     folded.value match {
       case Some(Failure(ex)) =>
         ex.getMessage should equal("shouldFoldResultsWithException: expected")
@@ -276,32 +275,32 @@ class FutureSpec extends FunSpec with Matchers {
 
   it("should return zero when the folding list is empty") {
 
-    val zero = Future.fold(List[Future[Int]]())(0)(_ + _)
+    val zero = OFuture.fold(List[OFuture[Int]]())(0)(_ + _)
 
     zero.value should equal(Some(Success(0)))
   }
 
   it("should support reduce function") {
 
-    val futures = (0 to 9) map {Future.successful(_)}
-    val reduced = Future.reduce(futures)(_ + _)
+    val futures = (0 to 9) map {OFuture.successful(_)}
+    val reduced = OFuture.reduce(futures)(_ + _)
 
     reduced.value should equal(Some(Success(45)))
   }
 
   it("should show exception in the reducing process") {
 
-    def async(add: Int):Future[Int] =
+    def async(add: Int):OFuture[Int] =
       if (add == 6)
-        Future.failed(new IllegalArgumentException("shouldReduceResultsWithException: expected"))
+        OFuture.failed(new IllegalArgumentException("shouldReduceResultsWithException: expected"))
       else
-        Future.successful(add)
+        OFuture.successful(add)
 
     def futures = (0 to 9) map {
       idx => async(idx)
     }
 
-    val folded = Future.reduce(futures)(_ + _)
+    val folded = OFuture.reduce(futures)(_ + _)
     folded.value match {
       case Some(Failure(ex)) =>
         ex.getMessage should equal("shouldReduceResultsWithException: expected")
@@ -312,7 +311,7 @@ class FutureSpec extends FunSpec with Matchers {
 
   it("should throw exception when reducing an empty list") {
 
-    val reduced = Future.reduce(List[Future[Int]]())(_ + _)
+    val reduced = OFuture.reduce(List[OFuture[Int]]())(_ + _)
     reduced.value match {
       case Some(Failure(ex)) => ex.getClass should equal(classOf[NoSuchElementException])
       case _ => fail("should have got failure due to empty list reducing")
@@ -320,7 +319,7 @@ class FutureSpec extends FunSpec with Matchers {
   }
 
   it("should support functions: filter, collect, fallback") {
-    var p = Promise[String]()
+    var p = OPromise[String]()
     var f = p.future
 
     p.success("abc")
@@ -344,10 +343,10 @@ class FutureSpec extends FunSpec with Matchers {
     newFuture.value.get.failed.get shouldBe a[NoSuchElementException]
     newFuture.value.get.failed.get.getMessage should be("Future.collect partial function is not defined at: abc")
 
-    newFuture = f.fallbackTo(Future.successful("haha"))
+    newFuture = f.fallbackTo(OFuture.successful("haha"))
     newFuture.value.get.get should be("abc")
 
-    p = Promise[String]()
+    p = OPromise[String]()
     f = p.future
 
     p.failure(new RuntimeException("BadMan"))
@@ -361,14 +360,14 @@ class FutureSpec extends FunSpec with Matchers {
     newFuture.value.get.failed.get shouldBe a[RuntimeException]
     newFuture.value.get.failed.get.getMessage should be("BadMan")
 
-    newFuture = f.fallbackTo(Future.successful("haha"))
+    newFuture = f.fallbackTo(OFuture.successful("haha"))
     newFuture.value.get.get should be("haha")
 
   }
 
 
   it("should support functions: failed ,apply ,foreach, transform") {
-    var p = Promise[String]()
+    var p = OPromise[String]()
     var f = p.future
 
     val func : Try[Throwable] => String = {
@@ -392,7 +391,7 @@ class FutureSpec extends FunSpec with Matchers {
     f() should be("abc")
 
 
-    p = Promise[String]()
+    p = OPromise[String]()
     f = p.future
 
     the[NoSuchElementException] thrownBy {
@@ -425,22 +424,22 @@ class FutureSpec extends FunSpec with Matchers {
         }
       }
 
-      val oddFutures = List.fill(100)(Future.successful(counter.incAndGet())).iterator
-      val traversed = Future.sequence(oddFutures)
+      val oddFutures = List.fill(100)(OFuture.successful(counter.incAndGet())).iterator
+      val traversed = OFuture.sequence(oddFutures)
       traversed.value match {
         case Some(Success(list:Iterator[Int])) => list.sum should equal(10000)
         case _ => fail("should have got a list of integers")
       }
 
       val list = (1 to 100).toList
-      val traversedList = Future.traverse(list)(x => Future.successful(x * 2 - 1))
+      val traversedList = OFuture.traverse(list)(x => OFuture.successful(x * 2 - 1))
       traversedList.value match {
         case Some(Success(list:List[Int])) => list.sum should equal(10000)
         case _ => fail("should have got a list of integers")
       }
 
       val iterator = (1 to 100).toList.iterator
-      val traversedIterator = Future.traverse(iterator)(x => Future.successful(x * 2 - 1))
+      val traversedIterator = OFuture.traverse(iterator)(x => OFuture.successful(x * 2 - 1))
       traversedIterator.value match {
         case Some(Success(list:Iterator[Int])) => list.sum should equal(10000)
         case _ => fail("should have got a list of integers")

@@ -15,19 +15,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.util.threadless
+package org.squbs.pattern.orchestration
 
-import org.scalatest.{Matchers, FunSpec}
+import org.scalatest.{FunSpec, Matchers}
+
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-class PromiseSpec extends FunSpec with Matchers {
+class OPromiseSpec extends FunSpec with Matchers {
 
   describe("Promise") {
 
     it("should be able to resolved to concrete value") {
 
-      val p = Promise[String]()
+      val p = OPromise[String]()
 
       p shouldNot be(null)
       p.future shouldNot be(null)
@@ -40,7 +41,7 @@ class PromiseSpec extends FunSpec with Matchers {
 
     it("should reject repeated value resolutions") {
 
-      val p = Promise[String]()
+      val p = OPromise[String]()
 
       p.success("value") should be theSameInstanceAs(p)
 
@@ -51,7 +52,7 @@ class PromiseSpec extends FunSpec with Matchers {
 
     it("should be able to resolved as failure") {
 
-      val p = Promise[String]()
+      val p = OPromise[String]()
       p.isCompleted should be(false)
 
       val cause: IllegalArgumentException = new IllegalArgumentException("string cannot be null")
@@ -62,8 +63,8 @@ class PromiseSpec extends FunSpec with Matchers {
 
     it("should be resolved given associated future") {
 
-      val p = Promise[String]()
-      val other = Promise[String]()
+      val p = OPromise[String]()
+      val other = OPromise[String]()
 
       p.isCompleted should be(false)
       other.isCompleted should be(false)
@@ -80,7 +81,7 @@ class PromiseSpec extends FunSpec with Matchers {
     it("should be kept as failure if created as failed") {
 
       val cause = new IllegalArgumentException("already failed")
-      val failure = Promise.failed[String](cause)
+      val failure = OPromise.failed[String](cause)
 
       failure shouldNot be(null)
       failure.isCompleted should equal(true)
@@ -97,7 +98,7 @@ class PromiseSpec extends FunSpec with Matchers {
 
     it("should be kept as result if created given resolved value") {
 
-      val success = Promise.successful("value")
+      val success = OPromise.successful("value")
 
       success shouldNot be(null)
       success.isCompleted should equal(true)

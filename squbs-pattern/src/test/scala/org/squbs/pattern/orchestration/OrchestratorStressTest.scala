@@ -15,31 +15,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.pattern
+package org.squbs.pattern.orchestration
 
 import akka.actor._
-import akka.contrib.pattern.Aggregator
 import akka.testkit.{ImplicitSender, TestKit}
 import org.scalatest.{FunSpecLike, Matchers}
+import org.squbs.testkit.SlowTest
 import org.squbs.testkit.stress._
 
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
-class OrchestrationStressTest extends TestKit(ActorSystem("OrchestrationSpec"))
+class OrchestratorStressTest extends TestKit(ActorSystem("OrchestrationSpec"))
 with ImplicitSender with FunSpecLike with Matchers {
 
   val ir = 500
   val warmUp = 2 minutes
   val steady = 3 minutes
 
-  it (s"Should orchestrate asynchronously at $ir submissions/sec") {
+  it (s"Should orchestrate asynchronously at $ir submissions/sec", SlowTest) {
     
     val startTime = System.nanoTime()
 
     val loadActor = system.actorOf(Props[LoadActor])
     val statsActor = system.actorOf(Props[CPUStatsActor])
     loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
-      system.actorOf(Props[Orchestrator]) ! OrchestrationRequest("LoadTest")
+      system.actorOf(Props[TestOrchestrator]) ! OrchestrationRequest("LoadTest")
     })
     statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
 
@@ -83,7 +84,61 @@ with ImplicitSender with FunSpecLike with Matchers {
     statsActor ! PoisonPill
   }
 
-  it (s"Should orchestrate synchronously at $ir submissions/sec, comparing CPU load to the DSL") {
+  it (s"Should orchestrate asynchronously using ask at $ir submissions/sec", SlowTest) {
+
+    val startTime = System.nanoTime()
+
+    val loadActor = system.actorOf(Props[LoadActor])
+    val statsActor = system.actorOf(Props[CPUStatsActor])
+    loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
+      system.actorOf(Props[TestAskOrchestrator]) ! OrchestrationRequest("LoadTest")
+    })
+    statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
+
+    var sumSubmitTime = 0l
+    var sumSubmitCount = 0l
+
+    var sumFinishTime = 0l
+    var sumFinishCount = 0l
+
+    for (i <- 0 to 1) {
+      fishForMessage(warmUp + steady + (20 seconds)) {
+        case LoadStats(tps) =>
+          println(s"Achieved $tps TPS")
+          println(s"Avg submit time: ${sumSubmitTime / (1000000d * sumSubmitCount)} ms")
+          println(s"Avg time to finish: ${sumFinishTime / (1000000d * sumFinishCount)} ms")
+          tps should be > (ir * 0.95) // Within 5% of IR
+          true
+
+        case CPUStats(avg, sDev) =>
+          println(s"CPULoad $avg; Standard Deviation $sDev")
+          true
+
+        case SubmittedOrchestration (_, time) =>
+          val currentTime = System.nanoTime() - startTime
+          if (currentTime > warmUp.toNanos && currentTime <= steady.toNanos) {
+            sumSubmitTime += time
+            sumSubmitCount += 1
+          }
+          false
+
+        case finishedF: Future[FinishedOrchestration] =>
+          val finished = Await.result(finishedF, warmUp + steady + (20 seconds))
+          val currentTime = System.nanoTime() - startTime
+          if (currentTime > warmUp.toNanos && currentTime <= (warmUp + steady).toNanos) {
+            sumFinishTime += finished.timeNs
+            sumFinishCount += 1
+          }
+          false
+
+        case _ => false
+      }
+    }
+    loadActor ! PoisonPill
+    statsActor ! PoisonPill
+  }
+
+  it (s"Should orchestrate synchronously at $ir submissions/sec, comparing CPU load to the DSL", SlowTest) {
 
     val startTime = System.nanoTime()
 
@@ -116,6 +171,8 @@ with ImplicitSender with FunSpecLike with Matchers {
             sumFinishCount += 1
           }
           false
+
+        case _ => false
       }
     }
     loadActor ! PoisonPill
@@ -125,7 +182,7 @@ with ImplicitSender with FunSpecLike with Matchers {
 
 
 
-class SimpleForComprehensionActor extends Actor with Aggregator with RequestFunctions {
+class SimpleForComprehensionActor extends Actor with Orchestrator with RequestFunctions {
 
   // Expecting the initial request
   expectOnce {
