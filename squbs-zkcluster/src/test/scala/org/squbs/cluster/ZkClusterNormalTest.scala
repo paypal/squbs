@@ -227,7 +227,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     }
   }
 
-  ignore should "rebalance each partition when follower left or came back" in {
+  "ZkCluster" should "rebalance each partition when follower left or came back" in {
     // create 2 partitions
     val par1 = ByteString("myPar1")
     val par2 = ByteString("myPar2")
@@ -273,7 +273,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     }
   }
 
-  ignore should "rebalance each partition when leader left or came back" in {
+  "ZkCluster" should "rebalance each partition when leader left or came back" in {
     // create 2 partitions
     val par1 = ByteString("myPar1")
     val par2 = ByteString("myPar2")
