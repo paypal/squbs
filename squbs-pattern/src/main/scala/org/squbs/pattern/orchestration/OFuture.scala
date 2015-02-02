@@ -15,12 +15,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.util.threadless
+package org.squbs.pattern.orchestration
 
-import scala.util.{Try, Failure, Success}
-import scala.util.control.NonFatal
-import scala.reflect.ClassTag
 import scala.collection.generic.CanBuildFrom
+import scala.reflect.ClassTag
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 /** The trait that represents futures like scala.concurrent.Future BUT works in a single threaded environment.
   * It does not have blocking calls to the future and a future cannot be created from passing a closure.
@@ -87,7 +87,7 @@ import scala.collection.generic.CanBuildFrom
   * in a batch within a single `execute()` and it may run
   * `execute()` either immediately or asynchronously.
   */
-trait Future[+T] {
+trait OFuture[+T] {
 
   /* Callbacks */
 
@@ -171,8 +171,8 @@ trait Future[+T] {
     *  Blocking on this future returns a value if the original future is completed with an exception
     *  and throws a corresponding exception if the original future fails.
     */
-  def failed: Future[Throwable] = {
-    val p = Promise[Throwable]()
+  def failed: OFuture[Throwable] = {
+    val p = OPromise[Throwable]()
 
     onComplete {
       case Failure(t) => p success t
@@ -219,8 +219,8 @@ trait Future[+T] {
     *             the returned future
     *  @return    a future that will be completed with the transformed value
     */
-  def transform[S](s: T => S, f: Throwable => Throwable): Future[S] = {
-    val p = Promise[S]()
+  def transform[S](s: T => S, f: Throwable => Throwable): OFuture[S] = {
+    val p = OPromise[S]()
 
     onComplete {
       case result =>
@@ -243,8 +243,8 @@ trait Future[+T] {
     *
     *  $forComprehensionExamples
     */
-  def map[S](f: T => S): Future[S] = { // transform(f, identity)
-  val p = Promise[S]()
+  def map[S](f: T => S): OFuture[S] = { // transform(f, identity)
+  val p = OPromise[S]()
 
     onComplete {
       case result =>
@@ -268,8 +268,8 @@ trait Future[+T] {
     *
     *  $forComprehensionExamples
     */
-  def flatMap[S](f: T => Future[S]): Future[S] = {
-    val p = Promise[S]()
+  def flatMap[S](f: T => OFuture[S]): OFuture[S] = {
+    val p = OPromise[S]()
 
     onComplete {
       case f: Failure[_] => p complete f.asInstanceOf[Failure[S]]
@@ -277,7 +277,7 @@ trait Future[+T] {
         try {
           f(v).onComplete({
             case f: Failure[_] => p complete f.asInstanceOf[Failure[S]]
-            case Success(v) => p success v
+            case Success(v0) => p success v0
           })
         } catch {
           case NonFatal(t) => p failure t
@@ -303,8 +303,8 @@ trait Future[+T] {
     *  Await.result(h, Duration.Zero) // throw a NoSuchElementException
     *  }}}
     */
-  def filter(pred: T => Boolean): Future[T] = {
-    val p = Promise[T]()
+  def filter(pred: T => Boolean): OFuture[T] = {
+    val p = OPromise[T]()
 
     onComplete {
       case f: Failure[_] => p complete f.asInstanceOf[Failure[T]]
@@ -322,7 +322,7 @@ trait Future[+T] {
 
   /** Used by for-comprehensions.
     */
-  final def withFilter(p: T => Boolean): Future[T] = filter(p)
+  final def withFilter(p: T => Boolean): OFuture[T] = filter(p)
   // final def withFilter(p: T => Boolean) = new FutureWithFilter[T](this, p)
 
   // final class FutureWithFilter[+S](self: Future[S], p: S => Boolean) {
@@ -352,8 +352,8 @@ trait Future[+T] {
     *  Await.result(h, Duration.Zero) // throw a NoSuchElementException
     *  }}}
     */
-  def collect[S](pf: PartialFunction[T, S]): Future[S] = {
-    val p = Promise[S]()
+  def collect[S](pf: PartialFunction[T, S]): OFuture[S] = {
+    val p = OPromise[S]()
 
     onComplete {
       case f: Failure[_] => p complete f.asInstanceOf[Failure[S]]
@@ -381,8 +381,8 @@ trait Future[+T] {
     *  future (6 / 2) recover { case e: ArithmeticException => 0 } // result: 3
     *  }}}
     */
-  def recover[U >: T](pf: PartialFunction[Throwable, U]): Future[U] = {
-    val p = Promise[U]()
+  def recover[U >: T](pf: PartialFunction[Throwable, U]): OFuture[U] = {
+    val p = OPromise[U]()
 
     onComplete { case tr => p.complete(tr recover pf) }
 
@@ -402,15 +402,15 @@ trait Future[+T] {
     *  future (6 / 0) recoverWith { case e: ArithmeticException => f } // result: Int.MaxValue
     *  }}}
     */
-  def recoverWith[U >: T](pf: PartialFunction[Throwable, Future[U]]): Future[U] = {
-    val p = Promise[U]()
+  def recoverWith[U >: T](pf: PartialFunction[Throwable, OFuture[U]]): OFuture[U] = {
+    val p = OPromise[U]()
 
     onComplete {
       case Failure(t) if pf isDefinedAt t =>
         try {
           p completeWith pf(t)
         } catch {
-          case NonFatal(t) => p failure t
+          case NonFatal(t0) => p failure t0
         }
       case otherwise => p complete otherwise
     }
@@ -426,8 +426,8 @@ trait Future[+T] {
     *  Otherwise, if `that` future fails, the resulting future is failed
     *  with the throwable stored in `that`.
     */
-  def zip[U](that: Future[U]): Future[(T, U)] = {
-    val p = Promise[(T, U)]()
+  def zip[U](that: OFuture[U]): OFuture[(T, U)] = {
+    val p = OPromise[(T, U)]()
 
     this onComplete {
       case f: Failure[_] => p complete f.asInstanceOf[Failure[(T, U)]]
@@ -457,8 +457,8 @@ trait Future[+T] {
     *  Await.result(h, Duration.Zero) // evaluates to 5
     *  }}}
     */
-  def fallbackTo[U >: T](that: Future[U]): Future[U] = {
-    val p = Promise[U]()
+  def fallbackTo[U >: T](that: OFuture[U]): OFuture[U] = {
+    val p = OPromise[U]()
     onComplete {
       case s @ Success(_) => p complete s
       case _ => p completeWith that
@@ -469,12 +469,12 @@ trait Future[+T] {
   /** Creates a new `Future[S]` which is completed with this `Future`'s result if
     *  that conforms to `S`'s erased type or a `ClassCastException` otherwise.
     */
-  def mapTo[S](implicit tag: ClassTag[S]): Future[S] = {
+  def mapTo[S](implicit tag: ClassTag[S]): OFuture[S] = {
     def boxedType(c: Class[_]): Class[_] = {
-      if (c.isPrimitive) Future.toBoxed(c) else c
+      if (c.isPrimitive) OFuture.toBoxed(c) else c
     }
 
-    val p = Promise[S]()
+    val p = OPromise[S]()
 
     onComplete {
       case f: Failure[_] => p complete f.asInstanceOf[Failure[S]]
@@ -512,14 +512,28 @@ trait Future[+T] {
     *  }
     *  }}}
     */
-  def andThen[U](pf: PartialFunction[Try[T], U]): Future[T] = {
-    val p = Promise[T]()
+  def andThen[U](pf: PartialFunction[Try[T], U]): OFuture[T] = {
+    val p = OPromise[T]()
 
     onComplete {
       case r => try if (pf isDefinedAt r) pf(r) finally p complete r
     }
 
     p.future
+  }
+
+  /**
+   * Converts this orchestration future to a scala.concurrent.Future.
+   * @return A scala.concurrent.Future representing this future.
+   */
+  def toFuture: scala.concurrent.Future[T] = {
+    import scala.concurrent.{Promise => CPromise}
+    val cPromise = CPromise[T]()
+    onComplete {
+      case Success(v) => cPromise success v
+      case Failure(t) => cPromise failure t
+    }
+    cPromise.future
   }
 
 }
@@ -529,9 +543,9 @@ trait Future[+T] {
   *  @define nonDeterministic
   *  Note: using this method yields nondeterministic dataflow programs.
   */
-object Future {
+object OFuture {
 
-  private[threadless] val toBoxed = Map[Class[_], Class[_]](
+  private[orchestration] val toBoxed = Map[Class[_], Class[_]](
     classOf[Boolean] -> classOf[java.lang.Boolean],
     classOf[Byte]    -> classOf[java.lang.Byte],
     classOf[Char]    -> classOf[java.lang.Character],
@@ -548,28 +562,28 @@ object Future {
     *  @tparam T       the type of the value in the future
     *  @return         the newly created `Future` object
     */
-  def failed[T](exception: Throwable): Future[T] = Promise.failed(exception).future
+  def failed[T](exception: Throwable): OFuture[T] = OPromise.failed(exception).future
 
   /** Creates an already completed Future with the specified result.
     *
     *  @tparam T       the type of the value in the future
     *  @return         the newly created `Future` object
     */
-  def successful[T](result: T): Future[T] = Promise.successful(result).future
+  def successful[T](result: T): OFuture[T] = OPromise.successful(result).future
 
   /** Simple version of `Futures.traverse`. Transforms a `TraversableOnce[Future[A]]` into a `Future[TraversableOnce[A]]`.
     *  Useful for reducing many `Future`s into a single `Future`.
     */
-  def sequence[A, M[_] <: TraversableOnce[_]](in: M[Future[A]])(implicit cbf: CanBuildFrom[M[Future[A]], A, M[A]]): Future[M[A]] = {
-    in.foldLeft(Promise.successful(cbf(in)).future) {
-      (fr, fa) => for (r <- fr; a <- fa.asInstanceOf[Future[A]]) yield r += a
+  def sequence[A, M[_] <: TraversableOnce[_]](in: M[OFuture[A]])(implicit cbf: CanBuildFrom[M[OFuture[A]], A, M[A]]): OFuture[M[A]] = {
+    in.foldLeft(OPromise.successful(cbf(in)).future) {
+      (fr, fa) => for (r <- fr; a <- fa.asInstanceOf[OFuture[A]]) yield r += a
     } map (_.result())
   }
 
   /** Returns a `Future` to the result of the first future in the list that is completed.
     */
-  def firstCompletedOf[T](futures: TraversableOnce[Future[T]]): Future[T] = {
-    val p = Promise[T]()
+  def firstCompletedOf[T](futures: TraversableOnce[OFuture[T]]): OFuture[T] = {
+    val p = OPromise[T]()
 
     val completeFirst: Try[T] => Unit = p tryComplete _
     futures.foreach(_ onComplete completeFirst)
@@ -579,11 +593,11 @@ object Future {
 
   /** Returns a `Future` that will hold the optional result of the first `Future` with a result that matches the predicate.
     */
-  def find[T](futurestravonce: TraversableOnce[Future[T]])(predicate: T => Boolean): Future[Option[T]] = {
+  def find[T](futurestravonce: TraversableOnce[OFuture[T]])(predicate: T => Boolean): OFuture[Option[T]] = {
     val futures = futurestravonce.toBuffer
-    if (futures.isEmpty) Promise.successful[Option[T]](None).future
+    if (futures.isEmpty) OPromise.successful[Option[T]](None).future
     else {
-      val result = Promise[Option[T]]()
+      val result = OPromise[Option[T]]()
       var ref = futures.size
       val search: Try[T] => Unit = v => try {
         v match {
@@ -613,8 +627,8 @@ object Future {
     *    val result = Await.result(Future.fold(futures)(0)(_ + _), 5 seconds)
     *  }}}
     */
-  def fold[T, R](futures: TraversableOnce[Future[T]])(zero: R)(foldFun: (R, T) => R): Future[R] = {
-    if (futures.isEmpty) Promise.successful(zero).future
+  def fold[T, R](futures: TraversableOnce[OFuture[T]])(zero: R)(foldFun: (R, T) => R): OFuture[R] = {
+    if (futures.isEmpty) OPromise.successful(zero).future
     else sequence(futures).map(_.foldLeft(zero)(foldFun))
   }
 
@@ -625,8 +639,8 @@ object Future {
     *    val result = Await.result(Future.reduce(futures)(_ + _), 5 seconds)
     *  }}}
     */
-  def reduce[T, R >: T](futures: TraversableOnce[Future[T]])(op: (R, T) => R): Future[R] = {
-    if (futures.isEmpty) Promise[R]().failure(new NoSuchElementException("reduce attempted on empty collection")).future
+  def reduce[T, R >: T](futures: TraversableOnce[OFuture[T]])(op: (R, T) => R): OFuture[R] = {
+    if (futures.isEmpty) OPromise[R]().failure(new NoSuchElementException("reduce attempted on empty collection")).future
     else sequence(futures).map(_ reduceLeft op)
   }
 
@@ -638,8 +652,8 @@ object Future {
     *    val myFutureList = Future.traverse(myList)(x => Future(myFunc(x)))
     *  }}}
     */
-  def traverse[A, B, M[_] <: TraversableOnce[_]](in: M[A])(fn: A => Future[B])(implicit cbf: CanBuildFrom[M[A], B, M[B]]): Future[M[B]] =
-    in.foldLeft(Promise.successful(cbf(in)).future) { (fr, a) =>
+  def traverse[A, B, M[_] <: TraversableOnce[_]](in: M[A])(fn: A => OFuture[B])(implicit cbf: CanBuildFrom[M[A], B, M[B]]): OFuture[M[B]] =
+    in.foldLeft(OPromise.successful(cbf(in)).future) { (fr, a) =>
       val fb = fn(a.asInstanceOf[A])
       for (r <- fr; b <- fb) yield r += b
     }.map(_.result())

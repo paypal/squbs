@@ -1,3 +1,5 @@
+import de.johoop.findbugs4sbt.FindBugs._
+
 name := "squbs-testkit"
 
 libraryDependencies ++= Seq(
@@ -6,3 +8,11 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % "2.3.6",
   "io.spray" %% "spray-client"  % "1.3.2" % "test"
 )
+
+findbugsSettings
+
+
+org.scalastyle.sbt.ScalastylePlugin.Settings
+
+
+instrumentSettings

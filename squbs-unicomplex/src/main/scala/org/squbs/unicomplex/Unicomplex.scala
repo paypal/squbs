@@ -90,7 +90,7 @@ private[unicomplex] case class  StartListener(name: String, config: Config)
 private[unicomplex] case object RoutesStarted
 private[unicomplex] case class  StartCubeActor(props: Props, name: String = "", initRequired: Boolean = false)
 private[unicomplex] case class  StartCubeService(webContext: String, listeners: Seq[String], props: Props,
-                                                 name: String = "", proxyName : Option[String] = None, initRequired: Boolean = false)
+                                                 name: String = "", initRequired: Boolean = false)
 private[unicomplex] case object CheckInitStatus
 private[unicomplex] case class  InitReports(state: LifecycleState, reports: Map[ActorRef, Option[InitReport]])
 private[unicomplex] case object Started
@@ -208,7 +208,12 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   class ExtensionsBean extends ExtensionsMXBean {
     override def getExtensions: util.List[ExtensionInfo] = {
       import scala.collection.JavaConversions._
-      extensions map { e => ExtensionInfo(e.info.name, e.exceptions.head._1, e.exceptions.head._2.toString) }
+      extensions map { e =>
+        val (phase, ex) = e.exceptions.headOption map {
+          case (phase, exception) => (phase, exception.toString())
+        } getOrElse (("", ""))
+        ExtensionInfo(e.info.name, phase, ex)
+      }
     }
   }
 
@@ -579,33 +584,8 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
 
-    case StartCubeService(webContext, listeners, props, name, proxyName, initRequired) =>
-
-      val globalConfig = context.system.settings.config
-
-      val cubeActor = proxyName match {
-        case None => context.actorOf(props, name)
-        case Some(pName) =>
-          try {
-            val proxyConfig = globalConfig.getConfig("squbs.proxy." + pName)
-            val providerClassName = Try {
-              proxyConfig.getString("provider")
-            }.toOption match {
-              case None => globalConfig.getString("squbs.proxy.defaultProvider")
-              case Some(v) => v
-            }
-            val serviceProxyFactory = Class.forName(providerClassName, true, getClass.getClassLoader).newInstance().asInstanceOf[ServiceProxyFactory]
-            val settings = Try {
-              proxyConfig.getConfig("settings")
-            }.toOption
-            val hostActor = context.actorOf(props)
-            serviceProxyFactory.create(settings, hostActor, name)
-          } catch {
-            case t: Throwable =>
-              log.error(t, "Failed to init proxy: " + pName)
-              context.actorOf(props, name) //TODO fallback or throw error
-          }
-      }
+    case StartCubeService(webContext, listeners, props, name, initRequired) =>
+      val cubeActor = context.actorOf(props, name)
 
       if (initRequired) initMap += cubeActor -> None
       Unicomplex() ! RegisterContext(listeners, webContext, cubeActor)

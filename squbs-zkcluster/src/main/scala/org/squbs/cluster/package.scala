@@ -17,21 +17,20 @@
  */
 package org.squbs
 
-import java.net.{URLDecoder, URLEncoder, InetAddress}
-import org.squbs.unicomplex.ConfigUtil
+import java.net.{InetAddress, URLDecoder, URLEncoder}
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
-import scala.annotation.tailrec
+
+import akka.actor.{Address, AddressFromURIString}
 import akka.util.ByteString
-import akka.actor.{AddressFromURIString, Address}
-import org.apache.zookeeper.CreateMode
-import org.apache.curator.framework.CuratorFramework
-import org.apache.zookeeper.KeeperException.{NoNodeException, NodeExistsException}
 import com.typesafe.scalalogging.Logger
+import org.apache.curator.framework.CuratorFramework
+import org.apache.zookeeper.CreateMode
+import org.apache.zookeeper.KeeperException.{NoNodeException, NodeExistsException}
+
+import scala.annotation.tailrec
 
 package object cluster {
-
-  import scala.collection.JavaConversions._
 
   trait RebalanceLogic {
 
@@ -112,6 +111,8 @@ package object cluster {
     def partitionZkPath(partitionKey:ByteString) = s"/segments/${segmentation(partitionKey)}/${keyToPath(partitionKey)}"
 
     def sizeOfParZkPath(partitionKey:ByteString) = s"${partitionZkPath(partitionKey)}/$$size"
+    
+    def servantsOfParZkPath(partitionKey:ByteString) = s"${partitionZkPath(partitionKey)}/servants"
   }
 
   case class DefaultSegmentationLogic(segmentsSize:Int) extends SegmentationLogic
@@ -154,31 +155,32 @@ package object cluster {
     }
   }
 
-  private[cluster] def orderByAge(partitionKey:ByteString, members:Set[Address])(implicit zkClient:CuratorFramework, zkSegmentationLogic:SegmentationLogic):Seq[Address] = {
-
-    if(members.isEmpty)
-      Seq.empty[Address]
-    else {
-      val zkPath = zkSegmentationLogic.partitionZkPath(partitionKey)
-      val servants:Seq[String] = try{
-        zkClient.getChildren.forPath(zkPath)
-      }
-      catch {
-        case e:Exception => Seq.empty[String]
-      }
-
-      val ages:Map[Address, Long] = servants.filterNot(_ == "$size").map(child => try{
-          AddressFromURIString.parse(pathToKey(child)) -> zkClient.checkExists.forPath(s"$zkPath/$child").getCtime
-        }
-        catch{
-          case e:Exception =>
-            AddressFromURIString.parse(pathToKey(child)) -> -1L
-        }).filterNot(_._2 == -1L).toMap
-      //this is to ensure that the partitions query result will always give members in the order of oldest to youngest
-      //this should make data sync easier, the newly onboard member should always consult with the 1st member in the query result to sync with.
-      members.toSeq.sortBy(ages.getOrElse(_, 0L))
-    }
-  }
+//  private[cluster] def orderByAge(partitionKey:ByteString, members:Set[Address])(implicit zkClient:CuratorFramework, zkSegmentationLogic:SegmentationLogic):Seq[Address] = {
+//
+//    if(members.isEmpty)
+//      Seq.empty[Address]
+//    else {
+//      val zkPath = zkSegmentationLogic.partitionZkPath(partitionKey)
+//      val servants:Seq[String] = try{
+//        zkClient.getChildren.forPath(zkPath)
+//      }
+//      catch {
+//        case e:Exception => Seq.empty[String]
+//      }
+//
+//      val ages:Map[Address, Long] = servants.filterNot(_ == "$size").map(child => try{
+//          AddressFromURIString.parse(pathToKey(child)) -> zkClient.checkExists.forPath(s"$zkPath/$child").getCtime
+//        }
+//        catch{
+//          case e:Exception =>
+//            AddressFromURIString.parse(pathToKey(child)) -> -1L
+//        }).filterNot(_._2 == -1L).toMap
+//      //this is to ensure that the partitions query result will always give members in the order of oldest to youngest
+//      //this should make data sync easier, the newly onboard member should always consult with the 1st member in the query result to sync with.
+//      members.toSeq.sortBy(ages.getOrElse(_, 0L))
+//    }
+//    members.toSeq
+//  }
 
   private[cluster] def myAddress = InetAddress.getLocalHost.getCanonicalHostName match {
     case "localhost" => ConfigUtil.ipv4
@@ -223,5 +225,17 @@ package object cluster {
 
   implicit def bytesToByteString(bytes:Array[Byte]):ByteString = {
     ByteString(bytes)
+  }
+  
+  implicit def bytesToAddressSet(bytes: Array[Byte]): Set[Address] = {
+    try {
+      new String(bytes, UTF_8).split("[,]").map(seg => AddressFromURIString(seg.trim)).toSet
+    }catch {
+      case t: Throwable => Set.empty
+    }
+  }
+  
+  implicit def AddressSetToBytes(members: Set[Address]): Array[Byte] = {
+    members.mkString(",").getBytes(UTF_8)
   }
 }

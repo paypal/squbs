@@ -21,7 +21,7 @@ import akka.actor.{ActorSystem, Address, AddressFromURIString}
 import akka.dispatch.Dispatchers
 import akka.routing.{ActorSelectionRoutee, _}
 import akka.util.ByteString
-import com.typesafe.scalalogging.slf4j.LazyLogging
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.annotation.tailrec
 import scala.collection.immutable

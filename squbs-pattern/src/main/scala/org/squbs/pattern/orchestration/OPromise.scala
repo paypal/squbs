@@ -14,7 +14,7 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- */package org.squbs.util.threadless
+ */package org.squbs.pattern.orchestration
 
 import scala.util.{Failure, Success, Try}
 
@@ -33,11 +33,11 @@ import scala.util.{Failure, Success, Try}
   *  @define nonDeterministic
   *  Note: Using this method may result in non-deterministic concurrent programs.
   */
-trait Promise[T] {
+trait OPromise[T] {
 
   /** Future containing the value of this promise.
     */
-  def future: Future[T]
+  def future: OFuture[T]
 
   /** Returns whether the promise has already been completed with
     *  a value or an exception.
@@ -69,7 +69,7 @@ trait Promise[T] {
     *
     *  @return   This promise
     */
-  final def completeWith(other: Future[T]): this.type = {
+  final def completeWith(other: OFuture[T]): this.type = {
     other onComplete { this complete _ }
     this
   }
@@ -78,7 +78,7 @@ trait Promise[T] {
     *
     *  @return   This promise
     */
-  final def tryCompleteWith(other: Future[T]): this.type = {
+  final def tryCompleteWith(other: OFuture[T]): this.type = {
     other onComplete { this tryComplete _ }
     this
   }
@@ -118,27 +118,27 @@ trait Promise[T] {
   def tryFailure(t: Throwable): Boolean = tryComplete(Failure(t))
 }
 
-object Promise {
+object OPromise {
 
   /** Creates a promise object which can be completed with a value.
     *
     *  @tparam T       the type of the value in the promise
     *  @return         the newly created `Promise` object
     */
-  def apply[T](): Promise[T] = new impl.Promise.DefaultPromise[T]()
+  def apply[T](): OPromise[T] = new impl.OPromise.DefaultOPromise[T]()
 
   /** Creates an already completed Promise with the specified exception.
     *
     *  @tparam T       the type of the value in the promise
     *  @return         the newly created `Promise` object
     */
-  def failed[T](exception: Throwable): Promise[T] = new impl.Promise.KeptPromise[T](Failure(exception))
+  def failed[T](exception: Throwable): OPromise[T] = new impl.OPromise.KeptOPromise[T](Failure(exception))
 
   /** Creates an already completed Promise with the specified result.
     *
     *  @tparam T       the type of the value in the promise
     *  @return         the newly created `Promise` object
     */
-  def successful[T](result: T): Promise[T] = new impl.Promise.KeptPromise[T](Success(result))
+  def successful[T](result: T): OPromise[T] = new impl.OPromise.KeptOPromise[T](Success(result))
 
 }

@@ -14,15 +14,18 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- */package org.squbs.util.threadless.impl
+ */
+package org.squbs.pattern.orchestration.impl
+
+import org.squbs.pattern.orchestration.OFuture
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
-import scala.util.{ Try, Success, Failure }
+import scala.util.{Failure, Success, Try}
 
 
-private[threadless] trait Promise[T] extends org.squbs.util.threadless.Promise[T]
-    with org.squbs.util.threadless.Future[T] {
+private[orchestration] trait OPromise[T] extends org.squbs.pattern.orchestration.OPromise[T]
+    with OFuture[T] {
   def future: this.type = this
 
   /** The default reporter simply prints the stack trace of the `Throwable` to System.err.
@@ -50,7 +53,7 @@ private class CallbackRunnable[T](val onComplete: Try[T] => Any, errorReporter: 
   }
 }
 
-private[threadless] object Promise {
+private[orchestration] object OPromise {
 
   private def resolveTry[T](source: Try[T]): Try[T] = source match {
     case Failure(t) => resolver(t)
@@ -64,7 +67,7 @@ private[threadless] object Promise {
 
   /** Default promise implementation.
     */
-  class DefaultPromise[T] extends AbstractPromise with Promise[T] { self =>
+  class DefaultOPromise[T] extends AbstractOPromise with OPromise[T] { self =>
     updateState(null, Nil) // Start at "No callbacks"
 
     def value: Option[Try[T]] = getState match {
@@ -116,7 +119,7 @@ private[threadless] object Promise {
     *
     *  Useful in Future-composition when a value to contribute is already available.
     */
-  final class KeptPromise[T](suppliedValue: Try[T]) extends Promise[T] {
+  final class KeptOPromise[T](suppliedValue: Try[T]) extends OPromise[T] {
 
     val value = Some(resolveTry(suppliedValue))
 
@@ -131,7 +134,7 @@ private[threadless] object Promise {
   }
 }
 
-private[impl] abstract class AbstractPromise {
+private[impl] abstract class AbstractOPromise {
 
   var _ref: AnyRef = null
 
