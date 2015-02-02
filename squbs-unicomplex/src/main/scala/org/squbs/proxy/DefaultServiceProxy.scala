@@ -55,15 +55,21 @@ private class InnerActor(hostActor: ActorRef, responder: ActorRef, processor: Se
   def onRequest: Actor.Receive = {
     case ctx: RequestContext =>
       val newCtx = preInbound(ctx)
-      processRequest(newCtx) onComplete {
-        case Success(result) =>
-          val payload = newCtx.isChunkRequest match {
-            case true => ChunkedRequestStart(result.request)
-            case false => result.request
-          }
-          hostActor ! payload
-          context.become(onResponse(result) orElse onPostProcess)
-        case Failure(t) =>
+      try {
+        processRequest(newCtx) onComplete {
+          case Success(result) =>
+            val payload = newCtx.isChunkRequest match {
+              case true => ChunkedRequestStart(result.request)
+              case false => result.request
+            }
+            hostActor ! payload
+            context.become(onResponse(result) orElse onPostProcess)
+          case Failure(t) =>
+            log.error(t, "Error in processing request")
+            self ! PostProcess(onRequestError(newCtx, t))
+        }
+      } catch {
+        case t: Throwable =>
           log.error(t, "Error in processing request")
           self ! PostProcess(onRequestError(newCtx, t))
       }
@@ -74,10 +80,17 @@ private class InnerActor(hostActor: ActorRef, responder: ActorRef, processor: Se
 
     case resp: HttpResponse =>
       val newCtx = reqCtx.copy(response = NormalResponse(resp))
-      processResponse(newCtx) onComplete {
-        case Success(result) =>
-          self ! PostProcess(result)
-        case Failure(t) =>
+      try {
+        processResponse(newCtx) onComplete {
+          case Success(result) =>
+            self ! PostProcess(result)
+          case Failure(t) =>
+            log.error(t, "Error in processing response")
+            self ! PostProcess(onResponseError(newCtx, t))
+        }
+      }
+      catch {
+        case t: Throwable =>
           log.error(t, "Error in processing response")
           self ! PostProcess(onResponseError(newCtx, t))
       }
@@ -90,20 +103,32 @@ private class InnerActor(hostActor: ActorRef, responder: ActorRef, processor: Se
 
     case respStart: ChunkedResponseStart =>
       val newCtx = reqCtx.copy(response = NormalResponse(respStart))
-      processResponse(newCtx) onComplete {
-        case Success(result) =>
-          self ! ReadyToChunk(result)
-        case Failure(t) =>
+      try {
+        processResponse(newCtx) onComplete {
+          case Success(result) =>
+            self ! ReadyToChunk(result)
+          case Failure(t) =>
+            log.error(t, "Error in processing ChunkedResponseStart")
+            self ! PostProcess(onResponseError(newCtx, t))
+        }
+      } catch {
+        case t: Throwable =>
           log.error(t, "Error in processing ChunkedResponseStart")
           self ! PostProcess(onResponseError(newCtx, t))
       }
 
     case data@Confirmed(ChunkedResponseStart(resp), ack) =>
       val newCtx = reqCtx.copy(response = NormalResponse(data, sender()))
-      processResponse(newCtx) onComplete {
-        case Success(result) =>
-          self ! ReadyToChunk(result)
-        case Failure(t) =>
+      try {
+        processResponse(newCtx) onComplete {
+          case Success(result) =>
+            self ! ReadyToChunk(result)
+          case Failure(t) =>
+            log.error(t, "Error in processing confirmed ChunkedResponseStart")
+            self ! PostProcess(onResponseError(newCtx, t))
+        }
+      } catch {
+        case t: Throwable =>
           log.error(t, "Error in processing confirmed ChunkedResponseStart")
           self ! PostProcess(onResponseError(newCtx, t))
       }
