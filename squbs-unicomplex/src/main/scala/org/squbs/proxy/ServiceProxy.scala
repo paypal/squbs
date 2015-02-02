@@ -165,7 +165,13 @@ abstract class ServiceProxy(hostActor: ActorRef) extends Actor with ActorLogging
 
 }
 
+case class ProxySetup(
+                       name: String,
+                       processorFactory: ServiceProxyProcessorFactory,
+                       settings: Option[Config]
+                       )
+
 //to create service proxy actor
 trait ServiceProxyFactory {
-  def create(settings: Option[Config], hostActor: ActorRef, actorName: String)(implicit context: ActorContext): ActorRef
+  def create(setup: ProxySetup, hostActor: ActorRef, actorName: String)(implicit context: ActorContext): ActorRef
 }

@@ -20,8 +20,6 @@ package org.squbs.proxy.pipedserviceproxyactor
 import org.squbs.unicomplex.WebContext
 import akka.actor.{ActorLogging, Actor}
 import spray.http.StatusCodes._
-import spray.http._
-import spray.http.HttpMethods._
 import com.typesafe.config.Config
 import org.squbs.proxy._
 import scala.concurrent.{Promise, Future}
@@ -37,7 +35,7 @@ class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
   def receive = {
 
 
-    case req@HttpRequest(GET, Uri.Path("/pipedserviceproxyactor/msg/hello"), _, _, _) =>
+    case req: HttpRequest =>
       val customHeader1 = req.headers.find(h => h.name.equals("dummyReqHeader1"))
       val customHeader2 = req.headers.find(h => h.name.equals("dummyReqHeader2"))
       val output = (customHeader1, customHeader2) match {

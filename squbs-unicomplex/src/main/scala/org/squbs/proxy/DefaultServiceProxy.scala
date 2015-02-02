@@ -22,13 +22,12 @@ import spray.http._
 import spray.can.Http.RegisterChunkHandler
 import spray.http.Confirmed
 import spray.http.ChunkedRequestStart
-import scala.util.{Try, Failure, Success}
+import scala.util.{Failure, Success}
 import spray.http.ChunkedResponseStart
 import spray.http.HttpResponse
-import com.typesafe.config.Config
 
 
-class SimpleServiceProxy(processor: ServiceProxyProcessor, hostActor: ActorRef) extends ServiceProxy(hostActor) {
+class DefaultServiceProxy(processor: ServiceProxyProcessor, hostActor: ActorRef) extends ServiceProxy(hostActor) {
 
   def handleRequest(requestCtx: RequestContext, responder: ActorRef)(implicit actorContext: ActorContext): Unit = {
     val actor = actorContext.actorOf(Props(classOf[InnerActor], hostActor, responder, processor))
@@ -186,19 +185,11 @@ private class ChunkHandler(realHandler: ActorRef, caller: ActorRef, processor: S
   }
 }
 
-class SimpleServiceProxyFactory extends ServiceProxyFactory {
+object DefaultServiceProxyFactory extends ServiceProxyFactory {
 
-  def create(settings: Option[Config], hostActor: ActorRef, actorName: String)(implicit context: ActorContext): ActorRef = {
-    settings match {
-      case None => throw new IllegalArgumentException("No setting provided")
-      case Some(cfg) =>
-        val processorClassName = cfg.getString("processor")
-        val processorFactory = Class.forName(processorClassName, true, getClass.getClassLoader).newInstance().asInstanceOf[ServiceProxyProcessorFactory]
-        val processor = processorFactory.create(Try {
-          cfg.getConfig("processorConfig")
-        }.toOption)
-        context.actorOf(Props(classOf[SimpleServiceProxy], processor, hostActor), actorName)
-    }
+  def create(setup: ProxySetup, hostActor: ActorRef, actorName: String)(implicit context: ActorContext): ActorRef = {
+    val processor = setup.processorFactory.create(setup.settings)
+    context.actorOf(Props(classOf[DefaultServiceProxy], processor, hostActor), actorName)
   }
 }
 

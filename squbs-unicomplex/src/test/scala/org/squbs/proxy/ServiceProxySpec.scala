@@ -59,22 +59,17 @@ object ServiceProxySpec {
     """
       |
       |squbs.proxy {
-      |  defaultProvider = org.squbs.proxy.SimpleServiceProxyFactory
       |  MyProxy1 {
-      |    settings {
-      |       processor = org.squbs.proxy.serviceproxyactor.DummyServiceProxyProcessorForActor
+      |    processor = org.squbs.proxy.serviceproxyactor.DummyServiceProxyProcessorForActor
+      |    settings = {
+      |
       |    }
       |  }
       |  MyProxy2 {
-      |    provider = org.squbs.proxy.SimpleServiceProxyFactory
-      |    settings {
-      |       processor = org.squbs.proxy.serviceproxyroute.DummyServiceProxyProcessorForRoute
-      |    }
+      |    processor = org.squbs.proxy.serviceproxyroute.DummyServiceProxyProcessorForRoute
       |  }
-      |  MyProxy3 {
-      |    settings {
-      |       processor = org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyProcessorFactoryForActor
-      |    }
+      |  default {
+      |    processor = org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyProcessorFactoryForActor
       |  }
       |}
       |
@@ -184,6 +179,16 @@ with AsyncAssertions {
       }
       w.await()
 
+
+      system.actorSelection("/user/PipedServiceProxyActor/pipedserviceproxyactor1-PipedServiceProxyActor-handler").resolveOne().onComplete {
+        result =>
+          w {
+            assert(result.isSuccess)
+          }
+          w.dismiss()
+      }
+      w.await()
+
     }
 
 
@@ -191,7 +196,7 @@ with AsyncAssertions {
       val services = boot.cubes flatMap {
         cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty)
       }
-      assert(services.size == 3)
+      assert(services.size == 4)
 
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyroute/msg/hello")))
       within(timeout.duration) {
@@ -216,6 +221,15 @@ with AsyncAssertions {
         response.entity.asString should be("PayPaleBay")
         response.headers.find(h => h.name.equals("dummyRespHeader1")).get.value should be("CDC")
         response.headers.find(h => h.name.equals("dummyRespHeader2")).get.value should be("CCOE")
+      }
+
+      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor1/msg/hello")))
+      within(timeout.duration) {
+        val response = expectMsgType[HttpResponse]
+        response.status should be(StatusCodes.OK)
+        response.entity.asString should be("No custom header found")
+        response.headers.find(h => h.name.equals("dummyRespHeader1")) should be(None)
+        response.headers.find(h => h.name.equals("dummyRespHeader2")) should be(None)
       }
 
       println("Success......")
