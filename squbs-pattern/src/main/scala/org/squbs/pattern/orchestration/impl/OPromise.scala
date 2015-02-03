@@ -56,6 +56,11 @@ private class CallbackRunnable[T](var onComplete: Try[T] => Any, var errorReport
 
 private object CallbackRunnable {
 
+  def executeWithValue[T](onComplete: Try[T] => Any, errorReporter: Throwable => Unit)(v: Try[T]): Unit = {
+    require(v ne null)
+    try onComplete(v) catch { case NonFatal(t) => errorReporter(t) }
+  }
+
   class CRStore {
 
     var head: CallbackRunnable[Any] = null
@@ -216,7 +221,7 @@ private[orchestration] object OPromise {
 
     def onComplete[U](func: Try[T] => U): Unit = {
       val completedAs = value.get
-      new CallbackRunnable(func, errorReporter).executeWithValue(completedAs)
+      CallbackRunnable.executeWithValue(func, errorReporter)(completedAs)
     }
   }
 }
