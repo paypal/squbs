@@ -41,7 +41,7 @@ private[orchestration] trait OPromise[T] extends org.squbs.pattern.orchestration
 
 /* Precondition: `executor` is prepared, i.e., `executor` has been returned from invocation of `prepare` on some other `ExecutionContext`.
  */
-private class CallbackRunnable[T](var onComplete: Try[T] => Any, var errorReporter: Throwable => Unit) {
+private class CallbackRunnable[T](val onComplete: Try[T] => Any, errorReporter: Throwable => Unit) {
   // must be filled in before running it
   var value: Try[T] = null
   var next: CallbackRunnable[T] = null
@@ -59,64 +59,6 @@ private object CallbackRunnable {
   def executeWithValue[T](onComplete: Try[T] => Any, errorReporter: Throwable => Unit)(v: Try[T]): Unit = {
     require(v ne null)
     try onComplete(v) catch { case NonFatal(t) => errorReporter(t) }
-  }
-
-  class CRStore {
-
-    var head: CallbackRunnable[Any] = null
-
-    def get: CallbackRunnable[Any] = {
-      if (head != null) {
-        val r = head
-        head = r.next
-        r.value = null
-        r.next = null
-        r
-      } else new CallbackRunnable[Any](null, null)
-    }
-
-    /**
-     * Inserts one CallbackRunnable at the head of the store (LIFO).
-     * @param cr The CallbackRunnable in insert
-     */
-    def store[T](cr: CallbackRunnable[T]): Unit = {
-      val crg = cr.asInstanceOf[CallbackRunnable[Any]]
-      val r = head
-      head = crg
-      crg.next = r
-    }
-
-    /**
-     * Inserts a list of CallbackRunnable instances at the head of the store (LIFO).
-     * @param head Reference to the first CallbackRunnable in the list
-     * @param tail Reference to the last CallbackRunnable in the list
-     */
-    def store[T](head: CallbackRunnable[T], tail: CallbackRunnable[T]): Unit = {
-      if (head != null && tail != null) {
-        val r = this.head
-        this.head = head.asInstanceOf[CallbackRunnable[Any]]
-        tail.asInstanceOf[CallbackRunnable[Any]].next = r
-      }
-    }
-
-    val TLCRStore = new ThreadLocal[CRStore]() {
-      override protected def initialValue() = new CRStore
-    }
-  }
-
-  val TLCRStore = new ThreadLocal[CRStore]() {
-    override protected def initialValue() = new CRStore
-  }
-
-  def apply[T](onComplete: Try[T] => Any, errorReporter: Throwable => Unit) = {
-    val instance = TLCRStore.get.get.asInstanceOf[CallbackRunnable[T]]
-    instance.onComplete = onComplete
-    instance.errorReporter = errorReporter
-    instance
-  }
-
-  def store[T](list: CallbackList[T]): Unit = {
-    TLCRStore.get.store(list.head.next, list.tail)
   }
 }
 
@@ -191,12 +133,12 @@ private[orchestration] object OPromise {
       }) match {
         case null             => false
         case rs if rs.isEmpty => true
-        case rs               => rs.executeWithValue(resolved); CallbackRunnable.store(rs); true
+        case rs               => rs.executeWithValue(resolved); true
       }
     }
 
     def onComplete[U](func: Try[T] => U): Unit = {
-      val runnable = CallbackRunnable[T](func, errorReporter)
+      val runnable = new CallbackRunnable[T](func, errorReporter)
 
       def dispatchOrAddCallback(): Unit =
         getState match {
