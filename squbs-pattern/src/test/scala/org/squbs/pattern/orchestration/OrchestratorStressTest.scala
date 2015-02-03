@@ -33,112 +33,7 @@ with ImplicitSender with FunSpecLike with Matchers {
   val warmUp = 2 minutes
   val steady = 3 minutes
 
-  it (s"Should orchestrate asynchronously at $ir submissions/sec", SlowTest) {
-    
-    val startTime = System.nanoTime()
-
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
-    loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
-      system.actorOf(Props[TestOrchestrator]) ! OrchestrationRequest("LoadTest")
-    })
-    statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
-
-    var sumSubmitTime = 0l
-    var sumSubmitCount = 0l
-
-    var sumFinishTime = 0l
-    var sumFinishCount = 0l
-
-    for (i <- 0 to 1) {
-      fishForMessage(warmUp + steady + (20 seconds)) {
-        case LoadStats(tps) =>
-          println(s"Achieved $tps TPS")
-          println(s"Avg submit time: ${sumSubmitTime / (1000000d * sumSubmitCount)} ms")
-          println(s"Avg time to finish: ${sumFinishTime / (1000000d * sumFinishCount)} ms")
-          tps should be > (ir * 0.95) // Within 5% of IR
-          true
-
-        case CPUStats(avg, sDev) =>
-          println(s"CPULoad $avg; Standard Deviation $sDev")
-          true
-
-        case SubmittedOrchestration (_, time) =>
-          val currentTime = System.nanoTime() - startTime
-          if (currentTime > warmUp.toNanos && currentTime <= steady.toNanos) {
-            sumSubmitTime += time
-            sumSubmitCount += 1
-          }
-          false
-
-        case FinishedOrchestration(_, _, time) =>
-          val currentTime = System.nanoTime() - startTime
-          if (currentTime > warmUp.toNanos && currentTime <= (warmUp + steady).toNanos) {
-            sumFinishTime += time
-            sumFinishCount += 1
-          }
-          false
-      }
-    }
-    loadActor ! PoisonPill
-    statsActor ! PoisonPill
-  }
-
-  it (s"Should orchestrate asynchronously using ask at $ir submissions/sec", SlowTest) {
-
-    val startTime = System.nanoTime()
-
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
-    loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
-      system.actorOf(Props[TestAskOrchestrator]) ! OrchestrationRequest("LoadTest")
-    })
-    statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
-
-    var sumSubmitTime = 0l
-    var sumSubmitCount = 0l
-
-    var sumFinishTime = 0l
-    var sumFinishCount = 0l
-
-    for (i <- 0 to 1) {
-      fishForMessage(warmUp + steady + (20 seconds)) {
-        case LoadStats(tps) =>
-          println(s"Achieved $tps TPS")
-          println(s"Avg submit time: ${sumSubmitTime / (1000000d * sumSubmitCount)} ms")
-          println(s"Avg time to finish: ${sumFinishTime / (1000000d * sumFinishCount)} ms")
-          tps should be > (ir * 0.95) // Within 5% of IR
-          true
-
-        case CPUStats(avg, sDev) =>
-          println(s"CPULoad $avg; Standard Deviation $sDev")
-          true
-
-        case SubmittedOrchestration (_, time) =>
-          val currentTime = System.nanoTime() - startTime
-          if (currentTime > warmUp.toNanos && currentTime <= steady.toNanos) {
-            sumSubmitTime += time
-            sumSubmitCount += 1
-          }
-          false
-
-        case finishedF: Future[FinishedOrchestration] =>
-          val finished = Await.result(finishedF, warmUp + steady + (20 seconds))
-          val currentTime = System.nanoTime() - startTime
-          if (currentTime > warmUp.toNanos && currentTime <= (warmUp + steady).toNanos) {
-            sumFinishTime += finished.timeNs
-            sumFinishCount += 1
-          }
-          false
-
-        case _ => false
-      }
-    }
-    loadActor ! PoisonPill
-    statsActor ! PoisonPill
-  }
-
-  it (s"Should orchestrate synchronously at $ir submissions/sec, comparing CPU load to the DSL", SlowTest) {
+  it(s"Should orchestrate synchronously at $ir submissions/sec, comparing CPU load to the DSL", SlowTest) {
 
     val startTime = System.nanoTime()
 
@@ -178,8 +73,112 @@ with ImplicitSender with FunSpecLike with Matchers {
     loadActor ! PoisonPill
     statsActor ! PoisonPill
   }
-}
 
+  it(s"Should orchestrate asynchronously at $ir submissions/sec", SlowTest) {
+
+    val startTime = System.nanoTime()
+
+    val loadActor = system.actorOf(Props[LoadActor])
+    val statsActor = system.actorOf(Props[CPUStatsActor])
+    loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
+      system.actorOf(Props[TestOrchestrator]) ! OrchestrationRequest("LoadTest")
+    })
+    statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
+
+    var sumSubmitTime = 0l
+    var sumSubmitCount = 0l
+
+    var sumFinishTime = 0l
+    var sumFinishCount = 0l
+
+    for (i <- 0 to 1) {
+      fishForMessage(warmUp + steady + (20 seconds)) {
+        case LoadStats(tps) =>
+          println(s"Achieved $tps TPS")
+          println(s"Avg submit time: ${sumSubmitTime / (1000000d * sumSubmitCount)} ms")
+          println(s"Avg time to finish: ${sumFinishTime / (1000000d * sumFinishCount)} ms")
+          tps should be > (ir * 0.95) // Within 5% of IR
+          true
+
+        case CPUStats(avg, sDev) =>
+          println(s"CPULoad $avg; Standard Deviation $sDev")
+          true
+
+        case SubmittedOrchestration(_, time) =>
+          val currentTime = System.nanoTime() - startTime
+          if (currentTime > warmUp.toNanos && currentTime <= steady.toNanos) {
+            sumSubmitTime += time
+            sumSubmitCount += 1
+          }
+          false
+
+        case FinishedOrchestration(_, _, time) =>
+          val currentTime = System.nanoTime() - startTime
+          if (currentTime > warmUp.toNanos && currentTime <= (warmUp + steady).toNanos) {
+            sumFinishTime += time
+            sumFinishCount += 1
+          }
+          false
+      }
+    }
+    loadActor ! PoisonPill
+    statsActor ! PoisonPill
+  }
+
+  it(s"Should orchestrate asynchronously using ask at $ir submissions/sec", SlowTest) {
+
+    val startTime = System.nanoTime()
+
+    val loadActor = system.actorOf(Props[LoadActor])
+    val statsActor = system.actorOf(Props[CPUStatsActor])
+    loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
+      system.actorOf(Props[TestAskOrchestrator]) ! OrchestrationRequest("LoadTest")
+    })
+    statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
+
+    var sumSubmitTime = 0l
+    var sumSubmitCount = 0l
+
+    var sumFinishTime = 0l
+    var sumFinishCount = 0l
+
+    for (i <- 0 to 1) {
+      fishForMessage(warmUp + steady + (20 seconds)) {
+        case LoadStats(tps) =>
+          println(s"Achieved $tps TPS")
+          println(s"Avg submit time: ${sumSubmitTime / (1000000d * sumSubmitCount)} ms")
+          println(s"Avg time to finish: ${sumFinishTime / (1000000d * sumFinishCount)} ms")
+          tps should be > (ir * 0.95) // Within 5% of IR
+          true
+
+        case CPUStats(avg, sDev) =>
+          println(s"CPULoad $avg; Standard Deviation $sDev")
+          true
+
+        case SubmittedOrchestration(_, time) =>
+          val currentTime = System.nanoTime() - startTime
+          if (currentTime > warmUp.toNanos && currentTime <= steady.toNanos) {
+            sumSubmitTime += time
+            sumSubmitCount += 1
+          }
+          false
+
+        case finishedF: Future[FinishedOrchestration] =>
+          val finished = Await.result(finishedF, warmUp + steady + (20 seconds))
+          val currentTime = System.nanoTime() - startTime
+          if (currentTime > warmUp.toNanos && currentTime <= (warmUp + steady).toNanos) {
+            sumFinishTime += finished.timeNs
+            sumFinishCount += 1
+          }
+          false
+
+        case _ => false
+      }
+    }
+    loadActor ! PoisonPill
+    statsActor ! PoisonPill
+  }
+}
 
 
 class SimpleForComprehensionActor extends Actor with Orchestrator with RequestFunctions {
