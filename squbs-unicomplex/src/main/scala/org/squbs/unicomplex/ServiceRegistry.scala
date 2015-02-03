@@ -192,6 +192,9 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
         context.stop(self)
         null
     }
+  
+  implicit val rejectionHandler:RejectionHandler = routeDef.rejectionHandler.getOrElse(PartialFunction.empty[List[Rejection], Route])
+  implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.getOrElse(PartialFunction.empty[Throwable, Route])
 
   def receive = {
     case request =>
@@ -311,6 +314,9 @@ trait RouteDefinition {
   implicit final lazy val self = context.self
 
   def route: Route
+
+  def rejectionHandler: Option[RejectionHandler] = None
+  def exceptionHandler: Option[ExceptionHandler] = None
 }
 
 object WebContext {
