@@ -8,7 +8,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import spray.can.Http
 import spray.client.pipelining._
 import spray.routing._
-import spray.util._
+import spray.util.Utils
 
 import scala.concurrent.Await
 
@@ -28,11 +28,11 @@ class RouteActorHandlerSpec
     super.afterAll()
   }
 
-  val (interface, port) = Utils.temporaryServerHostnameAndPort()
-
+  val (interface, port) = Utils.temporaryServerHostnameAndPort("localhost")
   val service = system.actorOf(Props(classOf[RouteActor], "ctx", classOf[Service]))
 
   val timeoutDuration = 1 minute
+
   implicit val timeout = Timeout(timeoutDuration)
 
   Await.result(IO(Http) ? Http.Bind(service, interface = interface, port = port), timeoutDuration)
