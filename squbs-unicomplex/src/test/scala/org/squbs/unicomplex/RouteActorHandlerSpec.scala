@@ -28,8 +28,7 @@ class RouteActorHandlerSpec
     super.afterAll()
   }
 
-  // Don't use "localhost" as it may have issues in CI.
-  val (interface, port) = Utils.temporaryServerHostnameAndPort("127.0.0.1")
+  val (interface, port) = Utils.temporaryServerHostnameAndPort()
   println(s"Using port: $interface:$port")
 
   val service = system.actorOf(Props(classOf[RouteActor], "ctx", classOf[Service]))
