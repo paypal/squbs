@@ -32,12 +32,12 @@ case class PipelineConfig(
 
 class PipedServiceProxyProcessor(pipeConfig: PipelineConfig) extends ServiceProxyProcessor {
   //inbound processing
-  def processRequest(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
     pipeConfig.inbound.foldLeft(Promise.successful(reqCtx).future)((ctx, handler) => ctx.flatMap(handler.process(_)))
   }
 
   //outbound processing
-  def processResponse(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
     pipeConfig.outbound.foldLeft(Promise.successful(reqCtx).future)((ctx, handler) => ctx.flatMap(handler.process(_)))
   }
 }

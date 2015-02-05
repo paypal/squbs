@@ -21,7 +21,6 @@ import akka.actor._
 import spray.http._
 import spray.can.Http.RegisterChunkHandler
 import spray.http.Confirmed
-import spray.http.ChunkedRequestStart
 import scala.util.{Failure, Success}
 import spray.http.ChunkedResponseStart
 import spray.http.HttpResponse
@@ -54,18 +53,22 @@ private class InnerActor(hostActor: ActorRef, responder: ActorRef, processor: Se
 
   def onRequest: Actor.Receive = {
     case ctx: RequestContext =>
-      val newCtx = preInbound(ctx)
+      var newCtx = ctx
       try {
-        processRequest(newCtx) onComplete {
+        newCtx = preInbound(ctx)
+        inbound(newCtx) onComplete {
           case Success(result) =>
-            val payload = newCtx.isChunkRequest match {
-              case true => ChunkedRequestStart(result.request)
-              case false => result.request
+            try {
+              val postResult = postInbound(result)
+              hostActor ! postResult.payload
+              context.become(onResponse(postResult) orElse onPostProcess)
+            } catch {
+              case t: Throwable =>
+                log.error(t, "Error in postInbound processing")
+                self ! PostProcess(onRequestError(result, t))
             }
-            hostActor ! payload
-            context.become(onResponse(result) orElse onPostProcess)
           case Failure(t) =>
-            log.error(t, "Error in processing request")
+            log.error(t, "Error in inbound processing")
             self ! PostProcess(onRequestError(newCtx, t))
         }
       } catch {
@@ -79,9 +82,10 @@ private class InnerActor(hostActor: ActorRef, responder: ActorRef, processor: Se
   def onResponse(reqCtx: RequestContext): Actor.Receive = {
 
     case resp: HttpResponse =>
-      val newCtx = reqCtx.copy(response = NormalResponse(resp))
+      var newCtx = reqCtx.copy(response = NormalResponse(resp))
       try {
-        processResponse(newCtx) onComplete {
+        newCtx = preOutbound(newCtx)
+        outbound(newCtx) onComplete {
           case Success(result) =>
             self ! PostProcess(result)
           case Failure(t) =>
@@ -102,9 +106,10 @@ private class InnerActor(hostActor: ActorRef, responder: ActorRef, processor: Se
 
 
     case respStart: ChunkedResponseStart =>
-      val newCtx = reqCtx.copy(response = NormalResponse(respStart))
+      var newCtx = reqCtx.copy(response = NormalResponse(respStart))
       try {
-        processResponse(newCtx) onComplete {
+        newCtx = preOutbound(newCtx)
+        outbound(newCtx) onComplete {
           case Success(result) =>
             self ! ReadyToChunk(result)
           case Failure(t) =>
@@ -118,9 +123,10 @@ private class InnerActor(hostActor: ActorRef, responder: ActorRef, processor: Se
       }
 
     case data@Confirmed(ChunkedResponseStart(resp), ack) =>
-      val newCtx = reqCtx.copy(response = NormalResponse(data, sender()))
+      var newCtx = reqCtx.copy(response = NormalResponse(data, sender()))
       try {
-        processResponse(newCtx) onComplete {
+        newCtx = preOutbound(newCtx)
+        outbound(newCtx) onComplete {
           case Success(result) =>
             self ! ReadyToChunk(result)
           case Failure(t) =>
@@ -141,7 +147,7 @@ private class InnerActor(hostActor: ActorRef, responder: ActorRef, processor: Se
     case Confirmed(data, ack) => stash()
 
     case rch@RegisterChunkHandler(handler) =>
-      val chunkHandler = context.actorOf(Props(classOf[ChunkHandler], handler, self, processor))
+      val chunkHandler = context.actorOf(Props(classOf[ChunkHandler], handler, self, processor, reqCtx))
       responder ! RegisterChunkHandler(chunkHandler)
 
   }
@@ -149,13 +155,13 @@ private class InnerActor(hostActor: ActorRef, responder: ActorRef, processor: Se
   def onChunk(reqCtx: RequestContext): Actor.Receive = {
 
     case chunk: MessageChunk =>
-      postProcess(reqCtx.copy(response = NormalResponse(processResponseChunk(chunk))))
+      postProcess(reqCtx.copy(response = NormalResponse(processResponseChunk(reqCtx, chunk))))
 
     case chunkEnd: ChunkedMessageEnd =>
-      postProcess(reqCtx.copy(response = NormalResponse(processResponseChunkEnd(chunkEnd))))
+      postProcess(reqCtx.copy(response = NormalResponse(processResponseChunkEnd(reqCtx, chunkEnd))))
 
     case data@Confirmed(mc@(_: MessageChunk), ack) =>
-      val newChunk = processResponseChunk(mc)
+      val newChunk = processResponseChunk(reqCtx, mc)
       postProcess(reqCtx.copy(response = NormalResponse(Confirmed(newChunk, ack), sender())))
 
     case AckInfo(rawAck, receiver) =>
@@ -196,14 +202,14 @@ private class InnerActor(hostActor: ActorRef, responder: ActorRef, processor: Se
 }
 
 
-private class ChunkHandler(realHandler: ActorRef, caller: ActorRef, processor: ServiceProxyProcessor) extends Actor {
+private class ChunkHandler(realHandler: ActorRef, caller: ActorRef, processor: ServiceProxyProcessor, reqCtx: RequestContext) extends Actor {
 
   import processor._
 
   def receive: Actor.Receive = {
-    case chunk: MessageChunk => realHandler tell(processRequestChunk(chunk), caller)
+    case chunk: MessageChunk => realHandler tell(processRequestChunk(reqCtx, chunk), caller)
 
-    case chunkEnd: ChunkedMessageEnd => realHandler tell(processRequestChunkEnd(chunkEnd), caller)
+    case chunkEnd: ChunkedMessageEnd => realHandler tell(processRequestChunkEnd(reqCtx, chunkEnd), caller)
 
     case other => realHandler tell(other, caller)
 

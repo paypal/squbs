@@ -18,7 +18,7 @@
 package org.squbs.proxy.pipedserviceproxyactor
 
 import org.squbs.unicomplex.WebContext
-import akka.actor.{ActorLogging, Actor}
+import akka.actor.{ActorContext, ActorLogging, Actor}
 import spray.http.StatusCodes._
 import com.typesafe.config.Config
 import org.squbs.proxy._
@@ -52,7 +52,7 @@ class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
 
 class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcessorFactory {
 
-  def create(settings: Option[Config]): ServiceProxyProcessor = {
+  def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
     new PipedServiceProxyProcessor(PipelineConfig(Seq(RequestHandler1, RequestHandler2), Seq(ResponseHandler1, ResponseHandler2)))
   }
 

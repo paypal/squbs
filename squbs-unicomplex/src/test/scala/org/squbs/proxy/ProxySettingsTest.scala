@@ -6,6 +6,7 @@ import org.squbs.unicomplex.ProxySettings
 import org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyProcessorFactoryForActor
 import org.squbs.proxy.serviceproxyactor.DummyServiceProxyProcessorForActor
 import org.squbs.proxy.serviceproxyroute.DummyServiceProxyProcessorForRoute
+import akka.actor.ActorContext
 
 /**
  * Created by lma on 15-2-2.
@@ -127,7 +128,7 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
 class DummyAny
 
 class DummyProcessor extends ServiceProxyProcessorFactory {
-  def create(settings: Option[Config]): ServiceProxyProcessor = {
+  def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
     return null
   }
 }

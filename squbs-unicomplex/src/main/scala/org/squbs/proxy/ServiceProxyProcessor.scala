@@ -20,18 +20,27 @@ package org.squbs.proxy
 import scala.concurrent.{ExecutionContext, Future}
 import spray.http.{ChunkedMessageEnd, MessageChunk}
 import com.typesafe.config.Config
+import akka.actor.ActorContext
 
 //Must be stateless
 trait ServiceProxyProcessor {
 
   //inbound processing
-  def processRequest(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext]
+  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext]
 
   //outbound processing
-  def processResponse(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext]
+  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext]
 
   //first chance to handle input request before processing request
   def preInbound(ctx: RequestContext): RequestContext = {
+    ctx
+  }
+
+  def postInbound(ctx: RequestContext): RequestContext = {
+    ctx
+  }
+
+  def preOutbound(ctx: RequestContext): RequestContext = {
     ctx
   }
 
@@ -40,19 +49,19 @@ trait ServiceProxyProcessor {
     ctx
   }
 
-  def processResponseChunk(chunk: MessageChunk): MessageChunk = {
+  def processResponseChunk(ctx: RequestContext, chunk: MessageChunk): MessageChunk = {
     chunk
   }
 
-  def processResponseChunkEnd(chunkEnd: ChunkedMessageEnd): ChunkedMessageEnd = {
+  def processResponseChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd): ChunkedMessageEnd = {
     chunkEnd
   }
 
-  def processRequestChunk(chunk: MessageChunk): MessageChunk = {
+  def processRequestChunk(ctx: RequestContext, chunk: MessageChunk): MessageChunk = {
     chunk
   }
 
-  def processRequestChunkEnd(chunkEnd: ChunkedMessageEnd): ChunkedMessageEnd = {
+  def processRequestChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd): ChunkedMessageEnd = {
     chunkEnd
   }
 
@@ -74,6 +83,6 @@ trait ServiceProxyProcessor {
 
 trait ServiceProxyProcessorFactory {
 
-  def create(settings: Option[Config]): ServiceProxyProcessor
+  def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor
 
 }

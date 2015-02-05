@@ -40,6 +40,13 @@ case class RequestContext(
       case Some(value) => Some(value.asInstanceOf[T])
     }
   }
+
+  def payload = {
+    isChunkRequest match {
+      case true => ChunkedRequestStart(request)
+      case false => request
+    }
+  }
 }
 
 sealed trait ProxyResponse
