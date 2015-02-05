@@ -43,10 +43,12 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
   def shutdownCluster: Unit = {
     println("*********************************** Shutting Down the Cluster ***********************************")
     actorSystems foreach (_._2.shutdown)
-    while (!(actorSystems forall (_._2.isTerminated))) {Thread.sleep(1000)}
+    var retries = 10
+    while (!(actorSystems forall (_._2.isTerminated)) && retries > 0) {Thread.sleep(1000); retries -= 1}
     zkClusterExts foreach (_._2.close)
     ZkCluster(system).zkClientWithNs.delete.guaranteed.deletingChildrenIfNeeded.forPath("")
     system.shutdown
+    println(s"${system.name} shutsdown")
   }
 
   implicit protected def int2SystemName(num: Int): String = s"member-$num"
@@ -56,7 +58,8 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
 
   def killSystem(sysName: String): Unit = {
     actorSystems(sysName).shutdown
-    while (!actorSystems(sysName).isTerminated) {Thread.sleep(1000)}
+    var retries = 10
+    while (!actorSystems(sysName).isTerminated && retries > 0) {Thread.sleep(1000); retries -= 1}
     zkClusterExts(sysName).close
     actorSystems -= sysName
     println(s"system $sysName got killed")
@@ -140,7 +143,7 @@ object ZkClusterMultiActorSystemTestKit {
   lazy val zkConfig = ConfigFactory.parseString(
     s"""
       |zkCluster {
-      |  connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-3e34.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
+      |  connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-596c.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
       |  //connectionString = "127.0.0.1:2181"
       |  namespace = "zkclustersystest-$now"
       |  segments = 1
