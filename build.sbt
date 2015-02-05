@@ -42,6 +42,6 @@ lazy val `squbs-pattern` = (project dependsOn `squbs-testkit` % "test")
 
 lazy val `squbs-actorregistry` = project dependsOn `squbs-unicomplex`
 
-lazy val `squbs-actormonitor` = project dependsOn `squbs-unicomplex`
+//lazy val `squbs-actormonitor` = project dependsOn `squbs-unicomplex`
 
 lazy val `squbs-timeoutpolicy` = project
