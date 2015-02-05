@@ -5,7 +5,6 @@ import java.net.ServerSocket
 import akka.actor.{ActorSelection, ActorSystem}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.squbs.unicomplex.ConfigUtil
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
@@ -44,7 +43,8 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
   def shutdownCluster: Unit = {
     println("*********************************** Shutting Down the Cluster ***********************************")
     actorSystems foreach (_._2.shutdown)
-    while (!(actorSystems forall (_._2.isTerminated))) {Thread.sleep(1000)}
+    var retries = 10
+    while (!(actorSystems forall (_._2.isTerminated)) && retries > 0) {Thread.sleep(1000); retries -= 1}
     zkClusterExts foreach (_._2.close)
     ZkCluster(system).zkClientWithNs.delete.guaranteed.deletingChildrenIfNeeded.forPath("")
     system.shutdown
@@ -57,7 +57,8 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
 
   def killSystem(sysName: String): Unit = {
     actorSystems(sysName).shutdown
-    while (!actorSystems(sysName).isTerminated) {Thread.sleep(1000)}
+    var retries = 10
+    while (!actorSystems(sysName).isTerminated && retries > 0) {Thread.sleep(1000); retries -= 1}
     zkClusterExts(sysName).close
     actorSystems -= sysName
     println(s"system $sysName got killed")
@@ -118,17 +119,21 @@ object ZkClusterMultiActorSystemTestKit {
        |        pool-size-min = 2
        |        pool-size-max = 4
        |      }
+       |      connection-timeout = 1 s
        |    }
+       |    log-received-messages = on
+       |    log-sent-messages = on
+       |    command-ack-timeout = 3 s
        |    retry-window = 1s
        |    gate-invalid-addresses-for = 1s
        |    transport-failure-detector {
-       |      heartbeat-interval = 10s
-       |      acceptable-heartbeat-pause = 10s
+       |      heartbeat-interval = 2s
+       |      acceptable-heartbeat-pause = 5s
        |    }
        |    watch-failure-detector {
-       |      heartbeat-interval = 10s
-       |      acceptable-heartbeat-pause = 30s
-       |      threshold = 12.0
+       |      heartbeat-interval = 2s
+       |      acceptable-heartbeat-pause = 5s
+       |      threshold = 10.0
        |    }
        |  }
        |}
@@ -137,7 +142,7 @@ object ZkClusterMultiActorSystemTestKit {
   lazy val zkConfig = ConfigFactory.parseString(
     s"""
       |zkCluster {
-      |  connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-3e34.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
+      |  connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-596c.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
       |  //"127.0.0.1:2181"
       |  namespace = "zkclustersystest-$now"
       |  segments = 1

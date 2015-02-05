@@ -3,27 +3,28 @@ package org.squbs.cluster
 import akka.testkit.ImplicitSender
 import akka.util.ByteString
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpecLike, Matchers}
-
 import scala.concurrent.duration._
 
 /**
-  * Created by zhuwang on 1/23/15.
+ * Created by zhuwang on 1/23/15.
  */
+
 class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNormalTest")
   with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with BeforeAndAfterEach {
-
+  
   val timeout = 30 seconds
-
+  
   val clusterSize = 6
   
   override def afterEach(): Unit = {
     println("------------------------------------------------------------------------------------------")
-    Thread.sleep(1000)
+    Thread.sleep(timeout.toMillis / 10)
   }
   
   override def beforeAll = startCluster
+  
   override def afterAll = shutdownCluster
-
+  
   "ZkCluster" should "elect the leader and sync with or the members" in {
     // query the leader from any member
     val anyMember = pickASystemRandomly()
@@ -35,7 +36,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
         expectMsg(timeout, leader)
     }
   }
-
+  
   "ZkCluster" should "not change leader if add or remove follower" in {
     // query the leader
     zkClusterExts(0) tell (ZkQueryLeadership, self)
@@ -59,7 +60,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
         expectMsg(timeout, leader)
     }
   }
-
+  
   "ZkCluster" should "change leader if the leader left" in {
     // query the leader
     zkClusterExts(0) tell (ZkQueryLeadership, self)
@@ -86,7 +87,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
         expectMsg(timeout, newLeader)
     }
   }
-
+  
   "ZkCluster" should "keep members set in sync" in {
     // members information should be in sync across all members
     zkClusterExts foreach {
@@ -119,7 +120,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
         expectMsgType[ZkMembership](timeout).members map (_.system) should be (originalMembers)
     }
   }
-
+  
   "ZkCluster" should "update the members set if a leader left" in {
     // query the leader
     zkClusterExts(0) tell (ZkQueryLeadership, self)
@@ -143,7 +144,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
         expectMsgType[ZkMembership](timeout).members map (_.system) should be (originalMembers)
     }
   }
-
+  
   "ZkCluster leader" should "be able to create, resize and delete partition" in {
     // query the leader
     zkClusterExts(0) tell (ZkQueryLeadership, self)
@@ -154,6 +155,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     zkClusterExts(leaderName) tell (ZkQueryPartition(parKey, Some("created"), Some(2)), self)
     val partitionInfo = expectMsgType[ZkPartition](timeout)
     println(partitionInfo)
+    Thread.sleep(timeout.toMillis / 10)
     // the partition information should be consistent across the cluster
     zkClusterExts foreach {
       case (name, ext) => ext tell (ZkQueryPartition(parKey), self)
@@ -163,6 +165,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     zkClusterExts(leaderName) tell (ZkQueryPartition(parKey, expectedSize = Some(3)), self)
     val resized = expectMsgType[ZkPartition](timeout)
     resized.members.size should be (3)
+    Thread.sleep(timeout.toMillis / 10)
     // the resized partition information should be consistent across the cluster
     zkClusterExts foreach {
       case (name, ext) => ext tell (ZkQueryPartition(parKey, expectedSize = Some(3)), self)
@@ -171,6 +174,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     // send partition remove query directly to leader
     zkClusterExts(leaderName) tell (ZkRemovePartition(parKey), self)
     expectMsgType[ZkPartitionRemoval].partitionKey should be (parKey)
+    Thread.sleep(timeout.toMillis / 10)
     // query the partition again
     zkClusterExts(leaderName) tell (ZkQueryPartition(parKey), self)
     expectMsgType[ZkPartitionNotFound](timeout).partitionKey should be (parKey)
@@ -180,7 +184,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
         expectMsgType[ZkPartitionNotFound](timeout).partitionKey should be (parKey)
     }
   }
-
+  
   "ZkCluster follower" should "respond to create, resize and delete partition" in {
     // query the leader
     zkClusterExts(0) tell (ZkQueryLeadership, self)
@@ -194,6 +198,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     zkClusterExts(followerName) tell (ZkQueryPartition(parKey, Some("created"), Some(2)), self)
     val partitionInfo = expectMsgType[ZkPartition](timeout)
     println(partitionInfo)
+    Thread.sleep(timeout.toMillis / 10)
     // the partition information should be consistent across the cluster
     zkClusterExts foreach {
       case (name, ext) => ext tell (ZkQueryPartition(parKey), self)
@@ -203,6 +208,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     zkClusterExts(followerName) tell (ZkQueryPartition(parKey, expectedSize = Some(3)), self)
     val resized = expectMsgType[ZkPartition](timeout)
     resized.members.size should be (3)
+    Thread.sleep(timeout.toMillis / 10)
     // the resized partition information should be consistent across the cluster
     zkClusterExts foreach {
       case (name, ext) => ext tell (ZkQueryPartition(parKey, expectedSize = Some(3)), self)
@@ -211,6 +217,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     // send partition remove query follower
     zkClusterExts(followerName) tell (ZkRemovePartition(parKey), self)
     expectMsgType[ZkPartitionRemoval].partitionKey should be (parKey)
+    Thread.sleep(timeout.toMillis / 10)
     // query the partition again
     zkClusterExts(followerName) tell (ZkQueryPartition(parKey), self)
     expectMsgType[ZkPartitionNotFound](timeout).partitionKey should be (parKey)
@@ -220,7 +227,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
         expectMsgType[ZkPartitionNotFound](timeout).partitionKey should be (parKey)
     }
   }
-
+  
   "ZkCluster" should "rebalance each partition when follower left or came back" in {
     // create 2 partitions
     val par1 = ByteString("myPar1")
@@ -229,6 +236,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     expectMsgType[ZkPartition](timeout)
     zkClusterExts(pickASystemRandomly()) tell (ZkQueryPartition(par2, Some("created"), Some(3)), self)
     expectMsgType[ZkPartition](timeout)
+    Thread.sleep(timeout.toMillis / 10)
     // query the leader
     zkClusterExts(0) tell (ZkQueryLeadership, self)
     val leaderName = expectMsgType[ZkLeadership](timeout).address.system
@@ -265,7 +273,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
         par2Info.members.size should be (3)
     }
   }
-
+  
   "ZkCluster" should "rebalance each partition when leader left or came back" in {
     // create 2 partitions
     val par1 = ByteString("myPar1")
@@ -274,13 +282,14 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     expectMsgType[ZkPartition](timeout)
     zkClusterExts(pickASystemRandomly()) tell (ZkQueryPartition(par2, Some("created"), Some(3)), self)
     expectMsgType[ZkPartition](timeout)
+    Thread.sleep(timeout.toMillis / 10)
     // query the leader
     zkClusterExts(0) tell (ZkQueryLeadership, self)
     val originalLeader = expectMsgType[ZkLeadership](timeout).address.system
     println(s"Now leader is $originalLeader")
     // kill the leader
     killSystem(originalLeader)
-    Thread.sleep(timeout.toMillis / 5)
+    Thread.sleep(timeout.toMillis / 10)
     // the rebalanced partition should be consistent across the cluster
     zkClusterExts foreach {
       case (name, ext) =>
@@ -295,7 +304,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     }
     // bring up the follower
     bringUpSystem(originalLeader)
-    Thread.sleep(timeout.toMillis / 5)
+    Thread.sleep(timeout.toMillis / 10)
     // the rebalanced partition should be consistent across the cluster
     zkClusterExts foreach {
       case (name, ext) =>
@@ -307,5 +316,4 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
         par2Info.members.size should be (3)
     }
   }
-
 }
