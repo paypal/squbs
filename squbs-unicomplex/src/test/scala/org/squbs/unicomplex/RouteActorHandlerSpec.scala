@@ -4,14 +4,13 @@ import akka.actor.{ActorSystem, Props}
 import akka.io.IO
 import akka.testkit.TestKit
 import akka.util.Timeout
-import org.scalatest.{Matchers, BeforeAndAfterAll, FlatSpecLike}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import spray.can.Http
+import spray.client.pipelining._
 import spray.routing._
+import spray.util.Utils
 
 import scala.concurrent.Await
-import scala.util.Random
-import spray.http._
-import spray.client.pipelining._
 
 class RouteActorHandlerSpec
   extends TestKit(ActorSystem())
@@ -21,33 +20,34 @@ class RouteActorHandlerSpec
 
   import akka.pattern.ask
 
-  import scala.concurrent.duration._
-
   import scala.concurrent.ExecutionContext.Implicits.global
+  import scala.concurrent.duration._
 
   override protected def afterAll(): Unit = {
     system.shutdown()
     super.afterAll()
   }
 
-  val port = new Random(System.currentTimeMillis()).nextInt(1000) + 9000
+  val (interface, port) = Utils.temporaryServerHostnameAndPort()
+  println(s"Using port: $interface:$port")
 
   val service = system.actorOf(Props(classOf[RouteActor], "ctx", classOf[Service]))
 
-  val timeoutDuration = 15 seconds
+  val timeoutDuration = 1 minute
+
   implicit val timeout = Timeout(timeoutDuration)
 
-  Await.result(IO(Http) ? Http.Bind(service, interface = "localhost", port = port), timeoutDuration)
+  Await.result(IO(Http) ? Http.Bind(service, interface = interface, port = port), timeoutDuration)
 
   "Rejection handler" should "be applied to the route actor" in {
     val pipeline = sendReceive
-    val response = Await.result(pipeline(Get(s"http://localhost:$port/ctx/reject")), 5 seconds)
+    val response = Await.result(pipeline(Get(s"http://$interface:$port/ctx/reject")), 1 minute)
     response.entity.asString should be("rejected")
   }
 
   "Exception handler" should "be applied to the route actor" in {
     val pipeline = sendReceive
-    val response = Await.result(pipeline(Get(s"http://localhost:$port/ctx/exception")), 5 seconds)
+    val response = Await.result(pipeline(Get(s"http://$interface:$port/ctx/exception")), 1 minute)
     response.entity.asString should be("exception")
   }
 }

@@ -44,12 +44,47 @@ private[orchestration] trait OPromise[T] extends org.squbs.pattern.orchestration
 private class CallbackRunnable[T](val onComplete: Try[T] => Any, errorReporter: Throwable => Unit) {
   // must be filled in before running it
   var value: Try[T] = null
+  var next: CallbackRunnable[T] = null
 
   def executeWithValue(v: Try[T]): Unit = {
     require(value eq null) // can't complete it twice
     require(v ne null)
     value = v
     try onComplete(value) catch { case NonFatal(t) => errorReporter(t) }
+  }
+}
+
+private object CallbackRunnable {
+
+  def executeWithValue[T](onComplete: Try[T] => Any, errorReporter: Throwable => Unit)(v: Try[T]): Unit = {
+    require(v ne null)
+    try onComplete(v) catch { case NonFatal(t) => errorReporter(t) }
+  }
+}
+
+private class CallbackList[T] {
+  val head = new CallbackRunnable[T](null, null) // Empty placeholder
+  var tail = head
+
+  def +=(node: CallbackRunnable[T]): Unit = {
+    require(node ne null)
+    tail.next = node
+    tail = node
+  }
+
+  def isEmpty: Boolean = head.next == null
+
+  def executeWithValue(v: Try[T]): Unit = {
+
+    @tailrec
+    def executeWithValue(node: CallbackRunnable[T]): Unit = {
+      if (node != null) {
+        node.executeWithValue(v)
+        executeWithValue(node.next)
+      }
+    }
+
+    executeWithValue(head.next)
   }
 }
 
@@ -68,7 +103,7 @@ private[orchestration] object OPromise {
   /** Default promise implementation.
     */
   class DefaultOPromise[T] extends AbstractOPromise with OPromise[T] { self =>
-    updateState(null, Nil) // Start at "No callbacks"
+    updateState(null, new CallbackList[T]) // Start with empty CallbackList
 
     def value: Option[Try[T]] = getState match {
       case c: Try[_] => Some(c.asInstanceOf[Try[T]])
@@ -84,10 +119,10 @@ private[orchestration] object OPromise {
       val resolved = resolveTry(value)
       (try {
         @tailrec
-        def tryComplete(v: Try[T]): List[CallbackRunnable[T]] = {
+        def tryComplete(v: Try[T]): CallbackList[T] = {
           getState match {
-            case raw: List[_] =>
-              val cur = raw.asInstanceOf[List[CallbackRunnable[T]]]
+            case raw: CallbackList[_] =>
+              val cur = raw.asInstanceOf[CallbackList[T]]
               if (updateState(cur, v)) cur else tryComplete(v)
             case _ => null
           }
@@ -98,18 +133,17 @@ private[orchestration] object OPromise {
       }) match {
         case null             => false
         case rs if rs.isEmpty => true
-        case rs               => rs.foreach(r => r.executeWithValue(resolved)); true
+        case rs               => rs.executeWithValue(resolved); true
       }
     }
 
     def onComplete[U](func: Try[T] => U): Unit = {
       val runnable = new CallbackRunnable[T](func, errorReporter)
 
-      @tailrec //Tries to add the callback, if already completed, it dispatches the callback to be executed
       def dispatchOrAddCallback(): Unit =
         getState match {
           case r: Try[_]          => runnable.executeWithValue(r.asInstanceOf[Try[T]])
-          case listeners: List[_] => if (updateState(listeners, runnable :: listeners)) () else dispatchOrAddCallback()
+          case listeners: CallbackList[_] => listeners.asInstanceOf[CallbackList[T]] += runnable
         }
       dispatchOrAddCallback()
     }
@@ -129,7 +163,7 @@ private[orchestration] object OPromise {
 
     def onComplete[U](func: Try[T] => U): Unit = {
       val completedAs = value.get
-      new CallbackRunnable(func, errorReporter).executeWithValue(completedAs)
+      CallbackRunnable.executeWithValue(func, errorReporter)(completedAs)
     }
   }
 }
