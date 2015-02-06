@@ -26,8 +26,8 @@ private[cluster] case class ZkDropOffPartitions(dropOffs: Set[ByteString])
  */
 private[cluster] class ZkPartitionsManager extends Actor with Logging {
 
-  private[this] val zkCluster = ZkCluster(context.system)
   import org.squbs.cluster.ZkPartitionsManager._
+  private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._
   
   private[this] implicit val segLogic = segmentationLogic
@@ -35,10 +35,10 @@ private[cluster] class ZkPartitionsManager extends Actor with Logging {
   
   private[this] implicit val log = logger
   implicit val ec = context.dispatcher
-  private[cluster] var partitionsToProtect = Set.empty[ByteString]
-  private[cluster] var segmentsToPartitions = Map.empty[String, Set[ByteString]]
-  private[cluster] var partitionWatchers = Map.empty[String, CuratorWatcher]
-  private[cluster] var stopped = false
+//  private[cluster] var partitionsToProtect = Set.empty[ByteString]
+  private[this] var segmentsToPartitions = Map.empty[String, Set[ByteString]]
+  private[this] var partitionWatchers = Map.empty[String, CuratorWatcher]
+  private[this] var stopped = false
   
   def initialize = {
     segmentsToPartitions = zkClientWithNs.getChildren.forPath("/segments").map{
