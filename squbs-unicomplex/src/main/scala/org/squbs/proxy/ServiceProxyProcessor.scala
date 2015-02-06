@@ -22,6 +22,10 @@ import spray.http.{ChunkedMessageEnd, MessageChunk}
 import com.typesafe.config.Config
 import akka.actor.ActorContext
 
+trait Handler {
+	def process(reqCtx: RequestContext): Future[RequestContext]
+}
+
 //Must be stateless
 trait ServiceProxyProcessor {
 

@@ -56,21 +56,21 @@ class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcess
     new PipedServiceProxyProcessor(PipelineConfig(Seq(RequestHandler1, RequestHandler2), Seq(ResponseHandler1, ResponseHandler2)))
   }
 
-  object RequestHandler1 extends PipelineHandler {
+  object RequestHandler1 extends Handler {
     def process(reqCtx: RequestContext): Future[RequestContext] = {
       val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader1", "PayPal") :: reqCtx.request.headers)
       Promise.successful(reqCtx.copy(request = newreq, attributes = reqCtx.attributes + (("key1" -> "CDC")))).future
     }
   }
 
-  object RequestHandler2 extends PipelineHandler {
+  object RequestHandler2 extends Handler {
     def process(reqCtx: RequestContext): Future[RequestContext] = {
       val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader2", "eBay") :: reqCtx.request.headers)
       Promise.successful(reqCtx.copy(request = newreq, attributes = reqCtx.attributes + (("key2" -> "CCOE")))).future
     }
   }
 
-  object ResponseHandler1 extends PipelineHandler {
+  object ResponseHandler1 extends Handler {
     def process(reqCtx: RequestContext): Future[RequestContext] = {
 
       val newCtx = reqCtx.response match {
@@ -83,7 +83,7 @@ class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcess
     }
   }
 
-  object ResponseHandler2 extends PipelineHandler {
+  object ResponseHandler2 extends Handler {
     def process(reqCtx: RequestContext): Future[RequestContext] = {
       val newCtx = reqCtx.response match {
         case nr@NormalResponse(r) =>
