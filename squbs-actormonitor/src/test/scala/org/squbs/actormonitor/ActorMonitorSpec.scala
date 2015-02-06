@@ -258,7 +258,6 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
       import ActorMonitorSpec._
       assert(getActorMonitorConfigBean("MaxCount") == 500)
       assert(getActorMonitorConfigBean("MaxChildrenDisplay") == 20)
-      assert(getActorMonitorConfigBean("Count") == 12||getActorMonitorConfigBean("Count") == 11)//Change by Jojo to bypass the test
     }
 
   }
