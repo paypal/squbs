@@ -653,31 +653,39 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     case StartCubeService(webContext, listeners, props, name, proxyName, initRequired) =>
 
-      val cubeActor = proxyName match {
+      // Caution: The serviceActor may be the cubeActor in case of no proxy, or the proxy in case there is a proxy.
+      val (cubeActor, serviceActor) = proxyName match {
         case None =>
           proxySettings.flatMap(_.default) match {
-            case None => context.actorOf(props, name) // no default proxy specified
+            case None =>
+              val hostActor = context.actorOf(props, name) // no default proxy specified
+              (hostActor, hostActor)
             case Some(setup) =>
               val hostActor = context.actorOf(props)
-              DefaultServiceProxyFactory.create(setup, hostActor, name)
+              val proxy = DefaultServiceProxyFactory.create(setup, hostActor, name)
+              (hostActor, proxy)
           }
         case Some(pName) =>
            if(pName.trim.isEmpty){
-             context.actorOf(props, name) // disable proxy
+             val hostActor = context.actorOf(props, name) // disable proxy
+             (hostActor, hostActor)
            }else{
              proxySettings.flatMap(_.find(pName)) match {
                case None =>
-                 //TODO fail the service since no proxy found?
-                 context.actorOf(props, name)
+                  val hostActor = context.actorOf(props, name)
+                 // Mark this service startup as failed.
+                 initMap += (hostActor -> Some(Failure(new NoSuchElementException(s"Proxy $pName not defined."))))
+                 (hostActor, hostActor)
                case Some(setup) =>
                  val hostActor = context.actorOf(props)
-                 DefaultServiceProxyFactory.create(setup, hostActor, name)
+                 val proxy = DefaultServiceProxyFactory.create(setup, hostActor, name)
+                 (hostActor, proxy)
              }
            }
       }
 
-      if (initRequired) initMap += cubeActor -> None
-      Unicomplex() ! RegisterContext(listeners, webContext, cubeActor)
+      if (initRequired && !(initMap contains cubeActor)) initMap += cubeActor -> None
+      Unicomplex() ! RegisterContext(listeners, webContext, serviceActor)
       log.info(s"Started service actor ${cubeActor.path} for context $webContext")
 
     case Started => // Signals end of StartCubeActor messages. No more allowed after this.
@@ -703,16 +711,32 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         defaultMidActorStop(stopSet, maxChildTimeout)
 
     case Initialized(report) =>
-      if (initMap contains sender()) {
-        initMap += sender() -> Some(report)
-        if (!(initMap exists (_._2 == None))) {
-          val finalMap = (initMap mapValues (_.get)).toMap
-          if (finalMap.exists(_._2.isFailure)) cubeState = Failed else cubeState = Active
-          Unicomplex() ! InitReports(cubeState, initMap.toMap)
-        }
+      initMap get sender() match {
+        case Some(entry) => // Registered cube
+
+          entry match {
+            // First report or nothing previously marked as failure, just add/overwrite report
+            case None =>
+              initMap += sender() -> Some(report)
+
+            case Some(prevReport) if prevReport.isSuccess =>
+              initMap += sender() -> Some(report)
+
+            case _ => // There is some issue previously marked, usually a failure. Don't record new report.
+              // Only first failure should be recorded. Just leave it as failed. Don't touch.
+          }
+
+          // Check that all is initialized and whether it is all good.
+          if (!(initMap exists (_._2 == None))) {
+            val finalMap = (initMap mapValues (_.get)).toMap
+            if (finalMap.exists(_._2.isFailure)) cubeState = Failed else cubeState = Active
+            Unicomplex() ! InitReports(cubeState, initMap.toMap)
+          }
+
+        case None => // Never registered cube
+          log.warning(s"""Actor "${sender().path}" updating startup status is not registered. """ +
+            "Please register by setting init-required = true in squbs-meta.conf")
       }
-      else log.warning(s"""Actor "${sender().path}" updating startup status is not registered. """ +
-        "Please register by setting init-required = true in squbs-meta.conf")
 
     case CheckInitStatus => // Explicitly requested reports have an attached requested flag as a tuple
       sender ! (InitReports(cubeState, initMap.toMap), true)

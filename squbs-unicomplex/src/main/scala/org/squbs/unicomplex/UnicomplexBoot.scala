@@ -42,7 +42,7 @@ import ConfigUtil._
 
 object UnicomplexBoot {
 
-  private lazy val log = LoggerFactory.getLogger(this.getClass)
+  private val log = LoggerFactory.getLogger(this.getClass)
 
   final val extConfigDirKey = "squbs.external-config-dir"
   final val extConfigNameKey = "squbs.external-config-files"
@@ -550,7 +550,8 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
       val stateFuture = Unicomplex(actorSystem).uniActor ? Activate
       Try(Await.result(stateFuture, timeout.duration)) match {
         case Success(Active) => log.info(s"[$actorSystemName] activated")
-        case _ => log.warn(s"[$actorSystemName] initialization failed.")
+        case Success(Failed) => log.info(s"[$actorSystemName] initialization failed.")
+        case e => log.warn(s"[$actorSystemName] awaiting confirmation, $e.")
       }
     }
 
