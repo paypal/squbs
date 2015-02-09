@@ -53,7 +53,6 @@ object StreamTestSpec {
     Map(
       "squbs.actorsystem-name"    -> "StreamTest",
       "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-service" -> Boolean.box(true),
       "default-listener.bind-port" -> nextPort.toString
     )
   )

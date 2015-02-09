@@ -41,7 +41,6 @@ object MultipleUnicomplexTest {
     Map(
       "squbs.actorsystem-name"    -> "MultipleUnicomplexTest1",
       "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-service" -> Boolean.box(false),
       "default-listener.bind-port" -> nextPort.toString
     )
   )
@@ -50,7 +49,6 @@ object MultipleUnicomplexTest {
     Map(
       "squbs.actorsystem-name"    -> "MultipleUnicomplexTest2",
       "squbs." + JMX.prefixConfig -> Boolean.box(false),
-      "default-listener.bind-service" -> Boolean.box(false),
       "default-listener.bind-port" -> nextPort.toString
     )
   )

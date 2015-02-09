@@ -40,8 +40,7 @@ object SystemStatusTest {
 	val mapConfig = ConfigFactory.parseMap(
 		Map(
 			"squbs.actorsystem-name" -> "SystemStatusTest",
-			"squbs." + JMX.prefixConfig -> Boolean.box(true),
-			"default-listener.bind-service" -> Boolean.box(false)))
+			"squbs." + JMX.prefixConfig -> Boolean.box(true)))
 
   val boot = UnicomplexBoot(mapConfig)
     .createUsing {

@@ -18,7 +18,6 @@
 package org.squbs.unicomplex
 
 import java.io.File
-import java.util.UUID
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
@@ -49,7 +48,6 @@ object MutliListenerSpecActorSystem {
           bind-address = "0.0.0.0"
           full-address = false
           bind-port = $port1
-          bind-service = true
           secure = false
           client-authn = false
           ssl-context = default
@@ -60,7 +58,6 @@ object MutliListenerSpecActorSystem {
           bind-address = "0.0.0.0"
           full-address = false
           bind-port =  $port2
-          bind-service = true
           secure = false
           client-authn = false
           ssl-context = default
@@ -71,7 +68,6 @@ object MutliListenerSpecActorSystem {
           bind-address = "0.111.0.0"
           full-address = false
           bind-port =  $port3
-          bind-service = true
           secure = false
           client-authn = false
           ssl-context = default
@@ -90,6 +86,7 @@ class MultiListenerSpec extends TestKit(MutliListenerSpecActorSystem.boot.actorS
     with FlatSpecLike with BeforeAndAfterAll with Matchers {
 
   import system.dispatcher
+
   import scala.concurrent.duration._
   
   val (port1, port2) = MutliListenerSpecActorSystem.getPort
@@ -105,7 +102,7 @@ class MultiListenerSpec extends TestKit(MutliListenerSpecActorSystem.boot.actorS
   }
 
   it should "register the JMXBean for spray status" in {
-    import JMX._
+    import org.squbs.unicomplex.JMX._
     get(prefix(system) + serverStats + "default-listener", "TotalConnections") should not be (-1)
     get(prefix(system) + serverStats + "second-listener", "TotalRequests") should not be (-1)
   }

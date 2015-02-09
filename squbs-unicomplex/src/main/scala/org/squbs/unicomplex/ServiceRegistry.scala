@@ -25,7 +25,6 @@ import akka.agent.Agent
 import akka.event.LoggingAdapter
 import akka.io.IO
 import com.typesafe.config.Config
-import org.squbs.unicomplex.JMX._
 import spray.can.Http
 import spray.can.server.ServerSettings
 import spray.http.StatusCodes.NotFound
@@ -34,7 +33,7 @@ import spray.io.ServerSSLEngineProvider
 import spray.routing._
 
 import scala.collection.mutable
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorRef)
@@ -102,20 +101,18 @@ class ServiceRegistry(log: LoggingAdapter) {
     listenerRef ! notifySender // listener needs to send the notifySender an ack when it is ready.
 
     // create a new HttpServer using our handler tell it where to bind to
-    import org.squbs.unicomplex.ConfigUtil._
     val interface = if(config getBoolean "full-address") ConfigUtil.ipv4
       else config getString "bind-address"
     val port = config getInt "bind-port"
-    val bindService = config getOptionalBoolean "bind-service" getOrElse true
     implicit val self = context.self
     implicit val system = context.system
 
     // SSL use case
-    if (bindService && config.getBoolean("secure")) {
+    if (config.getBoolean("secure")) {
       val settings = ServerSettings(system).copy(sslEncryption = true)
 
       val sslContextClassName = config.getString("ssl-context")
-      implicit def sslContext =
+      implicit def sslContext: SSLContext =
         if (sslContextClassName == "default") SSLContext.getDefault
         else {
           try {
@@ -138,7 +135,7 @@ class ServiceRegistry(log: LoggingAdapter) {
 
       IO(Http) ! Http.Bind(listenerRef, interface, port, settings = Option(settings))
 
-    } else if (bindService) IO(Http) ! Http.Bind(listenerRef, interface, port) // Non-SSL
+    } else IO(Http) ! Http.Bind(listenerRef, interface, port) // Non-SSL
 
     context.watch(listenerRef)
   }
