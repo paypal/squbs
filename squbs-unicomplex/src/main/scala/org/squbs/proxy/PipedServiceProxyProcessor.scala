@@ -19,16 +19,10 @@ package org.squbs.proxy
 
 import scala.concurrent.{ExecutionContext, Promise, Future}
 
-trait PipelineHandler {
-
-  def process(reqCtx: RequestContext): Future[RequestContext]
-
-}
-
 case class PipelineConfig(
-                           inbound: Seq[PipelineHandler] = Seq.empty,
-                           outbound: Seq[PipelineHandler] = Seq.empty
-                           )
+													 inbound: Seq[Handler] = Seq.empty,
+													 outbound: Seq[Handler] = Seq.empty
+													 )
 
 class PipedServiceProxyProcessor(pipeConfig: PipelineConfig) extends ServiceProxyProcessor {
   //inbound processing
