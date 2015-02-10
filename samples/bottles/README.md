@@ -16,7 +16,7 @@ The picture below shows the interaction between the modules:
 Getting Started
 ---------------
 
-1. Clone the [squbs](https://github.scm.corp.ebay.com/Squbs/squbs) repo.
+1. Clone the [squbs](https://github.corp.ebay.com/Squbs/squbs) repo.
 
 2. Build the unicomplex by running "sbt clean update package" from the squbs-unicomplex directory. Note that steps 1 and 2 are not needed once we provide the unicomplex into the repo.
 

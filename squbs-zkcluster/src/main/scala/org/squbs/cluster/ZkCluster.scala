@@ -367,7 +367,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
       }
 
       val numOfNodes = zkClient.getChildren.forPath("/members").size
-      //correction of https://github.scm.corp.ebay.com/Squbs/chnlsvc/pull/79
+      //correction of https://github.corp.ebay.com/Squbs/chnlsvc/pull/79
       //numOfNodes as participants should be 1 less than total count iff rebalanceLogic spares the leader
       //numOfNodes should be 1 at least (if spareLeader is true and there is only one node as leader, let leader serve)
       val (effects, onboards, dropoffs) = applyChanges(segmentsToPartitions, partitionsToMembers, origin, Math.max(1, if(rebalanceLogic.spareLeader) numOfNodes - 1 else numOfNodes))
@@ -487,7 +487,7 @@ private[cluster] class ZkPartitionsManager(implicit var zkClient: CuratorFramewo
                                     numOfNodes:Int) = {
 
     val impacted = partitionsToMembers.filterKeys(segmentsToPartitions.getOrElse(changed.segment, Set.empty).contains(_)).keySet
-    //https://github.scm.corp.ebay.com/Squbs/chnlsvc/issues/49
+    //https://github.corp.ebay.com/Squbs/chnlsvc/issues/49
     //we'll notify only when the partition has reached its expected size (either the total number of VMs (-1 iff spareLeader) or the required partition size)
     //any change inbetween will be silently ignored, as we know leader will rebalance and trigger another event to reach the expected size eventually
     //NOTE, the size must be tested with `EQUAL` other than `LESS OR EQUAL`, due to a corner case, where onboard members happen ahead of dropoff members in a shift (no size change)
