@@ -161,11 +161,6 @@ trait ServerStatsMXBean {
   def getRequestsTimedOut: Long
 }
 
-/**
- * Created by miawang on 11/17/14.
- */
-
-
 @MXBean
 trait SystemSettingMXBean {
   def getSystemSetting: util.List[SystemSetting]
@@ -206,8 +201,12 @@ class SystemSettingBean(config: Config) extends SystemSettingMXBean {
     def iterateMap(prefix: String, map: util.Map[String, AnyRef]): util.Map[String, String] = {
       val result = new util.TreeMap[String, String]()
       map.foreach {
-        case (key, value: util.List[AnyRef]) => result.putAll(iterateList(s"$prefix$key", value))
-        case (key, value: util.Map[String, AnyRef]) => result.putAll(iterateMap(s"$prefix$key.", value))
+        case (key, v: util.List[_]) =>
+          val value = v.asInstanceOf[util.List[AnyRef]]
+          result.putAll(iterateList(s"$prefix$key", value))
+        case (key, v: util.Map[_, _]) =>
+          val value = v.asInstanceOf[util.Map[String, AnyRef]]
+          result.putAll(iterateMap(s"$prefix$key.", value))
         case (key, value) => result.put(s"$prefix$key", String.valueOf(value))
       }
       result
@@ -217,8 +216,12 @@ class SystemSettingBean(config: Config) extends SystemSettingMXBean {
       val result = new util.TreeMap[String, String]()
 
       list.zipWithIndex.foreach{
-        case (value: util.List[AnyRef], i) => result.putAll(iterateList(s"$prefix[$i]", value))
-        case (value: util.Map[String, AnyRef], i) => result.putAll(iterateMap(s"$prefix[$i].", value))
+        case (v: util.List[_], i) =>
+          val value = v.asInstanceOf[util.List[AnyRef]]
+          result.putAll(iterateList(s"$prefix[$i]", value))
+        case (v: util.Map[_, _], i) =>
+          val value = v.asInstanceOf[util.Map[String, AnyRef]]
+          result.putAll(iterateMap(s"$prefix[$i].", value))
         case (value, i) => result.put(s"$prefix[$i]", String.valueOf(value))
       }
       result

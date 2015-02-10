@@ -11,7 +11,7 @@ Configuration
 we'll need a `/squbsconfig/zkcluster.conf` under runtime directory, it should provide the following properties:
 * connectionString: a string delimiting all zookeeper nodes of an ensemble with comma
 * namespace: a string that is a valid path of znode, which will be the parent of all znodes created thereafter
-* segments: number of partition segments to scale the number of partitions: https://github.scm.corp.ebay.com/huzhou/pubsubak/issues/11
+* segments: number of partition segments to scale the number of partitions: https://github.corp.ebay.com/huzhou/pubsubak/issues/11
 
 ~~~
 zkCluster {
