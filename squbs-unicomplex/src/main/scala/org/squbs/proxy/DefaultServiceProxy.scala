@@ -29,7 +29,7 @@ import spray.http.HttpResponse
 class DefaultServiceProxy(processor: ServiceProxyProcessor, hostActor: ActorRef) extends ServiceProxy(hostActor) {
 
   def handleRequest(requestCtx: RequestContext, responder: ActorRef)(implicit actorContext: ActorContext): Unit = {
-    val actor = actorContext.actorOf(Props(classOf[InnerActor], hostActor, responder, processor))
+    val actor = actorContext.actorOf(Props(classOf[PipeLineProcessorActor], hostActor, responder, processor))
     actor ! requestCtx
   }
 
@@ -39,7 +39,8 @@ case class ReadyToChunk(ctx: RequestContext)
 
 case class PostProcess(ctx: RequestContext)
 
-private class InnerActor(hostActor: ActorRef, responder: ActorRef, processor: ServiceProxyProcessor) extends Actor with ActorLogging with Stash {
+//TODO: better name here
+private class PipeLineProcessorActor(hostActor: ActorRef, responder: ActorRef, processor: ServiceProxyProcessor) extends Actor with ActorLogging with Stash {
 
   import context.dispatcher
   import processor._
