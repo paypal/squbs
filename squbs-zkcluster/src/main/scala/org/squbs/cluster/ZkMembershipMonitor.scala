@@ -29,7 +29,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with Logging {
   import zkCluster._
   
   private[this] implicit val log = logger
-  private[this] var zkLeaderLatch: LeaderLatch = new LeaderLatch(zkClientWithNs, "/leadership")
+  private[this] var zkLeaderLatch: LeaderLatch = null
   private[this] var stopped = false
   
   def initialize = {
@@ -90,12 +90,6 @@ private[cluster] class ZkMembershipMonitor extends Actor with Logging {
     if (leader != null) zkClusterActor ! ZkLeaderElected(leader)
   }
   
-  override def preStart = {
-    //enroll in the leadership competition
-    zkLeaderLatch.start
-    initialize
-  }
-  
   override def postStop = {
     //stop the leader latch to quit the competition
     stopped = true
@@ -104,7 +98,8 @@ private[cluster] class ZkMembershipMonitor extends Actor with Logging {
   
   def receive: Actor.Receive = {
     case ZkClientUpdated(updated) =>
-      zkLeaderLatch.close
+      // differentiate first connected to ZK or reconnect after connection lost
+      if (zkLeaderLatch != null) zkLeaderLatch.close
       zkLeaderLatch = new LeaderLatch(zkClientWithNs, "/leadership")
       zkLeaderLatch.start
       initialize

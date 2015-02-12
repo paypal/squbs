@@ -28,20 +28,35 @@ simply register the extension as all normal akka extension
 ~~~scala
 val zkClusterActor = ZkCluster(system).zkClusterActor
 
+// query the members in the cluster
 zkClusterActor ! ZkQueryMembership
-zkClusterActor ! ZkQueryLeadership
-zkClusterActor ! ZkQueryPartition(partitionKey:ByteString, createOnMiss:Option[Int])
-zkClusterActor ! ZkMonitorPartition(paths:Set[ActorPath])
-~~~
+case ZkMembership(members:Set[Address]) =>
 
-accordingly you'll receive responding messages in your actor
-~~~scala
-message match {
-    case ZkMembership(members:Set[Address]) =>
-    case ZkLeadership(leader:Address) =>
-    case ZkPartition(partitionKey:ByteString, members:Set[Address]) =>
-    case ZkPartitionDiff(partitionsToMembers:Map[ByteString, Set[Address]]) =>
-}
+// query leader in the cluster
+zkClusterActor ! ZkQueryLeadership
+case ZkLeadership(leader:Address) =>
+
+// query partition (expectedSize = None), create or resize (expectedSize = Some[Int])
+zkClusterActor ! ZkQueryPartition(partitionKey:ByteString, notification:Option[Any] = None, expectedSize:Option[Int] = None, props:Array[Byte] = Array[Byte]())
+case ZkPartition(partitionKey:ByteString, members: Set[Address], zkPath:String, notification:Option[Any]) =>
+case ZkPartitionNotFound(partitionKey: ByteString)
+
+// monitor/stop monitor the partition change
+zkClusterActor ! ZkMonitorPartition
+zkClusterActor ! ZkStopMonitorPartition
+case ZkPartitionDiff(partitionKey: ByteString, onBoardMembers: Set[Address], dropOffMembers: Set[Address], props: Array[Byte] = Array.empty) =>
+
+// remove partition
+zkClusterActor ! ZkRemovePartition(partitionKey:ByteString)
+case ZkPartitionRemoval(partitionKey:ByteString) =>
+
+// list the partitions hosted by a certain member
+zkClusterActor ! ZkListPartitions(address: Address)
+case ZkPartitions(partitionKeys:Seq[ByteString]) =>
+
+// monitor the zookeeper client restore
+zkClusterActor ! ZkMonitorClient
+case ZkClientUpdated(zkClient:CuratorFramework) =>
 ~~~
 
 Design

@@ -45,9 +45,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Logging {
       segment => segment -> watchOverSegment(segment)
     }.toMap
   }
-  
-  override def preStart = initialize
-  
+
   override def postStop = stopped = true
   
   def watchOverSegment(segment:String) = {

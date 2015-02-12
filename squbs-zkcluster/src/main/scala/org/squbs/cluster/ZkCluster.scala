@@ -36,6 +36,8 @@ case class ZkCluster(zkAddress: Address,
           zkClient.getConnectionStateListenable.addListener(this)
           zkClient.start
           zkClient.blockUntilConnected
+        case ConnectionState.CONNECTED =>
+          logger.info("[zkCluster] connected send out the notification")
           initialize
           zkClusterActor ! ZkClientUpdated(zkClientWithNs)
         case otherState => logger.warn(s"[zkCluster] connection state changed $otherState. What shall I do?")
@@ -49,7 +51,6 @@ case class ZkCluster(zkAddress: Address,
   //this is the zk client that we'll use, using the namespace reserved throughout
   implicit def zkClientWithNs = zkClient.usingNamespace(zkNamespace)
 
-  initialize
   //all interactions with the zk cluster extension should be through the zkClusterActor below
   lazy val zkClusterActor = system.actorOf(Props[ZkClusterActor], "zkCluster")
   

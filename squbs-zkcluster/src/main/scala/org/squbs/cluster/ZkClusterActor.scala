@@ -47,11 +47,11 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
   private val zkPartitionsManager = context.actorOf(Props[ZkPartitionsManager], "zkPartitions")
   
   private[this] val mandatory:StateFunction = {
-    case Event(updatedEvent @ ZkClientUpdated(updated), _) =>
+    case Event(updatedEvent @ ZkClientUpdated(updated), zkClusterData) =>
       zkMembershipMonitor ! updatedEvent
       zkPartitionsManager ! updatedEvent
       whenZkClientUpdated.foreach(_ ! updatedEvent)
-      stay
+      stay using zkClusterData.copy(partitions = ZkPartitionsManager.loadPartitions())
     case Event(ZkMonitorClient, _) =>
       whenZkClientUpdated = whenZkClientUpdated :+ sender()
       stay
