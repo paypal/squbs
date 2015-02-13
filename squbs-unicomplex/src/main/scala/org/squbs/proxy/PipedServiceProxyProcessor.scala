@@ -17,21 +17,66 @@
  */
 package org.squbs.proxy
 
+import akka.actor.ActorContext
+import com.typesafe.config.Config
+import spray.http.{HttpResponsePart, HttpResponse, HttpRequest}
+
 import scala.concurrent.{ExecutionContext, Promise, Future}
 
-case class PipelineConfig(
-													 inbound: Seq[Handler] = Seq.empty,
-													 outbound: Seq[Handler] = Seq.empty
-													 )
+abstract class RequestHandler extends Handler {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+		processRequest(reqCtx.request).map(r => reqCtx.copy(request = r))
+	}
 
-class PipedServiceProxyProcessor(pipeConfig: PipelineConfig) extends ServiceProxyProcessor {
-  //inbound processing
-  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
-    pipeConfig.inbound.foldLeft(Promise.successful(reqCtx).future)((ctx, handler) => ctx.flatMap(handler.process(_)))
-  }
+	def processRequest(req: HttpRequest): Future[HttpRequest]
+}
 
-  //outbound processing
-  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
-    pipeConfig.outbound.foldLeft(Promise.successful(reqCtx).future)((ctx, handler) => ctx.flatMap(handler.process(_)))
-  }
+abstract class ResponseHandler extends Handler {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+		reqCtx.response match {
+			case n@NormalResponse(resp) => processResponse(resp).map(r => reqCtx.copy(response = NormalResponse(r)))
+			case ex: ExceptionalResponse => processResponse(ex.response).map(r => reqCtx.copy(response = ex.copy(response = r)))
+		}
+	}
+
+	def processResponse(resp: HttpResponse): Future[HttpResponse]
+}
+
+case class PipeLineConfig[T <: Handler](handlers: Seq[T], tags: Map[String, AnyVal]) {
+	def fit(ctx: RequestContext): Boolean = {
+		tags.foldLeft[Boolean](false){(l, r) =>
+			l || (ctx.attribute[AnyVal](r._1) match {
+				case Some(v) => v == r._2
+				case None => false
+			})
+		}
+	}
+}
+
+class PipedServiceProxyProcessor(reqPipe: Seq[PipeLineConfig], respPipe: Seq[PipeLineConfig]) extends ServiceProxyProcessor {
+	//inbound processing
+	def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+		reqPipe.find(_.fit(reqCtx)) match {
+			case Some(pipeConf) =>
+				pipeConf.handlers.foldLeft(Future { reqCtx }) { (ctx, handler) => ctx flatMap (handler.process(_))}
+			case None => Future {
+				reqCtx
+			}
+		}
+	}
+
+	//outbound processing
+	def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+		respPipe.find(_.fit(reqCtx)) match {
+			case Some(pipeConf) =>
+				pipeConf.handlers.foldLeft(Future { reqCtx }) { (ctx, handler) => ctx.flatMap(handler.process(_))}
+			case None => Future { reqCtx }
+		}
+	}
+}
+
+class PipedServiceProxyProcessorFactory extends ServiceProxyProcessorFactory {
+	def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
+
+	}
 }

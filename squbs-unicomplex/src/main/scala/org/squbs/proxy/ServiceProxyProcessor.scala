@@ -23,7 +23,7 @@ import com.typesafe.config.Config
 import akka.actor.ActorContext
 
 trait Handler {
-	def process(reqCtx: RequestContext): Future[RequestContext]
+	def process(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext]
 }
 
 //Must be stateless

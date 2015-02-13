@@ -39,7 +39,6 @@ case class ReadyToChunk(ctx: RequestContext)
 
 case class PostProcess(ctx: RequestContext)
 
-//TODO: better name here
 private class PipeLineProcessorActor(hostActor: ActorRef, responder: ActorRef, processor: ServiceProxyProcessor) extends Actor with ActorLogging with Stash {
 
   import context.dispatcher
