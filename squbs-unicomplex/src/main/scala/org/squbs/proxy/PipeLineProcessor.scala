@@ -17,11 +17,12 @@
  */
 package org.squbs.proxy
 
-import akka.actor.ActorContext
+import akka.actor.{Props, ActorContext}
 import com.typesafe.config.Config
-import spray.http.{HttpResponsePart, HttpResponse, HttpRequest}
-
-import scala.concurrent.{ExecutionContext, Promise, Future}
+import spray.http.{HttpResponse, HttpRequest}
+import akka.pattern.ask
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.duration._
 
 abstract class RequestHandler extends Handler {
 	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
@@ -42,26 +43,13 @@ abstract class ResponseHandler extends Handler {
 	def processResponse(resp: HttpResponse): Future[HttpResponse]
 }
 
-case class PipeLineConfig[T <: Handler](handlers: Seq[T], tags: Map[String, AnyVal]) {
-	def fit(ctx: RequestContext): Boolean = {
-		tags.foldLeft[Boolean](false){(l, r) =>
-			l || (ctx.attribute[AnyVal](r._1) match {
-				case Some(v) => v == r._2
-				case None => false
-			})
-		}
-	}
-}
-
-class PipedServiceProxyProcessor(reqPipe: Seq[PipeLineConfig], respPipe: Seq[PipeLineConfig]) extends ServiceProxyProcessor {
+class PipeLineProcessor(reqPipe: Seq[PipeLineConfig], respPipe: Seq[PipeLineConfig]) extends ServiceProxyProcessor {
 	//inbound processing
 	def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
 		reqPipe.find(_.fit(reqCtx)) match {
 			case Some(pipeConf) =>
 				pipeConf.handlers.foldLeft(Future { reqCtx }) { (ctx, handler) => ctx flatMap (handler.process(_))}
-			case None => Future {
-				reqCtx
-			}
+			case None => Future { reqCtx }
 		}
 	}
 
@@ -75,8 +63,18 @@ class PipedServiceProxyProcessor(reqPipe: Seq[PipeLineConfig], respPipe: Seq[Pip
 	}
 }
 
-class PipedServiceProxyProcessorFactory extends ServiceProxyProcessorFactory {
-	def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
+object PipeLineProcessor {
+	def empty: PipeLineProcessor = new PipeLineProcessor(Seq.empty, Seq.empty)
+}
 
+class PipeLineProcessorFactory extends ServiceProxyProcessorFactory {
+	def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
+		settings match {
+			case Some(conf) =>
+				val loader = context.actorOf(Props(classOf[PipeConfigLoader]))
+				val result = Await.result((loader ? conf).mapTo[PipeConfigInfo], 3 seconds)
+				new PipeLineProcessor(result.reqConf, result.respConf)
+			case None => PipeLineProcessor.empty
+		}
 	}
 }
