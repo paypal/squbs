@@ -21,7 +21,7 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
         |
       """.stripMargin)
 
-    ProxySettings(config) should be(None)
+    ProxySettings(config).default shouldBe None
 
     config = ConfigFactory.parseString(
       """
@@ -32,7 +32,7 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
         |
       """.stripMargin)
 
-    ProxySettings(config) should be(None)
+    ProxySettings(config).default shouldBe None
   }
 
 
@@ -46,7 +46,7 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
         |
       """.stripMargin)
 
-    ProxySettings(config) should be(None)
+    ProxySettings(config).default shouldBe None
 
     config = ConfigFactory.parseString(
       """
@@ -57,7 +57,7 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
         |
       """.stripMargin)
 
-    ProxySettings(config) should be(None)
+    ProxySettings(config).default shouldBe None
 
     config = ConfigFactory.parseString(
       """
@@ -69,8 +69,8 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
         |
       """.stripMargin)
 
-    ProxySettings(config) should be(None)
-
+    ProxySettings(config).default shouldBe None
+	  ProxySettings(config).proxies shouldBe Map.empty
   }
 
   "config" should "work" in {
@@ -96,33 +96,29 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
       """.stripMargin)
 
     val ps = ProxySettings(config)
-    ps should not be (None)
 
-    val proxySettings = ps.get
-    proxySettings.default should not be (None)
+    ps.default should not be None
+	  ps.proxies.size should be(8)
 
-    proxySettings.proxies.size should be(8)
-
-    val proxy1 = proxySettings.find("MyProxy1")
-    proxy1 should be(proxySettings.find("bbb"))
-    proxy1.get.settings should not be (None)
+    val proxy1 = ps.find("MyProxy1")
+    proxy1 shouldBe ps.find("bbb")
+    proxy1.get.settings should not be None
     proxy1.get.processorFactory shouldBe a[DummyServiceProxyProcessorForActor]
 
-    val proxy2 = proxySettings.find("MyProxy2")
-    proxy2 should be(proxySettings.find("aaa"))
-    proxy2 should be(proxySettings.find("fff"))
-    proxy2.get.settings should be (None)
+    val proxy2 = ps.find("MyProxy2")
+    proxy2 should be(ps.find("aaa"))
+    proxy2 should be(ps.find("fff"))
+    proxy2.get.settings shouldBe None
     proxy2.get.processorFactory shouldBe a[DummyServiceProxyProcessorForRoute]
 
-    val default = proxySettings.find("default")
-    default should be(proxySettings.find("ccc"))
-    default should be(proxySettings.find("ddd"))
-    default should be(proxySettings.default)
-    default.get.name should be("default")
-    default.get.settings should be(None)
+    val default = ps.find("default")
+    default shouldBe ps.find("ccc")
+    default shouldBe ps.find("ddd")
+    default shouldBe ps.default
+    default.get.name shouldBe "default"
+    default.get.settings shouldBe None
     default.get.processorFactory shouldBe a[DummyPipedServiceProxyProcessorFactoryForActor]
   }
-
 }
 
 class DummyAny

@@ -43,14 +43,13 @@ class PipeConfigLoader extends Actor with ActorLogging {
 			}
 
 			val pipeConf = conf.getOptionalConfig("pipelines").getOrElse(ConfigFactory.empty)
-			val pipeCache = new HMap[String, (String, PipeLineConfig)]()
+			val pipeCache = new HMap[String, PipeLineConfig]()
 			pipeConf.root.foreach {
 				case (name, confObj: ConfigObject) =>
-					val pipeType = confObj.toConfig.getOptionalString("type").getOrElse("common").toLowerCase
 					val pipeHandlers = confObj.toConfig.getOptionalStringList("handlers").getOrElse(Seq.empty[String])
 					val pipeTags = confObj.toConfig.getOptionalStringList("tags").getOrElse(Seq.empty[String])
 
-					pipeCache += (name ->(pipeType, buildPipeLineConfig(handlerCache, pipeType, pipeHandlers, pipeTags)))
+					pipeCache += (name -> buildPipeLineConfig(handlerCache, pipeHandlers, pipeTags))
 			}
 			val reqPipe = pipeConf.getOptionalStringList("request").getOrElse(Seq("*"))
 			val respPipe = pipeConf.getOptionalStringList("response").getOrElse(Seq("*"))
@@ -58,34 +57,27 @@ class PipeConfigLoader extends Actor with ActorLogging {
 			val reqPipeObj = reqPipe.flatMap {
 				case "*" =>
 					pipeCache.flatMap {
-						case (_, ("request", reqConf)) => Some(reqConf)
+						case (_, reqConf) => Some(reqConf)
 						case _ => None
 					}.toSeq
-				case n if n != "*" => pipeCache.get(n).map{ case (t, pconf) => pconf }
+				case n if n != "*" => pipeCache.get(n)
 			}
 
 			val respPipeObj = respPipe.flatMap {
 				case "*" => pipeCache.flatMap {
-					case (_, ("response", respConf)) => Some(respConf)
+					case (_, respConf) => Some(respConf)
 					case _ => None
 				}
-				case n if n != "*" => pipeCache.get(n).map { case (t, pconf) => pconf }
+				case n if n != "*" => pipeCache.get(n)
 			}
 
 			responder ! PipeConfigInfo(reqPipeObj, respPipeObj)
 	}
 
 	private def buildPipeLineConfig(handlerCache: HMap[String, Handler],
-	                                pipeType: String,
 	                                handlers: Seq[String],
 	                                tags: Seq[String]): PipeLineConfig = {
-		val handlerObjs = handlers.flatMap(handlerCache.get(_)).map { h =>
-			pipeType match {
-				case "request" => h.asInstanceOf[RequestHandler]
-				case "response" => h.asInstanceOf[ResponseHandler]
-				case _ => h
-			}
-		}
+		val handlerObjs = handlers.flatMap(handlerCache.get(_))
 
 		val tagObjs = tags.flatMap { entry =>
 			val ary = entry.split(":")

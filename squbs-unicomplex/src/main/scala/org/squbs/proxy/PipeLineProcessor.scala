@@ -18,30 +18,11 @@
 package org.squbs.proxy
 
 import akka.actor.{Props, ActorContext}
+import akka.util.Timeout
 import com.typesafe.config.Config
-import spray.http.{HttpResponse, HttpRequest}
 import akka.pattern.ask
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
-
-abstract class RequestHandler extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
-		processRequest(reqCtx.request).map(r => reqCtx.copy(request = r))
-	}
-
-	def processRequest(req: HttpRequest): Future[HttpRequest]
-}
-
-abstract class ResponseHandler extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
-		reqCtx.response match {
-			case n@NormalResponse(resp) => processResponse(resp).map(r => reqCtx.copy(response = NormalResponse(r)))
-			case ex: ExceptionalResponse => processResponse(ex.response).map(r => reqCtx.copy(response = ex.copy(response = r)))
-		}
-	}
-
-	def processResponse(resp: HttpResponse): Future[HttpResponse]
-}
 
 class PipeLineProcessor(reqPipe: Seq[PipeLineConfig], respPipe: Seq[PipeLineConfig]) extends ServiceProxyProcessor {
 	//inbound processing
@@ -68,6 +49,8 @@ object PipeLineProcessor {
 }
 
 class PipeLineProcessorFactory extends ServiceProxyProcessorFactory {
+	private implicit val timeout = Timeout(3 seconds)
+
 	def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
 		settings match {
 			case Some(conf) =>
