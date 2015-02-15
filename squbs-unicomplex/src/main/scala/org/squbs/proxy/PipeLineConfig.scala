@@ -12,6 +12,8 @@ import scala.collection.mutable.{HashMap => HMap}
  */
 case class PipeLineConfig(handlers: Seq[_ <: Handler], tags: Map[String, String]) {
 	def fit(ctx: RequestContext): Boolean = {
+		if (tags.isEmpty) true
+		else
 		tags.foldLeft[Boolean](false) { (l, r) =>
 			l || (ctx.attribute[String](r._1) match {
 				case Some(v) => v == r._2
