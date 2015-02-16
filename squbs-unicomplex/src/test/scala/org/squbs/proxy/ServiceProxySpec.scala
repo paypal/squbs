@@ -71,6 +71,32 @@ object ServiceProxySpec {
       |  default {
       |    processor = org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyProcessorFactoryForActor
       |  }
+			|
+			|  confproxy {
+			|    processor = org.squbs.proxy.PipeLineProcessorFactory
+			|    settings = {
+			|      handlers {
+			|        confhandler1 = org.squbs.proxy.pipedserviceproxyactor.confhandler1
+			|        confhandler2 = org.squbs.proxy.pipedserviceproxyactor.confhandler2
+			|      }
+			|
+			|      pipelines {
+			|        request = [confpipe1]
+			|        response = [confpipe2]
+			|
+			|        confpipe1 {
+			|          handlers = [confhandler1]
+			|          filter {
+			|            header {
+			|              pipe1 = go
+			|            }
+			|          }
+			|        }
+			|
+			|        confpipe2 {
+			|          handlers = [confhandler2]
+			|        }
+			|    }
       |}
       |
       |spray {

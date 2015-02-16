@@ -17,6 +17,8 @@
  */
 package org.squbs.unicomplex
 
+import spray.http.Uri.Path
+
 import scala.collection.JavaConversions._
 import com.typesafe.config.{ConfigException, Config}
 import scala.collection.mutable

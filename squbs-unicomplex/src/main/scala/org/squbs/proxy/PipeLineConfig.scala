@@ -11,7 +11,7 @@ import scala.util.matching.Regex
 /**
  * Created by jiamzhang on 15/2/14.
  */
-case class PipeLineFilter(headers: Map[String, String] = Map.empty, entity: Option[Regex] = None, status: Option[Regex] = None, method: Option[Regex] = None)
+case class PipeLineFilter(headers: Map[String, String] = Map.empty, entity: Option[Regex] = None, uri: Option[Regex] = None, status: Option[Regex] = None, method: Option[Regex] = None)
 case object PipeLineFilter {
 	def empty = PipeLineFilter()
 }
@@ -26,6 +26,11 @@ case class PipeLineConfig(handlers: Seq[_ <: Handler], filter: PipeLineFilter) {
 				})
 			}
 
+			val pboolean = filter.uri match {
+				case Some(u) => u.pattern.matcher(ctx.request.uri.toRelative.toString).matches()
+				case None => true
+			}
+
 			val eboolean = filter.entity match {
 				case Some(r) => r.pattern.matcher(ctx.request.entity.asString).matches()
 				case None => true
@@ -35,7 +40,7 @@ case class PipeLineConfig(handlers: Seq[_ <: Handler], filter: PipeLineFilter) {
 				case Some(r) => r.pattern.matcher(ctx.request.method.name.toLowerCase).matches()
 				case None => true
 			}
-			hboolean && eboolean && mboolean
+			hboolean && pboolean && eboolean && mboolean
 		}
 	}
 
@@ -132,6 +137,7 @@ class PipeConfigLoader extends Actor with ActorLogging {
 
 		PipeLineFilter(headerFilters,
 									 config.getOptionalPattern("entity"),
+									 config.getOptionalPath("uri"),
 									 config.getOptionalPattern("status"),
 									 config.getOptionalPattern("method"))
 	}
