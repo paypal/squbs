@@ -36,6 +36,8 @@ class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
       val customHeader2 = req.headers.find(h => h.name.equals("dummyReqHeader2"))
       val output = (customHeader1, customHeader2) match {
         case (Some(h1), Some(h2)) => h1.value + h2.value
+				case (Some(h1), None) => h1.value
+				case (None, Some(h2)) => h2.value
         case other => "No custom header found"
       }
       sender() ! HttpResponse(OK, output)
@@ -45,9 +47,16 @@ class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
 
 class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcessorFactory {
 
+	val filter1 = PipeLineFilter(Map("pipeline1" -> "eBay"))
+	val filter2 = PipeLineFilter(Map("pipeline2" -> "Paypal"))
+	val filter3 = PipeLineFilter(Map("dummyRespHeader1" -> "PayPal"))
+	val filter4 = PipeLineFilter(Map("dummyRespHeader2" -> "eBay"))
+
   def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
-    new PipeLineProcessor(Seq(PipeLineConfig(Seq(RequestHandler1, RequestHandler2), PipeLineFilter.empty)),
-	                        Seq(PipeLineConfig(Seq(ResponseHandler1, ResponseHandler2), PipeLineFilter.empty)))
+    new PipeLineProcessor(Seq(PipeLineConfig(Seq(RequestHandler1), filter1),
+															PipeLineConfig(Seq(RequestHandler2), filter2)),
+	                        Seq(PipeLineConfig(Seq(ResponseHandler1), filter3),
+														  PipeLineConfig(Seq(ResponseHandler2), filter4)))
   }
 
   object RequestHandler1 extends Handler {

@@ -214,6 +214,16 @@ with AsyncAssertions {
         response.headers.find(h => h.name.equals("dummyRespHeader")).get.value should be("CDC")
       }
 
+			val baseReq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor/msg/hello"))
+			val filter1req = baseReq.copy(headers = List(HttpHeaders.RawHeader("pipeline1", "eBay")))
+
+			(IO(Http) ! filter1req)
+			within(timeout.duration) {
+				val response = expectMsgType[HttpResponse]
+				response.status shouldBe StatusCodes.OK
+				response.entity.asString shouldBe "PayPal"
+			}
+
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor/msg/hello")))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
