@@ -34,13 +34,14 @@ class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
     case req: HttpRequest =>
       val customHeader1 = req.headers.find(h => h.name.equals("dummyReqHeader1"))
       val customHeader2 = req.headers.find(h => h.name.equals("dummyReqHeader2"))
-      val output = (customHeader1, customHeader2) match {
-        case (Some(h1), Some(h2)) => h1.value + h2.value
-				case (Some(h1), None) => h1.value
-				case (None, Some(h2)) => h2.value
-        case other => "No custom header found"
+      val response = (customHeader1, customHeader2) match {
+        case (Some(h1), Some(h2)) => HttpResponse(OK, h1.value + h2.value, List(h1, h2))
+				case (Some(h1), None) => HttpResponse(OK, h1.value, List(h1))
+				case (None, Some(h2)) => HttpResponse(OK, h2.value, List(h2))
+        case other => HttpResponse(OK, "No custom header found")
       }
-      sender() ! HttpResponse(OK, output)
+
+      sender() ! response
   }
 }
 
@@ -49,14 +50,18 @@ class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcess
 
 	val filter1 = PipeLineFilter(Map("pipeline1" -> "eBay"))
 	val filter2 = PipeLineFilter(Map("pipeline2" -> "Paypal"))
-	val filter3 = PipeLineFilter(Map("dummyRespHeader1" -> "PayPal"))
-	val filter4 = PipeLineFilter(Map("dummyRespHeader2" -> "eBay"))
+	val filter3 = PipeLineFilter(Map("dummyReqHeader1" -> "PayPal"))
+	val filter4 = PipeLineFilter(Map("dummyReqHeader2" -> "eBay"))
+	val filter5 = PipeLineFilter(Map("dummyReqHeader1" -> "PayPal", "dummyReqHeader2" -> "eBay"))
+	val filterEmpty = PipeLineFilter.empty
 
   def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
     new PipeLineProcessor(Seq(PipeLineConfig(Seq(RequestHandler1), filter1),
-															PipeLineConfig(Seq(RequestHandler2), filter2)),
-	                        Seq(PipeLineConfig(Seq(ResponseHandler1), filter3),
-														  PipeLineConfig(Seq(ResponseHandler2), filter4)))
+															PipeLineConfig(Seq(RequestHandler2), filter2),
+                              PipeLineConfig(Seq(RequestHandler1, RequestHandler2), filterEmpty)),
+	                        Seq(PipeLineConfig(Seq(ResponseHandler1, ResponseHandler2), filter5),
+		                          PipeLineConfig(Seq(ResponseHandler2), filter4),
+														  PipeLineConfig(Seq(ResponseHandler1), filter3)))
   }
 
   object RequestHandler1 extends Handler {

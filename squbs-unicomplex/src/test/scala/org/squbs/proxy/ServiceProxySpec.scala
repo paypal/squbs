@@ -215,23 +215,37 @@ with AsyncAssertions {
       }
 
 			val baseReq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor/msg/hello"))
-			val filter1req = baseReq.copy(headers = List(HttpHeaders.RawHeader("pipeline1", "eBay")))
+			val noFilterReq = baseReq
 
-			(IO(Http) ! filter1req)
-			within(timeout.duration) {
-				val response = expectMsgType[HttpResponse]
-				response.status shouldBe StatusCodes.OK
-				response.entity.asString shouldBe "PayPal"
-			}
-
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor/msg/hello")))
+      (IO(Http) ! noFilterReq)
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
-        response.status should be(StatusCodes.OK)
-        response.entity.asString should be("PayPaleBay")
-        response.headers.find(h => h.name.equals("dummyRespHeader1")).get.value should be("CDC")
-        response.headers.find(h => h.name.equals("dummyRespHeader2")).get.value should be("CCOE")
+        response.status shouldBe StatusCodes.OK
+        response.entity.asString shouldBe "PayPaleBay"
+        response.headers.find(h => h.name.equals("dummyRespHeader1")).get.value shouldBe "CDC"
+        response.headers.find(h => h.name.equals("dummyRespHeader2")).get.value shouldBe "CCOE"
       }
+
+	    val filter1req = baseReq.copy(headers = List(HttpHeaders.RawHeader("pipeline1", "eBay")))
+
+	    (IO(Http) ! filter1req)
+	    within(timeout.duration) {
+		    val response = expectMsgType[HttpResponse]
+		    response.status shouldBe StatusCodes.OK
+		    response.entity.asString shouldBe "PayPal"
+		    response.headers.find(h => h.name.equals("dummyRespHeader1")).get.value shouldBe "CDC"
+		    response.headers.find(h => h.name.equals("dummyRespHeader2")) shouldBe None
+	    }
+
+	    val filter2req = baseReq.copy(headers = List(HttpHeaders.RawHeader("pipeline2", "Paypal")))
+	    (IO(Http) ! filter2req)
+	    within(timeout.duration) {
+		    val response = expectMsgType[HttpResponse]
+		    response.status shouldBe StatusCodes.OK
+		    response.entity.asString shouldBe "eBay"
+		    response.headers.find(h => h.name.equals("dummyRespHeader1")) shouldBe None
+		    response.headers.find(h => h.name.equals("dummyRespHeader2")).get.value shouldBe "CCOE"
+	    }
 
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor1/msg/hello")))
       within(timeout.duration) {
