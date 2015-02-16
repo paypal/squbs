@@ -27,7 +27,7 @@ import scala.concurrent.duration._
 class PipeLineProcessor(reqPipe: Seq[PipeLineConfig], respPipe: Seq[PipeLineConfig]) extends ServiceProxyProcessor {
 	//inbound processing
 	def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
-		reqPipe.find(_.fit(reqCtx)) match {
+		reqPipe.find(_.fitRequest(reqCtx)) match {
 			case Some(pipeConf) =>
 				pipeConf.handlers.foldLeft(Future { reqCtx }) { (ctx, handler) => ctx flatMap (handler.process(_))}
 			case None => Future { reqCtx }
@@ -36,7 +36,7 @@ class PipeLineProcessor(reqPipe: Seq[PipeLineConfig], respPipe: Seq[PipeLineConf
 
 	//outbound processing
 	def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
-		respPipe.find(_.fit(reqCtx)) match {
+		respPipe.find(_.fitResponse(reqCtx)) match {
 			case Some(pipeConf) =>
 				pipeConf.handlers.foldLeft(Future { reqCtx }) { (ctx, handler) => ctx.flatMap(handler.process(_))}
 			case None => Future { reqCtx }

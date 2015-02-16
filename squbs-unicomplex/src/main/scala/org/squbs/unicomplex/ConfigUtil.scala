@@ -24,6 +24,7 @@ import java.net.NetworkInterface
 
 import scala.concurrent.duration.{FiniteDuration, TimeUnit, Duration}
 import scala.util.Try
+import scala.util.matching.Regex
 
 object ConfigUtil {
 
@@ -87,6 +88,10 @@ object ConfigUtil {
       import scala.concurrent.duration._
       Try(Duration.create(underlying.getDuration(path, MILLISECONDS), MILLISECONDS)).toOption
     }
+
+		def getOptionalPattern(path: String): Option[Regex] = {
+			Try(new Regex(underlying.getString(path))).toOption
+		}
   }
 
   def ipv4 = {

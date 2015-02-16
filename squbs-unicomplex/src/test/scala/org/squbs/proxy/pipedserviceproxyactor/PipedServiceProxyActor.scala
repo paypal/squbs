@@ -46,8 +46,8 @@ class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
 class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcessorFactory {
 
   def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
-    new PipeLineProcessor(Seq(PipeLineConfig(Seq(RequestHandler1, RequestHandler2), Map.empty[String, String])),
-	                        Seq(PipeLineConfig(Seq(ResponseHandler1, ResponseHandler2), Map.empty[String, String])))
+    new PipeLineProcessor(Seq(PipeLineConfig(Seq(RequestHandler1, RequestHandler2), PipeLineFilter.empty)),
+	                        Seq(PipeLineConfig(Seq(ResponseHandler1, ResponseHandler2), PipeLineFilter.empty)))
   }
 
   object RequestHandler1 extends Handler {

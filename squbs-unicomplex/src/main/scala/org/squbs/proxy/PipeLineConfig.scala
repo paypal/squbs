@@ -6,19 +6,64 @@ import org.squbs.unicomplex.ConfigUtil._
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.{HashMap => HMap}
+import scala.util.matching.Regex
 
 /**
  * Created by jiamzhang on 15/2/14.
  */
-case class PipeLineConfig(handlers: Seq[_ <: Handler], tags: Map[String, String]) {
-	def fit(ctx: RequestContext): Boolean = {
-		if (tags.isEmpty) true
-		else
-		tags.foldLeft[Boolean](false) { (l, r) =>
-			l || (ctx.attribute[String](r._1) match {
-				case Some(v) => v == r._2
-				case None => false
-			})
+case class PipeLineFilter(headers: Map[String, String] = Map.empty, entity: Option[Regex] = None, status: Option[Regex] = None, method: Option[Regex] = None)
+case object PipeLineFilter {
+	def empty = PipeLineFilter()
+}
+case class PipeLineConfig(handlers: Seq[_ <: Handler], filter: PipeLineFilter) {
+	def fitRequest(ctx: RequestContext): Boolean = {
+		if (filter == PipeLineFilter.empty) true
+		else {
+			val hboolean = filter.headers.foldLeft[Boolean](true) { (l, r) =>
+				l && (ctx.request.headers.find(_.name == r._1) match {
+					case Some(h) => h.value == r._2
+					case None => false
+				})
+			}
+
+			val eboolean = filter.entity match {
+				case Some(r) => r.pattern.matcher(ctx.request.entity.asString).matches()
+				case None => true
+			}
+
+			val mboolean = filter.method match {
+				case Some(r) => r.pattern.matcher(ctx.request.method.name.toLowerCase).matches()
+				case None => true
+			}
+			hboolean && eboolean && mboolean
+		}
+	}
+
+	def fitResponse(ctx: RequestContext): Boolean = {
+		if (filter == PipeLineFilter.empty) true
+		else {
+			val resp = ctx.response match {
+				case NormalResponse(resp) => resp
+				case e: ExceptionalResponse => e.response
+			}
+
+			val hboolean = filter.headers.foldLeft[Boolean](true) { (l, r) =>
+				l && (resp.headers.find(_.name == r._1) match {
+					case Some(h) => h.value == r._2
+					case None => false
+				})
+			}
+
+			val eboolean = filter.entity match {
+				case Some(r) => r.pattern.matcher(resp.entity.asString).matches()
+				case None => true
+			}
+
+			val sboolean = filter.status match {
+				case Some(r) => r.pattern.matcher(resp.status.intValue.toString).matches()
+				case None => true
+			}
+			hboolean && eboolean && sboolean
 		}
 	}
 }
@@ -48,10 +93,13 @@ class PipeConfigLoader extends Actor with ActorLogging {
 			val pipeCache = new HMap[String, PipeLineConfig]()
 			pipeConf.root.foreach {
 				case (name, confObj: ConfigObject) =>
-					val pipeHandlers = confObj.toConfig.getOptionalStringList("handlers").getOrElse(Seq.empty[String])
-					val pipeTags = confObj.toConfig.getOptionalStringList("tags").getOrElse(Seq.empty[String])
+					val handlersConf = confObj.toConfig.getOptionalStringList("handlers").getOrElse(Seq.empty[String])
+					val pipeHandlers = handlersConf.flatMap(handlerCache.get(_))
 
-					pipeCache += (name -> buildPipeLineConfig(handlerCache, pipeHandlers, pipeTags))
+					val filterConf = confObj.toConfig.getOptionalConfig("filter").getOrElse(ConfigFactory.empty)
+					val pipeFilter = buildFilter(filterConf)
+
+					pipeCache += (name -> PipeLineConfig(pipeHandlers, pipeFilter))
 			}
 			val reqPipe = pipeConf.getOptionalStringList("request").getOrElse(Seq("*"))
 			val respPipe = pipeConf.getOptionalStringList("response").getOrElse(Seq("*"))
@@ -76,16 +124,15 @@ class PipeConfigLoader extends Actor with ActorLogging {
 			responder ! PipeConfigInfo(reqPipeObj, respPipeObj)
 	}
 
-	private def buildPipeLineConfig(handlerCache: HMap[String, Handler],
-	                                handlers: Seq[String],
-	                                tags: Seq[String]): PipeLineConfig = {
-		val handlerObjs = handlers.flatMap(handlerCache.get(_))
-
-		val tagObjs = tags.flatMap { entry =>
-			val ary = entry.split(":")
-			Some((ary(0) -> ary(1)))
+	private def buildFilter(config: Config): PipeLineFilter = {
+		val headerFilters = config.getOptionalConfig("header").getOrElse(ConfigFactory.empty).root.flatMap {
+			case (h, hpattern: ConfigValue) => Some((h, hpattern.unwrapped.toString))
+			case _ => None
 		}.toMap
 
-		PipeLineConfig(handlerObjs, tagObjs)
+		PipeLineFilter(headerFilters,
+									 config.getOptionalPattern("entity"),
+									 config.getOptionalPattern("status"),
+									 config.getOptionalPattern("method"))
 	}
 }
