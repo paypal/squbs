@@ -3,13 +3,10 @@ package org.squbs.cluster
 import java.io.File
 import java.net.InetAddress
 
-import akka.actor.{ActorRef, Actor}
 import com.google.common.base.Charsets
 import com.google.common.io.Files
 import org.apache.zookeeper.server.ZooKeeperServerMain
-import org.apache.zookeeper.server.quorum.QuorumPeerMain
 import org.slf4j.LoggerFactory
-import org.squbs.unicomplex.Unicomplex
 
 /**
  * Created by huzhou on 4/21/14.
