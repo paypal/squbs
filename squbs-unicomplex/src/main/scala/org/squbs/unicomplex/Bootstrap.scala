@@ -27,8 +27,12 @@ object Bootstrap extends App {
 
   // Note, the config directories may change during extension init. It is important to re-read the full config
   // for the actor system start.
+  // TODO need to solve the classpath issue
   UnicomplexBoot { (name, config) => ActorSystem(name, config) }
-    .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
+    .scanComponents(
+      System.getProperty("java.class.path").split(File.pathSeparator) ++ 
+        System.getProperty("java.ext.dirs").split(File.pathSeparator)
+    )
     .initExtensions
     .stopJVMOnExit
     .start()
