@@ -80,6 +80,7 @@ class PipeConfigLoader extends Actor with ActorLogging {
 	override def receive = {
 		case conf: Config =>
 			val responder = sender()
+
 			val handlerConf = conf.getOptionalConfig("handlers").getOrElse(ConfigFactory.empty)
 			val handlerCache = new HMap[String, Handler]()
 			handlerConf.root.foreach {
@@ -105,7 +106,9 @@ class PipeConfigLoader extends Actor with ActorLogging {
 					val pipeFilter = buildFilter(filterConf)
 
 					pipeCache += (name -> PipeLineConfig(pipeHandlers, pipeFilter))
+				case _ => //ignore
 			}
+
 			val reqPipe = pipeConf.getOptionalStringList("request").getOrElse(Seq("*"))
 			val respPipe = pipeConf.getOptionalStringList("response").getOrElse(Seq("*"))
 
@@ -137,7 +140,7 @@ class PipeConfigLoader extends Actor with ActorLogging {
 
 		PipeLineFilter(headerFilters,
 									 config.getOptionalPattern("entity"),
-									 config.getOptionalPath("uri"),
+									 config.getOptionalPattern("uri"),
 									 config.getOptionalPattern("status"),
 									 config.getOptionalPattern("method"))
 	}

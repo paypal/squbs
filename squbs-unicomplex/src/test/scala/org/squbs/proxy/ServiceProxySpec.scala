@@ -78,11 +78,13 @@ object ServiceProxySpec {
 			|      handlers {
 			|        confhandler1 = org.squbs.proxy.pipedserviceproxyactor.confhandler1
 			|        confhandler2 = org.squbs.proxy.pipedserviceproxyactor.confhandler2
+			|        confhandler3 = org.squbs.proxy.pipedserviceproxyactor.confhandler3
+			|        confhandlerempty = org.squbs.proxy.pipedserviceproxyactor.confhandlerEmpty
 			|      }
 			|
 			|      pipelines {
-			|        request = [confpipe1]
-			|        response = [confpipe2]
+			|        request = [confpipe1, confpipe2, emptypipe]
+			|        response = [confpipe3]
 			|
 			|        confpipe1 {
 			|          handlers = [confhandler1]
@@ -95,8 +97,21 @@ object ServiceProxySpec {
 			|
 			|        confpipe2 {
 			|          handlers = [confhandler2]
+			|          filter {
+			|            uri = ".*/pipe2"
+			|          }
 			|        }
+			|
+			|        confpipe3 {
+			|          handlers = [confhandler3]
+			|        }
+			|
+			|        emptypipe {
+			|          handlers = [confhandlerempty]
+			|        }
+			|      }
 			|    }
+			|  }
       |}
       |
       |spray {
@@ -106,6 +121,10 @@ object ServiceProxySpec {
       |    }
       |  }
       |}
+			|
+			|akka {
+			|  loglevel = DEBUG
+			|}
       |
       |
     """.stripMargin
@@ -117,7 +136,7 @@ object ServiceProxySpec {
   }
     .scanComponents(classPaths)
     .initExtensions.start()
-
+	Thread.sleep(2000L)
 }
 
 class ServiceProxySpec extends TestKit(ServiceProxySpec.boot.actorSystem) with ImplicitSender
@@ -205,7 +224,6 @@ with AsyncAssertions {
       }
       w.await()
 
-
       system.actorSelection("/user/PipedServiceProxyActor/pipedserviceproxyactor1-PipedServiceProxyActor-handler").resolveOne().onComplete {
         result =>
           w {
@@ -215,6 +233,14 @@ with AsyncAssertions {
       }
       w.await()
 
+			system.actorSelection("/user/PipedServiceProxyActor/pipedserviceproxyactor2-PipeLineProcessorActor-handler").resolveOne().onComplete {
+				result =>
+					w {
+						assert(result.isSuccess)
+					}
+					w.dismiss()
+			}
+			w.await()
     }
 
 
@@ -222,7 +248,7 @@ with AsyncAssertions {
       val services = boot.cubes flatMap {
         cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty)
       }
-      assert(services.size == 4)
+      assert(services.size == 5)
 
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyroute/msg/hello")))
       within(timeout.duration) {
@@ -281,6 +307,39 @@ with AsyncAssertions {
         response.headers.find(h => h.name.equals("dummyRespHeader1")) should be(None)
         response.headers.find(h => h.name.equals("dummyRespHeader2")) should be(None)
       }
+
+			val confreq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor2/msg/hello"))
+			val pipe1req = confreq.copy(headers = HttpHeaders.RawHeader("pipe1", "go") :: confreq.headers)
+
+			(IO(Http) ! pipe1req)
+			within(timeout.duration) {
+				val response = expectMsgType[HttpResponse]
+				response.status shouldBe StatusCodes.OK
+				response.entity.asString shouldBe "Found conf handler"
+				val header = response.headers.find(h => h.name == "found")
+				header should not be None
+				header.get.value shouldBe "true"
+			}
+
+			val pipe2req = confreq.copy(uri = Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor2/pipe2"))
+			(IO(Http) ! pipe2req)
+			within(timeout.duration) {
+				val response = expectMsgType[HttpResponse]
+				response.status shouldBe StatusCodes.OK
+				response.entity.asString shouldBe "No custom header found"
+				val header = response.headers.find(h => h.name == "confhandler2")
+				header should not be None
+				header.get.value shouldBe "PayPal"
+			}
+
+			(IO(Http) ! confreq)
+			within(timeout.duration) {
+				val response = expectMsgType[HttpResponse]
+				response.status shouldBe StatusCodes.OK
+				response.entity.asString shouldBe "No custom header found"
+				response.headers.find(h => h.name == "confhandler1") shouldBe None
+				response.headers.find(h => h.name == "confhandler2") shouldBe None
+			}
 
       println("Success......")
 

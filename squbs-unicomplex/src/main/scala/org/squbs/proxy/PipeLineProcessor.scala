@@ -49,13 +49,13 @@ object PipeLineProcessor {
 }
 
 class PipeLineProcessorFactory extends ServiceProxyProcessorFactory {
-	private implicit val timeout = Timeout(3 seconds)
+	private implicit val timeout = Timeout(1 seconds)
 
 	def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
 		settings match {
 			case Some(conf) =>
 				val loader = context.actorOf(Props(classOf[PipeConfigLoader]))
-				val result = Await.result((loader ? conf).mapTo[PipeConfigInfo], 3 seconds)
+				val result = Await.result((loader ? conf).mapTo[PipeConfigInfo], 1 seconds)
 				new PipeLineProcessor(result.reqConf, result.respConf)
 			case None => PipeLineProcessor.empty
 		}
