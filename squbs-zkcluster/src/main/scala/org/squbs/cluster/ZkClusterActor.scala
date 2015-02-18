@@ -7,6 +7,8 @@ import org.squbs.cluster.JMX._
 
 import java.util
 
+import scala.util.Try
+
 /**
  * Created by zhuwang on 1/26/15.
  */
@@ -89,14 +91,19 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
   
   //the reason we put startWith into #preStart is to allow postRestart to trigger new FSM actor when recover from error
   override def preStart = {
-    register(new MembersInfoBean, prefix + membersInfoName)
-    register(new PartitionsInfoBean, prefix + partitionsInfoName)
+    Try{
+      register(new MembersInfoBean, prefix + membersInfoName)
+      register(new PartitionsInfoBean, prefix + partitionsInfoName)
+    }
     startWith(ZkClusterUninitialized, ZkClusterData(None, Set.empty[Address], Map.empty))
   }
   
   override def postStop = {
-    unregister(prefix + membersInfoName)
-    unregister(prefix + partitionsInfoName)
+    Try{
+      unregister(prefix + membersInfoName)
+      unregister(prefix + partitionsInfoName)
+    }
+    zkCluster.close
   }
   
   when(ZkClusterUninitialized)(mandatory orElse {
@@ -178,7 +185,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
         partitionsToRemove.map{case (key, members) => keyToPath(key)}
       )
       val newPartitions = zkClusterData.partitions ++ updates -- partitionsToRemove.keys
-      if (newPartitions.nonEmpty) {
+      if (updates.nonEmpty || partitionsToRemove.nonEmpty) {
         notifyPartitionDiffs(zkClusterData.partitions, newPartitions)("follower")
         // For the partitions without any members, we remove them from the memory map
         stay using zkClusterData.copy(partitions = newPartitions)

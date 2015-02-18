@@ -1,6 +1,6 @@
 package org.squbs.cluster
 
-import akka.actor.{Identify, Actor, ActorLogging, Address}
+import akka.actor._
 import akka.remote.QuarantinedEvent
 
 import scala.util.Try
@@ -38,8 +38,8 @@ class RemoteGuardian extends Actor with ActorLogging {
         case QuarantinedEvent(remote, uid) => quarantinedRemotes += remote
           if (quarantinedRemotes.size >= suicideThreshold) {
             log.error("[RemoteGuardian] cannot reach {} any more. Performing a suicide ... ", quarantinedRemotes)
-            zkCluster.close
-            context.system.shutdown
+            zkCluster.addShutdownListener(context.system.shutdown)
+            zkClusterActor ! PoisonPill
           }
         case other => // don't care
       }

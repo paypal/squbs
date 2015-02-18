@@ -1,5 +1,7 @@
 package org.squbs.cluster
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import akka.actor._
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.slf4j.Logging
@@ -24,19 +26,19 @@ case class ZkCluster(zkAddress: Address,
 
   private[this] implicit val log = logger
   private[this] var zkClient = CuratorFrameworkFactory.newClient(zkConnectionString, retryPolicy)
-  private[this] var stopped = false
-  private[this] var shutdownListener = () => {}
+  private[this] val stopped = new AtomicBoolean(false)
+  private[this] var shutdownListeners = List.empty[() => Unit]
 
   zkClient.getConnectionStateListenable.addListener(new ConnectionStateListener {
     override def stateChanged(client: CuratorFramework, newState: ConnectionState): Unit = {
       newState match {
-        case ConnectionState.LOST if !stopped =>
+        case ConnectionState.LOST if !stopped.get =>
           logger.error("[zkCluster] connection lost!")
           zkClient = CuratorFrameworkFactory.newClient(zkConnectionString, retryPolicy)
           zkClient.getConnectionStateListenable.addListener(this)
           zkClient.start
           zkClient.blockUntilConnected
-        case ConnectionState.CONNECTED =>
+        case ConnectionState.CONNECTED if !stopped.get =>
           logger.info("[zkCluster] connected send out the notification")
           initialize
           zkClusterActor ! ZkClientUpdated(zkClientWithNs)
@@ -69,11 +71,11 @@ case class ZkCluster(zkAddress: Address,
     }
   }
   
-  def setShutdownListener(listener: () => Unit) = shutdownListener = listener
+  def addShutdownListener(listener: () => Unit) = shutdownListeners = listener :: shutdownListeners
   
-  def close = {
-    shutdownListener()
-    stopped = true
+  private[cluster] def close = {
+    stopped set true
+    shutdownListeners foreach (_())
     zkClient.close
   }
 }

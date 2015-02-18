@@ -1,5 +1,7 @@
 package org.squbs.cluster
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import akka.actor._
 import akka.util.ByteString
 import com.typesafe.scalalogging.slf4j.Logging
@@ -38,7 +40,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Logging {
 //  private[cluster] var partitionsToProtect = Set.empty[ByteString]
   private[this] var segmentsToPartitions = Map.empty[String, Set[ByteString]]
   private[this] var partitionWatchers = Map.empty[String, CuratorWatcher]
-  private[this] var stopped = false
+  private[this] val stopped = new AtomicBoolean(false)
   
   def initialize = {
     segmentsToPartitions = zkClientWithNs.getChildren.forPath("/segments").map{
@@ -46,7 +48,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Logging {
     }.toMap
   }
 
-  override def postStop = stopped = true
+  override def postStop = stopped set true
   
   def watchOverSegment(segment:String) = {
     val segmentZkPath = s"/segments/${keyToPath(segment)}"
@@ -54,7 +56,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Logging {
     lazy val segmentWatcher: CuratorWatcher = new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
         event.getType match {
-          case EventType.NodeChildrenChanged if !stopped =>
+          case EventType.NodeChildrenChanged if !stopped.get =>
             self ! ZkSegmentChanged(
               segment,
               zkClientWithNs.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath)
@@ -68,7 +70,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Logging {
     lazy val partitionWatcher: CuratorWatcher = new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
         event.getType match {
-          case EventType.NodeDataChanged if !stopped =>
+          case EventType.NodeDataChanged if !stopped.get =>
             val sectors = event.getPath.split("[/]")
             val partitionKey = ByteString(pathToKey(sectors(sectors.length - 2)))
             sectors(sectors.length - 1) match {
@@ -112,7 +114,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Logging {
       Some(ZkPartitionData(partitionKey, servants, partitionSize(partitionKey), expectedSize))
     }
     catch {
-      case t: Throwable => log.error("partitions refresh failed due to unknown reason: {}", t)
+      case t: Throwable => log.error("partitions refresh failed due to unknown reason: {}", t.getMessage)
         None
     }
   }

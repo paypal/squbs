@@ -53,7 +53,6 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     }
     // add back the follower
     bringUpSystem(toBeKilled)
-    Thread.sleep(timeout.toMillis / 10)
     // leader should not change across the cluster
     zkClusterExts foreach {
       case (name, ext) => ext tell (ZkQueryLeadership, self)
@@ -80,7 +79,6 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     }
     // add back the previous leader
     bringUpSystem(toBeKilled)
-    Thread.sleep(timeout.toMillis / 10)
     // the new leader should not change across the cluster
     zkClusterExts foreach {
       case (name, ext) => ext tell (ZkQueryLeadership, self)
@@ -113,7 +111,6 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     }
     // add back the previous leader
     bringUpSystem(toBeKilled)
-    Thread.sleep(timeout.toMillis / 10)
     // now the every one should get members set up to date
     zkClusterExts foreach {
       case (name, ext) => ext tell (ZkQueryMembership, self)
@@ -137,7 +134,6 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     }
     // add back the previous leader
     bringUpSystem(leaderName)
-    Thread.sleep(timeout.toMillis / 10)
     // now the every one should get members set up to date
     zkClusterExts foreach {
       case (name, ext) => ext tell (ZkQueryMembership, self)
@@ -261,7 +257,6 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     }
     // bring up the follower
     bringUpSystem(followerName)
-    Thread.sleep(timeout.toMillis / 10)
     // the rebalanced partition should be consistent across the cluster
     zkClusterExts foreach {
       case (name, ext) =>
@@ -304,7 +299,6 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
     }
     // bring up the follower
     bringUpSystem(originalLeader)
-    Thread.sleep(timeout.toMillis / 10)
     // the rebalanced partition should be consistent across the cluster
     zkClusterExts foreach {
       case (name, ext) =>
