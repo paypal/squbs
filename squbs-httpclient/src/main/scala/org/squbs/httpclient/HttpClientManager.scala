@@ -28,22 +28,20 @@ import scala.collection.concurrent.TrieMap
 import scala.concurrent._
 import scala.util.Try
 import scala.util.Failure
-import scala.Some
 import spray.http.HttpResponse
 import scala.util.Success
 import spray.http.HttpRequest
 import org.squbs.httpclient.env.Environment
 import org.squbs.httpclient.pipeline.PipelineManager
-import org.squbs.httpclient.endpoint.Endpoint
 
 class HttpClientManagerExtension(system: ExtendedActorSystem) extends Extension {
 
   val httpClientManager = system.actorOf(Props[HttpClientManager], "httpClientManager")
+
+  val httpClientMap: TrieMap[(String, Environment), HttpClient] = TrieMap[(String, Environment), HttpClient]()
 }
 
 object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with ExtensionIdProvider {
-
-  val httpClientMap: TrieMap[(String, Environment), (Client, ActorRef)] = TrieMap[(String, Environment), (Client, ActorRef)]()
 
   override def createExtension(system: ExtendedActorSystem): HttpClientManagerExtension = new HttpClientManagerExtension(system)
 
@@ -58,7 +56,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
 
   import spray.httpx.RequestBuilding._
 
-  def handle(client: Client,
+  def handle(client: HttpClient,
              pipeline: Try[HttpRequest => Future[HttpResponse]],
              httpRequest: HttpRequest)(implicit system: ActorSystem): Future[HttpResponse] = {
     implicit val ec = system.dispatcher
@@ -76,98 +74,130 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
     }
   }
 
-  def get(client: Client, actorRef: ActorRef, uri: String)
+  def get(client: HttpClient, actorRef: ActorRef, uri: String,
+          reqSettings: RequestSettings = Configuration.defaultRequestSettings)
          (implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Get(uri))
+    val verifiedUri = verifyUri(client, uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Get(verifiedUri))
   }
 
-  def post[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: T)
+  def post[T: Marshaller](client: HttpClient, actorRef: ActorRef, uri: String, content: Option[T],
+                          reqSettings: RequestSettings = Configuration.defaultRequestSettings)
                          (implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Post(uri, content))
+    val verifiedUri = verifyUri(client, uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Post(verifiedUri, content))
   }
 
-  def put[T: Marshaller](client: Client, actorRef: ActorRef, uri: String, content: T)
+  def put[T: Marshaller](client: HttpClient, actorRef: ActorRef, uri: String, content: Option[T],
+                         reqSettings: RequestSettings = Configuration.defaultRequestSettings)
                         (implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Put(uri, content))
+    val verifiedUri = verifyUri(client, uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Put(verifiedUri, content))
   }
 
-  def head(client: Client, actorRef: ActorRef, uri: String)
+  def head(client: HttpClient, actorRef: ActorRef, uri: String,
+           reqSettings: RequestSettings = Configuration.defaultRequestSettings)
           (implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Head(uri))
+    val verifiedUri = verifyUri(client, uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Head(verifiedUri))
   }
 
-  def delete(client: Client, actorRef: ActorRef, uri: String)
+  def delete(client: HttpClient, actorRef: ActorRef, uri: String,
+             reqSettings: RequestSettings = Configuration.defaultRequestSettings)
             (implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Delete(uri))
+    val verifiedUri = verifyUri(client, uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Delete(verifiedUri))
   }
 
-  def options(client: Client, actorRef: ActorRef, uri: String)
+  def options(client: HttpClient, actorRef: ActorRef, uri: String,
+              reqSettings: RequestSettings = Configuration.defaultRequestSettings)
              (implicit system: ActorSystem): Future[HttpResponse] = {
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, actorRef), Options(uri))
+    val verifiedUri = verifyUri(client, uri)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Options(verifiedUri))
   }
+
+  private def verifyUri(client: HttpClient, uri: String) = {
+    val baseUri = Uri(client.endpoint.uri)
+    val basePath = baseUri.path.toString
+    var trimBasePath = basePath
+    if (trimBasePath != "" && trimBasePath.charAt(0) == '/') {
+      trimBasePath = trimBasePath.substring(1)
+    }
+    if (trimBasePath != "" && trimBasePath.charAt(trimBasePath.length - 1) == '/') {
+      trimBasePath = trimBasePath.substring(0, trimBasePath.length - 1)
+    }
+    (trimBasePath, uri.charAt(0)) match {
+      case ("", '/') => uri
+      case (_, '/')  => '/' + basePath + uri
+      case ("", _)   => '/' + uri
+      case (_, _)    => '/' + basePath + '/' + uri
+    }
+  }
+
 }
 
-class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupport with ActorLogging {
+class HttpClientCallerActor(client: HttpClient) extends Actor with HttpCallActorSupport with ActorLogging {
 
   implicit val system = context.system
 
   implicit val ec = system.dispatcher
 
   override def receive: Actor.Receive = {
-    case HttpClientActorMessage.Get(uri) =>
-      IO(Http) ! hostConnectorSetup(client)
-      context.become(receiveGetConnection(HttpMethods.GET, uri, client, sender()))
-    case HttpClientActorMessage.Delete(uri) =>
-      IO(Http) ! hostConnectorSetup(client)
-      context.become(receiveGetConnection(HttpMethods.DELETE, uri, client, sender()))
-    case HttpClientActorMessage.Head(uri) =>
-      IO(Http) ! hostConnectorSetup(client)
-      context.become(receiveGetConnection(HttpMethods.HEAD, uri, client, sender()))
-    case HttpClientActorMessage.Options(uri) =>
-      IO(Http) ! hostConnectorSetup(client)
-      context.become(receiveGetConnection(HttpMethods.OPTIONS, uri, client, sender()))
-    case HttpClientActorMessage.Put(uri, content, marshaller) =>
-      IO(Http) ! hostConnectorSetup(client)
-      context.become(receivePostConnection(HttpMethods.PUT, uri, content, client, sender(), marshaller))
-    case HttpClientActorMessage.Post(uri, content, marshaller) =>
-      IO(Http) ! hostConnectorSetup(client)
-      context.become(receivePostConnection(HttpMethods.POST, uri, content, client, sender(), marshaller))
+    case HttpClientActorMessage.Get(uri, reqSettings) =>
+      IO(Http) ! hostConnectorSetup(client, reqSettings)
+      context.become(receiveGetConnection(HttpMethods.GET, uri, reqSettings, client, sender()))
+    case HttpClientActorMessage.Delete(uri, reqSettings) =>
+      IO(Http) ! hostConnectorSetup(client, reqSettings)
+      context.become(receiveGetConnection(HttpMethods.DELETE, uri, reqSettings, client, sender()))
+    case HttpClientActorMessage.Head(uri, reqSettings) =>
+      IO(Http) ! hostConnectorSetup(client, reqSettings)
+      context.become(receiveGetConnection(HttpMethods.HEAD, uri, reqSettings, client, sender()))
+    case HttpClientActorMessage.Options(uri, reqSettings) =>
+      IO(Http) ! hostConnectorSetup(client, reqSettings)
+      context.become(receiveGetConnection(HttpMethods.OPTIONS, uri, reqSettings, client, sender()))
+    case HttpClientActorMessage.Put(uri, content, marshaller, reqSettings) =>
+      IO(Http) ! hostConnectorSetup(client, reqSettings)
+      context.become(receivePostConnection(HttpMethods.PUT, uri, content, reqSettings, client, sender(), marshaller))
+    case HttpClientActorMessage.Post(uri, content, marshaller, reqSettings) =>
+      IO(Http) ! hostConnectorSetup(client, reqSettings)
+      context.become(receivePostConnection(HttpMethods.POST, uri, content, reqSettings, client, sender(), marshaller))
   }
 
-  def receiveGetConnection(httpMethod: HttpMethod, uri: String, client: Client, actorRef: ActorRef): Actor.Receive = {
+  def receiveGetConnection(httpMethod: HttpMethod, uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings, httpClient: HttpClient, clientSender: ActorRef): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
-      implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
+      implicit val timeout: Timeout = httpClient.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
       httpMethod match {
         case HttpMethods.GET =>
-          get(client, connector, uri).pipeTo(actorRef)
+          get(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
           context.unbecome
         case HttpMethods.DELETE =>
-          delete(client, connector, uri).pipeTo(actorRef)
+          delete(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
           context.unbecome
         case HttpMethods.HEAD =>
-          head(client, connector, uri).pipeTo(actorRef)
+          head(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
           context.unbecome
         case HttpMethods.OPTIONS =>
-          options(client, connector, uri).pipeTo(actorRef)
+          options(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
           context.unbecome
       }
   }
 
-  def receivePostConnection[T <: AnyRef](httpMethod: HttpMethod, 
-                                         uri: String, 
-                                         content: T,
-                                         client: Client, 
-                                         actorRef: ActorRef,
-                                         marshaller: Marshaller[T]): Actor.Receive = {
+  def receivePostConnection[T](httpMethod: HttpMethod,
+                               uri: String,
+                               content: Option[T],
+                               reqSettings: RequestSettings = Configuration.defaultRequestSettings,
+                               client: HttpClient,
+                               actorRef: ActorRef,
+                               marshaller: Marshaller[T]): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
       implicit val marshallerSupport = marshaller
-      implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
+      implicit val timeout: Timeout = client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
       httpMethod match {
         case HttpMethods.POST =>
           post[T](client, connector, uri, content).pipeTo(actorRef)
@@ -179,11 +209,15 @@ class HttpClientCallerActor(client: Client) extends Actor with HttpCallActorSupp
   }
 }
 
-class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport with ActorLogging {
+class HttpClientActor(client: HttpClient) extends Actor with HttpCallActorSupport with ActorLogging {
 
   import org.squbs.httpclient.HttpClientActorMessage._
 
   private[HttpClientActor] val httpClientCallerActor = context.actorOf(Props(new HttpClientCallerActor(client)))
+
+  implicit val ec = context.dispatcher
+
+  implicit val system = context.system
 
   override def receive: Actor.Receive = {
     case msg: HttpClientActorMessage.Get =>
@@ -194,33 +228,37 @@ class HttpClientActor(client: Client) extends Actor with HttpCallActorSupport wi
       httpClientCallerActor.forward(msg)
     case msg: HttpClientActorMessage.Options =>
       httpClientCallerActor.forward(msg)
-    case msg@ HttpClientActorMessage.Put(uri, content, json4sSupport) =>
+    case msg@ HttpClientActorMessage.Put(uri, content, reqSettings, json4sSupport) =>
       httpClientCallerActor.forward(msg)
-    case msg@ HttpClientActorMessage.Post(uri, content, json4sSupport) =>
+    case msg@ HttpClientActorMessage.Post(uri, content, reqSettings, json4sSupport) =>
       httpClientCallerActor.forward(msg)
-//    case Fallback(response) =>
-//      val oldConfig = client.endpoint.config
-//      val cbConfig = oldConfig.circuitBreakerConfig.copy(fallbackHttpResponse = response)
-//      val newConfig = oldConfig.copy(circuitBreakerConfig = cbConfig)
-//      client.endpoint = Endpoint(client.endpoint.uri, newConfig)
-//      HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
-//      sender ! self
     case MarkDown =>
-      client.markDown
-      HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
+      client.status = Status.DOWN
+      HttpClientManager(system).httpClientMap.put((client.name, client.env), client)
       sender ! MarkDownSuccess
     case MarkUp =>
-      client.markUp
-      HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
+      client.status = Status.UP
+      HttpClientManager(system).httpClientMap.put((client.name, client.env), client)
       sender ! MarkUpSuccess
-    case Update(conf) =>
-      client.endpoint = Endpoint(client.endpoint.uri, conf)
-      HttpClientManager.httpClientMap.put((client.name, client.env), (client, self))
+    case UpdateConfig(conf) =>
+      client.config = Some(conf)
+      val httpClient = HttpClient(client.name, client.env, client.status, client.config, future {self})
+      HttpClientManager(system).httpClientMap.put((client.name, client.env), httpClient)
+      sender ! self
+    case UpdateSettings(settings) =>
+      client.config = Some(client.config.getOrElse(Configuration()).copy(settings = settings))
+      val httpClient = HttpClient(client.name, client.env, client.status, client.config, future {self})
+      HttpClientManager(system).httpClientMap.put((client.name, client.env), httpClient)
+      sender ! self
+    case UpdatePipeline(pipeline) =>
+      client.config = Some(client.config.getOrElse(Configuration()).copy(pipeline = pipeline))
+      val httpClient = HttpClient(client.name, client.env, client.status, client.config, future {self})
+      HttpClientManager(system).httpClientMap.put((client.name, client.env), httpClient)
       sender ! self
     case Close =>
       context.stop(httpClientCallerActor)
       context.stop(self)
-      HttpClientManager.httpClientMap.remove((client.name, client.env))
+      HttpClientManager(system).httpClientMap.remove((client.name, client.env))
       sender ! CloseSuccess
   }
 }
@@ -229,30 +267,35 @@ class HttpClientManager extends Actor {
 
   import org.squbs.httpclient.HttpClientManagerMessage._
 
-  import HttpClientManager.httpClientMap
+  implicit val ec = context.dispatcher
+
+  implicit val system = context.system
+
   override def receive: Receive = {
     case client @ Get(name, env) =>
-      httpClientMap.get((name, env)) match {
-        case Some((_, httpClientActor)) =>
-          sender ! httpClientActor
+      HttpClientManager(system).httpClientMap.get((name, env)) match {
+        case Some(httpClient) =>
+          httpClient.fActorRef.pipeTo(sender)
         case None    =>
-          val httpClientActor = context.actorOf(Props(new HttpClientActor(client)))
-          httpClientMap.put((name, env), (client, httpClientActor))
+          val hc = HttpClient(name, env)
+          val httpClientActor = context.actorOf(Props(new HttpClientActor(hc)))
+          hc.fActorRef = future{httpClientActor}
+          HttpClientManager(system).httpClientMap.put((name, env), hc)
           sender ! httpClientActor
       }
     case Delete(name, env) =>
-      httpClientMap.get((name, env)) match {
+      HttpClientManager(system).httpClientMap.get((name, env)) match {
         case Some(_) =>
-          httpClientMap.remove((name, env))
+          HttpClientManager(system).httpClientMap.remove((name, env))
           sender ! DeleteSuccess
         case None    =>
           sender ! HttpClientNotExistException(name, env)
       }
     case DeleteAll =>
-      httpClientMap.clear
+      HttpClientManager(system).httpClientMap.clear
       sender ! DeleteAllSuccess
     case GetAll =>
-      sender ! httpClientMap
+      sender ! HttpClientManager(system).httpClientMap
   }
 
 }

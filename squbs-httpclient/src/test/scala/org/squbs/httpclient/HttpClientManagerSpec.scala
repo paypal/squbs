@@ -21,7 +21,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akka.actor.{ActorRef, ActorSystem}
 import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
-import org.squbs.httpclient.dummy.{Team, Employee, DummyService, DummyServiceEndpointResolver}
+import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.HttpClientManagerMessage._
 import scala.collection.concurrent.TrieMap
 import org.squbs.httpclient.env.{Default, Environment}
@@ -36,12 +36,13 @@ import org.squbs.httpclient.HttpClientActorMessage.{MarkUpSuccess, MarkDownSucce
 import akka.actor.Status.Failure
 import scala.util.Success
 
-class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")) with FlatSpecLike with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll with DummyService{
+class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")) with FlatSpecLike
+with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll with DummyService{
 
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
   override def beforeAll {
-    EndpointRegistry.register(DummyServiceEndpointResolver)
+    EndpointRegistry(system).register(DummyServiceEndpointResolver)
     startDummyService(system)
     Thread.sleep(2000)
   }
@@ -54,26 +55,26 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
   "httpClientMap" should "be emtpy before creating any httpclients" in {
     val httpClientManager = HttpClientManager(system).httpClientManager
     httpClientManager ! GetAll
-    type HttpClientMap = TrieMap[(String, Environment), (Client, ActorRef)]
+    type HttpClientMap = TrieMap[(String, Environment), (HttpClient, ActorRef)]
     expectMsgType[HttpClientMap].isEmpty should be (true)
   }
 
-  "create a not existing httpclient" should "return ActorRef of HttpClientActor" in {
-    createHttpClient("DummyService")
-    HttpClientManager.httpClientMap.get(("DummyService", Default)) should not be (None)
-    val client = HttpClientManager.httpClientMap.get(("DummyService", Default)).get._1
-    client.name should be ("DummyService")
-    client.env should be (Default)
-    client.status should be (Status.UP)
-    client.endpoint.config.pipeline should be (None)
-    client.endpoint should be (Endpoint(dummyServiceEndpoint))
-    deleteHttpClient("DummyService")
-  }
+  //  "create a not existing httpclient" should "return ActorRef of HttpClientActor" in {
+  //    createHttpClient("DummyService")
+  //    HttpClientManager.httpClientMap.get(("DummyService", Default)) should not be (None)
+  //    val client = HttpClientManager.httpClientMap.get(("DummyService", Default)).get
+  //    client.name should be ("DummyService")
+  //    client.env should be (Default)
+  //    client.status should be (Status.UP)
+  //    client.endpoint.config.pipeline should be (None)
+  //    client.endpoint should be (Endpoint(dummyServiceEndpoint))
+  //    deleteHttpClient("DummyService")
+  //  }
 
   "get an existing httpclient" should "return ActorRef of HttpClientActor" in {
     createHttpClient("DummyService")
-    HttpClientManager.httpClientMap.get(("DummyService", Default)) should not be (None)
-    val client = HttpClientManager.httpClientMap.get(("DummyService", Default)).get._1
+    HttpClientManager(system).httpClientMap.get(("DummyService", Default)) should not be (None)
+    val client = HttpClientManager(system).httpClientMap.get(("DummyService", Default)).get
     client.name should be ("DummyService")
     client.env should be (Default)
     client.status should be (Status.UP)
@@ -85,7 +86,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
   "delete an existing httpclient" should "return DeleteHttpClientSuccess" in {
     createHttpClient("DummyService")
     deleteHttpClient("DummyService")
-    HttpClientManager.httpClientMap should be (TrieMap.empty)
+    HttpClientManager(system).httpClientMap should be (TrieMap.empty)
   }
 
   "delete a not existing httpclient" should "return HttpClientNotExistException" in {
@@ -98,20 +99,20 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
   "delete all existing httpclient" should "return DeleteAllHttpClientSuccess" in {
     createHttpClient("DummyService")
     createHttpClient("http://localhost:8080/test")
-    HttpClientManager.httpClientMap.size should be (2)
+    HttpClientManager(system).httpClientMap.size should be (2)
     val httpClientManager = HttpClientManager(system).httpClientManager
     httpClientManager ! DeleteAll
     expectMsg(DeleteAllSuccess)
-    HttpClientManager.httpClientMap should be (TrieMap.empty)
+    HttpClientManager(system).httpClientMap should be (TrieMap.empty)
   }
 
   "get all existing httpclient" should "return TrieMap[(String, Environment), (Client, ActorRef)]" in {
     createHttpClient("DummyService")
     createHttpClient("http://localhost:8080/test")
-    HttpClientManager.httpClientMap.size should be (2)
+    HttpClientManager(system).httpClientMap.size should be (2)
     val httpClientManager = HttpClientManager(system).httpClientManager
     httpClientManager ! GetAll
-    type HttpClientMap = TrieMap[(String, Environment), (Client, ActorRef)]
+    type HttpClientMap = TrieMap[(String, Environment), (HttpClient, ActorRef)]
     val httpClientMap = expectMsgType[HttpClientMap]
     httpClientMap.size should be (2)
     httpClientMap.contains(("DummyService", Default)) should be (true)
@@ -120,12 +121,30 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     deleteHttpClient("http://localhost:8080/test")
   }
 
-  "HttpClientActor send Update message" should "get the correct response" in {
+  "HttpClientActor send UpdateConfig message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
-    httpClientActorRef ! HttpClientActorMessage.Update(Configuration().copy(circuitBreakerConfig = CircuitBreakerConfiguration().copy(maxFailures = 50)))
+    httpClientActorRef ! HttpClientActorMessage.UpdateConfig(Configuration().copy(settings = Settings(circuitBreakerConfig = CircuitBreakerSettings().copy(maxFailures = 50))))
     expectMsgType[ActorRef]
-    HttpClientManager.httpClientMap.size should be (1)
-    HttpClientManager.httpClientMap.get(("DummyService", Default)).get._1.endpoint.config.circuitBreakerConfig.maxFailures should be (50)
+    HttpClientManager(system).httpClientMap.size should be (1)
+    HttpClientManager(system).httpClientMap.get(("DummyService", Default)).get.endpoint.config.settings.circuitBreakerConfig.maxFailures should be (50)
+    deleteHttpClient("DummyService")
+  }
+
+  "HttpClientActor send UpdateSettings message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.UpdateSettings(Settings(circuitBreakerConfig = CircuitBreakerSettings().copy(maxFailures = 100)))
+    expectMsgType[ActorRef]
+    HttpClientManager(system).httpClientMap.size should be (1)
+    HttpClientManager(system).httpClientMap.get(("DummyService", Default)).get.endpoint.config.settings.circuitBreakerConfig.maxFailures should be (100)
+    deleteHttpClient("DummyService")
+  }
+
+  "HttpClientActor send UpdatePipeline message" should "get the correct response" in {
+    val httpClientActorRef = createHttpClient("DummyService")
+    httpClientActorRef ! HttpClientActorMessage.UpdatePipeline(Some(DummyRequestPipeline))
+    expectMsgType[ActorRef]
+    HttpClientManager(system).httpClientMap.size should be (1)
+    HttpClientManager(system).httpClientMap.get(("DummyService", Default)).get.endpoint.config.pipeline should be (Some(DummyRequestPipeline))
     deleteHttpClient("DummyService")
   }
 
@@ -229,7 +248,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
 
   "HttpClientActor with correct endpoint send Post message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
-    httpClientActorRef ! HttpClientActorMessage.Post[Employee]("/add", newTeamMember)
+    httpClientActorRef ! HttpClientActorMessage.Post[Employee]("/add", Some(newTeamMember))
     val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
     result.entity.nonEmpty should be (true)
@@ -242,7 +261,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
   "HttpClientActor with correct endpoint send Post message and unmarshal HttpResponse" should "get the correct response" in {
     import HttpClientUnmarshal._
     val httpClientActorRef = createHttpClient("DummyService")
-    httpClientActorRef ! HttpClientActorMessage.Post[Employee]("/add", newTeamMember)
+    httpClientActorRef ! HttpClientActorMessage.Post[Employee]("/add", Some(newTeamMember))
     val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
     result.unmarshalTo[Team] should be (Success(fullTeamWithAdd))
@@ -252,7 +271,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
 
   "HttpClientActor with correct endpoint send Put message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
-    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", newTeamMember)
+    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", Some(newTeamMember))
     val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
     result.entity.nonEmpty should be (true)
@@ -264,7 +283,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
 
   "HttpClientActor with correct endpoint send Put message with spray JSON marshall support" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
-    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", newTeamMember)
+    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", Some(newTeamMember))
     val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
     result.entity.nonEmpty should be (true)
@@ -278,7 +297,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     import HttpClientUnmarshal._
     implicit val jsonFormat = TeamJsonProtocol.employeeFormat
     val httpClientActorRef = createHttpClient("DummyService")
-    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", newTeamMember, SprayJsonSupport.sprayJsonMarshaller[Employee])
+    httpClientActorRef ! HttpClientActorMessage.Put[Employee]("/add", Some(newTeamMember), SprayJsonSupport.sprayJsonMarshaller[Employee])
     val result = expectMsgType[HttpResponse]
     result.status should be (StatusCodes.OK)
     result.unmarshalTo[Team] should be (Success(fullTeamWithAdd))

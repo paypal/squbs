@@ -53,7 +53,7 @@ trait DummyService extends SimpleRoutingApp {
   ))
 
   val newTeamMember = Employee(5, "Leon", "Ma", 35, true)
-  
+
   val fullTeamJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Dennis\",\"lastName\":\"Kuang\",\"age\":35,\"male\":false}]}"
   val fullTeamWithDelJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false}]}"
   val fullTeamWithAddJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Dennis\",\"lastName\":\"Kuang\",\"age\":35,\"male\":false},{\"id\":5,\"firstName\":\"Leon\",\"lastName\":\"Ma\",\"age\":35,\"male\":true}]}"
@@ -73,7 +73,7 @@ trait DummyService extends SimpleRoutingApp {
   ))
 
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
-//  import scala.concurrent.ExecutionContext.Implicits.global
+  //  import scala.concurrent.ExecutionContext.Implicits.global
   import DummyService._
 
   def startDummyService(implicit system: ActorSystem, address: String = dummyServiceIpAddress, port: Int = dummyServicePort) {
@@ -82,23 +82,26 @@ trait DummyService extends SimpleRoutingApp {
       pathSingleSlash {
         redirect("/view", StatusCodes.Found)
       } ~
-      //get, head, options
+        //get, head, options
         path("view") {
           (get | head | options) {
             respondWithMediaType(MediaTypes.`application/json`)
             headerValueByName("req1-name") {
               value =>
-                respondWithHeader(RawHeader("res-req1-name", "res-" + value))
-                complete {
-                  fullTeam
+                respondWithHeader(RawHeader("res-req1-name", "res-" + value)) {
+                  complete {
+                    fullTeam
+                  }
                 }
             } ~
               headerValueByName("req2-name") {
                 value =>
-                  respondWithHeader(RawHeader("res-req2-name", "res-" + value))
-                  complete {
-                    fullTeam
+                  respondWithHeader(RawHeader("res-req2-name", "res-" + value)){
+                    complete {
+                      fullTeam
+                    }
                   }
+
               } ~
               complete {
                 fullTeam

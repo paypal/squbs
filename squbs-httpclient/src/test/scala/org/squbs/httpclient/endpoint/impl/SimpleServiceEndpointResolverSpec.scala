@@ -17,12 +17,15 @@
  */
 package org.squbs.httpclient.endpoint.impl
 
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpec}
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import org.scalatest.{FlatSpecLike, BeforeAndAfterAll, Matchers}
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
-import org.squbs.httpclient.{HttpClientTestKit, Configuration}
+import org.squbs.httpclient.{Settings, HttpClientTestKit, Configuration}
 import javax.net.ssl.SSLContext
 
-class SimpleServiceEndpointResolverSpec extends FlatSpec with HttpClientTestKit with Matchers with BeforeAndAfterAll{
+class SimpleServiceEndpointResolverSpec extends TestKit(ActorSystem("SimpleServiceEndpointResolverSpec"))
+  with FlatSpecLike with HttpClientTestKit with Matchers with BeforeAndAfterAll{
 
   override def afterAll = {
     clearHttpClient
@@ -31,14 +34,15 @@ class SimpleServiceEndpointResolverSpec extends FlatSpec with HttpClientTestKit 
   "SimpleServiceEndpintResolver" should "have the correct behaviour" in {
     val simpleResolver = SimpleServiceEndpointResolver("simple", Map[String, Configuration](
       "http://localhost:8080" -> Configuration(),
-      "https://localhost:8443" -> Configuration(sslContext = Some(SSLContext.getDefault))
+      "https://localhost:8443" -> Configuration(settings = Settings(sslContext = Some(SSLContext.getDefault)))
     ))
     simpleResolver.name should be ("simple")
-    EndpointRegistry.register(simpleResolver)
-    EndpointRegistry.resolve("http://localhost:8080") should be (Some(Endpoint("http://localhost:8080")))
-    EndpointRegistry.resolve("https://localhost:8443") should be (Some(Endpoint("https://localhost:8443", Configuration(sslContext = Some(SSLContext.getDefault)))))
-    EndpointRegistry.resolve("notExisting") should be (None)
-    EndpointRegistry.unregister(simpleResolver.name)
+    EndpointRegistry(system).register(simpleResolver)
+    EndpointRegistry(system).resolve("http://localhost:8080") should be (Some(Endpoint("http://localhost:8080")))
+    EndpointRegistry(system).resolve("https://localhost:8443") should be (Some(Endpoint("https://localhost:8443",
+      Configuration(settings = Settings(sslContext = Some(SSLContext.getDefault))))))
+    EndpointRegistry(system).resolve("notExisting") should be (None)
+    EndpointRegistry(system).unregister(simpleResolver.name)
   }
 
   "ExternalServiceEndpointResolver with null Configuration" should "not throw out exception" in {
