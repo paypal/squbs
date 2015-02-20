@@ -37,7 +37,11 @@ import akka.actor.Status.Failure
 import scala.util.Success
 
 class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")) with FlatSpecLike
+<<<<<<< HEAD
 with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll with DummyService{
+=======
+      with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll with DummyService{
+>>>>>>> refractoring the code SQUBS-504
 
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
@@ -126,6 +130,7 @@ with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll 
     httpClientActorRef ! HttpClientActorMessage.UpdateConfig(Configuration().copy(settings = Settings(circuitBreakerConfig = CircuitBreakerSettings().copy(maxFailures = 50))))
     expectMsgType[ActorRef]
     HttpClientManager(system).httpClientMap.size should be (1)
+<<<<<<< HEAD
     HttpClientManager(system).httpClientMap.get(("DummyService", Default)).get.endpoint.config.settings.circuitBreakerConfig.maxFailures should be (50)
     deleteHttpClient("DummyService")
   }
@@ -145,6 +150,9 @@ with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll 
     expectMsgType[ActorRef]
     HttpClientManager(system).httpClientMap.size should be (1)
     HttpClientManager(system).httpClientMap.get(("DummyService", Default)).get.endpoint.config.pipeline should be (Some(DummyRequestPipeline))
+=======
+    HttpClientManager(system).httpClientMap.get(("DummyService", Default)).get.endpoint.config.circuitBreakerConfig.maxFailures should be (50)
+>>>>>>> refractoring the code SQUBS-504
     deleteHttpClient("DummyService")
   }
 

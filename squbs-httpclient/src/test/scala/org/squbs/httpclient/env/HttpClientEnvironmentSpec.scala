@@ -23,8 +23,12 @@ import org.squbs.httpclient.HttpClientTestKit
 import org.squbs.httpclient.dummy.{DummyProdEnvironmentResolver, DummyPriorityEnvironmentResolver}
 import org.scalatest._
 
+<<<<<<< HEAD
 class HttpClientEnvironmentSpec extends TestKit(ActorSystem("HttpClientEnvironmentSpec"))
   with FlatSpecLike with HttpClientTestKit with Matchers with BeforeAndAfterEach{
+=======
+class HttpClientEnvironmentSpec extends TestKit(ActorSystem("HttpClientEnvironmentSpec")) with FlatSpecLike with HttpClientTestKit with Matchers with BeforeAndAfterEach{
+>>>>>>> refractoring the code SQUBS-504
 
   override def beforeEach = {
     EnvironmentRegistry(system).register(DummyProdEnvironmentResolver)

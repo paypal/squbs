@@ -38,6 +38,10 @@ trait HttpClientTestKit {
 
   def shutdownActorSystem = {
     IO(Http).ask(Http.CloseAll)(30.seconds).await
+<<<<<<< HEAD
     system.shutdown()
+=======
+    system.shutdown()  
+>>>>>>> refractoring the code SQUBS-504
   }
 }

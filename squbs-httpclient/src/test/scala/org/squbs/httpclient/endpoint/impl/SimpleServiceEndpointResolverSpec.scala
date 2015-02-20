@@ -24,8 +24,12 @@ import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import org.squbs.httpclient.{Settings, HttpClientTestKit, Configuration}
 import javax.net.ssl.SSLContext
 
+<<<<<<< HEAD
 class SimpleServiceEndpointResolverSpec extends TestKit(ActorSystem("SimpleServiceEndpointResolverSpec"))
   with FlatSpecLike with HttpClientTestKit with Matchers with BeforeAndAfterAll{
+=======
+class SimpleServiceEndpointResolverSpec extends TestKit(ActorSystem("SimpleServiceEndpointResolverSpec")) with FlatSpecLike with HttpClientTestKit with Matchers with BeforeAndAfterAll{
+>>>>>>> refractoring the code SQUBS-504
 
   override def afterAll = {
     clearHttpClient

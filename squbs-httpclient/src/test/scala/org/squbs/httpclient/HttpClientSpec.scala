@@ -31,7 +31,11 @@ import scala.concurrent.duration._
 import scala.util.Success
 
 class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpecLike
+<<<<<<< HEAD
 with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
+=======
+      with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
+>>>>>>> refractoring the code SQUBS-504
 
   implicit val timeout: Timeout = 3 seconds
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._

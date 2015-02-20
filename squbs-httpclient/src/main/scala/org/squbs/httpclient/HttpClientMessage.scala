@@ -18,8 +18,11 @@
 package org.squbs.httpclient
 
 import org.squbs.httpclient.env.{Default, Environment}
+<<<<<<< HEAD
 import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
 import org.squbs.proxy.SimplePipelineConfig
+=======
+>>>>>>> refractoring the code SQUBS-504
 import spray.httpx.marshalling.Marshaller
 
 object HttpClientManagerMessage {
@@ -62,6 +65,7 @@ object HttpClientActorMessage {
    */
   case class UpdateConfig(config: Configuration)
 
+<<<<<<< HEAD
   /**
    * Success => HttpClientActor
    * @param settings
@@ -74,6 +78,8 @@ object HttpClientActorMessage {
    */
   case class UpdatePipeline(pipeline: Option[SimplePipelineConfig])
 
+=======
+>>>>>>> refractoring the code SQUBS-504
   /**
    * Success => MarkDownSuccess
    */
