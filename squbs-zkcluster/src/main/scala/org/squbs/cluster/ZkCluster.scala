@@ -38,7 +38,7 @@ case class ZkCluster(zkAddress: Address,
           zkClient.getConnectionStateListenable.addListener(this)
           zkClient.start
           zkClient.blockUntilConnected
-        case ConnectionState.CONNECTED if !stopped.get =>
+        case ConnectionState.CONNECTED | ConnectionState.RECONNECTED if !stopped.get =>
           logger.info("[zkCluster] connected send out the notification")
           initialize
           zkClusterActor ! ZkClientUpdated(zkClientWithNs)
