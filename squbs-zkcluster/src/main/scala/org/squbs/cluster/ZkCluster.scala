@@ -34,15 +34,25 @@ case class ZkCluster(zkAddress: Address,
       newState match {
         case ConnectionState.LOST if !stopped.get =>
           logger.error("[zkCluster] connection lost!")
+          system.eventStream.publish(ZkLost)
           zkClient = CuratorFrameworkFactory.newClient(zkConnectionString, retryPolicy)
           zkClient.getConnectionStateListenable.addListener(this)
           zkClient.start
           zkClient.blockUntilConnected
-        case ConnectionState.CONNECTED | ConnectionState.RECONNECTED if !stopped.get =>
+        case ConnectionState.CONNECTED if !stopped.get =>
           logger.info("[zkCluster] connected send out the notification")
+          system.eventStream.publish(ZkConnected)
           initialize
           zkClusterActor ! ZkClientUpdated(zkClientWithNs)
-        case otherState => logger.warn(s"[zkCluster] connection state changed $otherState. What shall I do?")
+        case ConnectionState.SUSPENDED if !stopped.get =>
+          logger.info("[zkCluster] connection suspended suspended")
+          system.eventStream.publish(ZkSuspended)
+        case ConnectionState.RECONNECTED if !stopped.get =>
+          logger.info("[zkCluster] reconnected")
+          system.eventStream.publish(ZkReconnected)
+          zkClusterActor ! ZkClientUpdated(zkClientWithNs)
+        case otherState => 
+          logger.warn(s"[zkCluster] connection state changed $otherState. What shall I do?")
       }
     }
   })

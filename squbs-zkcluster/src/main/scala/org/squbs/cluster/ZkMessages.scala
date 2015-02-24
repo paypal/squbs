@@ -115,3 +115,11 @@ case class ZkListPartitions(address: Address)
  * @param partitionKeys
  */
 case class ZkPartitions(partitionKeys:Seq[ByteString])
+
+/**
+ * Lifecycle events corresponding to CONNECTED, RECONNECTED, SUSPENDED, LOST state in Curator Framework
+ */
+case object ZkConnected
+case object ZkReconnected
+case object ZkSuspended
+case object ZkLost
