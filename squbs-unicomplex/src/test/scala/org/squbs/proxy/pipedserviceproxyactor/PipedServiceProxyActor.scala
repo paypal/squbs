@@ -65,7 +65,7 @@ class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcess
   }
 
   object RequestHandler1 extends Handler {
-    def process(reqCtx: RequestContext)(implicit context: ExecutionContext): Future[RequestContext] = {
+    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
       val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader1", "PayPal") :: reqCtx.request.headers)
       Future {
 	      reqCtx.copy(request = newreq, attributes = reqCtx.attributes + (("key1" -> "CDC")))
@@ -74,7 +74,7 @@ class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcess
   }
 
   object RequestHandler2 extends Handler {
-    def process(reqCtx: RequestContext)(implicit context: ExecutionContext): Future[RequestContext] = {
+    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
       val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader2", "eBay") :: reqCtx.request.headers)
       Future {
 	      reqCtx.copy(request = newreq, attributes = reqCtx.attributes + (("key2" -> "CCOE")))
@@ -83,7 +83,7 @@ class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcess
   }
 
   object ResponseHandler1 extends Handler {
-    def process(reqCtx: RequestContext)(implicit context: ExecutionContext): Future[RequestContext] = {
+    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
       val newCtx = reqCtx.response match {
         case nr@NormalResponse(r) =>
           reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader1", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: r.headers)))
@@ -97,7 +97,7 @@ class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcess
   }
 
   object ResponseHandler2 extends Handler {
-    def process(reqCtx: RequestContext)(implicit context: ExecutionContext): Future[RequestContext] = {
+    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
       val newCtx = reqCtx.response match {
         case nr@NormalResponse(r) =>
           reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader2", reqCtx.attribute[String]("key2").getOrElse("Unknown")) :: r.headers)))

@@ -46,7 +46,7 @@ class ServiceProxyRoute extends RouteDefinition with WebContext {
 
 class DummyServiceProxyProcessorForRoute extends ServiceProxyProcessor with ServiceProxyProcessorFactory {
 
-  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
     val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader", "eBay") :: reqCtx.request.headers)
     val promise = Promise[RequestContext]()
     promise.success(RequestContext(request = newreq, attributes = Map("key1" -> "CCOE")))
@@ -54,7 +54,7 @@ class DummyServiceProxyProcessorForRoute extends ServiceProxyProcessor with Serv
   }
 
   //outbound processing
-  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
     val newCtx = reqCtx.response match {
       case nr@NormalResponse(r) =>
         reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: r.headers)))

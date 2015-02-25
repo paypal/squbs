@@ -138,12 +138,12 @@ class DummyServiceProxyProcessorForActor extends ServiceProxyProcessor with Serv
 
   def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = this
 
-  override def processResponseChunk(ctx : RequestContext, chunk: MessageChunk): MessageChunk = {
+  override def processResponseChunk(ctx : RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
     val raw = new String(chunk.data.toByteArray)
     MessageChunk(raw + "a")
   }
 
-  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
     reqCtx.request match {
       case HttpRequest(GET, Uri.Path("/serviceproxyactor/msg/processingRequestError"), _, _, _) =>
         val promise = Promise[RequestContext]()
@@ -157,7 +157,7 @@ class DummyServiceProxyProcessorForActor extends ServiceProxyProcessor with Serv
   }
 
   //outbound processing
-  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
     val newCtx = reqCtx.response match {
       case nr@NormalResponse(r) =>
         reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: r.headers)))

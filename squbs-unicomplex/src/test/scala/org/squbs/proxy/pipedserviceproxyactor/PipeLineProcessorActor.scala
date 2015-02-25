@@ -1,6 +1,6 @@
 package org.squbs.proxy.pipedserviceproxyactor
 
-import akka.actor.{ActorLogging, Actor}
+import akka.actor.{ActorContext, ActorLogging, Actor}
 import org.squbs.proxy.{ExceptionalResponse, NormalResponse, RequestContext, Handler}
 import org.squbs.unicomplex.WebContext
 import spray.http.StatusCodes._
@@ -26,7 +26,7 @@ class PipeLineProcessorActor extends Actor with WebContext with ActorLogging {
 }
 
 class confhandler1 extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		Future {
 			reqCtx.copy(request = reqCtx.request.copy(headers = HttpHeaders.RawHeader("confhandler1", "eBay") :: reqCtx.request.headers))
 		}
@@ -34,13 +34,13 @@ class confhandler1 extends Handler {
 }
 
 class confhandlerEmpty extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		Future { reqCtx }
 	}
 }
 
 class confhandler2 extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		Future {
 			reqCtx.copy(attributes = reqCtx.attributes + ("confhandler2" -> "PayPal"))
 		}
@@ -48,7 +48,7 @@ class confhandler2 extends Handler {
 }
 
 class confhandler3 extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext] = {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		Future {
 			val resp = (reqCtx.response, reqCtx.attribute[String]("confhandler2")) match {
 				case (NormalResponse(rp), Some(v)) =>
