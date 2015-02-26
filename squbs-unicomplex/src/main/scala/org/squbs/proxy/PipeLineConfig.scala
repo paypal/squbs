@@ -3,6 +3,7 @@ package org.squbs.proxy
 import akka.actor.{ Actor, ActorLogging}
 import com.typesafe.config.{Config, ConfigFactory, ConfigObject, ConfigValue}
 import org.squbs.unicomplex.ConfigUtil._
+import spray.http._
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.{HashMap => HMap}
@@ -11,7 +12,44 @@ import scala.util.matching.Regex
 /**
  * Created by jiamzhang on 15/2/14.
  */
-case class PipeLineFilter(headers: Map[String, String] = Map.empty, entity: Option[Regex] = None, uri: Option[Regex] = None, status: Option[Regex] = None, method: Option[Regex] = None)
+case class PipeLineFilter(headers: Map[String, String] = Map.empty, entity: Option[Regex] = None, uri: Option[Regex] = None, status: Option[Regex] = None, method: Option[Regex] = None) {
+	def fitHeader(hs: List[HttpHeader]): Boolean = {
+		headers.forall { h =>
+			hs.find(_.name == h._1) match {
+				case Some(hh) => hh.value == h._2
+				case _ => false
+			}
+		}
+	}
+
+	def fitEntity(e: HttpEntity): Boolean = {
+		entity match {
+			case Some(ent) => ent.pattern.matcher(e.asString).matches
+			case _ => true
+		}
+	}
+
+	def fitUri(u: Uri): Boolean = {
+		uri match {
+			case Some(ur) => ur.pattern.matcher(u.toRelative.toString()).matches
+			case _ => true
+		}
+	}
+
+	def fitMethod(m: HttpMethod): Boolean = {
+		method match {
+			case Some(mat) => mat.pattern.matcher(m.name.toLowerCase).matches
+			case _ => true
+		}
+	}
+
+	def fitStatus(s: StatusCode): Boolean = {
+		status match {
+			case Some(st) => st.pattern.matcher(s.intValue.toString()).matches
+			case _ => true
+		}
+	}
+}
 case object PipeLineFilter {
 	def empty = PipeLineFilter()
 }
@@ -19,28 +57,12 @@ case class PipeLineConfig(handlers: Seq[_ <: Handler], filter: PipeLineFilter) {
 	def fitRequest(ctx: RequestContext): Boolean = {
 		if (filter == PipeLineFilter.empty) true
 		else {
-			val hboolean = filter.headers.foldLeft[Boolean](true) { (l, r) =>
-				l && (ctx.request.headers.find(_.name == r._1) match {
-					case Some(h) => h.value == r._2
-					case None => false
-				})
-			}
-
-			val pboolean = filter.uri match {
-				case Some(u) => u.pattern.matcher(ctx.request.uri.toRelative.toString).matches()
-				case None => true
-			}
-
-			val eboolean = filter.entity match {
-				case Some(r) => r.pattern.matcher(ctx.request.entity.asString).matches()
-				case None => true
-			}
-
-			val mboolean = filter.method match {
-				case Some(r) => r.pattern.matcher(ctx.request.method.name.toLowerCase).matches()
-				case None => true
-			}
-			hboolean && pboolean && eboolean && mboolean
+			if (filter.fitHeader(ctx.request.headers) &&
+					filter.fitUri(ctx.request.uri) &&
+					filter.fitMethod(ctx.request.method) &&
+					filter.fitEntity(ctx.request.entity))
+				true
+			else false
 		}
 	}
 
@@ -52,23 +74,11 @@ case class PipeLineConfig(handlers: Seq[_ <: Handler], filter: PipeLineFilter) {
 				case e: ExceptionalResponse => e.response
 			}
 
-			val hboolean = filter.headers.foldLeft[Boolean](true) { (l, r) =>
-				l && (resp.headers.find(_.name == r._1) match {
-					case Some(h) => h.value == r._2
-					case None => false
-				})
-			}
-
-			val eboolean = filter.entity match {
-				case Some(r) => r.pattern.matcher(resp.entity.asString).matches()
-				case None => true
-			}
-
-			val sboolean = filter.status match {
-				case Some(r) => r.pattern.matcher(resp.status.intValue.toString).matches()
-				case None => true
-			}
-			hboolean && eboolean && sboolean
+			if (filter.fitHeader(resp.headers) &&
+					filter.fitStatus(resp.status) &&
+					filter.fitEntity(resp.entity.asString))
+				true
+			else false
 		}
 	}
 }

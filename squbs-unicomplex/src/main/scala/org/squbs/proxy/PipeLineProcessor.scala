@@ -29,8 +29,8 @@ class PipeLineProcessor(reqPipe: Seq[PipeLineConfig], respPipe: Seq[PipeLineConf
 	def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		reqPipe.find(_.fitRequest(reqCtx)) match {
 			case Some(pipeConf) =>
-				pipeConf.handlers.foldLeft(Future { reqCtx }) { (ctx, handler) => ctx flatMap (handler.process(_))}
-			case None => Future { reqCtx }
+				pipeConf.handlers.foldLeft(Future.successful(reqCtx)) { (ctx, handler) => ctx flatMap (handler.process(_))}
+			case None => Future.successful(reqCtx)
 		}
 	}
 
@@ -38,8 +38,8 @@ class PipeLineProcessor(reqPipe: Seq[PipeLineConfig], respPipe: Seq[PipeLineConf
 	def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		respPipe.find(_.fitResponse(reqCtx)) match {
 			case Some(pipeConf) =>
-				pipeConf.handlers.foldLeft(Future { reqCtx }) { (ctx, handler) => ctx.flatMap(handler.process(_))}
-			case None => Future { reqCtx }
+				pipeConf.handlers.foldLeft(Future.successful(reqCtx)) { (ctx, handler) => ctx.flatMap(handler.process(_))}
+			case None => Future.successful(reqCtx)
 		}
 	}
 }
