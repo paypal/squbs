@@ -68,6 +68,7 @@ object ActorMonitorSpec {
       ManagementFactory.getPlatformMBeanServer.getAttribute(getObjName(actorName), att).asInstanceOf[String]
     } catch {
       case e: Exception =>
+	      e.printStackTrace()
       //  println("exception => " + e.getMessage)
        null
     }
