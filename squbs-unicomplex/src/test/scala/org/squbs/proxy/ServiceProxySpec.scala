@@ -82,34 +82,8 @@ object ServiceProxySpec {
 			|        confhandlerempty = org.squbs.proxy.pipedserviceproxyactor.confhandlerEmpty
 			|      }
 			|
-			|      pipelines {
-			|        request = [confpipe1, confpipe2, emptypipe]
-			|        response = [confpipe3]
-			|
-			|        confpipe1 {
-			|          handlers = [confhandler1]
-			|          filter {
-			|            header {
-			|              pipe1 = go
-			|            }
-			|          }
-			|        }
-			|
-			|        confpipe2 {
-			|          handlers = [confhandler2]
-			|          filter {
-			|            uri = ".*/pipe2"
-			|          }
-			|        }
-			|
-			|        confpipe3 {
-			|          handlers = [confhandler3]
-			|        }
-			|
-			|        emptypipe {
-			|          handlers = [confhandlerempty]
-			|        }
-			|      }
+			|      inbound = [confhandler1, confhandler2, confhandlerempty]
+			|      outbound = [confhandler3]
 			|    }
 			|  }
       |}
@@ -267,9 +241,8 @@ with AsyncAssertions {
       }
 
 			val baseReq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor/msg/hello"))
-			val noFilterReq = baseReq
 
-      (IO(Http) ! noFilterReq)
+      (IO(Http) ! baseReq)
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status shouldBe StatusCodes.OK
@@ -277,27 +250,6 @@ with AsyncAssertions {
         response.headers.find(h => h.name.equals("dummyRespHeader1")).get.value shouldBe "CDC"
         response.headers.find(h => h.name.equals("dummyRespHeader2")).get.value shouldBe "CCOE"
       }
-
-	    val filter1req = baseReq.copy(headers = List(HttpHeaders.RawHeader("pipeline1", "eBay")))
-
-	    (IO(Http) ! filter1req)
-	    within(timeout.duration) {
-		    val response = expectMsgType[HttpResponse]
-		    response.status shouldBe StatusCodes.OK
-		    response.entity.asString shouldBe "PayPal"
-		    response.headers.find(h => h.name.equals("dummyRespHeader1")).get.value shouldBe "CDC"
-		    response.headers.find(h => h.name.equals("dummyRespHeader2")) shouldBe None
-	    }
-
-	    val filter2req = baseReq.copy(headers = List(HttpHeaders.RawHeader("pipeline2", "Paypal")))
-	    (IO(Http) ! filter2req)
-	    within(timeout.duration) {
-		    val response = expectMsgType[HttpResponse]
-		    response.status shouldBe StatusCodes.OK
-		    response.entity.asString shouldBe "eBay"
-		    response.headers.find(h => h.name.equals("dummyRespHeader1")) shouldBe None
-		    response.headers.find(h => h.name.equals("dummyRespHeader2")).get.value shouldBe "CCOE"
-	    }
 
       (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor1/msg/hello")))
       within(timeout.duration) {
@@ -309,36 +261,21 @@ with AsyncAssertions {
       }
 
 			val confreq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor2/msg/hello"))
-			val pipe1req = confreq.copy(headers = HttpHeaders.RawHeader("pipe1", "go") :: confreq.headers)
-
-			(IO(Http) ! pipe1req)
-			within(timeout.duration) {
-				val response = expectMsgType[HttpResponse]
-				response.status shouldBe StatusCodes.OK
-				response.entity.asString shouldBe "Found conf handler"
-				val header = response.headers.find(h => h.name == "found")
-				header should not be None
-				header.get.value shouldBe "true"
-			}
-
-			val pipe2req = confreq.copy(uri = Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor2/pipe2"))
-			(IO(Http) ! pipe2req)
-			within(timeout.duration) {
-				val response = expectMsgType[HttpResponse]
-				response.status shouldBe StatusCodes.OK
-				response.entity.asString shouldBe "No custom header found"
-				val header = response.headers.find(h => h.name == "confhandler2")
-				header should not be None
-				header.get.value shouldBe "PayPal"
-			}
 
 			(IO(Http) ! confreq)
 			within(timeout.duration) {
 				val response = expectMsgType[HttpResponse]
 				response.status shouldBe StatusCodes.OK
-				response.entity.asString shouldBe "No custom header found"
-				response.headers.find(h => h.name == "confhandler1") shouldBe None
-				response.headers.find(h => h.name == "confhandler2") shouldBe None
+				response.entity.asString shouldBe "Found conf handler"
+				val header1 = response.headers.find(h => h.name == "found")
+				header1 should not be None
+				header1.get.value shouldBe "true"
+				val header2 = response.headers.find(h => h.name == "confhandler2")
+				header2 should not be None
+				header2.get.value shouldBe "PayPal"
+				val header3 = response.headers.find(h => h.name == "confhandler3")
+				header3 should not be None
+				header3.get.value shouldBe "dummy"
 			}
 
       println("Success......")

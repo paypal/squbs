@@ -24,28 +24,20 @@ import akka.pattern.ask
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 
-class PipeLineProcessor(reqPipe: Seq[PipeLineConfig], respPipe: Seq[PipeLineConfig]) extends ServiceProxyProcessor {
+class PipeLineProcessor(reqPipe: PipeLineConfig, respPipe: PipeLineConfig) extends ServiceProxyProcessor {
 	//inbound processing
 	def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
-		reqPipe.find(_.fitRequest(reqCtx)) match {
-			case Some(pipeConf) =>
-				pipeConf.handlers.foldLeft(Future.successful(reqCtx)) { (ctx, handler) => ctx flatMap (handler.process(_))}
-			case None => Future.successful(reqCtx)
-		}
+		reqPipe.handlers.foldLeft(Future.successful(reqCtx)) { (ctx, handler) => ctx flatMap (handler.process(_))}
 	}
 
 	//outbound processing
 	def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
-		respPipe.find(_.fitResponse(reqCtx)) match {
-			case Some(pipeConf) =>
-				pipeConf.handlers.foldLeft(Future.successful(reqCtx)) { (ctx, handler) => ctx.flatMap(handler.process(_))}
-			case None => Future.successful(reqCtx)
-		}
+		respPipe.handlers.foldLeft(Future.successful(reqCtx)) { (ctx, handler) => ctx.flatMap(handler.process(_))}
 	}
 }
 
 object PipeLineProcessor {
-	def empty: PipeLineProcessor = new PipeLineProcessor(Seq.empty, Seq.empty)
+	def empty: PipeLineProcessor = new PipeLineProcessor(PipeLineConfig.empty, PipeLineConfig.empty)
 }
 
 class PipeLineProcessorFactory extends ServiceProxyProcessorFactory {

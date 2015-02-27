@@ -48,20 +48,8 @@ class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
 
 class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcessorFactory {
 
-	val filter1 = PipeLineFilter(Map("pipeline1" -> "eBay"))
-	val filter2 = PipeLineFilter(Map("pipeline2" -> "Paypal"))
-	val filter3 = PipeLineFilter(Map("dummyReqHeader1" -> "PayPal"))
-	val filter4 = PipeLineFilter(Map("dummyReqHeader2" -> "eBay"))
-	val filter5 = PipeLineFilter(Map("dummyReqHeader1" -> "PayPal", "dummyReqHeader2" -> "eBay"))
-	val filterEmpty = PipeLineFilter.empty
-
   def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
-    new PipeLineProcessor(Seq(PipeLineConfig(Seq(RequestHandler1), filter1),
-															PipeLineConfig(Seq(RequestHandler2), filter2),
-                              PipeLineConfig(Seq(RequestHandler1, RequestHandler2), filterEmpty)),
-	                        Seq(PipeLineConfig(Seq(ResponseHandler1, ResponseHandler2), filter5),
-		                          PipeLineConfig(Seq(ResponseHandler2), filter4),
-														  PipeLineConfig(Seq(ResponseHandler1), filter3)))
+    new PipeLineProcessor(PipeLineConfig(Seq(RequestHandler1,RequestHandler2)), PipeLineConfig(Seq(ResponseHandler1, ResponseHandler2)))
   }
 
   object RequestHandler1 extends Handler {

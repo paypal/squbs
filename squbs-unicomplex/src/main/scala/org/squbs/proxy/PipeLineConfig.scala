@@ -1,18 +1,16 @@
 package org.squbs.proxy
 
-import akka.actor.{ Actor, ActorLogging}
-import com.typesafe.config.{Config, ConfigFactory, ConfigObject, ConfigValue}
+import akka.actor.{Actor, ActorLogging}
+import com.typesafe.config.{Config, ConfigFactory, ConfigValue}
 import org.squbs.unicomplex.ConfigUtil._
-import spray.http._
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.{HashMap => HMap}
-import scala.util.matching.Regex
 
 /**
  * Created by jiamzhang on 15/2/14.
  */
-case class PipeLineFilter(headers: Map[String, String] = Map.empty, entity: Option[Regex] = None, uri: Option[Regex] = None, status: Option[Regex] = None, method: Option[Regex] = None) {
+/*case class PipeLineFilter(headers: Map[String, String] = Map.empty, entity: Option[Regex] = None, uri: Option[Regex] = None, status: Option[Regex] = None, method: Option[Regex] = None) {
 	def fitHeader(hs: List[HttpHeader]): Boolean = {
 		headers.forall { h =>
 			hs.find(_.name == h._1) match {
@@ -52,8 +50,9 @@ case class PipeLineFilter(headers: Map[String, String] = Map.empty, entity: Opti
 }
 case object PipeLineFilter {
 	def empty = PipeLineFilter()
-}
-case class PipeLineConfig(handlers: Seq[_ <: Handler], filter: PipeLineFilter) {
+}*/
+
+case class PipeLineConfig(handlers: Seq[_ <: Handler] = Seq.empty)/*, filter: PipeLineFilter) {
 	def fitRequest(ctx: RequestContext): Boolean = {
 		if (filter == PipeLineFilter.empty) true
 		else {
@@ -81,9 +80,12 @@ case class PipeLineConfig(handlers: Seq[_ <: Handler], filter: PipeLineFilter) {
 			else false
 		}
 	}
+}*/
+object PipeLineConfig {
+	val empty = PipeLineConfig()
 }
 
-case class PipeConfigInfo(reqConf: Seq[PipeLineConfig], respConf: Seq[PipeLineConfig])
+case class PipeConfigInfo(reqConf: PipeLineConfig, respConf: PipeLineConfig)
 
 class PipeConfigLoader extends Actor with ActorLogging {
 
@@ -105,44 +107,21 @@ class PipeConfigLoader extends Actor with ActorLogging {
 				case _ => // ignore
 			}
 
-			val pipeConf = conf.getOptionalConfig("pipelines").getOrElse(ConfigFactory.empty)
-			val pipeCache = new HMap[String, PipeLineConfig]()
-			pipeConf.root.foreach {
-				case (name, confObj: ConfigObject) =>
-					val handlersConf = confObj.toConfig.getOptionalStringList("handlers").getOrElse(Seq.empty[String])
-					val pipeHandlers = handlersConf.flatMap(handlerCache.get(_))
+			val reqPipe = conf.getOptionalStringList("inbound").getOrElse(Seq.empty)
+			val respPipe = conf.getOptionalStringList("outbound").getOrElse(Seq.empty)
 
-					val filterConf = confObj.toConfig.getOptionalConfig("filter").getOrElse(ConfigFactory.empty)
-					val pipeFilter = buildFilter(filterConf)
-
-					pipeCache += (name -> PipeLineConfig(pipeHandlers, pipeFilter))
-				case _ => //ignore
+			val reqPipeObj = reqPipe.flatMap { h =>
+				handlerCache.get(h)
 			}
 
-			val reqPipe = pipeConf.getOptionalStringList("request").getOrElse(Seq("*"))
-			val respPipe = pipeConf.getOptionalStringList("response").getOrElse(Seq("*"))
-
-			val reqPipeObj = reqPipe.flatMap {
-				case "*" =>
-					pipeCache.flatMap {
-						case (_, reqConf) => Some(reqConf)
-						case _ => None
-					}.toSeq
-				case n if n != "*" => pipeCache.get(n)
+			val respPipeObj = respPipe.flatMap { h =>
+				handlerCache.get(h)
 			}
 
-			val respPipeObj = respPipe.flatMap {
-				case "*" => pipeCache.flatMap {
-					case (_, respConf) => Some(respConf)
-					case _ => None
-				}
-				case n if n != "*" => pipeCache.get(n)
-			}
-
-			responder ! PipeConfigInfo(reqPipeObj, respPipeObj)
+			responder ! PipeConfigInfo(PipeLineConfig(reqPipeObj), PipeLineConfig(respPipeObj))
 	}
 
-	private def buildFilter(config: Config): PipeLineFilter = {
+	/*private def buildFilter(config: Config): PipeLineFilter = {
 		val headerFilters = config.getOptionalConfig("header").getOrElse(ConfigFactory.empty).root.flatMap {
 			case (h, hpattern: ConfigValue) => Some((h, hpattern.unwrapped.toString))
 			case _ => None
@@ -153,5 +132,5 @@ class PipeConfigLoader extends Actor with ActorLogging {
 									 config.getOptionalPattern("uri"),
 									 config.getOptionalPattern("status"),
 									 config.getOptionalPattern("method"))
-	}
+	}*/
 }
