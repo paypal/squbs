@@ -1,6 +1,6 @@
 scalaVersion in ThisBuild := "2.10.4"
 
-version in ThisBuild := "0.5.2"
+version in ThisBuild := "0.5.3-SNAPSHOT"
 
 organization in ThisBuild := "org.squbs"
 
