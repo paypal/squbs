@@ -3,7 +3,7 @@ import de.johoop.findbugs4sbt.FindBugs._
 
 name := "squbs-zkcluster"
 
-version := "0.5.2-SNAPSHOT"
+version := "0.5.2"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.2",
