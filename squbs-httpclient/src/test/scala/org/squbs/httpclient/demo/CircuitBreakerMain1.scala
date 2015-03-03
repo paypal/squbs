@@ -19,10 +19,14 @@ package org.squbs.httpclient.demo
 
 import akka.util.Timeout
 <<<<<<< HEAD
+<<<<<<< HEAD
 import org.squbs.httpclient._
 =======
 import org.squbs.httpclient.{CircuitBreakerBean, CircuitBreakerConfiguration, Configuration, HttpClientFactory}
 >>>>>>> refractoring the code SQUBS-504
+=======
+import org.squbs.httpclient._
+>>>>>>> 1. separate Settings & Pipeline from Configuration
 import scala.util.{Failure, Success}
 import akka.pattern.CircuitBreakerOpenException
 import scala.concurrent.duration._
@@ -41,6 +45,7 @@ object CircuitBreakerMain1 extends App{
 
     override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
 <<<<<<< HEAD
+<<<<<<< HEAD
       if (svcName == name) Some(Endpoint("http://localhost:8888")) else None
 =======
       svcName match {
@@ -48,11 +53,15 @@ object CircuitBreakerMain1 extends App{
         case _    => None
       }
 >>>>>>> refractoring the code SQUBS-504
+=======
+      if (svcName == name) Some(Endpoint("http://localhost:8888")) else None
+>>>>>>> 1. separate Settings & Pipeline from Configuration
     }
 
     override def name: String = "DummyService"
   })
   val httpClient = HttpClientFactory.get("DummyService").
+<<<<<<< HEAD
 <<<<<<< HEAD
     withConfig(Configuration().copy(settings = Settings(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 0),
     circuitBreakerConfig = CircuitBreakerSettings().copy(callTimeout = 1 second))))
@@ -85,6 +94,10 @@ object CircuitBreakerMain1 extends App{
 =======
     withConfig(Configuration().copy(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 0),
                                     circuitBreakerConfig = CircuitBreakerConfiguration().copy(callTimeout = 1 second)))
+=======
+    withConfig(Configuration().copy(settings = Settings(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 0),
+                                    circuitBreakerConfig = CircuitBreakerSettings().copy(callTimeout = 1 second))))
+>>>>>>> 1. separate Settings & Pipeline from Configuration
   while(true){
     Thread.sleep(2000)
 //    httpClient.get("/view") onComplete {

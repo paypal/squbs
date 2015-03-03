@@ -43,8 +43,12 @@ class SimpleServiceEndpointResolverSpec extends TestKit(ActorSystem("SimpleServi
     simpleResolver.name should be ("simple")
     EndpointRegistry(system).register(simpleResolver)
     EndpointRegistry(system).resolve("http://localhost:8080") should be (Some(Endpoint("http://localhost:8080")))
+<<<<<<< HEAD
     EndpointRegistry(system).resolve("https://localhost:8443") should be (Some(Endpoint("https://localhost:8443",
       Configuration(settings = Settings(sslContext = Some(SSLContext.getDefault))))))
+=======
+    EndpointRegistry(system).resolve("https://localhost:8443") should be (Some(Endpoint("https://localhost:8443", Configuration(settings = Settings(sslContext = Some(SSLContext.getDefault))))))
+>>>>>>> 1. separate Settings & Pipeline from Configuration
     EndpointRegistry(system).resolve("notExisting") should be (None)
     EndpointRegistry(system).unregister(simpleResolver.name)
   }

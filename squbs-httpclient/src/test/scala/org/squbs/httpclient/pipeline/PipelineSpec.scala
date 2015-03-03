@@ -123,35 +123,35 @@ class PipelineSpec extends TestKit(ActorSystem("PipelineSpec")) with FlatSpecLik
     shutdownActorSystem
   }
 
-  "Request Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestPipeline)))
-    val sendReceive = invokeToHttpResponse(httpClient)
-    sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
-    val response = sendReceive.get(request).await
-    response.status should be (StatusCodes.OK)
-    response.headers contains (RawHeader("res-req1-name", "res-req1-value"))
-  }
-
-  "Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyResponsePipeline)))
-    val sendReceive = invokeToHttpResponse(httpClient)
-    sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
-    val response = sendReceive.get(request).await
-    response.status should be (StatusCodes.OK)
-    response.headers contains (RawHeader("res1-name", "res1-value"))
-  }
-
-  "Request-Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
-    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
-    val sendReceive = invokeToHttpResponse(httpClient)
-    sendReceive.isSuccess should be (true)
-    val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
-    val response = sendReceive.get(request).await
-    response.status should be (StatusCodes.OK)
-    response.headers contains (RawHeader("res-req2-name", "res-req2-value"))
-    response.headers contains (RawHeader("res2-name", "res2-value"))
-  }
+//  "Request Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
+//    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestPipeline)))
+//    val sendReceive = invokeToHttpResponseWithoutSetup(httpClient)
+//    sendReceive.isSuccess should be (true)
+//    val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
+//    val response = sendReceive.get(request).await
+//    response.status should be (StatusCodes.OK)
+//    response.headers contains (RawHeader("res-req1-name", "res-req1-value"))
+//  }
+//
+//  "Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
+//    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyResponsePipeline)))
+//    val sendReceive = invokeToHttpResponse(httpClient)
+//    sendReceive.isSuccess should be (true)
+//    val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
+//    val response = sendReceive.get(request).await
+//    response.status should be (StatusCodes.OK)
+//    response.headers contains (RawHeader("res1-name", "res1-value"))
+//  }
+//
+//  "Request-Response Pipeline (invokeToHttpResponse)" should "have the correct behaviour" in {
+//    val httpClient = HttpClientFactory.get("DummyService").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
+//    val sendReceive = invokeToHttpResponse(httpClient)
+//    sendReceive.isSuccess should be (true)
+//    val request = HttpRequest(uri = Uri(s"$dummyServiceEndpoint/view"))
+//    val response = sendReceive.get(request).await
+//    response.status should be (StatusCodes.OK)
+//    response.headers contains (RawHeader("res-req2-name", "res-req2-value"))
+//    response.headers contains (RawHeader("res2-name", "res2-value"))
+//  }
 }
 >>>>>>> refractoring the code SQUBS-504

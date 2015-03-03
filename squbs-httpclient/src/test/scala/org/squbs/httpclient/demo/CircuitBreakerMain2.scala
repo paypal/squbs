@@ -24,10 +24,14 @@ import akka.actor.{Props, ActorRef, Actor, ActorSystem}
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointResolver, EndpointRegistry}
 import org.squbs.httpclient.env.Environment
 <<<<<<< HEAD
+<<<<<<< HEAD
 import org.squbs.httpclient.CircuitBreakerSettings
 =======
 import org.squbs.httpclient.CircuitBreakerConfiguration
 >>>>>>> refractoring the code SQUBS-504
+=======
+import org.squbs.httpclient.CircuitBreakerSettings
+>>>>>>> 1. separate Settings & Pipeline from Configuration
 import spray.http.HttpResponse
 
 object CircuitBreakerMain2 extends App{
@@ -38,6 +42,7 @@ object CircuitBreakerMain2 extends App{
   EndpointRegistry(system).register(new EndpointResolver{
 
     override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
+<<<<<<< HEAD
 <<<<<<< HEAD
       val config = Configuration().copy(settings = Settings(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 0),
         circuitBreakerConfig = CircuitBreakerSettings().copy(callTimeout = 1 second)))
@@ -51,6 +56,11 @@ object CircuitBreakerMain2 extends App{
         case _    => None
       }
 >>>>>>> refractoring the code SQUBS-504
+=======
+      val config = Configuration().copy(settings = Settings(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 0),
+        circuitBreakerConfig = CircuitBreakerSettings().copy(callTimeout = 1 second)))
+      if (svcName == name) Some(Endpoint("http://localhost:8888", config)) else None
+>>>>>>> 1. separate Settings & Pipeline from Configuration
     }
 
     override def name: String = "DummyService"

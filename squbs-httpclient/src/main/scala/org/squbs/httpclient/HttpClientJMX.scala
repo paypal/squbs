@@ -127,8 +127,12 @@ case class HttpClientBean(system: ActorSystem) extends HttpClientMXBean {
     val responsePipelines = pipelines.responsePipelines.map(_.getClass.getName).foldLeft[String](""){
       (result, each) => if (result == "") each else result + "=>" + each
     }
+<<<<<<< HEAD
     val connectionType = configuration.connectionType match {
 >>>>>>> refractoring the code SQUBS-504
+=======
+    val connectionType = configuration.settings.connectionType match {
+>>>>>>> 1. separate Settings & Pipeline from Configuration
       case Direct => "Direct"
       case AutoProxied => "AutoProxied"
       case Proxied(host, port) => s"$host:$port"
@@ -247,10 +251,14 @@ case class CircuitBreakerBean(system: ActorSystem) extends CircuitBreakerMXBean 
     val exceptionTimes = httpClient.cbMetrics.exceptionTimes
     val currentTime = System.currentTimeMillis
 <<<<<<< HEAD
+<<<<<<< HEAD
     val lastDuration = httpClient.endpoint.config.settings.circuitBreakerConfig.lastDuration.toMillis
 =======
     val lastDuration = httpClient.endpoint.config.circuitBreakerConfig.lastDuration.toMillis
 >>>>>>> refractoring the code SQUBS-504
+=======
+    val lastDuration = httpClient.endpoint.config.settings.circuitBreakerConfig.lastDuration.toMillis
+>>>>>>> 1. separate Settings & Pipeline from Configuration
     httpClient.cbMetrics.cbLastDurationCall = httpClient.cbMetrics.cbLastDurationCall.dropWhile{
       _.callTime + lastDuration <= currentTime
     }

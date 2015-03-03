@@ -87,10 +87,14 @@ class HttpClientJMXSpec extends TestKit(ActorSystem("HttpClientJMXSpec")) with F
 
   "HttpClient with configuration" should "show up the correct value of HttpClientBean" in {
 <<<<<<< HEAD
+<<<<<<< HEAD
     HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80))))
 =======
     HttpClientFactory.get("hello5").withConfig(Configuration(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80)))
 >>>>>>> refractoring the code SQUBS-504
+=======
+    HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80))))
+>>>>>>> 1. separate Settings & Pipeline from Configuration
     val markDownStatus = HttpClientFactory.get("hello6").markDown
     Await.result(markDownStatus, 3 seconds)
     HttpClientBean(system).getHttpClientInfo.size should be (2)

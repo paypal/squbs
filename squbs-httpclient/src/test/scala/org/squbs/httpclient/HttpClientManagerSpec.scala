@@ -131,6 +131,9 @@ with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll 
     expectMsgType[ActorRef]
     HttpClientManager(system).httpClientMap.size should be (1)
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1. separate Settings & Pipeline from Configuration
     HttpClientManager(system).httpClientMap.get(("DummyService", Default)).get.endpoint.config.settings.circuitBreakerConfig.maxFailures should be (50)
     deleteHttpClient("DummyService")
   }
@@ -150,9 +153,12 @@ with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll 
     expectMsgType[ActorRef]
     HttpClientManager(system).httpClientMap.size should be (1)
     HttpClientManager(system).httpClientMap.get(("DummyService", Default)).get.endpoint.config.pipeline should be (Some(DummyRequestPipeline))
+<<<<<<< HEAD
 =======
     HttpClientManager(system).httpClientMap.get(("DummyService", Default)).get.endpoint.config.circuitBreakerConfig.maxFailures should be (50)
 >>>>>>> refractoring the code SQUBS-504
+=======
+>>>>>>> 1. separate Settings & Pipeline from Configuration
     deleteHttpClient("DummyService")
   }
 
