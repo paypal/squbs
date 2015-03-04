@@ -60,20 +60,20 @@ object ServiceProxySpec {
       |
       |squbs.proxy {
       |  MyProxy1 {
-      |    processor = org.squbs.proxy.serviceproxyactor.DummyServiceProxyProcessorForActor
+      |    processor = org.squbs.proxy.serviceproxyactor.DummyProcessorForActor
       |    settings = {
       |
       |    }
       |  }
       |  MyProxy2 {
-      |    processor = org.squbs.proxy.serviceproxyroute.DummyServiceProxyProcessorForRoute
+      |    processor = org.squbs.proxy.serviceproxyroute.DummyProcessorForRoute
       |  }
       |  default {
-      |    processor = org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyProcessorFactoryForActor
+      |    processor = org.squbs.proxy.pipedserviceproxyactor.DummyPipedProcessorFactoryForActor
       |  }
 			|
 			|  confproxy {
-			|    processor = org.squbs.pipeline.impl.PipeLineProcessorFactory
+			|    processor = org.squbs.proxy.SimpleProcessorFactory
 			|    settings = {
 			|      handlers {
 			|        confhandler1 = org.squbs.proxy.pipedserviceproxyactor.confhandler1

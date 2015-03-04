@@ -67,7 +67,7 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
       """.stripMargin)
 
     ProxySettings(config).default shouldBe None
-	  ProxySettings(config).proxies shouldBe Map.empty
+	  ProxySettings(config).proxies shouldBe Map("aaa" -> ProxySetup("aaa", "org.squbs.proxy.DummyAny", None))
   }
 
   "config" should "work" in {
@@ -115,13 +115,5 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
     default.get.name shouldBe "default"
     default.get.settings shouldBe None
     default.get.factoryClazz shouldBe "org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyProcessorFactoryForActor"
-  }
-}
-
-class DummyAny
-
-class DummyProcessor extends ProcessorFactory {
-  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = {
-    return null
   }
 }
