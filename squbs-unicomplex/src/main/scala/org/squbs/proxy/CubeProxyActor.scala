@@ -50,7 +50,7 @@ class CubeProxyActor(processorName: String, target: ActorRef) extends Actor {
 	}
 
   def handleRequest(requestCtx: RequestContext, responder: ActorRef) {
-		val facade = PipeLineMgr(context.system).getPipeLine(processorName, target, responder, processorName)
+		val facade = PipeLineMgr(context.system).getPipeLine(processorName, target, responder)
 		facade ! requestCtx
   }
 }
