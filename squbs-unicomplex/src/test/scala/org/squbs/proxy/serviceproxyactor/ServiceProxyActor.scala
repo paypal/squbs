@@ -17,26 +17,21 @@
  */
 package org.squbs.proxy.serviceproxyactor
 
-import org.squbs.unicomplex.WebContext
-import akka.actor._
-import spray.http.StatusCodes._
-import spray.http._
-import spray.http.HttpMethods._
-import org.jvnet.mimepull.MIMEMessage
 import java.io.ByteArrayInputStream
-import org.apache.commons.io.IOUtils
-import scala.concurrent.{ExecutionContext, Promise, Future}
-import org.squbs.proxy.{ServiceProxyProcessorFactory, ServiceProxyProcessor, NormalResponse}
+
+import akka.actor._
 import com.typesafe.config.Config
-import spray.http.HttpRequest
+import org.apache.commons.io.IOUtils
+import org.jvnet.mimepull.MIMEMessage
+import org.squbs.pipeline.{NormalResponse, Processor, ProcessorFactory, RequestContext}
+import org.squbs.unicomplex.WebContext
 import spray.can.Http.RegisterChunkHandler
-import spray.http.Confirmed
-import org.squbs.proxy.RequestContext
-import spray.http.ChunkedRequestStart
 import spray.http.HttpHeaders.RawHeader
-import spray.http.ChunkedResponseStart
-import scala.Some
-import spray.http.HttpResponse
+import spray.http.HttpMethods._
+import spray.http.StatusCodes._
+import spray.http.{ChunkedRequestStart, ChunkedResponseStart, Confirmed, HttpRequest, HttpResponse, _}
+
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 class ServiceProxyActor extends Actor with WebContext with ActorLogging {
 
@@ -114,7 +109,7 @@ class ChunkHandler(client: ActorRef, start: ChunkedRequestStart) extends Actor w
     case chunk: MessageChunk => receivedChunk(chunk.data)
 
     case chunkEnd: ChunkedMessageEnd =>
-      import collection.JavaConverters._
+      import scala.collection.JavaConverters._
 
       val output = new collection.mutable.ArrayBuffer[Byte]
       new MIMEMessage(new ByteArrayInputStream(content.toArray), boundary).getAttachments.asScala.foreach(part => {
@@ -134,9 +129,9 @@ class ChunkHandler(client: ActorRef, start: ChunkedRequestStart) extends Actor w
 }
 
 
-class DummyServiceProxyProcessorForActor extends ServiceProxyProcessor with ServiceProxyProcessorFactory {
+class DummyProcessorForActor extends Processor with ProcessorFactory {
 
-  def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = this
+  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = this
 
   override def processResponseChunk(ctx : RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
     val raw = new String(chunk.data.toByteArray)

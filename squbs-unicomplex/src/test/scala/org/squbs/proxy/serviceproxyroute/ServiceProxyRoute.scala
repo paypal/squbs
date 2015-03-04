@@ -17,17 +17,16 @@
  */
 package org.squbs.proxy.serviceproxyroute
 
-import org.squbs.unicomplex._
-import spray.routing.Directives._
-import spray.http.HttpEntity
-import spray.http.MediaTypes._
-import scala.concurrent.{ExecutionContext, Promise, Future}
-import spray.http.HttpResponse
-import spray.http.HttpHeaders.RawHeader
-import scala.Some
-import org.squbs.proxy.{ServiceProxyProcessorFactory, ServiceProxyProcessor, NormalResponse, RequestContext}
+import akka.actor.{ActorRefFactory, ActorContext}
 import com.typesafe.config.Config
-import akka.actor.ActorContext
+import org.squbs.pipeline.{NormalResponse, Processor, ProcessorFactory, RequestContext}
+import org.squbs.unicomplex._
+import spray.http.HttpHeaders.RawHeader
+import spray.http.{HttpEntity, HttpResponse}
+import spray.http.MediaTypes._
+import spray.routing.Directives._
+
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 class ServiceProxyRoute extends RouteDefinition with WebContext {
   def route = path("msg" / Segment) {
@@ -44,7 +43,7 @@ class ServiceProxyRoute extends RouteDefinition with WebContext {
   }
 }
 
-class DummyServiceProxyProcessorForRoute extends ServiceProxyProcessor with ServiceProxyProcessorFactory {
+class DummyProcessorForRoute extends Processor with ProcessorFactory {
 
   def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
     val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader", "eBay") :: reqCtx.request.headers)
@@ -66,7 +65,7 @@ class DummyServiceProxyProcessorForRoute extends ServiceProxyProcessor with Serv
     promise.future
   }
 
-  def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = this
+  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = this
 }
 
 

@@ -17,16 +17,16 @@
  */
 package org.squbs.proxy.pipedserviceproxyactor
 
-import org.squbs.unicomplex.WebContext
-import akka.actor.{ActorContext, ActorLogging, Actor}
-import spray.http.StatusCodes._
+import akka.actor.{ActorRefFactory, Actor, ActorContext, ActorLogging}
 import com.typesafe.config.Config
+import org.squbs.pipeline._
 import org.squbs.proxy._
-import scala.concurrent.{ExecutionContext, Future}
-import spray.http.HttpRequest
-import spray.http.HttpResponse
-import org.squbs.proxy.RequestContext
+import org.squbs.unicomplex.WebContext
 import spray.http.HttpHeaders.RawHeader
+import spray.http.{HttpRequest, HttpResponse}
+import spray.http.StatusCodes._
+
+import scala.concurrent.{ExecutionContext, Future}
 
 class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
 
@@ -46,10 +46,10 @@ class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
 }
 
 
-class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcessorFactory {
+class DummyPipedProcessorFactoryForActor extends ProcessorFactory {
 
-  def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
-    new PipeLineProcessor(PipeLineConfig(Seq(RequestHandler1,RequestHandler2)), PipeLineConfig(Seq(ResponseHandler1, ResponseHandler2)))
+  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = {
+    new SimpleProcessor(SimplePipeLineConfig(Seq(RequestHandler1,RequestHandler2), Seq(ResponseHandler1, ResponseHandler2)))
   }
 
   object RequestHandler1 extends Handler {

@@ -1,12 +1,9 @@
 package org.squbs.proxy
 
-import org.scalatest.{Matchers, FlatSpecLike}
+import akka.actor.{ActorRefFactory, ActorContext}
 import com.typesafe.config.{Config, ConfigFactory}
-import org.squbs.unicomplex.ProxySettings
-import org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyProcessorFactoryForActor
-import org.squbs.proxy.serviceproxyactor.DummyServiceProxyProcessorForActor
-import org.squbs.proxy.serviceproxyroute.DummyServiceProxyProcessorForRoute
-import akka.actor.ActorContext
+import org.scalatest.{FlatSpecLike, Matchers}
+import org.squbs.pipeline.{Processor, ProcessorFactory}
 
 /**
  * Created by lma on 15-2-2.
@@ -103,13 +100,13 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
     val proxy1 = ps.find("MyProxy1")
     proxy1 shouldBe ps.find("bbb")
     proxy1.get.settings should not be None
-    proxy1.get.processorFactory shouldBe a[DummyServiceProxyProcessorForActor]
+    proxy1.get.factoryClazz shouldBe "org.squbs.proxy.serviceproxyactor.DummyServiceProxyProcessorForActor"
 
     val proxy2 = ps.find("MyProxy2")
     proxy2 should be(ps.find("aaa"))
     proxy2 should be(ps.find("fff"))
     proxy2.get.settings shouldBe None
-    proxy2.get.processorFactory shouldBe a[DummyServiceProxyProcessorForRoute]
+    proxy2.get.factoryClazz shouldBe "org.squbs.proxy.serviceproxyroute.DummyServiceProxyProcessorForRoute"
 
     val default = ps.find("default")
     default shouldBe ps.find("ccc")
@@ -117,14 +114,14 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
     default shouldBe ps.default
     default.get.name shouldBe "default"
     default.get.settings shouldBe None
-    default.get.processorFactory shouldBe a[DummyPipedServiceProxyProcessorFactoryForActor]
+    default.get.factoryClazz shouldBe "org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyProcessorFactoryForActor"
   }
 }
 
 class DummyAny
 
-class DummyProcessor extends ServiceProxyProcessorFactory {
-  def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
+class DummyProcessor extends ProcessorFactory {
+  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = {
     return null
   }
 }

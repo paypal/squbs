@@ -20,7 +20,7 @@ package org.squbs.unicomplex
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{FunSpecLike, Matchers}
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
 class ConfigUtilSpec extends FunSpecLike with Matchers {
 

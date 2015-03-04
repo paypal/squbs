@@ -73,7 +73,7 @@ object ServiceProxySpec {
       |  }
 			|
 			|  confproxy {
-			|    processor = org.squbs.proxy.PipeLineProcessorFactory
+			|    processor = org.squbs.pipeline.impl.PipeLineProcessorFactory
 			|    settings = {
 			|      handlers {
 			|        confhandler1 = org.squbs.proxy.pipedserviceproxyactor.confhandler1

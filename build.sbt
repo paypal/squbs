@@ -20,7 +20,9 @@ parallelExecution in ThisBuild := false
 
 updateOptions in ThisBuild := updateOptions.value.withConsolidatedResolution(true)
 
-lazy val `squbs-unicomplex` = project
+lazy val `squbs-pipeline` = project
+
+lazy val `squbs-unicomplex` = project dependsOn `squbs-pipeline`
 
 lazy val `squbs-zkcluster` = project
 

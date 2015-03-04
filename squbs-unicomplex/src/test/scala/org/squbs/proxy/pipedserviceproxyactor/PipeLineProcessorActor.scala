@@ -1,7 +1,7 @@
 package org.squbs.proxy.pipedserviceproxyactor
 
 import akka.actor.{ActorContext, ActorLogging, Actor}
-import org.squbs.proxy.{ExceptionalResponse, NormalResponse, RequestContext, Handler}
+import org.squbs.pipeline.{Handler, NormalResponse, ExceptionalResponse, RequestContext}
 import org.squbs.unicomplex.WebContext
 import spray.http.StatusCodes._
 import spray.http.{HttpHeaders, HttpResponse, HttpRequest}

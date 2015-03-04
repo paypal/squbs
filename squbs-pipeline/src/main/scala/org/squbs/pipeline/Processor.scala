@@ -15,19 +15,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.proxy
+package org.squbs.pipeline
+
+import akka.actor.{ActorRefFactory, ActorContext}
+import com.typesafe.config.Config
+import spray.http.{ChunkedMessageEnd, MessageChunk}
 
 import scala.concurrent.{ExecutionContext, Future}
-import spray.http.{ChunkedMessageEnd, MessageChunk}
-import com.typesafe.config.Config
-import akka.actor.ActorContext
 
 trait Handler {
 	def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
 }
 
 //Must be stateless
-trait ServiceProxyProcessor {
+trait Processor {
 
   //inbound processing
   def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
@@ -85,8 +86,6 @@ trait ServiceProxyProcessor {
 
 }
 
-trait ServiceProxyProcessorFactory {
-
-  def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor
-
+trait ProcessorFactory {
+  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor
 }
