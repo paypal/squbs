@@ -18,7 +18,7 @@
 package org.squbs.pipeline
 
 import akka.actor._
-import spray.http.{ChunkedRequestStart, HttpRequest, HttpResponse, _}
+import spray.http._
 
 
 case class RequestContext(request: HttpRequest,
@@ -41,9 +41,11 @@ case class RequestContext(request: HttpRequest,
   }
 }
 
+// $COVERAGE-OFF$
 sealed trait ProxyResponse
 
 object ResponseNotReady extends ProxyResponse
+// $COVERAGE-ON$
 
 case class ExceptionalResponse(response: HttpResponse = ExceptionalResponse.defaultErrorResponse,
 															 cause: Option[Throwable] = None,
@@ -65,6 +67,7 @@ object ExceptionalResponse {
   }
 }
 
+// $COVERAGE-OFF$
 case class AckInfo(rawAck: Any, receiver: ActorRef)
 
 sealed trait NormalResponse extends ProxyResponse {
@@ -74,6 +77,7 @@ sealed trait NormalResponse extends ProxyResponse {
 
   def update(newData: HttpResponsePart): NormalResponse
 }
+// $COVERAGE-ON$
 
 sealed abstract class BaseNormalResponse(data: HttpResponsePart) extends NormalResponse {
 
