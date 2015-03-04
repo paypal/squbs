@@ -30,8 +30,8 @@ class PipeLineProcessorActor(target: ActorRef, client: ActorRef, processor: Proc
 					case Success(result) =>
 						try {
 							val postResult = postInbound(result)
-							target ! postResult.payload
 							context.become(onResponse(postResult) orElse onPostProcess)
+							target ! postResult.payload
 						} catch {
 							case t: Throwable =>
 								log.error(t, "Error in postInbound processing")

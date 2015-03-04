@@ -1,8 +1,10 @@
 package org.squbs.pipeline
 
-import akka.actor.{Props, Actor, ActorContext, ActorSystem}
+import akka.actor._
 import akka.testkit.{TestActorRef, ImplicitSender, TestKit}
+import com.typesafe.config.{ConfigFactory, Config}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import spray.http.HttpHeaders.RawHeader
 import spray.http._
 
 import scala.concurrent.{Future, ExecutionContext}
@@ -22,11 +24,47 @@ class PipeLineProcessorSpec extends TestKit(ActorSystem("PipeLineProcessorSpecSy
 		val ctx = RequestContext(request)
 		val target = TestActorRef[DummyTarget]
 
-		val processorActor = system.actorOf(Props(classOf[PipeLineProcessorActor], target, self, DummyProcessor))
+		PipeLineMgr(system).registerProcessor("getprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
+		val processorActor = PipeLineMgr(system).getPipeLine("getprocessor", target, self)
 		processorActor ! ctx
 
 		val resp = expectMsgType[HttpResponse]
-		println(resp)
+		val hs = resp.headers
+		val pre = hs.find(_.name == "preinbound")
+		pre should not be None
+		pre.get.value shouldBe "go"
+
+		val post = hs.find(_.name == "postoutbound")
+		post should not be None
+		post.get.value shouldBe "go"
+	}
+
+	"PipeLineProcessorActor" should "handle the chunk response correctly" in {
+		val request = HttpRequest(HttpMethods.POST, Uri("http://localhost:9900/hello"))
+		val ctx = RequestContext(request)
+		val target = TestActorRef[DummyTarget]
+
+		PipeLineMgr(system).registerProcessor("myprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
+
+		val processorActor = PipeLineMgr(system).getPipeLine("myprocessor", target, self)
+		processorActor ! ctx
+
+		val resp = expectMsgType[ChunkedResponseStart]
+		expectMsgType[MessageChunk]
+		expectMsgType[MessageChunk]
+		expectMsgType[MessageChunk]
+		expectMsgType[MessageChunk]
+		expectMsgType[MessageChunk]
+		expectMsgType[ChunkedMessageEnd]
+
+		val hs = resp.response.headers
+		val pre = hs.find(_.name == "preinbound")
+		pre should not be None
+		pre.get.value shouldBe "go"
+
+		val post = hs.find(_.name == "postoutbound")
+		post should not be None
+		post.get.value shouldBe "go"
 	}
 }
 
@@ -42,6 +80,12 @@ class DummyTarget extends Actor {
 			sender() ! MessageChunk("Chunk4")
 			sender() ! MessageChunk("Chunk5")
 			sender() ! ChunkedMessageEnd()
+	}
+}
+
+class DummyProcessorFactory extends ProcessorFactory {
+	override def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = {
+		DummyProcessor
 	}
 }
 
@@ -77,6 +121,17 @@ object DummyProcessor extends Processor {
 
 	//last chance to handle output
 	override def postOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
-		ctx +> ("postoutbound", "go")
+		val newctx = ctx +> ("postoutbound", "go")
+		val hs: List[HttpHeader] = newctx.attributes.flatMap { entry =>
+			Some(HttpHeaders.RawHeader(entry._1, entry._2.toString))
+		}.toList
+
+		newctx.response match {
+			case n@NormalResponse(resp) =>
+				newctx.copy(response = n.update(resp.copy(headers = hs ++ resp.headers)))
+			case e: ExceptionalResponse =>
+				newctx.copy(response = e.copy(response = e.response.copy(headers = hs ++ e.response.headers)))
+			case _ => newctx
+		}
 	}
 }
