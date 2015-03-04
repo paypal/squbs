@@ -23,12 +23,12 @@ class PipeLineMgr extends Extension {
 		}
 	}
 
-	def getPipeLine(processorName: String, target: ActorRef, client: ActorRef, alias: String)(implicit actorRefFactory: ActorRefFactory): ActorRef = {
+	def getPipeLine(processorName: String, target: ActorRef, client: ActorRef)(implicit actorRefFactory: ActorRefFactory): ActorRef = {
 		val processor = processorMap.get(processorName) match {
 			case Some(proc) => proc
 			case _ => throw new IllegalArgumentException("No definition found for processor name:" + processorName)
 		}
-		actorRefFactory.actorOf(Props(classOf[PipeLineProcessorActor], target, client, processor), alias)
+		actorRefFactory.actorOf(Props(classOf[PipeLineProcessorActor], target, client, processor))
 	}
 }
 

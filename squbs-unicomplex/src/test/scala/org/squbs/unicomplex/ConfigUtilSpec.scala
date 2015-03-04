@@ -104,7 +104,7 @@ class ConfigUtilSpec extends FunSpecLike with Matchers {
     }
 
 		it ("should get duration for existing time") {
-			config.getOptionalDuration("timeout").get shouldBe Duration.create(2, SECONDS)
+			config.getOptionalDuration("testConfig.timeout").get shouldEqual Duration.create(20, SECONDS)
 		}
 
 		it ("should get none for non-existing duration") {
