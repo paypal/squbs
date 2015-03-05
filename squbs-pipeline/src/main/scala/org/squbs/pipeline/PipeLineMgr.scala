@@ -2,6 +2,7 @@ package org.squbs.pipeline
 
 import akka.actor._
 import com.typesafe.config.Config
+import org.slf4j.LoggerFactory
 import scala.collection.mutable.{HashMap => HMap}
 import scala.util.Try
 
@@ -10,6 +11,7 @@ import scala.util.Try
  */
 class PipeLineMgr extends Extension {
 	private val processorMap = new HMap[String, Processor]()
+	private val logger = LoggerFactory.getLogger(getClass)
 
 	def registerProcessor(name: String, processorFactory: String, config: Option[Config])(implicit actorRefFactory: ActorRefFactory) {
 		try {
@@ -19,7 +21,8 @@ class PipeLineMgr extends Extension {
 			})
 		} catch {
 			case t: Throwable =>
-				t.printStackTrace()
+				logger.error(s"Can't instantiate the processor with name of $name and factory class name of $processorFactory.", t)
+				throw t
 		}
 	}
 

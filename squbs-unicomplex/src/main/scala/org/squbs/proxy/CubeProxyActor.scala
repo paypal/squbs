@@ -28,7 +28,7 @@ import scala.util.{Failure, Success}
 import spray.http.ChunkedResponseStart
 import spray.http.HttpResponse
 
-class CubeProxyActor(processorName: String, target: ActorRef) extends Actor {
+class CubeProxyActor(processorName: String, target: ActorRef) extends Actor with ActorLogging {
 	import context.dispatcher
 
 	def receive = {
@@ -50,8 +50,14 @@ class CubeProxyActor(processorName: String, target: ActorRef) extends Actor {
 	}
 
   def handleRequest(requestCtx: RequestContext, responder: ActorRef) {
-		val facade = PipeLineMgr(context.system).getPipeLine(processorName, target, responder)
-		facade ! requestCtx
+		try {
+			val facade = PipeLineMgr(context.system).getPipeLine(processorName, target, responder)
+			facade ! requestCtx
+		} catch {
+			case t: Throwable =>
+				log.error(s"Fail to get the pipeline with processor $processorName.", t)
+				responder ! HttpResponse(StatusCodes.InternalServerError, entity = "Internal Error Occurred")
+		}
   }
 }
 
