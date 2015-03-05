@@ -596,8 +596,16 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
               (hostActor, hostActor)
             case Some(setup) =>
               val hostActor = context.actorOf(props)
-							PipeLineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
-              val proxy = context.actorOf(Props(classOf[CubeProxyActor], setup.name, hostActor), name)
+							val proxy = try {
+								PipeLineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
+								context.actorOf(Props(classOf[CubeProxyActor], setup.name, hostActor), name)
+							} catch {
+								case t: Throwable =>
+									log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
+									initMap += hostActor -> Some(Failure(t))
+									hostActor
+							}
+
               (hostActor, proxy)
           }
         case Some(pName) =>
@@ -613,9 +621,15 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
                  (hostActor, hostActor)
                case Some(setup) =>
                  val hostActor = context.actorOf(props)
-								 PipeLineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
-                 val proxy = context.actorOf(Props(classOf[CubeProxyActor], setup.name, hostActor), name)
-                 (hostActor, proxy)
+								 val proxy = try {
+									 PipeLineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
+									 context.actorOf(Props(classOf[CubeProxyActor], setup.name, hostActor), name)
+								 } catch {
+									 case t: Throwable =>
+										 log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
+										 initMap += hostActor -> Some(Failure(t))
+								 }
+								 (hostActor, proxy)
              }
            }
       }
