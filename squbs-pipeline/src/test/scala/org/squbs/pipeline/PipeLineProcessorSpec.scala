@@ -1,13 +1,13 @@
 package org.squbs.pipeline
 
 import akka.actor._
-import akka.testkit.{TestActorRef, ImplicitSender, TestKit}
-import com.typesafe.config.{ConfigFactory, Config}
+import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
+import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
-import spray.http.HttpHeaders.RawHeader
 import spray.http._
 
-import scala.concurrent.{Future, ExecutionContext}
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * Created by jiamzhang on 2015/3/4.
@@ -30,11 +30,11 @@ class PipeLineProcessorSpec extends TestKit(ActorSystem("PipeLineProcessorSpecSy
 
 		val resp = expectMsgType[HttpResponse]
 		val hs = resp.headers
-		val pre = hs.find(_.name == "preinbound")
+		val pre = hs.find(_.name == "inbound")
 		pre should not be None
 		pre.get.value shouldBe "go"
 
-		val post = hs.find(_.name == "postoutbound")
+		val post = hs.find(_.name == "outbound")
 		post should not be None
 		post.get.value shouldBe "go"
 	}
@@ -58,17 +58,60 @@ class PipeLineProcessorSpec extends TestKit(ActorSystem("PipeLineProcessorSpecSy
 		expectMsgType[ChunkedMessageEnd]
 
 		val hs = resp.response.headers
-		val pre = hs.find(_.name == "preinbound")
+		val pre = hs.find(_.name == "inbound")
 		pre should not be None
 		pre.get.value shouldBe "go"
 
-		val post = hs.find(_.name == "postoutbound")
+		val post = hs.find(_.name == "outbound")
+		post should not be None
+		post.get.value shouldBe "go"
+	}
+
+	"PipeLineProcessorActor" should "handle the confirmed chunk response correctly" in {
+		val request = HttpRequest(HttpMethods.PUT, Uri("http://localhost:9900/hello"))
+		val ctx = RequestContext(request)
+		val target = TestActorRef[DummyTarget]
+
+		PipeLineMgr(system).registerProcessor("chunkprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
+
+		val processorActor = PipeLineMgr(system).getPipeLine("chunkprocessor", target, self)
+		processorActor ! ctx
+
+		val resp = expectMsgType[Confirmed]
+		target ! DummyACK
+		expectMsgType[Confirmed]
+		target ! DummyACK
+
+		expectMsgType[Confirmed]
+		target ! DummyACK
+
+		expectMsgType[Confirmed]
+		target ! DummyACK
+
+		expectMsgType[Confirmed]
+		target ! DummyACK
+
+		expectMsgType[Confirmed]
+		target ! DummyACK
+
+		expectMsgType[ChunkedMessageEnd]
+
+		val hs = resp.messagePart.asInstanceOf[ChunkedResponseStart].response.headers
+		val pre = hs.find(_.name == "inbound")
+		pre should not be None
+		pre.get.value shouldBe "go"
+
+		val post = hs.find(_.name == "outbound")
 		post should not be None
 		post.get.value shouldBe "go"
 	}
 }
 
+case object DummyACK
+
 class DummyTarget extends Actor {
+	private val msgCache = new ListBuffer[MessageChunk]()
+
 	override def receive = {
 		case r: HttpRequest if r.method == HttpMethods.GET =>
 			sender() ! HttpResponse(StatusCodes.OK, entity = "DummyResponse")
@@ -80,6 +123,16 @@ class DummyTarget extends Actor {
 			sender() ! MessageChunk("Chunk4")
 			sender() ! MessageChunk("Chunk5")
 			sender() ! ChunkedMessageEnd()
+		case r: HttpRequest if r.method == HttpMethods.PUT =>
+			msgCache += (MessageChunk("Chunk1"), MessageChunk("Chunk2"), MessageChunk("Chunk3"), MessageChunk("Chunk4"), MessageChunk("Chunk5"))
+			sender() ! Confirmed(ChunkedResponseStart(HttpResponse(StatusCodes.OK, entity = "DummyConfirmedStart")), DummyACK)
+
+		case DummyACK =>
+			if (msgCache.size > 0) {
+				sender() ! Confirmed(msgCache.remove(0), DummyACK)
+			} else {
+				sender() ! ChunkedMessageEnd()
+			}
 	}
 }
 
@@ -105,19 +158,6 @@ object DummyProcessor extends Processor {
 		Future {
 			reqCtx +> ("outbound", "go")
 		}
-
-	//first chance to handle input request before processing request
-	override def preInbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
-		ctx +> ("preinbound", "go")
-	}
-
-	override def postInbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
-		ctx +> ("postinbound", "go")
-	}
-
-	override def preOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
-		ctx +> ("preoutbound", "go")
-	}
 
 	//last chance to handle output
 	override def postOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
