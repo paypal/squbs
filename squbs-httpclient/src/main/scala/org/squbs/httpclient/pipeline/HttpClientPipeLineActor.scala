@@ -18,18 +18,19 @@ class HttpClientPipeLineActor(endpoint: Endpoint, pipelineConf: SimplePipeLineCo
 		case request: HttpRequest =>
 			val responder = sender()
 			val targetAgent = context.actorOf(Props(classOf[HttpClientPipeLineTargetActor], target))
-			val pipeproxy = PipeLineMgr(context.system).getPipeLine(new SimpleProcessor((pipelineConf)), targetAgent, responder)
+			val pipeproxy = PipeLineMgr(context.system).getPipeLine(new SimpleProcessor(pipelineConf), targetAgent, responder)
 			context.watch(pipeproxy)
 			pipeproxy ! RequestContext(request) +> endpoint
 
 		case request: ChunkedRequestStart =>
 			val responder = sender()
 			val targetAgent = context.actorOf(Props(classOf[HttpClientPipeLineTargetActor], target))
-			val pipeproxy = PipeLineMgr(context.system).getPipeLine(new SimpleProcessor((pipelineConf)), targetAgent, responder)
+			val pipeproxy = PipeLineMgr(context.system).getPipeLine(new SimpleProcessor(pipelineConf), targetAgent, responder)
 			context.watch(pipeproxy)
 			pipeproxy ! RequestContext(request.request, true) +> endpoint
 
-		case Terminated =>
+		case Terminated(actor) =>
+			log.debug("The actor " + actor + " is terminated, stop myself")
 			context.stop(self)
 	}
 }
