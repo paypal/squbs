@@ -25,7 +25,7 @@ class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNor
   
   override def afterAll = shutdownCluster
   
-  "ZkCluster" should "elect the leader and sync with or the members" in {
+  "ZkCluster" should "elect the leader and sync with all the members" in {
     // query the leader from any member
     val anyMember = pickASystemRandomly()
     zkClusterExts(anyMember) tell (ZkQueryLeadership, self)
