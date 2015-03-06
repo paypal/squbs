@@ -29,20 +29,15 @@ import spray.http.ChunkedResponseStart
 import spray.http.HttpResponse
 
 class CubeProxyActor(processorName: String, target: ActorRef) extends Actor with ActorLogging {
-	import context.dispatcher
 
 	def receive = {
 		case req: HttpRequest =>
 			val client = sender()
-			Future {
-				handleRequest(RequestContext(req), client)
-			}
+			handleRequest(RequestContext(req), client)
 
 		case crs: ChunkedRequestStart =>
 			val client = sender()
-			Future {
-				handleRequest(RequestContext(crs.request, true), client)
-			}
+			handleRequest(RequestContext(crs.request, true), client)
 
 		//let underlying actor handle it
 		case other =>

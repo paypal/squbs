@@ -18,17 +18,19 @@
 package org.squbs.httpclient
 
 import java.beans.ConstructorProperties
-import scala.beans.BeanProperty
-import javax.management.{ObjectName, MXBean}
-import org.squbs.httpclient.endpoint.{EndpointResolver, EndpointRegistry}
-import org.squbs.httpclient.pipeline.EmptyPipeline
-import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
-import java.util
-import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
-import scala.collection.JavaConversions._
 import java.lang.management.ManagementFactory
+import java.util
+import javax.management.{MXBean, ObjectName}
+
 import akka.actor.ActorRef
 import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
+import org.squbs.httpclient.endpoint.{EndpointRegistry, EndpointResolver}
+import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
+import org.squbs.proxy.SimplePipeLineConfig
+import spray.can.Http.ClientConnectionType.{AutoProxied, Direct, Proxied}
+
+import scala.beans.BeanProperty
+import scala.collection.JavaConversions._
 
 object HttpClientJMX {
 
@@ -94,10 +96,10 @@ object HttpClientBean extends HttpClientMXBean {
   val httpClientBean = "org.squbs.unicomplex:type=HttpClientInfo"
 
   override def getHttpClientInfo: java.util.List[HttpClientInfo] = {
-    val httpClientsFromFactory = HttpClientFactory.httpClientMap.values
-    val httpClientsFromManager = HttpClientManager.httpClientMap.values map {value: (Client, ActorRef) => value._1}
-    (httpClientsFromFactory ++ httpClientsFromManager).toList map {mapToHttpClientInfo(_)}
-  }
+		val httpClientsFromFactory = HttpClientFactory.httpClientMap.values
+		val httpClientsFromManager = HttpClientManager.httpClientMap.values map {value: (Client, ActorRef) => value._1}
+		(httpClientsFromFactory ++ httpClientsFromManager).toList map {mapToHttpClientInfo(_)}
+	}
 
   def mapToHttpClientInfo(httpClient: Client) = {
     val name = httpClient.name
@@ -105,9 +107,9 @@ object HttpClientBean extends HttpClientMXBean {
     val endpoint = httpClient.endpoint.uri
     val status = httpClient.status.toString
     val configuration = httpClient.endpoint.config
-    val pipelines = configuration.pipeline.getOrElse(EmptyPipeline)
-    val requestPipelines = pipelines.requestPipelines.map(_.getClass.getName).foldLeft[String]("")((result, each) => if (result == "") each else result + "=>" + each)
-    val responsePipelines = pipelines.responsePipelines.map(_.getClass.getName).foldLeft[String]("")((result, each) => if (result == "") each else result + "=>" + each)
+    val pipelines = configuration.pipeline.getOrElse(SimplePipeLineConfig.empty)
+    val requestPipelines = pipelines.reqPipe.map(_.getClass.getName).foldLeft("")((l, r) => if (l == "") r else l + "=>" + r)
+    val responsePipelines = pipelines.respPipe.map(_.getClass.getName).foldLeft("")((l, r) => if (l == "") r else l + "=>" + r)
     val connectionType = configuration.connectionType match {
       case Direct => "Direct"
       case AutoProxied => "AutoProxied"
