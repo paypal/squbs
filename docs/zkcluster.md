@@ -60,6 +60,11 @@ eventStream.subscribe(self, ZkConnected.getClass)
 eventStream.subscribe(self, ZkReconnected.getClass)
 eventStream.subscribe(self, ZkLost.getClass)
 eventStream.subscribe(self, ZkSuspended.getClass)
+
+// quit the cluster
+zkCluster(system).zkClusterActor ! PoisonPill
+// add listener when quitting the cluster
+zkCluster(system).addShutdownListener(listener: () => Unit)
 ~~~
 
 Design
