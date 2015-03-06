@@ -54,9 +54,17 @@ case ZkPartitionRemoval(partitionKey:ByteString) =>
 zkClusterActor ! ZkListPartitions(address: Address)
 case ZkPartitions(partitionKeys:Seq[ByteString]) =>
 
-// monitor the zookeeper client restore
-zkClusterActor ! ZkMonitorClient
-case ZkClientUpdated(zkClient:CuratorFramework) =>
+// monitor the zookeeper connection state
+val eventStream = context.system.eventStream
+eventStream.subscribe(self, ZkConnected.getClass)
+eventStream.subscribe(self, ZkReconnected.getClass)
+eventStream.subscribe(self, ZkLost.getClass)
+eventStream.subscribe(self, ZkSuspended.getClass)
+
+// quit the cluster
+zkCluster(system).zkClusterActor ! PoisonPill
+// add listener when quitting the cluster
+zkCluster(system).addShutdownListener(listener: () => Unit)
 ~~~
 
 Design
