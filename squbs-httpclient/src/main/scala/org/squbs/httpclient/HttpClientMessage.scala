@@ -18,16 +18,8 @@
 package org.squbs.httpclient
 
 import org.squbs.httpclient.env.{Default, Environment}
-<<<<<<< HEAD
-<<<<<<< HEAD
 import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
 import org.squbs.proxy.SimplePipelineConfig
-=======
->>>>>>> refractoring the code SQUBS-504
-=======
-import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
-import org.squbs.httpclient.pipeline.Pipeline
->>>>>>> 1. separate Settings & Pipeline from Configuration
 import spray.httpx.marshalling.Marshaller
 
 object HttpClientManagerMessage {
@@ -69,23 +61,7 @@ object HttpClientActorMessage {
    * @param config
    */
   case class UpdateConfig(config: Configuration)
-<<<<<<< HEAD
-=======
 
-  /**
-   * Success => HttpClientActor
-   * @param settings
-   */
-  case class UpdateSettings(settings: Settings)
-
-  /**
-   * Success => HttpClientActor
-   * @param pipeline
-   */
-  case class UpdatePipeline(pipeline: Option[Pipeline])
->>>>>>> 1. separate Settings & Pipeline from Configuration
-
-<<<<<<< HEAD
   /**
    * Success => HttpClientActor
    * @param settings
@@ -98,8 +74,6 @@ object HttpClientActorMessage {
    */
   case class UpdatePipeline(pipeline: Option[SimplePipelineConfig])
 
-=======
->>>>>>> refractoring the code SQUBS-504
   /**
    * Success => MarkDownSuccess
    */
@@ -159,15 +133,9 @@ object HttpClientActorMessage {
    * @param marshaller
    * @tparam T
    */
-<<<<<<< HEAD
   case class Post[T](uri: String, content: Option[T],
                      marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
                      requestSettings: RequestSettings = Configuration.defaultRequestSettings)
-=======
-  case class Post[T <: AnyRef](uri: String, content: T,
-                               marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
-                               requestSettings: RequestSettings = Configuration.defaultRequestSettings)
->>>>>>> 1. separate Settings & Pipeline from Configuration
 
   /**
    * Success => HttpResponse
@@ -177,13 +145,7 @@ object HttpClientActorMessage {
    * @param marshaller
    * @tparam T
    */
-<<<<<<< HEAD
   case class Put[T](uri: String, content: Option[T],
                     marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
                     requestSettings: RequestSettings = Configuration.defaultRequestSettings)
-=======
-  case class Put[T <: AnyRef](uri: String, content: T,
-                              marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
-                              requestSettings: RequestSettings = Configuration.defaultRequestSettings)
->>>>>>> 1. separate Settings & Pipeline from Configuration
 }
