@@ -9,7 +9,7 @@ import scala.util.Try
 /**
  * Created by jiamzhang on 2015/3/3.
  */
-class PipeLineMgr extends Extension {
+class PipelineMgr extends Extension {
 	private val processorMap = new HMap[String, Processor]()
 	private val logger = LoggerFactory.getLogger(getClass)
 
@@ -26,19 +26,19 @@ class PipeLineMgr extends Extension {
 		}
 	}
 
-	def getPipeLine(processorName: String, target: ActorRef, client: ActorRef)(implicit actorRefFactory: ActorRefFactory): ActorRef = {
+	def getPipeline(processorName: String, target: ActorRef, client: ActorRef)(implicit actorRefFactory: ActorRefFactory): ActorRef = {
 		val processor = processorMap.get(processorName) match {
 			case Some(proc) => proc
 			case _ => throw new IllegalArgumentException("No definition found for processor name:" + processorName)
 		}
-		actorRefFactory.actorOf(Props(classOf[PipeLineProcessorActor], target, client, processor))
+		actorRefFactory.actorOf(Props(classOf[PipelineProcessorActor], target, client, processor))
 	}
 }
 
-object PipeLineMgr extends ExtensionId[PipeLineMgr] with ExtensionIdProvider {
-	override def lookup = PipeLineMgr
+object PipelineMgr extends ExtensionId[PipelineMgr] with ExtensionIdProvider {
+	override def lookup = PipelineMgr
 
-	override def createExtension(system: ExtendedActorSystem) = new PipeLineMgr
+	override def createExtension(system: ExtendedActorSystem) = new PipelineMgr
 
 	implicit class RichConfig(config: Config) {
 		def getOptionalConfig(path: String): Option[Config] = Try(config.getConfig(path)).toOption

@@ -207,7 +207,7 @@ with AsyncAssertions {
       }
       w.await()
 
-			system.actorSelection("/user/PipedServiceProxyActor/pipedserviceproxyactor2-PipeLineProcessorActor-handler").resolveOne().onComplete {
+			system.actorSelection("/user/PipedServiceProxyActor/pipedserviceproxyactor2-PipelineProcessorActor-handler").resolveOne().onComplete {
 				result =>
 					w {
 						assert(result.isSuccess)

@@ -28,7 +28,7 @@ import akka.agent.Agent
 import akka.pattern._
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
-import org.squbs.pipeline.PipeLineMgr
+import org.squbs.pipeline.PipelineMgr
 import org.squbs.proxy.{CubeProxyActor, ProxySettings}
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import spray.can.Http
@@ -597,7 +597,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
             case Some(setup) =>
               val hostActor = context.actorOf(props)
 							val proxy = try {
-								PipeLineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
+								PipelineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
 								context.actorOf(Props(classOf[CubeProxyActor], setup.name, hostActor), name)
 							} catch {
 								case t: Throwable =>
@@ -622,7 +622,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
                case Some(setup) =>
                  val hostActor = context.actorOf(props)
 								 val proxy = try {
-									 PipeLineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
+									 PipelineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
 									 context.actorOf(Props(classOf[CubeProxyActor], setup.name, hostActor), name)
 								 } catch {
 									 case t: Throwable =>

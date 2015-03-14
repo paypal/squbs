@@ -11,7 +11,7 @@ import scala.concurrent.{Future, ExecutionContext}
 /**
  * Created by jiamzhang on 15/2/16.
  */
-class PipeLineProcessorActor extends Actor with WebContext with ActorLogging {
+class PipelineProcessorActor extends Actor with WebContext with ActorLogging {
 
 	def receive = {
 		case req: HttpRequest =>

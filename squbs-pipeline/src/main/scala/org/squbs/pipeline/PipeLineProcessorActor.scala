@@ -9,7 +9,7 @@ import scala.util.{Failure, Success}
 /**
  * Created by jiamzhang on 2015/3/3.
  */
-class PipeLineProcessorActor(target: ActorRef, client: ActorRef, processor: Processor) extends Actor with ActorLogging with Stash {
+class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Processor) extends Actor with ActorLogging with Stash {
 
   import context.dispatcher
   import processor._
