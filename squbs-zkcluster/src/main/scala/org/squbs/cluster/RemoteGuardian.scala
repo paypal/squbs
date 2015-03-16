@@ -29,6 +29,7 @@ class RemoteGuardian extends Actor with ActorLogging {
   
   override def receive: Receive = {
     case QuarantinedEvent(remote, uid) => // first QuarantinedEvent arrived
+      log.error("[RemoteGuardian] get Quarantined event for remote {} uid {}", remote, uid)
       quarantinedRemotes += remote
       zkClusterActor ! ZkQueryMembership
       context become {
