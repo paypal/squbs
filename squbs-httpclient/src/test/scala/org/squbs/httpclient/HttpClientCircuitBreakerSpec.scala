@@ -26,11 +26,7 @@ import org.squbs.httpclient.dummy.DummyServiceEndpointResolver
 import scala.concurrent.duration._
 
 class HttpClientCircuitBreakerSpec extends TestKit(ActorSystem("HttpClientCircuitBreakerSpec")) with FlatSpecLike
-<<<<<<< HEAD
 with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAfterAll with BeforeAndAfterEach{
-=======
-      with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAfterAll with BeforeAndAfterEach{
->>>>>>> refractoring the code SQUBS-504
 
   implicit val timeout: Timeout = 3 seconds
 

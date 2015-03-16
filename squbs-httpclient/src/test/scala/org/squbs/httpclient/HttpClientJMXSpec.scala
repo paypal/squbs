@@ -29,19 +29,11 @@ import spray.can.Http.ClientConnectionType.Proxied
 import spray.can.client.{ClientConnectionSettings, HostConnectorSettings}
 
 import scala.concurrent.duration._
-<<<<<<< HEAD
 import scala.concurrent.{Future, Await}
 import spray.http.{HttpResponse, StatusCodes}
 
 class HttpClientJMXSpec extends TestKit(ActorSystem("HttpClientJMXSpec")) with FlatSpecLike with Matchers
 with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndAfterAll{
-=======
-import scala.concurrent.Await
-import spray.http.StatusCodes
-
-class HttpClientJMXSpec extends TestKit(ActorSystem("HttpClientJMXSpec")) with FlatSpecLike with Matchers
-      with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndAfterAll{
->>>>>>> refractoring the code SQUBS-504
 
   implicit val timeout: Timeout = 3 seconds
 
@@ -77,24 +69,12 @@ class HttpClientJMXSpec extends TestKit(ActorSystem("HttpClientJMXSpec")) with F
     HttpClientFactory.get("hello4")
     HttpClientBean(system).getHttpClientInfo.size should be (2)
     Await.result(httpClient.readyFuture, 3 seconds)
-<<<<<<< HEAD
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello3") should be (HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler","org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler"))
-=======
-    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello3") should be (HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler$$anonfun$processRequest$1","org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler$$anonfun$processResponse$1"))
->>>>>>> refractoring the code SQUBS-504
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello4") should be (HttpClientInfo("hello4", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient with configuration" should "show up the correct value of HttpClientBean" in {
-<<<<<<< HEAD
-<<<<<<< HEAD
     HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80))))
-=======
-    HttpClientFactory.get("hello5").withConfig(Configuration(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80)))
->>>>>>> refractoring the code SQUBS-504
-=======
-    HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80))))
->>>>>>> 1. separate Settings & Pipeline from Configuration
     val markDownStatus = HttpClientFactory.get("hello6").markDown
     Await.result(markDownStatus, 3 seconds)
     HttpClientBean(system).getHttpClientInfo.size should be (2)
@@ -122,11 +102,7 @@ class HttpClientJMXSpec extends TestKit(ActorSystem("HttpClientJMXSpec")) with F
   "HttpClient Circuit Breaker Info" should "show up some value of CircuitBreakerBean" in {
     CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.size should be (0)
     EndpointRegistry(system).register(DummyServiceEndpointResolver)
-<<<<<<< HEAD
     val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/view")
-=======
-    val response = HttpClientFactory.get("DummyService").get("/view")
->>>>>>> refractoring the code SQUBS-504
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.size should be (1)

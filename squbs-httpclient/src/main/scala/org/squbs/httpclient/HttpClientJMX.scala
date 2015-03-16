@@ -18,10 +18,7 @@
 package org.squbs.httpclient
 
 import java.beans.ConstructorProperties
-<<<<<<< HEAD
 import org.squbs.proxy.SimplePipelineConfig
-=======
->>>>>>> refractoring the code SQUBS-504
 import org.squbs.unicomplex.JMX
 
 import scala.beans.BeanProperty
@@ -110,7 +107,6 @@ case class HttpClientBean(system: ActorSystem) extends HttpClientMXBean {
     val endpoint = httpClient.endpoint.uri
     val status = httpClient.status.toString
     val configuration = httpClient.endpoint.config
-<<<<<<< HEAD
     val pipelines = configuration.pipeline.getOrElse(SimplePipelineConfig.empty)
     val requestPipelines = pipelines.reqPipe.map(_.getClass.getName).foldLeft[String](""){
       (result, each) => if (result == "") each else result + "=>" + each
@@ -119,20 +115,6 @@ case class HttpClientBean(system: ActorSystem) extends HttpClientMXBean {
       (result, each) => if (result == "") each else result + "=>" + each
     }
     val connectionType = configuration.settings.connectionType match {
-=======
-    val pipelines = configuration.pipeline.getOrElse(EmptyPipeline)
-    val requestPipelines = pipelines.requestPipelines.map(_.getClass.getName).foldLeft[String](""){
-      (result, each) => if (result == "") each else result + "=>" + each
-    }
-    val responsePipelines = pipelines.responsePipelines.map(_.getClass.getName).foldLeft[String](""){
-      (result, each) => if (result == "") each else result + "=>" + each
-    }
-<<<<<<< HEAD
-    val connectionType = configuration.connectionType match {
->>>>>>> refractoring the code SQUBS-504
-=======
-    val connectionType = configuration.settings.connectionType match {
->>>>>>> 1. separate Settings & Pipeline from Configuration
       case Direct => "Direct"
       case AutoProxied => "AutoProxied"
       case Proxied(host, port) => s"$host:$port"
@@ -201,7 +183,6 @@ case class EnvironmentResolverBean(system: ActorSystem) extends EnvironmentResol
 // $COVERAGE-OFF$
 case class CircuitBreakerInfo @ConstructorProperties(
   Array("name", "status", "lastDurationConfig", "successTimes", "fallbackTimes", "failFastTimes", "exceptionTimes",
-<<<<<<< HEAD
     "lastDurationErrorRate", "lastDurationFailFastRate", "lastDurationExceptionRate"))(
                                                                                         @BeanProperty name: String,
                                                                                         @BeanProperty status: String,
@@ -214,20 +195,6 @@ case class CircuitBreakerInfo @ConstructorProperties(
                                                                                         @BeanProperty lastDurationFailFastRate: String,
                                                                                         @BeanProperty lastDurationExceptionRate: String
                                                                                         )
-=======
-        "lastDurationErrorRate", "lastDurationFailFastRate", "lastDurationExceptionRate"))(
-    @BeanProperty name: String,
-    @BeanProperty status: String,
-    @BeanProperty lastDurationConfig: String,
-    @BeanProperty successTimes: Long,
-    @BeanProperty fallbackTimes: Long,
-    @BeanProperty failFastTimes: Long,
-    @BeanProperty exceptionTimes: Long,
-    @BeanProperty lastDurationErrorRate: String,
-    @BeanProperty lastDurationFailFastRate: String,
-    @BeanProperty lastDurationExceptionRate: String
-  )
->>>>>>> refractoring the code SQUBS-504
 
 // $COVERAGE-ON$
 
@@ -250,15 +217,7 @@ case class CircuitBreakerBean(system: ActorSystem) extends CircuitBreakerMXBean 
     val failFastTimes = httpClient.cbMetrics.failFastTimes
     val exceptionTimes = httpClient.cbMetrics.exceptionTimes
     val currentTime = System.currentTimeMillis
-<<<<<<< HEAD
-<<<<<<< HEAD
     val lastDuration = httpClient.endpoint.config.settings.circuitBreakerConfig.lastDuration.toMillis
-=======
-    val lastDuration = httpClient.endpoint.config.circuitBreakerConfig.lastDuration.toMillis
->>>>>>> refractoring the code SQUBS-504
-=======
-    val lastDuration = httpClient.endpoint.config.settings.circuitBreakerConfig.lastDuration.toMillis
->>>>>>> 1. separate Settings & Pipeline from Configuration
     httpClient.cbMetrics.cbLastDurationCall = httpClient.cbMetrics.cbLastDurationCall.dropWhile{
       _.callTime + lastDuration <= currentTime
     }
@@ -284,10 +243,6 @@ case class CircuitBreakerBean(system: ActorSystem) extends CircuitBreakerMXBean 
       case _ => df.format(lastDurationException * 1.0 / lastDurationTotal)
     }
     CircuitBreakerInfo(name, status, lastDurationConfig, successTimes, fallbackTimes, failFastTimes, exceptionTimes,
-<<<<<<< HEAD
       lastDurationErrorRate, lastDurationFailFastRate, lastDurationExceptionRate)
-=======
-                       lastDurationErrorRate, lastDurationFailFastRate, lastDurationExceptionRate)
->>>>>>> refractoring the code SQUBS-504
   }
 }
