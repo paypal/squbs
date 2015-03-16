@@ -12,19 +12,19 @@ import org.squbs.pipeline.{PipelineMgr, RequestContext}
 /**
  * Created by jiamzhang on 2015/3/6.
  */
-class HttpClientPipeLineActor(endpoint: Endpoint, pipelineConf: SimplePipelineConfig, target: SendReceive) extends Actor with ActorLogging {
+class HttpClientPipelineActor(endpoint: Endpoint, pipelineConf: SimplePipelineConfig, target: SendReceive) extends Actor with ActorLogging {
 
 	override def receive = {
 		case request: HttpRequest =>
 			val responder = sender()
-			val targetAgent = context.actorOf(Props(classOf[HttpClientPipeLineTargetActor], target))
+			val targetAgent = context.actorOf(Props(classOf[HttpClientPipelineTargetActor], target))
 			val pipeproxy = PipelineMgr(context.system).getPipeline(new SimpleProcessor(pipelineConf), targetAgent, responder)
 			context.watch(pipeproxy)
 			pipeproxy ! RequestContext(request) +> endpoint
 
 		case request: ChunkedRequestStart =>
 			val responder = sender()
-			val targetAgent = context.actorOf(Props(classOf[HttpClientPipeLineTargetActor], target))
+			val targetAgent = context.actorOf(Props(classOf[HttpClientPipelineTargetActor], target))
 			val pipeproxy = PipelineMgr(context.system).getPipeline(new SimpleProcessor(pipelineConf), targetAgent, responder)
 			context.watch(pipeproxy)
 			pipeproxy ! RequestContext(request.request, true) +> endpoint
@@ -35,7 +35,7 @@ class HttpClientPipeLineActor(endpoint: Endpoint, pipelineConf: SimplePipelineCo
 	}
 }
 
-class HttpClientPipeLineTargetActor(target: SendReceive) extends Actor with ActorLogging {
+class HttpClientPipelineTargetActor(target: SendReceive) extends Actor with ActorLogging {
 	import context._
 	private var client: ActorRef = ActorRef.noSender
 

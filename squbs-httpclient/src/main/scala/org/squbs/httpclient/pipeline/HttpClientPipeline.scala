@@ -91,7 +91,7 @@ trait PipelineManager{
     Try{
       val futurePipeline = pipelining(client)
       val pipeline = Await.result(futurePipeline, connTimeout)
-			val pipelineActor = system.actorOf(Props(classOf[HttpClientPipeLineActor], client.endpoint, pipeConfig, pipeline))
+			val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.endpoint, pipeConfig, pipeline))
 			client.status match {
         case Status.DOWN =>
           throw HttpClientMarkDownException(client.name, client.env)
@@ -108,7 +108,7 @@ trait PipelineManager{
     val pipeConfig = client.endpoint.config.pipeline.getOrElse(SimplePipelineConfig.empty)
     implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
-		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipeLineActor], client.endpoint, pipeConfig, pipeline))
+		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.endpoint, pipeConfig, pipeline))
     Try{
       client.status match {
         case Status.DOWN =>
