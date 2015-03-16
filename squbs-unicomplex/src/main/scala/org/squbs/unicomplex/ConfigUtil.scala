@@ -17,13 +17,15 @@
  */
 package org.squbs.unicomplex
 
-import scala.collection.JavaConversions._
-import com.typesafe.config.{ConfigException, Config}
-import scala.collection.mutable
 import java.net.NetworkInterface
 
-import scala.concurrent.duration.{FiniteDuration, TimeUnit, Duration}
+import com.typesafe.config.{Config, ConfigException}
+
+import scala.collection.JavaConversions._
+import scala.collection.mutable
+import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
+import scala.util.matching.Regex
 
 object ConfigUtil {
 
@@ -87,6 +89,10 @@ object ConfigUtil {
       import scala.concurrent.duration._
       Try(Duration.create(underlying.getDuration(path, MILLISECONDS), MILLISECONDS)).toOption
     }
+
+		def getOptionalPattern(path: String): Option[Regex] = {
+			Try(new Regex(underlying.getString(path))).toOption
+		}
   }
 
   def ipv4 = {

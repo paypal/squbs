@@ -15,57 +15,58 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.proxy
+package org.squbs.pipeline
+
+import akka.actor.{ActorRefFactory, ActorContext}
+import com.typesafe.config.Config
+import spray.http.{ChunkedMessageEnd, MessageChunk}
 
 import scala.concurrent.{ExecutionContext, Future}
-import spray.http.{ChunkedMessageEnd, MessageChunk}
-import com.typesafe.config.Config
-import akka.actor.ActorContext
 
 trait Handler {
-	def process(reqCtx: RequestContext): Future[RequestContext]
+	def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
 }
 
 //Must be stateless
-trait ServiceProxyProcessor {
+trait Processor {
 
   //inbound processing
-  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext]
+  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
 
   //outbound processing
-  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext): Future[RequestContext]
+  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
 
   //first chance to handle input request before processing request
-  def preInbound(ctx: RequestContext): RequestContext = {
+  def preInbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
     ctx
   }
 
-  def postInbound(ctx: RequestContext): RequestContext = {
+  def postInbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
     ctx
   }
 
-  def preOutbound(ctx: RequestContext): RequestContext = {
+  def preOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
     ctx
   }
 
   //last chance to handle output
-  def postOutbound(ctx: RequestContext): RequestContext = {
+  def postOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
     ctx
   }
 
-  def processResponseChunk(ctx: RequestContext, chunk: MessageChunk): MessageChunk = {
+  def processResponseChunk(ctx: RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
     chunk
   }
 
-  def processResponseChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd): ChunkedMessageEnd = {
+  def processResponseChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd)(implicit context: ActorContext): ChunkedMessageEnd = {
     chunkEnd
   }
 
-  def processRequestChunk(ctx: RequestContext, chunk: MessageChunk): MessageChunk = {
+  def processRequestChunk(ctx: RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
     chunk
   }
 
-  def processRequestChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd): ChunkedMessageEnd = {
+  def processRequestChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd)(implicit context: ActorContext): ChunkedMessageEnd = {
     chunkEnd
   }
 
@@ -85,8 +86,6 @@ trait ServiceProxyProcessor {
 
 }
 
-trait ServiceProxyProcessorFactory {
-
-  def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor
-
+trait ProcessorFactory {
+  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor
 }

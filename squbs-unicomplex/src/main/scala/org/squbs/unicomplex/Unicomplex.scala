@@ -26,18 +26,16 @@ import akka.actor.SupervisorStrategy._
 import akka.actor.{Extension => AkkaExtension, _}
 import akka.agent.Agent
 import akka.pattern._
-import com.typesafe.config.{ConfigObject, Config}
+import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
+import org.squbs.pipeline.PipelineMgr
+import org.squbs.proxy.{CubeProxyActor, ProxySettings}
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import spray.can.Http
 
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
-import org.squbs.proxy.{ProxySetup, ServiceProxyProcessorFactory, DefaultServiceProxyFactory}
-import scala.collection.JavaConversions._
-import org.slf4j.{Logger, LoggerFactory}
-import ConfigUtil._
+import scala.util.{Failure, Try}
 
 class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
 
@@ -535,74 +533,10 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
 }
 
-case class ProxySettings(
-                          default: Option[ProxySetup],
-                          proxies: Map[String, ProxySetup]
-                          ) {
-
-  def find(name: String): Option[ProxySetup] = {
-    if(name.equals("default")) default
-    else proxies.get(name)
-  }
-}
-
-object ProxySettings {
-
-  protected val logger: Logger = LoggerFactory.getLogger(getClass.getName)
-
-  def apply(globalConfig: Config): Option[ProxySettings] = {
-    Try {
-      globalConfig.getConfig("squbs.proxy")
-    } match {
-      case Failure(t) => None // no proxy config specified
-      case Success(config) => parse(config)
-    }
-  }
-
-  def parse(config: Config): Option[ProxySettings] = {
-
-    val proxyMap = mutable.Map.empty[String, ProxySetup]
-    var default: Option[ProxySetup] = None
-    config.root().foreach {
-      case (key, cv: ConfigObject) =>
-        try {
-          val subCfg = cv.toConfig
-          val aliasNames = subCfg.getOptionalStringList("aliases") getOrElse Seq.empty[String]
-          val processorClassName = subCfg.getString("processor")
-          val processorFactory = Class.forName(processorClassName, true, getClass.getClassLoader).newInstance().asInstanceOf[ServiceProxyProcessorFactory]
-          val settings = subCfg.getOptionalConfig("settings")
-          val proxySetup = ProxySetup(key, processorFactory, settings)
-          aliasNames :+ key foreach {
-            name =>
-              proxyMap.get(name) match {
-                case None => proxyMap.put(name, proxySetup)
-                case Some(value) => logger.warn("Alias name is already used by proxy: " + value.name)
-              }
-          }
-          if (key.equals("default")) {
-            default = Some(proxySetup)
-          }
-        } catch {
-          case t: Throwable =>
-            logger.error("Error in parsing proxy setting", t)
-        }
-      case other => logger.error("Unknown proxy settings: " + other)
-    }
-
-    if (proxyMap.size == 0 && default.isEmpty) {
-      None
-    } else {
-      Some(ProxySettings(default, proxyMap.toMap))
-    }
-  }
-
-}
-
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
   val cubeName = self.path.name
-
-  val proxySettings = ProxySettings(context.system.settings.config)
+  val proxySettings = ProxySettings(context.system)
 
   class CubeStateBean extends CubeStateMXBean {
 
@@ -656,13 +590,22 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       // Caution: The serviceActor may be the cubeActor in case of no proxy, or the proxy in case there is a proxy.
       val (cubeActor, serviceActor) = proxyName match {
         case None =>
-          proxySettings.flatMap(_.default) match {
+          proxySettings.default match {
             case None =>
               val hostActor = context.actorOf(props, name) // no default proxy specified
               (hostActor, hostActor)
             case Some(setup) =>
               val hostActor = context.actorOf(props)
-              val proxy = DefaultServiceProxyFactory.create(setup, hostActor, name)
+							val proxy = try {
+								PipelineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
+								context.actorOf(Props(classOf[CubeProxyActor], setup.name, hostActor), name)
+							} catch {
+								case t: Throwable =>
+									log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
+									initMap += hostActor -> Some(Failure(t))
+									hostActor
+							}
+
               (hostActor, proxy)
           }
         case Some(pName) =>
@@ -670,7 +613,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
              val hostActor = context.actorOf(props, name) // disable proxy
              (hostActor, hostActor)
            }else{
-             proxySettings.flatMap(_.find(pName)) match {
+             proxySettings.find(pName) match {
                case None =>
                   val hostActor = context.actorOf(props, name)
                  // Mark this service startup as failed.
@@ -678,8 +621,16 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
                  (hostActor, hostActor)
                case Some(setup) =>
                  val hostActor = context.actorOf(props)
-                 val proxy = DefaultServiceProxyFactory.create(setup, hostActor, name)
-                 (hostActor, proxy)
+								 val proxy = try {
+									 PipelineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
+									 context.actorOf(Props(classOf[CubeProxyActor], setup.name, hostActor), name)
+								 } catch {
+									 case t: Throwable =>
+										 log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
+										 initMap += hostActor -> Some(Failure(t))
+										 hostActor
+								 }
+								 (hostActor, proxy)
              }
            }
       }

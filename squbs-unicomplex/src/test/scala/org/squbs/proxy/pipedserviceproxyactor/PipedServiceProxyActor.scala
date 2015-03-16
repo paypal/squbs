@@ -17,87 +17,82 @@
  */
 package org.squbs.proxy.pipedserviceproxyactor
 
-import org.squbs.unicomplex.WebContext
-import akka.actor.{ActorContext, ActorLogging, Actor}
-import spray.http.StatusCodes._
+import akka.actor.{ActorRefFactory, Actor, ActorContext, ActorLogging}
 import com.typesafe.config.Config
+import org.squbs.pipeline._
 import org.squbs.proxy._
-import scala.concurrent.{Promise, Future}
-import spray.http.HttpRequest
-import spray.http.HttpResponse
-import org.squbs.proxy.RequestContext
+import org.squbs.unicomplex.WebContext
 import spray.http.HttpHeaders.RawHeader
-import org.squbs.proxy.PipelineConfig
-import scala.Some
+import spray.http.{HttpRequest, HttpResponse}
+import spray.http.StatusCodes._
+
+import scala.concurrent.{ExecutionContext, Future}
 
 class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
 
   def receive = {
-
-
     case req: HttpRequest =>
       val customHeader1 = req.headers.find(h => h.name.equals("dummyReqHeader1"))
       val customHeader2 = req.headers.find(h => h.name.equals("dummyReqHeader2"))
-      val output = (customHeader1, customHeader2) match {
-        case (Some(h1), Some(h2)) => h1.value + h2.value
-        case other => "No custom header found"
+      val response = (customHeader1, customHeader2) match {
+        case (Some(h1), Some(h2)) => HttpResponse(OK, h1.value + h2.value, List(h1, h2))
+				case (Some(h1), None) => HttpResponse(OK, h1.value, List(h1))
+				case (None, Some(h2)) => HttpResponse(OK, h2.value, List(h2))
+        case other => HttpResponse(OK, "No custom header found")
       }
-      sender() ! HttpResponse(OK, output)
 
-
+      sender() ! response
   }
-
 }
 
 
-class DummyPipedServiceProxyProcessorFactoryForActor extends ServiceProxyProcessorFactory {
+class DummyPipedProcessorFactoryForActor extends ProcessorFactory {
 
-  def create(settings: Option[Config])(implicit context: ActorContext): ServiceProxyProcessor = {
-    new PipedServiceProxyProcessor(PipelineConfig(Seq(RequestHandler1, RequestHandler2), Seq(ResponseHandler1, ResponseHandler2)))
+  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = {
+    new SimpleProcessor(SimplePipelineConfig(Seq(RequestHandler1,RequestHandler2), Seq(ResponseHandler1, ResponseHandler2)))
   }
 
   object RequestHandler1 extends Handler {
-    def process(reqCtx: RequestContext): Future[RequestContext] = {
+    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
       val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader1", "PayPal") :: reqCtx.request.headers)
-      Promise.successful(reqCtx.copy(request = newreq, attributes = reqCtx.attributes + (("key1" -> "CDC")))).future
+      Future {
+	      reqCtx.copy(request = newreq, attributes = reqCtx.attributes + (("key1" -> "CDC")))
+      }
     }
   }
 
   object RequestHandler2 extends Handler {
-    def process(reqCtx: RequestContext): Future[RequestContext] = {
+    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
       val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader2", "eBay") :: reqCtx.request.headers)
-      Promise.successful(reqCtx.copy(request = newreq, attributes = reqCtx.attributes + (("key2" -> "CCOE")))).future
+      Future {
+	      reqCtx.copy(request = newreq, attributes = reqCtx.attributes + (("key2" -> "CCOE")))
+      }
     }
   }
 
   object ResponseHandler1 extends Handler {
-    def process(reqCtx: RequestContext): Future[RequestContext] = {
-
+    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
       val newCtx = reqCtx.response match {
         case nr@NormalResponse(r) =>
           reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader1", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: r.headers)))
 
         case other => reqCtx
       }
-      Promise.successful(newCtx).future
+      Future {
+	      newCtx
+      }
     }
   }
 
   object ResponseHandler2 extends Handler {
-    def process(reqCtx: RequestContext): Future[RequestContext] = {
+    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
       val newCtx = reqCtx.response match {
         case nr@NormalResponse(r) =>
           reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader2", reqCtx.attribute[String]("key2").getOrElse("Unknown")) :: r.headers)))
 
         case other => reqCtx
       }
-      Promise.successful(newCtx).future
+      Future { newCtx }
     }
   }
-
-
 }
-
-
-
-
