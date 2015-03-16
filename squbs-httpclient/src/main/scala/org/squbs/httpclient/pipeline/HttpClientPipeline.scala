@@ -17,9 +17,10 @@
  */
 package org.squbs.httpclient.pipeline
 
+import org.squbs.proxy.SimplePipeLineConfig
 import spray.httpx.{UnsuccessfulResponseException, PipelineException}
 import spray.client.pipelining._
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{Props, ActorRef, ActorSystem}
 import spray.httpx.unmarshalling._
 import scala.concurrent.{Await, Future}
 import org.squbs.httpclient._
@@ -33,32 +34,6 @@ import javax.net.ssl.SSLContext
 import spray.io.ClientSSLEngineProvider
 import org.squbs.httpclient.endpoint.Endpoint
 import org.slf4j.LoggerFactory
-
-trait Pipeline {
-  def requestPipelines: Seq[RequestTransformer]
-
-  def responsePipelines: Seq[ResponseTransformer]
-}
-
-trait PipelineHandler {
-  def processRequest: RequestTransformer
-
-  def processResponse: ResponseTransformer
-}
-
-trait RequestPipelineHandler extends PipelineHandler {
-  override def processResponse: ResponseTransformer = {httpResponse => httpResponse}
-}
-
-trait ResponsePipelineHandler extends PipelineHandler {
-  override def processRequest: RequestTransformer = {httpRequest => httpRequest}
-}
-
-object EmptyPipeline extends Pipeline {
-  override def responsePipelines: Seq[ResponseTransformer] = Seq.empty[ResponseTransformer]
-
-  override def requestPipelines: Seq[RequestTransformer] = Seq.empty[RequestTransformer]
-}
 
 object HttpClientUnmarshal{
 
@@ -111,47 +86,37 @@ trait PipelineManager{
 
   def invokeToHttpResponse(client: Client)(implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
     implicit val ec = system.dispatcher
-    val pipelines = client.endpoint.config.pipeline.getOrElse(EmptyPipeline)
-    val reqPipelines = pipelines.requestPipelines
-    val resPipelines = pipelines.responsePipelines
+    val pipeConfig = client.endpoint.config.pipeline.getOrElse(SimplePipeLineConfig.empty)
     val connTimeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout
     Try{
       val futurePipeline = pipelining(client)
       val pipeline = Await.result(futurePipeline, connTimeout)
-      (reqPipelines, resPipelines, client.status) match {
-        case (_, _, Status.DOWN) =>
+			val pipelineActor = system.actorOf(Props(classOf[HttpClientPipeLineActor], client.endpoint, pipeConfig, pipeline))
+			client.status match {
+        case Status.DOWN =>
           throw HttpClientMarkDownException(client.name, client.env)
-        case (Seq(), Seq(), _) =>
-          pipeline
-        case (Seq(), _: Seq[ResponseTransformer], _) =>
-          pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _)
-        case (_: Seq[RequestTransformer], Seq(), _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline
-        case (_: Seq[RequestTransformer], _: Seq[ResponseTransformer], _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _)
-      }
+        case _ =>
+					import scala.concurrent.duration._
+					implicit val timeout = Timeout(3 seconds)
+					r: HttpRequest => (pipelineActor ? r).mapTo[HttpResponse]
+			}
     }
   }
 
   def invokeToHttpResponseWithoutSetup(client: Client, actorRef: ActorRef)(implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
     implicit val ec = system.dispatcher
-    val pipelines = client.endpoint.config.pipeline.getOrElse(EmptyPipeline)
-    val reqPipelines = pipelines.requestPipelines
-    val resPipelines = pipelines.responsePipelines
+    val pipeConfig = client.endpoint.config.pipeline.getOrElse(SimplePipeLineConfig.empty)
     implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
+		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipeLineActor], client.endpoint, pipeConfig, pipeline))
     Try{
-      (reqPipelines, resPipelines, client.status) match {
-        case (_, _, Status.DOWN) =>
+      client.status match {
+        case Status.DOWN =>
           throw HttpClientMarkDownException(client.name, client.env)
-        case (Seq(), Seq(), _) =>
-          pipeline
-        case (Seq(), _: Seq[ResponseTransformer], _) =>
-          pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _)
-        case (_: Seq[RequestTransformer], Seq(), _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline
-        case (_: Seq[RequestTransformer], _: Seq[ResponseTransformer], _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _)
+        case _ =>
+					import scala.concurrent.duration._
+					implicit val timeout = Timeout(3 seconds)
+					r: HttpRequest => (pipelineActor ? r).mapTo[HttpResponse]
       }
     }
   }

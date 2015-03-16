@@ -44,6 +44,34 @@ case class RequestContext(request: HttpRequest,
 // $COVERAGE-OFF$
 sealed trait ProxyResponse
 
+object ProxyResponse {
+
+	implicit class PipeCopyHelper(response: ProxyResponse) {
+		def +(header: HttpHeader): ProxyResponse = {
+			response match {
+				case n@NormalResponse(resp) =>
+					n.update(resp.copy(headers = header :: resp.headers))
+				case e: ExceptionalResponse =>
+					e.copy(response = e.response.copy(headers = header :: e.response.headers))
+				case other => other
+			}
+		}
+
+		def -(header: HttpHeader): ProxyResponse = {
+			response match {
+				case n@NormalResponse(resp) =>
+					val originHeaders = resp.headers.groupBy[Boolean](_.name == header.name)
+					n.update(resp.copy(headers = originHeaders.get(false).getOrElse(List.empty)))
+				case e: ExceptionalResponse =>
+					val originHeaders = e.response.headers.groupBy[Boolean](_.name == header.name)
+					e.copy(response = e.response.copy(headers = originHeaders.get(false).getOrElse(List.empty)))
+				case other => other
+			}
+		}
+	}
+
+}
+
 object ResponseNotReady extends ProxyResponse
 // $COVERAGE-ON$
 

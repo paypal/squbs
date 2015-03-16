@@ -17,26 +17,39 @@
  */
 package org.squbs.httpclient.pipeline.impl
 
-import org.scalatest.{Matchers, FlatSpec}
+import akka.actor.{ActorSystem, Props}
+import akka.testkit.{ImplicitSender, TestKit}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.squbs.pipeline.RequestContext
 import spray.http.{BasicHttpCredentials, HttpRequest, OAuth2BearerToken}
 
-class RequestCredentialsHandlerSpec extends FlatSpec with Matchers {
+class RequestCredentialsHandlerSpec extends TestKit(ActorSystem("RequestCredentialsHandlerSpecSys")) with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll {
 
-  "RequestCredentialsHandler" should "support OAuth2BearerToken" in {
-    val httpRequest = HttpRequest()
-    val handler = RequestCredentialsHandler(OAuth2BearerToken("test123"))
-    val updateHttpRequest = handler.processRequest(httpRequest)
-    updateHttpRequest.headers.length should be (1)
-    updateHttpRequest.headers.head.name should be ("Authorization")
-    updateHttpRequest.headers.head.value should be ("Bearer test123")
-  }
+	override def afterAll {
+		system.shutdown()
+	}
 
-  "RequestCredentialsHandler" should "support BasicHttpCredentials" in {
-    val httpRequest = HttpRequest()
-    val handler = RequestCredentialsHandler(BasicHttpCredentials("username", "password"))
-    val updateHttpRequest = handler.processRequest(httpRequest)
-    updateHttpRequest.headers.length should be (1)
-    updateHttpRequest.headers.head.name should be ("Authorization")
-    updateHttpRequest.headers.head.value should be ("Basic dXNlcm5hbWU6cGFzc3dvcmQ=")
-  }
+	"RequestCredentialsHandler" should "support OAuth2BearerToken" in {
+		val httpRequest = HttpRequest()
+		val handler =  new RequestCredentialsHandler(OAuth2BearerToken("test123"))
+		val agentActor = system.actorOf(Props(classOf[HandlerAgentActor], handler))
+
+		agentActor ! RequestContext(httpRequest)
+		val updateHttpRequest = expectMsgType[RequestContext].request
+		updateHttpRequest.headers.length shouldBe 1
+		updateHttpRequest.headers.head.name shouldBe "Authorization"
+		updateHttpRequest.headers.head.value shouldBe "Bearer test123"
+	}
+
+	"RequestCredentialsHandler" should "support BasicHttpCredentials" in {
+		val httpRequest = HttpRequest()
+		val handler = new RequestCredentialsHandler(BasicHttpCredentials("username", "password"))
+		val agentActor = system.actorOf(Props(classOf[HandlerAgentActor], handler))
+
+		agentActor ! RequestContext(httpRequest)
+		val updateHttpRequest = expectMsgType[RequestContext].request
+		updateHttpRequest.headers.length should be(1)
+		updateHttpRequest.headers.head.name should be("Authorization")
+		updateHttpRequest.headers.head.value should be("Basic dXNlcm5hbWU6cGFzc3dvcmQ=")
+	}
 }

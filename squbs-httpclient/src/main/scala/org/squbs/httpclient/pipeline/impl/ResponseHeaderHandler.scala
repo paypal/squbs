@@ -17,27 +17,33 @@
  */
 package org.squbs.httpclient.pipeline.impl
 
+import akka.actor.ActorContext
+import org.squbs.pipeline.ProxyResponse._
+import org.squbs.pipeline.{Handler, RequestContext}
 import spray.http.HttpHeader
-import org.squbs.httpclient.pipeline.{ResponsePipelineHandler}
-import spray.client.pipelining._
 
-case class ResponseAddHeaderHandler(httpHeader: HttpHeader) extends ResponsePipelineHandler {
-  override def processResponse: ResponseTransformer = { httpResponse =>
-    val originalHeaders = httpResponse.headers
-    httpResponse.copy(headers = (originalHeaders :+ httpHeader))
+import scala.concurrent.{ExecutionContext, Future}
+
+class ResponseAddHeaderHandler(httpHeader: HttpHeader) extends Handler {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+		Future {
+			reqCtx.copy(response = reqCtx.response + httpHeader)
+		}
   }
 }
 
-case class ResponseRemoveHeaderHandler(httpHeader: HttpHeader) extends ResponsePipelineHandler {
-  override def processResponse: ResponseTransformer = { httpResponse =>
-    val originalHeaders = httpResponse.headers.groupBy[Boolean](_.name == httpHeader.name)
-    httpResponse.copy(headers = (originalHeaders.get(false).getOrElse(List.empty[HttpHeader])))
+class ResponseRemoveHeaderHandler(httpHeader: HttpHeader) extends Handler {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+    Future {
+			reqCtx.copy(response = reqCtx.response - httpHeader)
+		}
   }
 }
 
-case class ResponseUpdateHeaderHandler(httpHeader: HttpHeader) extends ResponsePipelineHandler {
-  override def processResponse: ResponseTransformer = { httpResponse =>
-    val originalHeaders = httpResponse.headers.groupBy[Boolean](_.name == httpHeader.name)
-    httpResponse.copy(headers = (originalHeaders.get(false).getOrElse(List.empty[HttpHeader]) :+ httpHeader))
+class ResponseUpdateHeaderHandler(httpHeader: HttpHeader) extends Handler {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+    Future {
+			reqCtx.copy(response = reqCtx.response - httpHeader + httpHeader)
+		}
   }
 }

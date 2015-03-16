@@ -20,7 +20,3 @@ package org.squbs.httpclient.pipeline.impl
 import spray.http.{HttpHeaders, HttpCredentials}
 
 class RequestCredentialsHandler(credentials: HttpCredentials) extends RequestAddHeaderHandler(HttpHeaders.Authorization(credentials))
-
-object RequestCredentialsHandler {
-  def apply(credentials: HttpCredentials) = new RequestCredentialsHandler(credentials)
-}
