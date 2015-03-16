@@ -28,6 +28,10 @@ class PipelineMgr extends Extension {
 
   }
 
+  def registerProcessor(name: String, processor: Processor) {
+    //processorMap.getOrElseUpdate(name, processor)
+  }
+
   def getPipeline(processorName: String, target: ActorRef, client: ActorRef)(implicit actorRefFactory: ActorRefFactory): ActorRef = {
     val processor = processorMap.get(processorName) match {
       case Some(proc) => proc
@@ -35,6 +39,11 @@ class PipelineMgr extends Extension {
     }
     actorRefFactory.actorOf(Props(classOf[PipelineProcessorActor], target, client, processor))
   }
+
+  def getPipeline(processor: Processor, target: ActorRef, client: ActorRef)(implicit actorRefFactory: ActorRefFactory): ActorRef = {
+    actorRefFactory.actorOf(Props(classOf[PipelineProcessorActor], target, client, processor))
+  }
+
 }
 
 object PipelineMgr extends ExtensionId[PipelineMgr] with ExtensionIdProvider {
