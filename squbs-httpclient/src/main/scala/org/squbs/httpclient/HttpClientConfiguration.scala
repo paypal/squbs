@@ -20,14 +20,14 @@ package org.squbs.httpclient
 import javax.net.ssl.SSLContext
 
 import com.typesafe.config.ConfigFactory
-import org.squbs.proxy.SimplePipeLineConfig
 import spray.can.Http.ClientConnectionType
 import spray.can.client.HostConnectorSettings
 import spray.http.HttpResponse
 
 import scala.concurrent.duration._
+import org.squbs.proxy.SimplePipelineConfig
 
-case class Configuration(pipeline: Option[SimplePipeLineConfig] = None,
+case class Configuration(pipeline: Option[SimplePipelineConfig] = None,
                          hostSettings: HostConnectorSettings = Configuration.defaultHostSettings,
                          connectionType: ClientConnectionType = ClientConnectionType.AutoProxied,
                          sslContext: Option[SSLContext] = None,

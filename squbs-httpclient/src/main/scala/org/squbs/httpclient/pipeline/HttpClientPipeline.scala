@@ -17,7 +17,6 @@
  */
 package org.squbs.httpclient.pipeline
 
-import org.squbs.proxy.SimplePipeLineConfig
 import spray.httpx.{UnsuccessfulResponseException, PipelineException}
 import spray.client.pipelining._
 import akka.actor.{Props, ActorRef, ActorSystem}
@@ -34,6 +33,7 @@ import javax.net.ssl.SSLContext
 import spray.io.ClientSSLEngineProvider
 import org.squbs.httpclient.endpoint.Endpoint
 import org.slf4j.LoggerFactory
+import org.squbs.proxy.SimplePipelineConfig
 
 object HttpClientUnmarshal{
 
@@ -86,7 +86,7 @@ trait PipelineManager{
 
   def invokeToHttpResponse(client: Client)(implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
     implicit val ec = system.dispatcher
-    val pipeConfig = client.endpoint.config.pipeline.getOrElse(SimplePipeLineConfig.empty)
+    val pipeConfig = client.endpoint.config.pipeline.getOrElse(SimplePipelineConfig.empty)
     val connTimeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout
     Try{
       val futurePipeline = pipelining(client)
@@ -105,7 +105,7 @@ trait PipelineManager{
 
   def invokeToHttpResponseWithoutSetup(client: Client, actorRef: ActorRef)(implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
     implicit val ec = system.dispatcher
-    val pipeConfig = client.endpoint.config.pipeline.getOrElse(SimplePipeLineConfig.empty)
+    val pipeConfig = client.endpoint.config.pipeline.getOrElse(SimplePipelineConfig.empty)
     implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
 		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipeLineActor], client.endpoint, pipeConfig, pipeline))

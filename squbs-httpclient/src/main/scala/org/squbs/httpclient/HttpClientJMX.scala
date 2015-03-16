@@ -26,11 +26,11 @@ import akka.actor.ActorRef
 import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
 import org.squbs.httpclient.endpoint.{EndpointRegistry, EndpointResolver}
 import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
-import org.squbs.proxy.SimplePipeLineConfig
 import spray.can.Http.ClientConnectionType.{AutoProxied, Direct, Proxied}
 
 import scala.beans.BeanProperty
 import scala.collection.JavaConversions._
+import org.squbs.proxy.SimplePipelineConfig
 
 object HttpClientJMX {
 
@@ -107,7 +107,7 @@ object HttpClientBean extends HttpClientMXBean {
     val endpoint = httpClient.endpoint.uri
     val status = httpClient.status.toString
     val configuration = httpClient.endpoint.config
-    val pipelines = configuration.pipeline.getOrElse(SimplePipeLineConfig.empty)
+    val pipelines = configuration.pipeline.getOrElse(SimplePipelineConfig.empty)
     val requestPipelines = pipelines.reqPipe.map(_.getClass.getName).foldLeft("")((l, r) => if (l == "") r else l + "=>" + r)
     val responsePipelines = pipelines.respPipe.map(_.getClass.getName).foldLeft("")((l, r) => if (l == "") r else l + "=>" + r)
     val connectionType = configuration.connectionType match {

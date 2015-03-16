@@ -3,29 +3,29 @@ package org.squbs.httpclient.pipeline
 import akka.actor._
 import akka.pattern._
 import org.squbs.httpclient.endpoint.Endpoint
-import org.squbs.pipeline.{RequestContext, PipeLineMgr}
-import org.squbs.proxy.{SimplePipeLineConfig, SimpleProcessor}
 import spray.client.pipelining.SendReceive
 import spray.http.{ChunkedRequestStart, HttpRequest, HttpResponse}
 import HttpClientContextUtils._
+import org.squbs.proxy.{SimplePipelineConfig, SimpleProcessor}
+import org.squbs.pipeline.{PipelineMgr, RequestContext}
 
 /**
  * Created by jiamzhang on 2015/3/6.
  */
-class HttpClientPipeLineActor(endpoint: Endpoint, pipelineConf: SimplePipeLineConfig, target: SendReceive) extends Actor with ActorLogging {
+class HttpClientPipeLineActor(endpoint: Endpoint, pipelineConf: SimplePipelineConfig, target: SendReceive) extends Actor with ActorLogging {
 
 	override def receive = {
 		case request: HttpRequest =>
 			val responder = sender()
 			val targetAgent = context.actorOf(Props(classOf[HttpClientPipeLineTargetActor], target))
-			val pipeproxy = PipeLineMgr(context.system).getPipeLine(new SimpleProcessor(pipelineConf), targetAgent, responder)
+			val pipeproxy = PipelineMgr(context.system).getPipeLine(new SimpleProcessor(pipelineConf), targetAgent, responder)
 			context.watch(pipeproxy)
 			pipeproxy ! RequestContext(request) +> endpoint
 
 		case request: ChunkedRequestStart =>
 			val responder = sender()
 			val targetAgent = context.actorOf(Props(classOf[HttpClientPipeLineTargetActor], target))
-			val pipeproxy = PipeLineMgr(context.system).getPipeLine(new SimpleProcessor(pipelineConf), targetAgent, responder)
+			val pipeproxy = PipelineMgr(context.system).getPipeLine(new SimpleProcessor(pipelineConf), targetAgent, responder)
 			context.watch(pipeproxy)
 			pipeproxy ! RequestContext(request.request, true) +> endpoint
 
