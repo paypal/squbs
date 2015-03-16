@@ -46,7 +46,7 @@ class CubeProxyActor(processorName: String, target: ActorRef) extends Actor with
 
   def handleRequest(requestCtx: RequestContext, responder: ActorRef) {
 		try {
-			val facade = PipeLineMgr(context.system).getPipeLine(processorName, target, responder)
+			val facade = PipelineMgr(context.system).getPipeline(processorName, target, responder)
 			facade ! requestCtx
 		} catch {
 			case t: Throwable =>

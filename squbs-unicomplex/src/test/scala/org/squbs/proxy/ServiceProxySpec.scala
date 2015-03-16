@@ -60,20 +60,20 @@ object ServiceProxySpec {
       |
       |squbs.proxy {
       |  MyProxy1 {
-      |    processor = org.squbs.proxy.serviceproxyactor.DummyProcessorForActor
+      |    processorFactory = org.squbs.proxy.serviceproxyactor.DummyProcessorForActor
       |    settings = {
       |
       |    }
       |  }
       |  MyProxy2 {
-      |    processor = org.squbs.proxy.serviceproxyroute.DummyProcessorForRoute
+      |    processorFactory = org.squbs.proxy.serviceproxyroute.DummyProcessorForRoute
       |  }
       |  default {
-      |    processor = org.squbs.proxy.pipedserviceproxyactor.DummyPipedProcessorFactoryForActor
+      |    processorFactory = org.squbs.proxy.pipedserviceproxyactor.DummyPipedProcessorFactoryForActor
       |  }
 			|
 			|  confproxy {
-			|    processor = org.squbs.proxy.SimpleProcessorFactory
+			|    processorFactory = org.squbs.proxy.SimpleProcessorFactory
 			|    settings = {
 			|      handlers {
 			|        confhandler1 = org.squbs.proxy.pipedserviceproxyactor.confhandler1
@@ -207,7 +207,7 @@ with AsyncAssertions {
       }
       w.await()
 
-			system.actorSelection("/user/PipedServiceProxyActor/pipedserviceproxyactor2-PipeLineProcessorActor-handler").resolveOne().onComplete {
+			system.actorSelection("/user/PipedServiceProxyActor/pipedserviceproxyactor2-PipelineProcessorActor-handler").resolveOne().onComplete {
 				result =>
 					w {
 						assert(result.isSuccess)

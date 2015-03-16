@@ -49,7 +49,7 @@ class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
 class DummyPipedProcessorFactoryForActor extends ProcessorFactory {
 
   def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = {
-    new SimpleProcessor(SimplePipeLineConfig(Seq(RequestHandler1,RequestHandler2), Seq(ResponseHandler1, ResponseHandler2)))
+    new SimpleProcessor(SimplePipelineConfig(Seq(RequestHandler1,RequestHandler2), Seq(ResponseHandler1, ResponseHandler2)))
   }
 
   object RequestHandler1 extends Handler {

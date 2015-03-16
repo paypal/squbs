@@ -36,7 +36,7 @@ object ProxySettings extends ExtensionId[ProxySettings] with ExtensionIdProvider
 				try {
 					val subCfg = cv.toConfig
 					val aliasNames = subCfg.getOptionalStringList("aliases") getOrElse Seq.empty[String]
-					val processorClassName = subCfg.getString("processor")
+					val processorClassName = subCfg.getString("processorFactory")
 					val settings = subCfg.getOptionalConfig("settings")
 					val proxySetup = ProxySetup(key, processorClassName, settings)
 

@@ -60,7 +60,7 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
       """
         |squbs.proxy {
         |  aaa = {
-        |     processor = org.squbs.proxy.DummyAny
+        |     processorFactory = org.squbs.proxy.DummyAny
         |  }
         |}
         |
@@ -77,17 +77,17 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
         |squbs.proxy {
         |  MyProxy1 {
         |    aliases = [aaa,bbb]
-        |    processor = org.squbs.proxy.serviceproxyactor.DummyServiceProxyProcessorForActor
+        |    processorFactory = org.squbs.proxy.serviceproxyactor.DummyServiceProxyProcessorForActor
         |    settings = {
         |    }
         |  }
         |  MyProxy2 {
         |    aliases = [aaa,fff]
-        |    processor = org.squbs.proxy.serviceproxyroute.DummyServiceProxyProcessorForRoute
+        |    processorFactory = org.squbs.proxy.serviceproxyroute.DummyServiceProxyProcessorForRoute
         |  }
         |  default {
         |    aliases = [ccc,ddd]
-        |    processor = org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyProcessorFactoryForActor
+        |    processorFactory = org.squbs.proxy.pipedserviceproxyactor.DummyPipedServiceProxyProcessorFactoryForActor
         |  }
         |}
       """.stripMargin)

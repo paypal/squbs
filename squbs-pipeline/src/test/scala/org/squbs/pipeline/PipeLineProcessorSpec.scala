@@ -12,20 +12,20 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
  * Created by jiamzhang on 2015/3/4.
  */
-class PipeLineProcessorSpec extends TestKit(ActorSystem("PipeLineProcessorSpecSys"))
+class PipeineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys"))
 																		with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
 	override def afterAll {
 		system.shutdown()
 	}
 
-	"PipeLineProcessor" should "processs the piepline correctly" in {
+	"PipelineProcessor" should "processs the piepline correctly" in {
 		val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/hello"))
 		val ctx = RequestContext(request)
 		val target = TestActorRef[DummyTarget]
 
-		PipeLineMgr(system).registerProcessor("getprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
-		val processorActor = PipeLineMgr(system).getPipeLine("getprocessor", target, self)
+		PipelineMgr(system).registerProcessor("getprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
+		val processorActor = PipelineMgr(system).getPipeline("getprocessor", target, self)
 		processorActor ! ctx
 
 		val resp = expectMsgType[HttpResponse]
@@ -39,14 +39,14 @@ class PipeLineProcessorSpec extends TestKit(ActorSystem("PipeLineProcessorSpecSy
 		post.get.value shouldBe "go"
 	}
 
-	"PipeLineProcessorActor" should "handle the chunk response correctly" in {
+	"PipelineProcessorActor" should "handle the chunk response correctly" in {
 		val request = HttpRequest(HttpMethods.POST, Uri("http://localhost:9900/hello"))
 		val ctx = RequestContext(request)
 		val target = TestActorRef[DummyTarget]
 
-		PipeLineMgr(system).registerProcessor("myprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
+		PipelineMgr(system).registerProcessor("myprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
 
-		val processorActor = PipeLineMgr(system).getPipeLine("myprocessor", target, self)
+		val processorActor = PipelineMgr(system).getPipeline("myprocessor", target, self)
 		processorActor ! ctx
 
 		val resp = expectMsgType[ChunkedResponseStart]
@@ -67,14 +67,14 @@ class PipeLineProcessorSpec extends TestKit(ActorSystem("PipeLineProcessorSpecSy
 		post.get.value shouldBe "go"
 	}
 
-	"PipeLineProcessorActor" should "handle the confirmed chunk response correctly" in {
+	"PipelineProcessorActor" should "handle the confirmed chunk response correctly" in {
 		val request = HttpRequest(HttpMethods.PUT, Uri("http://localhost:9900/hello"))
 		val ctx = RequestContext(request)
 		val target = TestActorRef[DummyTarget]
 
-		PipeLineMgr(system).registerProcessor("chunkprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
+		PipelineMgr(system).registerProcessor("chunkprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
 
-		val processorActor = PipeLineMgr(system).getPipeLine("chunkprocessor", target, self)
+		val processorActor = PipelineMgr(system).getPipeline("chunkprocessor", target, self)
 		processorActor ! ctx
 
 		val resp = expectMsgType[Confirmed]

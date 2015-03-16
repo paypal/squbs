@@ -25,9 +25,9 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable.{HashMap => HMap}
 import scala.concurrent.{ExecutionContext, Future}
 
-case class SimplePipeLineConfig(reqPipe: Seq[_ <: Handler], respPipe: Seq[_ <: Handler])
+case class SimplePipelineConfig(reqPipe: Seq[_ <: Handler], respPipe: Seq[_ <: Handler])
 
-class SimpleProcessor(pipeConf: SimplePipeLineConfig) extends Processor {
+class SimpleProcessor(pipeConf: SimplePipelineConfig) extends Processor {
 	//inbound processing
 	def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		pipeConf.reqPipe.foldLeft(Future.successful(reqCtx)) { (ctx, handler) => ctx flatMap (handler.process(_))}
@@ -40,22 +40,22 @@ class SimpleProcessor(pipeConf: SimplePipeLineConfig) extends Processor {
 }
 
 object SimpleProcessor {
-	def empty: SimpleProcessor = new SimpleProcessor(SimplePipeLineConfig.empty)
+	def empty: SimpleProcessor = new SimpleProcessor(SimplePipelineConfig.empty)
 }
 
 class SimpleProcessorFactory extends ProcessorFactory {
 	def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = {
 		settings match {
-			case Some(conf) => new SimpleProcessor(SimplePipeLineConfig(conf))
+			case Some(conf) => new SimpleProcessor(SimplePipelineConfig(conf))
 			case _ => SimpleProcessor.empty
 		}
 	}
 }
 
-object SimplePipeLineConfig {
+object SimplePipelineConfig {
 	private val log = LoggerFactory.getLogger(this.getClass)
 
-	def apply(config: Config): SimplePipeLineConfig = {
+	def apply(config: Config): SimplePipelineConfig = {
 		import org.squbs.unicomplex.ConfigUtil._
 
 		val handlerConf = config.getOptionalConfig("handlers").getOrElse(ConfigFactory.empty)
@@ -83,8 +83,8 @@ object SimplePipeLineConfig {
 			handlerCache.get(h)
 		}
 
-		SimplePipeLineConfig(reqPipeObj, respPipeObj)
+		SimplePipelineConfig(reqPipeObj, respPipeObj)
 	}
 
-	def empty = SimplePipeLineConfig(Seq.empty, Seq.empty)
+	def empty = SimplePipelineConfig(Seq.empty, Seq.empty)
 }
