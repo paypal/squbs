@@ -17,6 +17,7 @@
  */
 package org.squbs.httpclient.pipeline
 
+import org.squbs.httpclient.pipeline.impl.RequestUpdateHeaderHandler
 import spray.httpx.{UnsuccessfulResponseException, PipelineException}
 import spray.client.pipelining._
 import akka.actor.{Props, ActorRef, ActorSystem}
@@ -87,8 +88,13 @@ trait PipelineManager{
     val pipeConfig = client.endpoint.config.pipeline.getOrElse(SimplePipelineConfig.empty)
     implicit val timeout: Timeout = client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
-    //TODO apply RequestSettings
-		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.endpoint, pipeConfig, pipeline))
+    val updatedPipeConfig = reqSettings.headers.isEmpty match {
+      case false  =>
+        val requestPipelines = pipeConfig.reqPipe ++ reqSettings.headers.map(new RequestUpdateHeaderHandler(_))
+        pipeConfig.copy(reqPipe = requestPipelines)
+      case true => pipeConfig
+    }
+		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.endpoint, updatedPipeConfig, pipeline))
     Try{
       client.status match {
         case Status.DOWN =>
