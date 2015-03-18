@@ -68,7 +68,7 @@ object ActorMonitorSpec {
       ManagementFactory.getPlatformMBeanServer.getAttribute(getObjName(actorName), att).asInstanceOf[String]
     } catch {
       case e: Exception =>
-	      e.printStackTrace()
+	    //  e.printStackTrace()
       //  println("exception => " + e.getMessage)
        null
     }
@@ -101,10 +101,9 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
   "ActorMonitor" must {
 
     "1.1) getActor of TestCube/TestActor" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Actor")
-      assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"))
+      awaitAssert (
+        ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Actor").startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"), max=3 second)
     }
-
 
     "2.1) getClassName of TestCube/TestActor" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "ClassName")
@@ -136,7 +135,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
       assert(bean == "0")
     }
 
-    "3.0) getActor of TestCube" in {
+   "3.0) getActor of TestCube" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Actor")
       assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube#"))
     }
@@ -207,8 +206,8 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     }
 
     "5.0) getActor of TestCube/TestActorWithRoute/$a" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Actor")
-      assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#"))
+      awaitAssert(ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Actor").startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#"),
+      max = 2 second)
     }
 
     "5.1) getClassName of TestCube/TestActorWithRoute/$a" in {
@@ -241,16 +240,18 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
       assert(bean == "0")
     }
 
+
     "6.1) getBean after actor has been stop" in {
-      val before = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor")
+      awaitAssert((ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") != null), max= 2 second)
+
+
       import ActorMonitorSpec._
       val originalNum = getActorMonitorConfigBean("Count")
-      assert(before != null)
+
       system.actorSelection("/user/TestCube/TestActor1") ! PoisonPill
       receiveOne(2 seconds) match {
         case msg =>
-          val after = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor")
-          assert(after == null)
+          awaitAssert(ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") == null, max= 2 second)
           assert(getActorMonitorConfigBean("Count") == 11)
       }
     }
@@ -264,6 +265,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
   }
 
 }
+
 
 
 

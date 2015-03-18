@@ -25,11 +25,10 @@ class PipelineMgr extends Extension {
           throw t
       }
     }
-
   }
 
   def registerProcessor(name: String, processor: Processor) {
-    //processorMap.getOrElseUpdate(name, processor)
+		processorMap = processorMap + (name -> processor)
   }
 
   def getPipeline(processorName: String, target: ActorRef, client: ActorRef)(implicit actorRefFactory: ActorRefFactory): ActorRef = {
