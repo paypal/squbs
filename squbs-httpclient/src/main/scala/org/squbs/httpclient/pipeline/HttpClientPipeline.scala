@@ -19,17 +19,15 @@ package org.squbs.httpclient.pipeline
 
 import org.squbs.httpclient.pipeline.impl.RequestUpdateHeaderHandler
 import spray.httpx.{UnsuccessfulResponseException, PipelineException}
-import spray.client.pipelining._
 import akka.actor.{Props, ActorRef, ActorSystem}
 import spray.httpx.unmarshalling._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import org.squbs.httpclient._
 import spray.http.{Uri, HttpRequest, HttpResponse}
 import scala.util.Try
 import akka.pattern._
 import akka.util.Timeout
 import spray.can.Http
-import akka.io.IO
 import javax.net.ssl.SSLContext
 import spray.io.ClientSSLEngineProvider
 import org.squbs.httpclient.endpoint.Endpoint
