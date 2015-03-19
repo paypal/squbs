@@ -255,12 +255,14 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
   }
 
   "HttpClient buildRequestUri" should "have the correct behaviour" in {
-    HttpClient.buildRequestUri("/") should be ("/")
-    HttpClient.buildRequestUri("/abc") should be ("/abc")
-    HttpClient.buildRequestUri("/abc/") should be ("/abc/")
-    HttpClient.buildRequestUri("/abc/", Map ("n1" -> "v1")) should be ("/abc?n1=v1")
-    HttpClient.buildRequestUri("/abc/", Map ("n1" -> "v1", "n2" -> "v2")) should be ("/abc?n1=v1&n2=v2")
-    HttpClient.buildRequestUri("/abc/", Map ("n1" -> "v1&", "n2" -> "v2%")) should be ("/abc?n1=v1%26&n2=v2%25")
+    HttpClientPathBuilder.buildRequestUri("/") should be ("/")
+    HttpClientPathBuilder.buildRequestUri("/abc") should be ("/abc")
+    HttpClientPathBuilder.buildRequestUri("/abc/") should be ("/abc/")
+    HttpClientPathBuilder.buildRequestUri("/abc/", Map ("n1" -> "v1")) should be ("/abc?n1=v1")
+    HttpClientPathBuilder.buildRequestUri("/abc/", Map ("d" -> 1.23d, "f" -> 2.3f, "l" -> List[String]("a", "b", "c"))) should be ("/abc?d=1.23&f=2.3")
+    HttpClientPathBuilder.buildRequestUri("/abc/", Map ("d" -> 1.23d, "f" -> 2.3f, "b" -> true, "c" -> 'a', "l" -> 12345L, "i" -> 100, "s" -> "Hello", "by" -> "1".toByte, "sh" -> "2".toShort)) should be ("/abc?s=Hello&f=2.3&i=100&b=true&by=1&c=a&d=1.23&sh=2")
+    HttpClientPathBuilder.buildRequestUri("/abc/", Map ("n1" -> "v1", "n2" -> "v2")) should be ("/abc?n1=v1&n2=v2")
+    HttpClientPathBuilder.buildRequestUri("/abc/", Map ("n1" -> "v1&", "n2" -> "v2%")) should be ("/abc?n1=v1%26&n2=v2%25")
   }
 
   //  "HttpClient with fallback HttpResponse" should "get correct fallback logic" in {

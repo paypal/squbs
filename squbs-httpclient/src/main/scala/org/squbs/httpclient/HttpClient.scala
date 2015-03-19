@@ -18,6 +18,7 @@
 package org.squbs.httpclient
 
 import akka.util.Timeout
+import org.slf4j.LoggerFactory
 import org.squbs.httpclient.HttpClientActorMessage.{MarkUpSuccess, MarkDownSuccess}
 import org.squbs.httpclient.endpoint.EndpointRegistry
 import akka.actor.{ActorRef, ActorSystem}
@@ -37,6 +38,35 @@ object Status extends Enumeration {
   type Status = Value
   val UP, DOWN = Value
 }
+
+trait HttpClientPathBuilder {
+
+  val logger = LoggerFactory.getLogger(this.getClass)
+
+  def buildRequestUri(path: String, paramMap: Map[String, Any] = Map.empty[String, Any]): String = {
+    if (paramMap.isEmpty) {
+      Uri(path).toString
+    } else {
+      var trimPath = path
+      if (path.length > 1 && path.charAt(path.length - 1) == '/'){
+        trimPath = path.substring(0, path.length - 1)
+      }
+      val filteredParamMap = paramMap.filter{ pair =>
+        pair._2.isInstanceOf[String] ||
+        pair._2.isInstanceOf[Double] ||
+        pair._2.isInstanceOf[Float]  ||
+        pair._2.isInstanceOf[Int]    ||
+        pair._2.isInstanceOf[Short]  ||
+        pair._2.isInstanceOf[Byte]   ||
+        pair._2.isInstanceOf[Char]   ||
+        pair._2.isInstanceOf[Boolean]
+      }.map(pair => (pair._1, pair._2.toString))
+      Uri(trimPath).withQuery(filteredParamMap).toString
+    }
+  }
+}
+
+object HttpClientPathBuilder extends HttpClientPathBuilder
 
 case class HttpClient(name: String,
                       env: Environment = Default,
@@ -200,21 +230,6 @@ case class HttpClient(name: String,
 
   def readyFuture: Future[Unit] = {
     fActorRef map {_ => }
-  }
-}
-
-object HttpClient {
-
-  def buildRequestUri(path: String, paramMap: Map[String, String] = Map.empty[String, String]): String = {
-    if (paramMap.isEmpty) {
-      Uri(path).toString
-    } else {
-      var trimPath = path
-      if (path.length > 1 && path.charAt(path.length - 1) == '/'){
-        trimPath = path.substring(0, path.length - 1)
-      }
-      Uri(trimPath).withQuery(paramMap).toString
-    }
   }
 }
 
