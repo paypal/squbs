@@ -214,8 +214,8 @@ private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String
       if (p startsWith "/") p substring 1 else p
     }
 
-    val matches = routeMap() filter { case (context, _) =>
-      path.startsWith(context) && (path.charAt(context.length) == '/' || path.length == context.length)
+    val matches = routeMap() filter { case (webContext, _) =>
+      path.startsWith(webContext) && (path.length == webContext.length || path.charAt(webContext.length) == '/')
     }
 
     if (matches.isEmpty) routeMap().get("")
