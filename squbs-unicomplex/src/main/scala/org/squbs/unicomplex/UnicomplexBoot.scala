@@ -274,7 +274,9 @@ object UnicomplexBoot {
         val routeClass = clazz asSubclass classOf[RouteDefinition]
         val props = Props(classOf[RouteActor], webContext, routeClass)
         val className = clazz.getSimpleName
-        val actorName = if (webContext.length > 0) s"$webContext-$className-route" else s"root-$className-route"
+        val actorName =
+          if (webContext.length > 0) s"${webContext.replace('/', '_')}-$className-route"
+          else s"root-$className-route"
         cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, proxyName, initRequired = true)
         Some((fullName, name, version, clazz))
       } catch {

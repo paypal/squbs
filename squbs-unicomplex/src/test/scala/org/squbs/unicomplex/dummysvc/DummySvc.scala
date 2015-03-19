@@ -33,6 +33,22 @@ class DummySvc extends RouteDefinition with WebContext {
   }
 }
 
+class Dummy2VersionedSvc extends RouteDefinition with WebContext {
+  def route = path("msg" / Segment) {param =>
+    get {ctx =>
+      context.actorOf(Props[DummyClient]).tell(EchoMsg(param), ctx.responder)
+    }
+  }
+}
+
+class Dummy2Svc extends RouteDefinition with WebContext {
+  def route = path("msg" / Segment) {param =>
+    get {ctx =>
+      context.actorOf(Props[DummyClient]).tell(EchoMsg(param.reverse), ctx.responder)
+    }
+  }
+}
+
 private class DummyClient extends Actor with ActorLogging {
 
   private def receiveMsg(responder: ActorRef): Receive = {

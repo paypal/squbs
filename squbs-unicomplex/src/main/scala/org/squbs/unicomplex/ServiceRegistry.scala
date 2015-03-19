@@ -30,6 +30,7 @@ import spray.can.server.ServerSettings
 import spray.http.StatusCodes.NotFound
 import spray.http._
 import spray.io.ServerSSLEngineProvider
+import spray.routing.Route
 import spray.routing._
 
 import scala.collection.mutable
@@ -173,6 +174,8 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 
   def actorRefFactory = context
 
+  val matchContext = separateOnSlashes(webContext)
+
   val routeDef =
     try {
       val d = RouteDefinition.startRoutes {
@@ -195,7 +198,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 
   def receive = {
     case request =>
-      runRoute(pathPrefix(webContext) { routeDef.route }).apply(request)
+      runRoute(pathPrefix(matchContext) { routeDef.route }).apply(request)
   }
 }
 
@@ -206,18 +209,17 @@ private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String
   val pendingRequests = mutable.WeakHashMap.empty[ActorRef, ActorRef]
 
   def contextActor(request: HttpRequest) = {
-    val path = request.uri.path.toString()
-    val webContext =
-    if (path startsWith "/") {
-      val ctxEnd = path.indexOf('/', 1)
-      if (ctxEnd >= 1) path.substring(1, ctxEnd)
-      else path.substring(1)
-    } else {
-      val ctxEnd = path.indexOf('/')
-      if (ctxEnd >= 0) path.substring(0, ctxEnd)
-      else path
+    val path = {
+      val p = request.uri.path.toString()
+      if (p startsWith "/") p substring 1 else p
     }
-    routeMap().get(webContext) orElse routeMap().get("")
+
+    val matches = routeMap() filter { case (context, _) =>
+      path.startsWith(context) && (path.charAt(context.length) == '/' || path.length == context.length)
+    }
+
+    if (matches.isEmpty) routeMap().get("")
+    else Some(matches.maxBy(_._1.length)._2) // Return the longest match, just the actor portion.
   }
 
   def receive = {
