@@ -26,20 +26,24 @@ class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Proc
       var newCtx = ctx
       try {
         newCtx = preInbound(ctx)
-        inbound(newCtx) onComplete {
-          case Success(result) =>
-            try {
-              val postResult = postInbound(result)
-              context.become(onResponse(postResult) orElse onPostProcess)
-              target ! postResult.payload
-            } catch {
-              case t: Throwable =>
-                log.error(t, "Error in postInbound processing")
-                self ! PostProcess(onRequestError(result, t))
-            }
-          case Failure(t) =>
-            log.error(t, "Error in inbound processing")
-            self ! PostProcess(onRequestError(newCtx, t))
+        if (newCtx.response != ResponseNotReady) {
+	        finalOutput(newCtx)
+        } else {
+	        inbound(newCtx) onComplete {
+		        case Success(result) =>
+			        try {
+				        val postResult = postInbound(result)
+				        context.become(onResponse(postResult) orElse onPostProcess)
+				        target ! postResult.payload
+			        } catch {
+				        case t: Throwable =>
+					        log.error(t, "Error in postInbound processing")
+					        self ! PostProcess(onRequestError(result, t))
+			        }
+		        case Failure(t) =>
+			        log.error(t, "Error in inbound processing")
+			        self ! PostProcess(onRequestError(newCtx, t))
+	        }
         }
       } catch {
         case t: Throwable =>
