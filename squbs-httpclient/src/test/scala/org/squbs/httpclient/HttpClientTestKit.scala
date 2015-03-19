@@ -28,14 +28,16 @@ import spray.util._
 
 trait HttpClientTestKit {
 
+  implicit val system: ActorSystem
+
   def clearHttpClient = {
-    EndpointRegistry.endpointResolvers.clear
-    EnvironmentRegistry.environmentResolvers.clear
-    HttpClientFactory.httpClientMap.clear
+    EndpointRegistry(system).endpointResolvers.clear
+    EnvironmentRegistry(system).environmentResolvers.clear
+    HttpClientManager(system).httpClientMap.clear
   }
-  
-  def shutdownActorSystem(implicit system: ActorSystem) = {
-    IO(Http).ask(Http.CloseAll)(30.second).await
-    system.shutdown()  
+
+  def shutdownActorSystem = {
+    IO(Http).ask(Http.CloseAll)(30.seconds).await
+    system.shutdown()
   }
 }

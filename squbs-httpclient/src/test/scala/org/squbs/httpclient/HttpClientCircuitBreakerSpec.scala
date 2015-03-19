@@ -17,17 +17,21 @@
  */
 package org.squbs.httpclient
 
-import org.scalatest.{BeforeAndAfterEach, BeforeAndAfterAll, FlatSpec, Matchers}
+import akka.testkit.TestKit
+import akka.util.Timeout
+import org.scalatest._
 import akka.actor.ActorSystem
 import org.squbs.httpclient.endpoint.EndpointRegistry
 import org.squbs.httpclient.dummy.DummyServiceEndpointResolver
+import scala.concurrent.duration._
 
-class HttpClientCircuitBreakerSpec extends FlatSpec with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAfterAll with BeforeAndAfterEach{
+class HttpClientCircuitBreakerSpec extends TestKit(ActorSystem("HttpClientCircuitBreakerSpec")) with FlatSpecLike
+with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAfterAll with BeforeAndAfterEach{
 
-  implicit val system = ActorSystem("HttpClientCircuitBreakerSpec")
+  implicit val timeout: Timeout = 3 seconds
 
   override def beforeEach {
-    EndpointRegistry.register(DummyServiceEndpointResolver)
+    EndpointRegistry(system).register(DummyServiceEndpointResolver)
   }
 
   override def afterAll {

@@ -17,7 +17,8 @@
  */
 package org.squbs.httpclient.env
 
-import org.slf4j.LoggerFactory
+import akka.actor.{ExtensionId, Extension, ExtendedActorSystem}
+import com.typesafe.scalalogging.LazyLogging
 import scala.collection.mutable.ListBuffer
 
 abstract class Environment {
@@ -50,10 +51,8 @@ trait EnvironmentResolver {
   def resolve(svcName: String): Environment
 }
 
-object EnvironmentRegistry {
+class EnvironmentRegistryExtension(system: ExtendedActorSystem) extends Extension with LazyLogging {
   val environmentResolvers = ListBuffer[EnvironmentResolver]()
-
-  val logger = LoggerFactory.getLogger(EnvironmentRegistry.getClass)
 
   def register(resolver: EnvironmentResolver) = {
     environmentResolvers.find(_.name == resolver.name) match {
@@ -83,6 +82,10 @@ object EnvironmentRegistry {
     logger.debug(s"Environment can be resolved by ($svcName), the environment is: " + resolvedEnv.lowercaseName)
     resolvedEnv
   }
+}
+
+object EnvironmentRegistry extends ExtensionId[EnvironmentRegistryExtension] {
+  override def createExtension(system: ExtendedActorSystem): EnvironmentRegistryExtension = new EnvironmentRegistryExtension(system)
 }
 
 
