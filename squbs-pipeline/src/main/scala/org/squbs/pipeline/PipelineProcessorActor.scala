@@ -26,20 +26,24 @@ class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Proc
       var newCtx = ctx
       try {
         newCtx = preInbound(ctx)
-        inbound(newCtx) onComplete {
-          case Success(result) =>
-            try {
-              val postResult = postInbound(result)
-              context.become(onResponse(postResult) orElse onPostProcess)
-              target ! postResult.payload
-            } catch {
-              case t: Throwable =>
-                log.error(t, "Error in postInbound processing")
-                self ! PostProcess(onRequestError(result, t))
-            }
-          case Failure(t) =>
-            log.error(t, "Error in inbound processing")
-            self ! PostProcess(onRequestError(newCtx, t))
+        if (newCtx.response != ResponseNotReady) {
+	        finalOutput(newCtx)
+        } else {
+	        inbound(newCtx) onComplete {
+		        case Success(result) =>
+			        try {
+				        val postResult = postInbound(result)
+				        context.become(onResponse(postResult) orElse onPostProcess)
+				        target ! postResult.payload
+			        } catch {
+				        case t: Throwable =>
+					        log.error(t, "Error in postInbound processing")
+					        self ! PostProcess(onRequestError(result, t))
+			        }
+		        case Failure(t) =>
+			        log.error(t, "Error in inbound processing")
+			        self ! PostProcess(onRequestError(newCtx, t))
+	        }
         }
       } catch {
         case t: Throwable =>
@@ -127,14 +131,14 @@ class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Proc
   def onChunk(reqCtx: RequestContext): Receive = {
 
     case chunk: MessageChunk =>
-      postProcess(reqCtx.copy(response = NormalResponse(processResponseChunk(reqCtx, chunk))))
+      finalOutput(reqCtx.copy(response = NormalResponse(processResponseChunk(reqCtx, chunk))))
 
     case chunkEnd: ChunkedMessageEnd =>
-      postProcess(reqCtx.copy(response = NormalResponse(processResponseChunkEnd(reqCtx, chunkEnd))))
+			finalOutput(reqCtx.copy(response = NormalResponse(processResponseChunkEnd(reqCtx, chunkEnd))))
 
     case data@Confirmed(mc@(_: MessageChunk), ack) =>
       val newChunk = processResponseChunk(reqCtx, mc)
-      postProcess(reqCtx.copy(response = NormalResponse(Confirmed(newChunk, ack), sender())))
+			finalOutput(reqCtx.copy(response = NormalResponse(Confirmed(newChunk, ack), sender())))
 
     case AckInfo(rawAck, receiver) =>
       receiver tell(rawAck, self)

@@ -47,7 +47,7 @@ class CubeProxyActor(processorName: String, target: ActorRef) extends Actor with
   def handleRequest(requestCtx: RequestContext, responder: ActorRef) {
 		try {
 			val facade = PipelineMgr(context.system).getPipeline(processorName, target, responder)
-			facade ! requestCtx
+			facade tell(requestCtx, responder)
 		} catch {
 			case t: Throwable =>
 				log.error(s"Fail to get the pipeline with processor $processorName.", t)

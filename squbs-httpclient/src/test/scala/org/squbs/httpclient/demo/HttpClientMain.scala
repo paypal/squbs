@@ -18,23 +18,26 @@
 package org.squbs.httpclient.demo
 
 import akka.actor.{ActorRef, Actor, Props, ActorSystem}
+import akka.util.Timeout
 import org.squbs.httpclient._
 import org.squbs.httpclient.endpoint.EndpointRegistry
 import spray.http.{HttpResponse, StatusCodes}
 import scala.util.{Failure, Success}
 import org.squbs.httpclient.dummy.GoogleAPI.{Elevation, GoogleApiResult, GoogleMapAPIEndpointResolver}
 import org.squbs.httpclient.pipeline.HttpClientUnmarshal
+import scala.concurrent.duration._
 
 /**
  * Traditional API using get
  */
 object HttpClientDemo1 extends App with HttpClientTestKit {
 
-  private implicit val system = ActorSystem("HttpClientDemo1")
+  implicit val system = ActorSystem("HttpClientDemo1")
+  implicit val timeout: Timeout = 3 seconds
   import system.dispatcher
-  EndpointRegistry.register(GoogleMapAPIEndpointResolver)
+  EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
 
-  val response = HttpClientFactory.get("googlemap").get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.get("googlemap").raw.get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
       println("Success, response entity is: " + res.entity.asString)
@@ -53,13 +56,14 @@ object HttpClientDemo1 extends App with HttpClientTestKit {
  */
 object HttpClientDemo2 extends App with HttpClientTestKit{
 
-  private implicit val system = ActorSystem("HttpClientDemo2")
+  implicit val system = ActorSystem("HttpClientDemo2")
+  implicit val timeout: Timeout = 3 seconds
   import system.dispatcher
-  EndpointRegistry.register(GoogleMapAPIEndpointResolver)
+  EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
   import HttpClientUnmarshal._
 
-  val response = HttpClientFactory.get("googlemap").get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.get("googlemap").raw.get("api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
       val obj = res.unmarshalTo[GoogleApiResult[Elevation]]
@@ -84,19 +88,21 @@ object HttpClientDemo2 extends App with HttpClientTestKit{
  */
 object HttpClientDemo3 extends App with HttpClientTestKit {
 
-  private implicit val system = ActorSystem("HttpClientDemo3")
-  EndpointRegistry.register(GoogleMapAPIEndpointResolver)
+  implicit val system = ActorSystem("HttpClientDemo3")
+  implicit val timeout: Timeout = 3 seconds
 
-  system.actorOf(Props(new HttpClientDemoActor)) ! GoogleApiCall
+  EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
+
+  system.actorOf(Props(new HttpClientDemoActor(system))) ! GoogleApiCall
 }
 
-case class HttpClientDemoActor(implicit system: ActorSystem) extends Actor with HttpClientTestKit {
+case class HttpClientDemoActor(system: ActorSystem) extends Actor with HttpClientTestKit {
   override def receive: Receive = {
     case GoogleApiCall =>
       val httpClientManager = HttpClientManager(system).httpClientManager
       httpClientManager ! HttpClientManagerMessage.Get("googlemap")
     case httpClientActorRef: ActorRef =>
-      httpClientActorRef ! HttpClientActorMessage.Get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+      httpClientActorRef ! HttpClientActorMessage.Get("api/elevation/json?locations=27.988056,86.925278&sensor=false")
     case res@ HttpResponse(StatusCodes.OK, _, _, _) =>
       println("Success, response entity is: " + res.entity.asString)
 

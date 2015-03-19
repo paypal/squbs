@@ -17,6 +17,8 @@
  */
 package org.squbs.httpclient.endpoint
 
+import akka.actor.{ExtensionId, Extension, ExtendedActorSystem}
+
 import scala.collection.mutable.ListBuffer
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.Configuration
@@ -38,8 +40,7 @@ trait EndpointResolver {
   def resolve(svcName: String, env: Environment = Default): Option[Endpoint]
 }
 
-object EndpointRegistry extends LazyLogging {
-
+class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension with LazyLogging {
   val endpointResolvers = ListBuffer[EndpointResolver]()
 
   def register(resolver: EndpointResolver) = {
@@ -57,7 +58,7 @@ object EndpointRegistry extends LazyLogging {
         logger.warn("Endpoint Resolver:" + name + " cannot be found, skip current endpoint resolver unregistry!")
       case Some(resolver) =>
         endpointResolvers.remove(endpointResolvers.indexOf(resolver))
-    }                                      
+    }
   }
 
   def route(svcName: String, env: Environment = Default): Option[EndpointResolver] = {
@@ -87,3 +88,7 @@ object EndpointRegistry extends LazyLogging {
   }
 }
 
+object EndpointRegistry extends ExtensionId[EndpointRegistryExtension]{
+
+  override def createExtension(system: ExtendedActorSystem): EndpointRegistryExtension = new EndpointRegistryExtension(system)
+}

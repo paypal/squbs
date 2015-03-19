@@ -23,24 +23,20 @@ import scala.concurrent.duration._
 import akka.actor.{Props, ActorRef, Actor, ActorSystem}
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointResolver, EndpointRegistry}
 import org.squbs.httpclient.env.Environment
-import org.squbs.httpclient.CircuitBreakerConfiguration
-import scala.Some
+import org.squbs.httpclient.CircuitBreakerSettings
 import spray.http.HttpResponse
 
 object CircuitBreakerMain2 extends App{
 
-  implicit val actorSystem = ActorSystem("CircuitBreakerMain2")
-  implicit val ec = actorSystem.dispatcher
+  implicit val system = ActorSystem("CircuitBreakerMain2")
+  implicit val ec = system.dispatcher
 
-  EndpointRegistry.register(new EndpointResolver{
+  EndpointRegistry(system).register(new EndpointResolver{
 
     override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
-      svcName match {
-        case name =>
-          val config = Configuration().copy(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 0), circuitBreakerConfig = CircuitBreakerConfiguration().copy(callTimeout = 1 second))
-          Some(Endpoint("http://localhost:8888", config))
-        case _    => None
-      }
+      val config = Configuration().copy(settings = Settings(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 0),
+        circuitBreakerConfig = CircuitBreakerSettings().copy(callTimeout = 1 second)))
+      if (svcName == name) Some(Endpoint("http://localhost:8888", config)) else None
     }
 
     override def name: String = "DummyService"
@@ -48,7 +44,7 @@ object CircuitBreakerMain2 extends App{
 
   while(true){
     Thread.sleep(2000)
-    actorSystem.actorOf(Props(new CircuitBreakerActor(actorSystem))) ! CircuitBreakerMessage
+    system.actorOf(Props(new CircuitBreakerActor(system))) ! CircuitBreakerMessage
   }
 }
 
@@ -57,7 +53,7 @@ case class CircuitBreakerActor(actorSystem: ActorSystem) extends Actor {
   override def receive: Receive = {
     case CircuitBreakerMessage =>
       val httpClientManager = HttpClientManager(actorSystem).httpClientManager
-      httpClientManager ! HttpClientManagerMessage.Get("DummyService")(actorSystem)
+      httpClientManager ! HttpClientManagerMessage.Get("DummyService")
     case ref: ActorRef =>
       ref ! HttpClientActorMessage.Get("/view")
     case httpResponse: HttpResponse =>
