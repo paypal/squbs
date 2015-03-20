@@ -106,6 +106,15 @@ trait PipelineManager{
   }
 
   implicit def endpointToUri(endpoint: Endpoint): String = {
-    endpoint.uri
+    val uri = Uri(endpoint.uri)
+    val host = uri.authority.host.toString
+    val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
+    val isSecure = uri.scheme.toLowerCase.equals("https")
+    (isSecure, port) match {
+      case (true, 443) => s"https://$host"
+      case (true, _)   => s"https://$host:$port"
+      case (false, 80) => s"http://$host"
+      case (false, _)  => s"http://$host:$port"
+    }
   }
 }

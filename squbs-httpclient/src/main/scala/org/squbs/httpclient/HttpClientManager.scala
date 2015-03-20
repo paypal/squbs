@@ -134,9 +134,9 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
     }
     (trimBasePath, uri.charAt(0)) match {
       case ("", '/') => uri
-      case (_, '/')  => '/' + basePath + uri
+      case (_, '/')  => '/' + trimBasePath + uri
       case ("", _)   => '/' + uri
-      case (_, _)    => '/' + basePath + '/' + uri
+      case (_, _)    => '/' + trimBasePath + '/' + uri
     }
   }
 
