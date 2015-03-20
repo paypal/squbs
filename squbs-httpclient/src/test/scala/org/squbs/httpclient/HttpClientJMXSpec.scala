@@ -57,24 +57,28 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
   }
 
   "HttpClient with svcName" should "show up the correct value of HttpClientBean" in {
-    HttpClientFactory.get("hello1")
-    HttpClientFactory.get("hello2")
+    val httpClient1 = HttpClientFactory.get("hello1")
+    Await.result(httpClient1.readyFuture, 3 seconds)
+    val httpClient2 = HttpClientFactory.get("hello2")
+    Await.result(httpClient2.readyFuture, 3 seconds)
     HttpClientBean(system).getHttpClientInfo.size should be (2)
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello1") should be (HttpClientInfo("hello1", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello2") should be (HttpClientInfo("hello2", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient with pipeline" should "show up the correct value of HttpClientBean" in {
-    val httpClient = HttpClientFactory.get("hello3").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
-    HttpClientFactory.get("hello4")
+    val httpClient1 = HttpClientFactory.get("hello3").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
+    Await.result(httpClient1.readyFuture, 3 seconds)
+    val httpClient2 = HttpClientFactory.get("hello4")
+    Await.result(httpClient2.readyFuture, 3 seconds)
     HttpClientBean(system).getHttpClientInfo.size should be (2)
-    Await.result(httpClient.readyFuture, 3 seconds)
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello3") should be (HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler","org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler"))
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello4") should be (HttpClientInfo("hello4", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient with configuration" should "show up the correct value of HttpClientBean" in {
-    HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80))))
+    val httpClient = HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80))))
+    Await.result(httpClient.readyFuture, 3 seconds)
     val markDownStatus = HttpClientFactory.get("hello6").markDown
     Await.result(markDownStatus, 3 seconds)
     HttpClientBean(system).getHttpClientInfo.size should be (2)
@@ -110,10 +114,6 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
     cbInfo.name should be ("DummyService")
     cbInfo.status should be ("Closed")
     cbInfo.lastDurationConfig should be ("60 Seconds")
-    println(s"success times:${cbInfo.successTimes}")
-    println(s"fail fast times:${cbInfo.failFastTimes}")
-    println(s"fallback times:${cbInfo.fallbackTimes}")
-    println(s"exception times:${cbInfo.exceptionTimes}")
     cbInfo.successTimes should be (1)
     cbInfo.failFastTimes should be (0)
     cbInfo.fallbackTimes should be (0)
