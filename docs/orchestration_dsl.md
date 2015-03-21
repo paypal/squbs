@@ -38,7 +38,7 @@ Orchestration functions are the functions that the orchestrator calls to execute
 Lets look at a few examples of orchestration functions:
 
 ```scala
-def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
+def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
   val itemPromise = OPromise[Option[Item]]
   
   context.actorOf[ItemActor] ! ItemRequest(itemId, seller.id)
@@ -57,7 +57,7 @@ In this example, the function is curried. The `itemId` argument is delivered syn
 The example below is logically the same as the first example, just using ask instead of tell:
 
 ```scala
-def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
+def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
   
   import context.dispatcher
   implicit val timeout = Timeout(3 seconds)
@@ -119,7 +119,7 @@ class MyOrchestrator extends Actor with Orchestrator {
     case r: MyOrchestrationRequest => orchestrate(sender(), r)
   }
   
-    // 3. Define orchestrate, its arguments become immutable by default
+    // 3. Define orchestrate. Its arguments become immutable by default
     //    allowing developers to rely on the fact these will never change.
   def orchestrate(requester: ActorRef, request: MyOrchestrationRequest) {
   
@@ -153,7 +153,7 @@ class MyOrchestrator extends Actor with Orchestrator {
   
     // 8. Implement the asynchronous orchestration functions inside the
     //    orchestrator actor, but outside the orchestrate function.
-  def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
+  def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
     val itemPromise = OPromise[Option[Item]]
   
     context.actorOf[ItemActor] ! ItemRequest(itemId, seller.id)
@@ -180,12 +180,12 @@ class MyOrchestrator extends Actor with Orchestrator {
 
 ##Re-use of Orchestration Functions
 
-Orchestration functions often rely on the facilities provided by the `Orchestrator` trait and cannot live stand-alone. However, in many cases, re-use of the orchestration functions across multiple orchestrators are desired. In such cases it is important to separate the orchestration functions into a different trait(s) that will be mixed into each of the orchestrators. The following shows a sample of such a trait.:
+Orchestration functions often rely on the facilities provided by the `Orchestrator` trait and cannot live stand-alone. However, in many cases, re-use of the orchestration functions across multiple orchestrators are desired. In such cases it is important to separate the orchestration functions into a different trait(s) that will be mixed into each of the orchestrators. The following shows a sample of such a trait:
 
 ```scala
 trait OrchestrationFunctions { this: Actor with Orchestrator =>
 
-  def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
+  def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
     ...
   }
 }
@@ -208,7 +208,7 @@ When using `expect` or `expectOnce`, we're limited by the pattern match capabili
 If the recipient of the initial message, and therefore the sender of the response message is unique, the match could include a reference to the message's sender as in the sample pattern match below.
 
 ```scala
-def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
+def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
   val itemPromise = OPromise[Option[Item]]
   
   val itemActor = context.actorOf[ItemActor]  
@@ -226,7 +226,7 @@ def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
 Alternatively, the `Orchestrator` trait provides a message id generator that is unique when combined with the actor instance. We can use this id generator to generate a unique message id. Actors that accept such messages will just need to return this message id as part of the response message. The sample below shows an orchestration function using the message id generator.
 
 ```scala
-def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
+def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
   val itemPromise = OPromise[Option[Item]]
   
   val msgId = nextMessageId  
