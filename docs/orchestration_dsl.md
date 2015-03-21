@@ -146,7 +146,7 @@ class MyOrchestrator extends Actor with Orchestrator {
       item <- itemF
       itemView <- itemViewF
     } {
-      requester ! OrchestrationResult(user, item, itemView)
+      requester ! MyOrchestrationResult(user, item, itemView)
       context.stop(self)
     }
     
