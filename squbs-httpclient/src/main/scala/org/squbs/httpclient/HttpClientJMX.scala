@@ -48,25 +48,25 @@ object HttpClientJMX {
 
   def registryHCBean(implicit system: ActorSystem) = {
     if (!JMX.isRegistered(httpClientBean)){
-      JMX.register(HttpClientBean, JMX.prefix(system) + httpClientBean)
+      JMX.register(HttpClientBean(system), JMX.prefix(system) + httpClientBean)
     }
   }
 
   def registryHCEndpointResolverBean(implicit system: ActorSystem) = {
     if (!JMX.isRegistered(endpointResolverBean)){
-      JMX.register(EndpointResolverBean, JMX.prefix(system) + endpointResolverBean)
+      JMX.register(EndpointResolverBean(system), JMX.prefix(system) + endpointResolverBean)
     }
   }
 
   def registryHCEnvResolverBean(implicit system: ActorSystem) = {
     if (!JMX.isRegistered(environmentResolverBean)){
-      JMX.register(EnvironmentResolverBean, JMX.prefix(system) + environmentResolverBean)
+      JMX.register(EnvironmentResolverBean(system), JMX.prefix(system) + environmentResolverBean)
     }
   }
 
   def registryHCCircuitBreakerBean(implicit system: ActorSystem) = {
     if (!JMX.isRegistered(circuitBreakerBean)){
-      JMX.register(CircuitBreakerBean, JMX.prefix(system) + circuitBreakerBean)
+      JMX.register(CircuitBreakerBean(system), JMX.prefix(system) + circuitBreakerBean)
     }
   }
 }

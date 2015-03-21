@@ -35,7 +35,7 @@ import spray.http.{HttpResponse, StatusCodes}
 class HttpClientJMXSpec extends TestKit(ActorSystem("HttpClientJMXSpec")) with FlatSpecLike with Matchers
 with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndAfterAll{
 
-  implicit val timeout: Timeout = 3 seconds
+  implicit val timeout: Timeout = 30 seconds
 
   override def beforeEach = {
     EndpointRegistry(system).register(new EndpointResolver {
@@ -57,26 +57,30 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
   }
 
   "HttpClient with svcName" should "show up the correct value of HttpClientBean" in {
-    HttpClientFactory.get("hello1")
-    HttpClientFactory.get("hello2")
+    val httpClient1 = HttpClientFactory.get("hello1")
+    Await.result(httpClient1.readyFuture, timeout.duration)
+    val httpClient2 = HttpClientFactory.get("hello2")
+    Await.result(httpClient2.readyFuture, timeout.duration)
     HttpClientBean(system).getHttpClientInfo.size should be (2)
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello1") should be (HttpClientInfo("hello1", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello2") should be (HttpClientInfo("hello2", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient with pipeline" should "show up the correct value of HttpClientBean" in {
-    val httpClient = HttpClientFactory.get("hello3").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
-    HttpClientFactory.get("hello4")
+    val httpClient1 = HttpClientFactory.get("hello3").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
+    Await.result(httpClient1.readyFuture, timeout.duration)
+    val httpClient2 = HttpClientFactory.get("hello4")
+    Await.result(httpClient2.readyFuture, timeout.duration)
     HttpClientBean(system).getHttpClientInfo.size should be (2)
-    Await.result(httpClient.readyFuture, 3 seconds)
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello3") should be (HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler","org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler"))
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello4") should be (HttpClientInfo("hello4", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient with configuration" should "show up the correct value of HttpClientBean" in {
-    HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80))))
+    val httpClient = HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80))))
+    Await.result(httpClient.readyFuture, timeout.duration)
     val markDownStatus = HttpClientFactory.get("hello6").markDown
-    Await.result(markDownStatus, 3 seconds)
+    Await.result(markDownStatus, timeout.duration)
     HttpClientBean(system).getHttpClientInfo.size should be (2)
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello5") should be (HttpClientInfo("hello5", "default", "http://www.ebay.com", "UP", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello6") should be (HttpClientInfo("hello6", "default", "http://www.ebay.com", "DOWN", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
@@ -103,17 +107,13 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
     CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.size should be (0)
     EndpointRegistry(system).register(DummyServiceEndpointResolver)
     val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/view")
-    val result = Await.result(response, 3 seconds)
+    val result = Await.result(response, timeout.duration)
     result.status should be (StatusCodes.OK)
     CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.size should be (1)
     val cbInfo = CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.get(0)
     cbInfo.name should be ("DummyService")
     cbInfo.status should be ("Closed")
     cbInfo.lastDurationConfig should be ("60 Seconds")
-    println(s"success times:${cbInfo.successTimes}")
-    println(s"fail fast times:${cbInfo.failFastTimes}")
-    println(s"fallback times:${cbInfo.fallbackTimes}")
-    println(s"exception times:${cbInfo.exceptionTimes}")
     cbInfo.successTimes should be (1)
     cbInfo.failFastTimes should be (0)
     cbInfo.fallbackTimes should be (0)

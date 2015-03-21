@@ -56,10 +56,10 @@ trait CircuitBreakerSupport{
       case (None, CircuitBreakerStatus.Closed) =>
         collectCbMetrics(client, ServiceCallStatus.Success)
         runCircuitBreaker
-      case (Some(response), CircuitBreakerStatus.Open | CircuitBreakerStatus.HalfOpen) =>
+      case (Some(response), _) =>
         collectCbMetrics(client, ServiceCallStatus.Fallback)
         runCircuitBreaker fallbackTo future{response}
-      case (None, CircuitBreakerStatus.Open | CircuitBreakerStatus.HalfOpen)           =>
+      case (None, _)           =>
         collectCbMetrics(client, ServiceCallStatus.FailFast)
         runCircuitBreaker
     }
