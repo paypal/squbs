@@ -1,12 +1,12 @@
 #Orchestration DSL
 
-Orchestration is one of the major use cases for services, whether you try to orchestrate multiple service calls with as much concurrency, and therefore as good a response time, as possible, or you try to do multiple business operations, data writes, data reads, service calls, etc. dependent on each others, etc. The ability to concisely describe your business logic concisely is essential to making the service easy to understand and maintain. The orchestration DSL, part of squbs-pattern, will make your life easy and make asynchronous code easy to reason about.
+Orchestration is one of the major use cases for services, whether you try to orchestrate multiple service calls with as much concurrency, and therefore as good a response time, as possible, or you try to do multiple business operations, data writes, data reads, service calls, etc. dependent on each others, etc. The ability to concisely describe your business logic is essential to making the service easy to understand and maintain. The orchestration DSL - part of squbs-pattern - will make asynchronous code easy to write, read, reason about, and maintain.
 
 ##Core Concepts
 
 ###Orchestrator
 
-`Orchestrator` is a trait extended by actors to support the orchestration functionality. It is technically a child trait of the [Aggregator](http://doc.akka.io/docs/akka/snapshot/contrib/aggregator.html) and provides all its functionality. In addition, it provides further functionality allowing effective orchestration composition, plus some utilities to allow easy creation of orchestration functions we will discuss in detail below. To use the orchestrator, an actor would extend the `Orchestrator` trait.
+`Orchestrator` is a trait extended by actors to support the orchestration functionality. It is technically a child trait of the [Aggregator](http://doc.akka.io/docs/akka/snapshot/contrib/aggregator.html) and provides all its functionality. In addition, it provides functionality and syntax allowing effective orchestration composition - plus utilities often needed in the creation of orchestration functions discussed in detail below. To use the orchestrator, an actor would simply extend the `Orchestrator` trait.
 
 ```scala
 org.squbs.pattern.orchestration.Orchestrator
@@ -16,11 +16,11 @@ class MyOrchestrator extends Actor with Orchestrator {
 }
 ```
 
-Similar to Aggregator, an orchestrator generally does not declare the Akka actor receive block but allows the expect/expectOnce/unexpect blocks to define what responses are expected at any point in time. These expect blocks are generally used from inside orchestration functions.
+Similar to Aggregator, an orchestrator generally does not declare the Akka actor receive block but allows the expect/expectOnce/unexpect blocks to define what responses are expected at any point. These expect blocks are generally used from inside orchestration functions.
 
 ###Orchestration Future and Promise
 
-The orchestration promise and future is very similar to [`scala.concurrent.Future`](http://www.scala-lang.org/api/2.11.4/index.html#scala.concurrent.Future) and [`scala.concurrent.Promise`](http://www.scala-lang.org/api/2.11.4/index.html#scala.concurrent.Promise$) described with samples [here](http://docs.scala-lang.org/overviews/core/futures.html) with only a name change to `OFuture` and `OPromise`, signifying them to be used with the Orchestrator, inside an actor. The main difference between the concurrent version and the orchestration version of the artifacts is that the orchestration version is optimized for orchestration usage inside an actor. They are non-concurrent and do not use an (implicit) execution context in their signatures, and for execution. They also lack a few functions explicitly executing a closure asynchronously. Used inside an actor, their callbacks will never be called outside the scope of an actor. This will eliminate the danger of concurrently modifying actor state from a different thread due to callbacks.
+The orchestration promise and future is very similar to [`scala.concurrent.Future`](http://www.scala-lang.org/api/2.11.4/index.html#scala.concurrent.Future) and [`scala.concurrent.Promise`](http://www.scala-lang.org/api/2.11.4/index.html#scala.concurrent.Promise$) described [here](http://docs.scala-lang.org/overviews/core/futures.html) with only a name change to `OFuture` and `OPromise`, signifying them to be used with the Orchestrator, inside an actor. The orchestration versions differentiate themselves from the concurrent versions of the artifacts by having no concurrency behavior. They do not use an (implicit) `ExecutionContext` in their signatures, and for execution. They also lack a few functions explicitly executing a closure asynchronously. Used inside an actor, their callbacks will never be called outside the scope of an actor. This will eliminate the danger of concurrently modifying actor state from a different thread due to callbacks. In addition, they include performance optimizations assuming they will always be used inside an actor.
 
 **Note:** DO NOT pass an `OFuture` outside an actor. Implicit conversions are provided to convert between `scala.concurrent.Future` and `OFuture`.
 
@@ -30,9 +30,9 @@ import org.squbs.pattern.orchestration.{OFuture, OPromise}
 
 ###Asynchronous Orchestration Functions
 
-Orchestration functions are the functions that the orchestrator calls to execute single orchestration tasks, such as making a service or database call. An orchestration function must comply to the following guideline:
+Orchestration functions are the functions called by the orchestration flow to execute single orchestration tasks, such as making a service or database call. An orchestration function must comply to the following guideline:
 
-1. It must take non Future arguments as input. Based on current limitations in the language, the number of arguments can be up to 22. But if you have a function with 22 arguments, there is likely something wrong with the way you design it.
+1. It must take non Future arguments as input. Based on current limitations in the language, the number of arguments can be up to 22. Note: If you have a function with 22 arguments, there is likely something wrong with the way the function is designed.
 2. It may be [curried](http://docs.scala-lang.org/tutorials/tour/currying.html) to separate direct input from piped (future) input. The piped input must be the last set of arguments in a curried function. 
 3. It must cause asynchronous execution. The asynchronous execution is generally achieved by sending a message to be processed by a different actor.
 4. It must return an OFuture (orchestration future).
