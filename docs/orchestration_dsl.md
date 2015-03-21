@@ -8,7 +8,7 @@ Orchestration is one of the major use cases for services, whether you try to orc
 
 `Orchestrator` is a trait extended by actors to support the orchestration functionality. It is technically a child trait of the [Aggregator](http://doc.akka.io/docs/akka/snapshot/contrib/aggregator.html) and provides all its functionality. In addition, it provides further functionality allowing effective orchestration composition, plus some utilities to allow easy creation of orchestration functions we will discuss in detail below. To use the orchestrator, an actor would extend the `Orchestrator` trait.
 
-```
+```scala
 org.squbs.pattern.orchestration.Orchestrator
 
 class MyOrchestrator extends Actor with Orchestrator {
@@ -22,7 +22,7 @@ Similar to Aggregator, an orchestrator generally does not declare the Akka actor
 
 The orchestration promise and future is very similar to [scala.concurrent.Future](http://www.scala-lang.org/api/2.11.4/index.html#scala.concurrent.Future) and [scala.concurrent.Promise](http://www.scala-lang.org/api/2.11.4/index.html#scala.concurrent.Promise$) described with samples [here](http://docs.scala-lang.org/overviews/core/futures.html) with only a name change to OFuture and OPromise, signifying them to be used with the Orchestrator, inside an actor. The main difference between the concurrent version and the orchestration version of the artifacts is that the orchestration version is optimized for use inside an actor. They are non-concurrent and do not use an (implicit) execution context in their signatures, and for execution. They also lack a few functions explicitly telling an actor to execute. Used inside an actor, their callbacks will never be called outside the scope of an actor. This will eliminate the danger of concurrently modifying actor state from a different thread due to callbacks. Furthermore, their callback mechanism is highly optimized for in-actor usage making them the ideal candidate for orchestration.
 
-```
+```scala
 import org.squbs.pattern.orchestration.{OFuture, OPromise} 
 ```
 
@@ -37,7 +37,7 @@ Orchestration functions are the functions that the orchestrator calls to execute
 
 Lets look at a few examples of orchestration functions:
 
-```
+```scala
 def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
   val itemPromise = OPromise[Option[Item]]
   
@@ -56,7 +56,7 @@ In this example, the function is curried. The `itemId` argument is delivered syn
 
 The example below is logically the same as the first example, just using ask instead of tell:
 
-```
+```scala
 def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
   
   import context.dispatcher
@@ -83,11 +83,10 @@ The pipe is the main component of the Orchestration DSL allowing orchestration f
 
 When multiple OFutures are piped to an orchestration function, the OFutures need to be comma-separated and enclosed in parentheses, constructing a tuple of OFutures as input. The number of elements in the tuple their OFuture types must match the function arguments and types, or the last set of arguments in case of a [curry](http://docs.scala-lang.org/tutorials/tour/currying.html) or the compilation will fail. Such errors are normally also cought by the IDE. The following example shows a simple orchestration declaration and flow using the loadItem orchestration function declared above, in previous sections:
 
-```
+```scala
 val userF = loadViewingUser
 val itemF = userF >> loadItem(itemId)
 val itemViewF = (userF, itemF) >> buildItemView
-
 ```
 
 The flow above can be described as follows:
@@ -106,22 +105,84 @@ The last part of an orchestration callback shall definitely stop the actor. This
 
 Generally, the code flow of the orchestrator is as follows:
 
-// TODO: Put this into a code sample.
+```scala
+    // 1. Declare the orchestrator actor.
+class MyOrchestrator extends Actor with Orchestrator {
 
-1. Declare the orchestrator actor.
-2. Provide the initial `expectOnce` block that will receive the request message. After this request message is received, the same request will not be expected again for the same actor.
-3. The `expectOnce` only has one case which is the initial request and uses the request arguments or members, and the `sender()` to call the high level orchestration function. We generally name this function `orchestrate`. Inside `orchestrate`, its arguments become immutable by default allowing developers to rely on the fact these will never change.
-4. If there is anything we need to do synchronously to setup for the orchestration, do this in the first part of `orchestrate`.
-5. Compose the orchestration flow using pipes as needed by the business logic.
-6. End the flow by calling functions composing the response(s) back to the requester. If the composition is very large, it may be more readable to use for-comprehensions rather than a composition function with very large number of arguments. There may be multiple such compositions in case partial responses are desired.
-7. Make sure the last response stops the orchestrator actor.
-8. Implement the asynchronous orchestration functions inside the orchestrator actor, but outside the `orchestrate` function.
+    // 2. Provide the initial expectOnce block that will receive the request message.
+    //    After this request message is received, the same request will not be
+    //    expected again for the same actor.
+    //    The expectOnce only has one case which is the initial request and uses
+    //    the request arguments or members, and the sender() to call the high
+    //    level orchestration function. This function is usually named orchestrate.
+  expectOnce {
+    case r: MyOrchestrationRequest => orchestrate(sender(), r)
+  }
+  
+    // 3. Define orchestrate, its arguments become immutable by default
+    //    allowing developers to rely on the fact these will never change.
+  def orchestrate(requester: ActorRef, request: MyOrchestrationRequest) {
+  
+    // 4. If there is anything we need to do synchronously to setup for
+    //    the orchestration, do this in the first part of orchestrate.
+  
+    // 5. Compose the orchestration flow using pipes as needed by the business logic.
+    val userF = loadViewingUser
+    val itemF = userF >> loadItem(itemId)
+    val itemViewF = (userF, itemF) >> buildItemView
+    
+    // 6. End the flow by calling functions composing the response(s) back to the
+    //    requester. If the composition is very large, it may be more readable to
+    //    use for-comprehensions rather than a composition function with very large
+    //    number of arguments. There may be multiple such compositions in case partial
+    //    responses are desired. This example shows the use of a for-comprehension
+    //    just for reference. You can also use an orchestration function with
+    //    3 arguments plus the requester in such small cases.
+    
+    for {
+      user <- userF
+      item <- itemF
+      itemView <- itemViewF
+    } {
+      requester ! OrchestrationResult(user, item, itemView)
+      context.stop(self)
+    }
+    
+    // 7. Make sure the last response stops the orchestrator actor.
+  }
+  
+    // 8. Implement the asynchronous orchestration functions inside the
+    //    orchestrator actor, but outside the orchestrate function.
+  def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
+    val itemPromise = OPromise[Option[Item]]
+  
+    context.actorOf[ItemActor] ! ItemRequest(itemId, seller.id)
+  
+    expectOnce {
+      case item: Item    => itemPromise success Some(item)
+      case e: NoSuchItem => itemPromise success None
+    }
+  
+    itemPromise.future
+  }
+  
+  def loadViewingUser: OFuture[Option[User]] = {
+    val userPromise = OPromise[Option[User]]
+    ...
+    userPromise.future
+  }
+  
+  def buildItemView: OFuture[Option[ItemView]] = {
+    ...
+  }
+}
+```
 
 ##Re-use of Orchestration Functions
 
-Orchestration functions often rely on the facilities provided by the `Orchestrator` trait and cannot live stand-alone. However, in many cases, re-use of the orchestration functions across multiple orchestrators are desired. In such cases it is important to separate the orchestration functions into a different trait that will be mixed into each of the orchestrators, this can be done as in the following example:
+Orchestration functions often rely on the facilities provided by the `Orchestrator` trait and cannot live stand-alone. However, in many cases, re-use of the orchestration functions across multiple orchestrators are desired. In such cases it is important to separate the orchestration functions into a different trait(s) that will be mixed into each of the orchestrators. The following shows a sample of such a trait.:
 
-```
+```scala
 trait OrchestrationFunctions { this: Actor with Orchestrator =>
 
   def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
@@ -134,19 +195,19 @@ The `this: Actor with Orchestrator` in the sample above is a typed self referenc
 
 To use the OrchestrationFunctions inside an orchestrator, one would just mix this trait into an orchestrator as follows:
 
-```
-trait MyOrchestrator extends Actor with Orchestrator with OrchestrationFunctions {
+```scala
+class MyOrchestrator extends Actor with Orchestrator with OrchestrationFunctions {
   ...
 }
 ```
 
 ##Ensuring Response Uniqueness
 
-When using `expect` or `expectOnce`, the matches are generally done by type. There is no logical link that the received message is from the request message sent just before declaring the expect, in the same orchestration function. For complicated orchestrations, there may become issues of message confusion. The response is not associated with the right request. There are a few strategies for dealing with this problem:
+When using `expect` or `expectOnce`, we're limited by the pattern match capabilities of a single expect block which is limited in scope and cannot distinguish between matches across multiple expect blocks in multiple orchestration functions. There is no logical link that the received message is from the request message sent just before declaring the expect, in the same orchestration function. For complicated orchestrations, we may run into issues of message confusion. The response is not associated with the right request. There are a few strategies for dealing with this problem:
 
-If the recipient of the initial message is unique, the match could include a reference to the message's sender as in the sample pattern match below.
+If the recipient of the initial message, and therefore the sender of the response message is unique, the match could include a reference to the message's sender as in the sample pattern match below.
 
-```
+```scala
 def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
   val itemPromise = OPromise[Option[Item]]
   
@@ -162,9 +223,9 @@ def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
 }
 ```
 
-The `Orchestrator` trait provides a message id generator that is unique when combined with the actor instance. We can use this id generator to generate a unique message id. Actors that accept such messages will just need to return this message id as part of the response message. The sample below shows an orchestration function using the message id generator.
+Alternatively, the `Orchestrator` trait provides a message id generator that is unique when combined with the actor instance. We can use this id generator to generate a unique message id. Actors that accept such messages will just need to return this message id as part of the response message. The sample below shows an orchestration function using the message id generator.
 
-```
+```scala
 def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] {
   val itemPromise = OPromise[Option[Item]]
   
