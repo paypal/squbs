@@ -6,45 +6,44 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.CuratorFrameworkFactory
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.zookeeper.CreateMode
-import org.scalatest.{BeforeAndAfterEach, BeforeAndAfterAll, Matchers, FlatSpecLike}
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpecLike, Matchers}
 
 import scala.concurrent.duration._
-
 /**
  * Created by zhuwang on 1/28/15.
  */
 class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitTest") with LazyLogging
   with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with BeforeAndAfterEach {
-  import ZkClusterMultiActorSystemTestKit._
+  import org.squbs.cluster.ZkClusterMultiActorSystemTestKit._
   
   override val timeout: FiniteDuration = 30 seconds
+  
   override val clusterSize: Int = 6
-
+  
   override def afterEach(): Unit = {
     println("------------------------------------------------------------------------------------------")
     Thread.sleep(1000)
   }
-
+  
   val par1 = ByteString("myPar1")
   val par2 = ByteString("myPar2")
   val par3 = ByteString("myPar3")
-  implicit val log = logger
   
+  implicit val log = logger
   implicit def string2ByteArray(s: String) = s.toCharArray map (c => c.toByte)
-  implicit def ByteArray2String(array: Array[Byte]) = 
-    (for (i <- 0 until array.length) yield array(i).toChar).mkString
+  implicit def ByteArray2String(array: Array[Byte]) = (for (i <- 0 until array.length) yield array(i).toChar).mkString
   
   override def beforeAll = {
     // Don't need to start the cluster for now
     // We preset the data in Zookeeper instead.
     val zkClient = CuratorFrameworkFactory.newClient(
-      zkConfig.getString("zkCluster.connectionString"), 
+      zkConfig.getString("zkCluster.connectionString"),
       new ExponentialBackoffRetry(1000, 3))
     zkClient.start
     zkClient.blockUntilConnected
     implicit val zkClientWithNS = zkClient.usingNamespace(zkConfig.getString("zkCluster.namespace"))
-    guarantee("/leader",   Some(Array[Byte]()), CreateMode.PERSISTENT)
-    guarantee("/members",  Some(Array[Byte]()), CreateMode.PERSISTENT)
+    guarantee("/leader", Some(Array[Byte]()), CreateMode.PERSISTENT)
+    guarantee("/members", Some(Array[Byte]()), CreateMode.PERSISTENT)
     guarantee("/segments", Some(Array[Byte]()), CreateMode.PERSISTENT)
     guarantee("/segments/segment-0", Some(Array[Byte]()), CreateMode.PERSISTENT)
     guarantee(s"/segments/segment-0/${keyToPath(par1)}", Some("myPar1"), CreateMode.PERSISTENT)

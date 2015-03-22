@@ -1,5 +1,7 @@
 package org.squbs.cluster
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import akka.actor.{Actor, Address, AddressFromURIString}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.api.CuratorWatcher
@@ -27,17 +29,17 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
 
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._
-
+  
   private[this] implicit val log = logger
-  private[this] var zkLeaderLatch: LeaderLatch = new LeaderLatch(zkClientWithNs, "/leadership")
-  private[this] var stopped = false
-
+  private[this] var zkLeaderLatch: LeaderLatch = null
+  private[this] val stopped = new AtomicBoolean(false)
+  
   def initialize = {
     //watch over leader changes
     val leader = zkClientWithNs.getData.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
         log.debug("[membership] leader watch event:{} when stopped:{}", event, stopped.toString)
-        if(!stopped) {
+        if(!stopped.get) {
           event.getType match {
             case EventType.NodeCreated | EventType.NodeDataChanged =>
               zkClusterActor ! ZkLeaderElected(zkClientWithNs.getData.usingWatcher(this).forPath("/leader"))
@@ -56,7 +58,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
     zkClientWithNs.getData.usingWatcher(new CuratorWatcher {
       def process(event: WatchedEvent): Unit = {
         log.debug("[membership] self watch event: {} when stopped:{}", event, stopped.toString)
-        if(!stopped) {
+        if(!stopped.get) {
           event.getType match {
             case EventType.NodeDeleted =>
               log.info("[membership] member node was deleted unexpectedly, recreate")
@@ -73,7 +75,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
     lazy val members = zkClientWithNs.getChildren.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
         log.debug("[membership] membership watch event:{} when stopped:{}", event, stopped.toString)
-        if(!stopped) {
+        if(!stopped.get) {
           event.getType match {
             case EventType.NodeChildrenChanged =>
               refresh(zkClientWithNs.getChildren.usingWatcher(this).forPath("/members"))
@@ -93,27 +95,20 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
     refresh(members)
     if (leader != null) zkClusterActor ! ZkLeaderElected(leader)
   }
-
-  override def preStart = {
-    //enroll in the leadership competition
-    zkLeaderLatch.start
-    initialize
-  }
-
+  
   override def postStop = {
     //stop the leader latch to quit the competition
-    stopped = true
-    zkLeaderLatch.close
+    stopped set true
+    if (zkLeaderLatch != null) zkLeaderLatch.close
   }
-
+  
   def receive: Actor.Receive = {
-
     case ZkClientUpdated(updated) =>
-      zkLeaderLatch.close
+      // differentiate first connected to ZK or reconnect after connection lost
+      if (zkLeaderLatch != null) zkLeaderLatch.close
       zkLeaderLatch = new LeaderLatch(zkClientWithNs, "/leadership")
       zkLeaderLatch.start
       initialize
-
     case ZkAcquireLeadership =>
       //repeatedly enroll in the leadership competition once the last attempt fails
       val oneSecond = 1.second

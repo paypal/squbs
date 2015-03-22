@@ -33,19 +33,15 @@ import scala.annotation.tailrec
 package object cluster {
 
   trait RebalanceLogic {
-
     val spareLeader:Boolean
-
     /**
      * @return partitionsToMembers compensated when size in service is short compared with what's required
      */
     def compensate(partitionsToMembers:Map[ByteString, Set[Address]], members:Seq[Address], size:(ByteString => Int)):Map[ByteString, Set[Address]] = {
-
       partitionsToMembers.map(assign => {
         val partitionKey = assign._1
         val servants = assign._2.filter(members.contains(_))
         val partitionSize = size(partitionKey)
-
         servants.size match {
           case size if size < partitionSize => //shortage, must be compensated
             partitionKey -> (servants ++ members.filterNot(servants.contains(_)).take(partitionSize - servants.size))
@@ -61,22 +57,17 @@ package object cluster {
      * @return partitionsToMembers rebalanced
      */
     def rebalance(partitionsToMembers:Map[ByteString, Set[Address]], members:Set[Address]):Map[ByteString, Set[Address]] = {
-
       val utilization = partitionsToMembers.foldLeft(Map.empty[Address, Seq[ByteString]]){(memoize, assign) =>
         assign._2.foldLeft(memoize){(memoize, member) =>
           memoize.updated(member, memoize.getOrElse(member, Seq.empty) :+ assign._1)
         }
       }
-
       val ordered = members.toSeq.sortWith((one, two) => utilization.getOrElse(one, Seq.empty).size < utilization.getOrElse(two, Seq.empty).size)
-
       @tailrec def rebalanceRecursively(partitionsToMembers:Map[ByteString, Set[Address]],
                                         utilization:Map[Address, Seq[ByteString]],
                                         ordered:Seq[Address]):Map[ByteString, Set[Address]] = {
-
         val overflows = utilization.getOrElse(ordered.last, Seq.empty)
         val underflow = utilization.getOrElse(ordered.head, Seq.empty)
-
         if (overflows.size - underflow.size > 1) {
           val move = overflows.head
           val updatedUtil = utilization.updated(ordered.last, overflows.tail).updated(ordered.head, underflow :+ move)
@@ -84,13 +75,11 @@ package object cluster {
           headOrdered = (headOrdered :+ ordered.head) ++ ordered.tail.drop(headOrdered.size)
           var rearOrdered = headOrdered.takeWhile(next => updatedUtil.getOrElse(headOrdered.last, Seq.empty).size > updatedUtil.getOrElse(next, Seq.empty).size)
           rearOrdered = (rearOrdered :+ headOrdered.last) ++ headOrdered.drop(rearOrdered.size).dropRight(1)/*drop the headOrdered.last*/
-
           rebalanceRecursively(partitionsToMembers.updated(move, partitionsToMembers.getOrElse(move, Set.empty) + ordered.head - ordered.last), updatedUtil, rearOrdered)
         }
         else
           partitionsToMembers
       }
-
       rebalanceRecursively(partitionsToMembers, utilization, ordered)
     }
   }
@@ -98,20 +87,14 @@ package object cluster {
   class DefaultRebalanceLogic(val spareLeader:Boolean) extends RebalanceLogic
 
   object DefaultRebalanceLogic {
-
     def apply(spareLeader:Boolean) = new DefaultRebalanceLogic(spareLeader)
   }
 
   trait SegmentationLogic {
-
     val segmentsSize:Int
-
     def segmentation(partitionKey:ByteString) = s"segment-${Math.abs(partitionKey.hashCode) % segmentsSize}"
-
     def partitionZkPath(partitionKey:ByteString) = s"/segments/${segmentation(partitionKey)}/${keyToPath(partitionKey)}"
-
     def sizeOfParZkPath(partitionKey:ByteString) = s"${partitionZkPath(partitionKey)}/$$size"
-    
     def servantsOfParZkPath(partitionKey:ByteString) = s"${partitionZkPath(partitionKey)}/servants"
   }
 
@@ -143,7 +126,6 @@ package object cluster {
     try{
       if(recursive)
         zkClient.getChildren.forPath(path).foreach(child => safelyDiscard(s"$path/$child", recursive))
-
       zkClient.delete.forPath(path)
       path
     }
