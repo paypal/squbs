@@ -131,12 +131,26 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
     "start all services" in {
       val services = boot.cubes flatMap { cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty) }
-      assert(services.size == 4)
+      assert(services.size == 6)
       IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvc/msg/hello"))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
         response.entity.asString should be("^hello$")
+      }
+
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummy2svc/v1/msg/hello"))
+      within(timeout.duration) {
+        val response = expectMsgType[HttpResponse]
+        response.status should be(StatusCodes.OK)
+        response.entity.asString should be("^hello$")
+      }
+
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummy2svc/msg/hello"))
+      within(timeout.duration) {
+        val response = expectMsgType[HttpResponse]
+        response.status should be(StatusCodes.OK)
+        response.entity.asString should be("^olleh$") // This implementation reverses the message
       }
 
       IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/ping"))
@@ -222,8 +236,8 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val listenersObjName = new ObjectName(prefix(system) + listenersName)
       val listeners = mbeanServer.getAttribute(listenersObjName, "Listeners")
       listeners shouldBe a [Array[javax.management.openmbean.CompositeData]]
-      // 4 services registered on one listener
-      listeners.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 4
+      // 6 services registered on one listener
+      listeners.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 6
 
     }
 

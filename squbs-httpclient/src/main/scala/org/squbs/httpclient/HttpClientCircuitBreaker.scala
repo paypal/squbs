@@ -19,7 +19,6 @@ package org.squbs.httpclient
 
 import scala.concurrent._
 import spray.http.HttpResponse
-import scala.Some
 import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
 import scala.collection.mutable.ListBuffer
 import org.squbs.httpclient.CircuitBreakerStatus.CircuitBreakerStatus
@@ -46,10 +45,10 @@ case class CircuitBreakerMetrics(var status: CircuitBreakerStatus,
 
 trait CircuitBreakerSupport{
 
-  def withCircuitBreaker(client: Client, response: Future[HttpResponse])(implicit system: ActorSystem) = {
+  def withCircuitBreaker(client: HttpClient, response: Future[HttpResponse])(implicit system: ActorSystem) = {
     implicit val ec = system.dispatcher
     val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](response)
-    val fallbackHttpResponse = client.endpoint.config.circuitBreakerConfig.fallbackHttpResponse
+    val fallbackHttpResponse = client.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse
     (fallbackHttpResponse, client.cbMetrics.status) match {
       case (Some(response), CircuitBreakerStatus.Closed) =>
         collectCbMetrics(client, ServiceCallStatus.Success)
@@ -57,19 +56,19 @@ trait CircuitBreakerSupport{
       case (None, CircuitBreakerStatus.Closed) =>
         collectCbMetrics(client, ServiceCallStatus.Success)
         runCircuitBreaker
-      case (Some(response), CircuitBreakerStatus.Open | CircuitBreakerStatus.HalfOpen) =>
+      case (Some(response), _) =>
         collectCbMetrics(client, ServiceCallStatus.Fallback)
         runCircuitBreaker fallbackTo future{response}
-      case (None, CircuitBreakerStatus.Open | CircuitBreakerStatus.HalfOpen)           =>
+      case (None, _)           =>
         collectCbMetrics(client, ServiceCallStatus.FailFast)
         runCircuitBreaker
     }
   }
 
-  def collectCbMetrics(client: Client, status: ServiceCallStatus) = {
+  def collectCbMetrics(client: HttpClient, status: ServiceCallStatus)(implicit system: ActorSystem) = {
     val cbLastDurationCall = client.cbMetrics.cbLastDurationCall
     val currentTime = System.currentTimeMillis
-    val lastDuration = client.endpoint.config.circuitBreakerConfig.lastDuration.toMillis
+    val lastDuration = client.endpoint.config.settings.circuitBreakerConfig.lastDuration.toMillis
     status match {
       case ServiceCallStatus.Success =>
         client.cbMetrics.successTimes += 1
@@ -85,5 +84,6 @@ trait CircuitBreakerSupport{
         cbLastDurationCall.append(ServiceCall(currentTime, ServiceCallStatus.Exception))
     }
     client.cbMetrics.cbLastDurationCall = cbLastDurationCall.dropWhile(_.callTime + lastDuration <= currentTime)
+    HttpClientManager(system).httpClientMap.put((client.name, client.env), client)
   }
 }

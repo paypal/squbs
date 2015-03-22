@@ -17,48 +17,22 @@
  */
 package org.squbs.httpclient.pipeline
 
+import org.squbs.httpclient.pipeline.impl.RequestUpdateHeaderHandler
 import spray.httpx.{UnsuccessfulResponseException, PipelineException}
-import spray.client.pipelining._
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{Props, ActorRef, ActorSystem}
 import spray.httpx.unmarshalling._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import org.squbs.httpclient._
 import spray.http.{Uri, HttpRequest, HttpResponse}
 import scala.util.Try
 import akka.pattern._
 import akka.util.Timeout
 import spray.can.Http
-import akka.io.IO
 import javax.net.ssl.SSLContext
 import spray.io.ClientSSLEngineProvider
 import org.squbs.httpclient.endpoint.Endpoint
 import org.slf4j.LoggerFactory
-
-trait Pipeline {
-  def requestPipelines: Seq[RequestTransformer]
-
-  def responsePipelines: Seq[ResponseTransformer]
-}
-
-trait PipelineHandler {
-  def processRequest: RequestTransformer
-
-  def processResponse: ResponseTransformer
-}
-
-trait RequestPipelineHandler extends PipelineHandler {
-  override def processResponse: ResponseTransformer = {httpResponse => httpResponse}
-}
-
-trait ResponsePipelineHandler extends PipelineHandler {
-  override def processRequest: RequestTransformer = {httpRequest => httpRequest}
-}
-
-object EmptyPipeline extends Pipeline {
-  override def responsePipelines: Seq[ResponseTransformer] = Seq.empty[ResponseTransformer]
-
-  override def requestPipelines: Seq[RequestTransformer] = Seq.empty[RequestTransformer]
-}
+import org.squbs.proxy.SimplePipelineConfig
 
 object HttpClientUnmarshal{
 
@@ -81,18 +55,11 @@ trait PipelineManager{
 
   val httpClientLogger = LoggerFactory.getLogger(this.getClass)
 
-  private def pipelining(client: Client)(implicit system: ActorSystem) = {
-    implicit val ec = system.dispatcher
-    implicit val connectionTimeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
-    for (
-      Http.HostConnectorInfo(connector, _) <-
-      IO(Http) ? hostConnectorSetup(client)
-    ) yield sendReceive(connector)
-  }
 
-  def hostConnectorSetup(client: Client)(implicit system: ActorSystem) = {
+  def hostConnectorSetup(client: HttpClient,
+                         reqSettings: RequestSettings = Configuration.defaultRequestSettings)(implicit system: ActorSystem) = {
     implicit def sslContext: SSLContext = {
-      client.endpoint.config.sslContext match {
+      client.endpoint.config.settings.sslContext match {
         case Some(context) => context
         case None          => SSLContext.getDefault
       }
@@ -106,57 +73,48 @@ trait PipelineManager{
     val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
     val isSecure = uri.scheme.toLowerCase.equals("https")
     val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
-    defaultHostConnectorSetup.copy(settings = Some(client.endpoint.config.hostSettings), connectionType = client.endpoint.config.connectionType)
+    val clientConnectionSettings = client.endpoint.config.settings.hostSettings.connectionSettings.copy(requestTimeout = reqSettings.timeout)
+    val hostSettings = client.endpoint.config.settings.hostSettings.copy(connectionSettings = clientConnectionSettings)
+    defaultHostConnectorSetup.copy(settings = Some(hostSettings), connectionType = client.endpoint.config.settings.connectionType)
   }
 
-  def invokeToHttpResponse(client: Client)(implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
+  def invokeToHttpResponseWithoutSetup(client: HttpClient,
+                                       reqSettings: RequestSettings = Configuration.defaultRequestSettings,
+                                       actorRef: ActorRef)
+                                      (implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
     implicit val ec = system.dispatcher
-    val pipelines = client.endpoint.config.pipeline.getOrElse(EmptyPipeline)
-    val reqPipelines = pipelines.requestPipelines
-    val resPipelines = pipelines.responsePipelines
-    val connTimeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout
-    Try{
-      val futurePipeline = pipelining(client)
-      val pipeline = Await.result(futurePipeline, connTimeout)
-      (reqPipelines, resPipelines, client.status) match {
-        case (_, _, Status.DOWN) =>
-          throw HttpClientMarkDownException(client.name, client.env)
-        case (Seq(), Seq(), _) =>
-          pipeline
-        case (Seq(), _: Seq[ResponseTransformer], _) =>
-          pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _)
-        case (_: Seq[RequestTransformer], Seq(), _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline
-        case (_: Seq[RequestTransformer], _: Seq[ResponseTransformer], _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _)
-      }
-    }
-  }
-
-  def invokeToHttpResponseWithoutSetup(client: Client, actorRef: ActorRef)(implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
-    implicit val ec = system.dispatcher
-    val pipelines = client.endpoint.config.pipeline.getOrElse(EmptyPipeline)
-    val reqPipelines = pipelines.requestPipelines
-    val resPipelines = pipelines.responsePipelines
-    implicit val timeout: Timeout = client.endpoint.config.hostSettings.connectionSettings.connectingTimeout.toMillis
+    val pipeConfig = client.endpoint.config.pipeline.getOrElse(SimplePipelineConfig.empty)
+    implicit val timeout: Timeout = client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
+    val updatedPipeConfig = reqSettings.headers.isEmpty match {
+      case false  =>
+        val requestPipelines = pipeConfig.reqPipe ++ reqSettings.headers.map(new RequestUpdateHeaderHandler(_))
+        pipeConfig.copy(reqPipe = requestPipelines)
+      case true => pipeConfig
+    }
+		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.endpoint, updatedPipeConfig, pipeline))
     Try{
-      (reqPipelines, resPipelines, client.status) match {
-        case (_, _, Status.DOWN) =>
+      client.status match {
+        case Status.DOWN =>
           throw HttpClientMarkDownException(client.name, client.env)
-        case (Seq(), Seq(), _) =>
-          pipeline
-        case (Seq(), _: Seq[ResponseTransformer], _) =>
-          pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _)
-        case (_: Seq[RequestTransformer], Seq(), _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline
-        case (_: Seq[RequestTransformer], _: Seq[ResponseTransformer], _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _)
+        case _ =>
+					import scala.concurrent.duration._
+					implicit val timeout = Timeout(3 seconds)
+					r: HttpRequest => (pipelineActor ? r).mapTo[HttpResponse]
       }
     }
   }
 
   implicit def endpointToUri(endpoint: Endpoint): String = {
-    endpoint.uri
+    val uri = Uri(endpoint.uri)
+    val host = uri.authority.host.toString
+    val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
+    val isSecure = uri.scheme.toLowerCase.equals("https")
+    (isSecure, port) match {
+      case (true, 443) => s"https://$host"
+      case (true, _)   => s"https://$host:$port"
+      case (false, 80) => s"http://$host"
+      case (false, _)  => s"http://$host:$port"
+    }
   }
 }

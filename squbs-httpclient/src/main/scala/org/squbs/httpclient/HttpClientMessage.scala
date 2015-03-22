@@ -17,13 +17,10 @@
  */
 package org.squbs.httpclient
 
-import scala.Some
 import org.squbs.httpclient.env.{Default, Environment}
-import akka.pattern.CircuitBreaker
-import akka.actor.ActorSystem
-import org.squbs.httpclient.endpoint.EndpointRegistry
+import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
+import org.squbs.proxy.SimplePipelineConfig
 import spray.httpx.marshalling.Marshaller
-import spray.http.HttpResponse
 
 object HttpClientManagerMessage {
 
@@ -32,35 +29,7 @@ object HttpClientManagerMessage {
    * @param name
    * @param env
    */
-  case class Get(name: String, env: Environment = Default)(implicit system: ActorSystem) extends Client {
-    override val cb: CircuitBreaker = {
-      implicit val ec = system.dispatcher
-      EndpointRegistry.resolve(name, env) match {
-        case Some(endpoint) =>
-          HttpClientManager.httpClientMap.get((name, env)) match {
-            case Some((client, _)) =>
-              client.cb
-            case None              =>
-              val cbConfig = endpoint.config.circuitBreakerConfig
-              new CircuitBreaker(system.scheduler, cbConfig.maxFailures, cbConfig.callTimeout, cbConfig.resetTimeout)
-          }
-        case None           =>
-          throw HttpClientEndpointNotExistException(name, env)
-      }
-    }
-
-    cb.onClose{
-      cbMetrics.status = CircuitBreakerStatus.Closed
-    }
-
-    cb.onOpen{
-      cbMetrics.status = CircuitBreakerStatus.Open
-    }
-
-    cb.onHalfOpen{
-      cbMetrics.status = CircuitBreakerStatus.HalfOpen
-    }
-  }
+  case class Get(name: String, env: Environment = Default)
 
   /**
    * Success => DeleteSuccess
@@ -91,13 +60,19 @@ object HttpClientActorMessage {
    * Success => HttpClientActor
    * @param config
    */
-  case class Update(config: Configuration)
+  case class UpdateConfig(config: Configuration)
 
-//  /**
-//   * Success => HttpClientActor
-//   * @param response
-//   */
-//  case class Fallback(response: Option[HttpResponse])
+  /**
+   * Success => HttpClientActor
+   * @param settings
+   */
+  case class UpdateSettings(settings: Settings)
+
+  /**
+   * Success => HttpClientActor
+   * @param pipeline
+   */
+  case class UpdatePipeline(pipeline: Option[SimplePipelineConfig])
 
   /**
    * Success => MarkDownSuccess
@@ -116,7 +91,7 @@ object HttpClientActorMessage {
 
   /**
    * Success => CloseSuccess
-    */
+   */
   case object Close
 
   case object CloseSuccess
@@ -126,39 +101,29 @@ object HttpClientActorMessage {
    * Failure => Throwable
    * @param uri
    */
-  case class Get(uri: String)
+  case class Get(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings)
 
   /**
    * Success => HttpResponse
    * Failure => Throwable
    * @param uri
    */
-  case class Options(uri: String)
+  case class Options(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings)
 
   /**
    * Success => HttpResponse
    * Failure => Throwable
    * @param uri
    */
-  case class Head(uri: String)
+  case class Head(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings)
 
   /**
    * Success => HttpResponse
    * Failure => Throwable
    * @param uri
    */
-  case class Delete(uri: String)
+  case class Delete(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings)
 
-
-  /**
-   * Success => HttpResponse
-   * Failure => Throwable
-   * @param uri
-   * @param content
-   * @param marshaller
-   * @tparam T
-   */
-  case class Post[T <: AnyRef](uri: String, content: T, marshaller: Marshaller[T] = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller)
 
   /**
    * Success => HttpResponse
@@ -168,5 +133,19 @@ object HttpClientActorMessage {
    * @param marshaller
    * @tparam T
    */
-  case class Put[T <: AnyRef](uri: String, content: T, marshaller: Marshaller[T] = org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller)
+  case class Post[T](uri: String, content: Option[T],
+                     marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
+                     requestSettings: RequestSettings = Configuration.defaultRequestSettings)
+
+  /**
+   * Success => HttpResponse
+   * Failure => Throwable
+   * @param uri
+   * @param content
+   * @param marshaller
+   * @tparam T
+   */
+  case class Put[T](uri: String, content: Option[T],
+                    marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
+                    requestSettings: RequestSettings = Configuration.defaultRequestSettings)
 }

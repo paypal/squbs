@@ -65,7 +65,7 @@ object GoogleAPI {
   object GoogleMapAPIEndpointResolver extends EndpointResolver {
     override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
       if (svcName == name)
-        Some(Endpoint("http://maps.googleapis.com"))
+        Some(Endpoint("http://maps.googleapis.com/maps"))
       else
         None
     }
@@ -78,5 +78,4 @@ object GoogleAPI {
   case class GoogleApiResult[T](status: String, results: List[T])
 
 }
-
 

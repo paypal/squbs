@@ -18,28 +18,32 @@
 package org.squbs.httpclient
 
 import javax.net.ssl.SSLContext
-
 import com.typesafe.config.ConfigFactory
-import org.squbs.httpclient.pipeline.Pipeline
+import org.squbs.proxy.SimplePipelineConfig
 import spray.can.Http.ClientConnectionType
 import spray.can.client.HostConnectorSettings
-import spray.http.HttpResponse
+import spray.http.{HttpHeader, HttpResponse}
 
 import scala.concurrent.duration._
 
-case class Configuration(pipeline: Option[Pipeline] = None,
-                         hostSettings: HostConnectorSettings = Configuration.defaultHostSettings,
-                         connectionType: ClientConnectionType = ClientConnectionType.AutoProxied,
-                         sslContext: Option[SSLContext] = None,
-                         circuitBreakerConfig: CircuitBreakerConfiguration = Configuration.defaultCircuitBreakerConfig)
+case class Configuration(pipeline: Option[SimplePipelineConfig] = None, settings: Settings = Settings())
+
+case class Settings(hostSettings: HostConnectorSettings = Configuration.defaultHostSettings,
+                    connectionType: ClientConnectionType = ClientConnectionType.AutoProxied,
+                    sslContext: Option[SSLContext] = None,
+                    circuitBreakerConfig: CircuitBreakerSettings = Configuration.defaultCircuitBreakerSettings)
 
 object Configuration {
   val defaultHostSettings = HostConnectorSettings(ConfigFactory.load)
-  val defaultCircuitBreakerConfig = CircuitBreakerConfiguration()
+  val defaultCircuitBreakerSettings = CircuitBreakerSettings()
+  val defaultRequestSettings = RequestSettings()
 }
 
-case class CircuitBreakerConfiguration(maxFailures: Int = 5,
-                                       callTimeout: FiniteDuration = 10 seconds,
-                                       resetTimeout: FiniteDuration = 1 minute,
-                                       lastDuration: FiniteDuration = 60 seconds,
-                                       fallbackHttpResponse: Option[HttpResponse] = None)
+case class CircuitBreakerSettings(maxFailures: Int = 5,
+                                  callTimeout: FiniteDuration = 10 seconds,
+                                  resetTimeout: FiniteDuration = 1 minute,
+                                  lastDuration: FiniteDuration = 60 seconds,
+                                  fallbackHttpResponse: Option[HttpResponse] = None)
+
+case class RequestSettings(headers: List[HttpHeader] = List.empty[HttpHeader],
+                           timeout: Duration = Configuration.defaultHostSettings.connectionSettings.requestTimeout)

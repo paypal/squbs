@@ -20,6 +20,8 @@ package org.squbs.unicomplex
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{FunSpecLike, Matchers}
 
+import scala.concurrent.duration._
+
 class ConfigUtilSpec extends FunSpecLike with Matchers {
 
   val testConfig =
@@ -43,6 +45,7 @@ class ConfigUtilSpec extends FunSpecLike with Matchers {
       |      int-val4 = 40
       |    }
       |  ]
+			|  timeout = 20s
       |}
     """.stripMargin
 
@@ -99,6 +102,14 @@ class ConfigUtilSpec extends FunSpecLike with Matchers {
     it ("should get none for non-existing config list") {
       config.getOptionalConfigList("conf-list") should be (None)
     }
+
+		it ("should get duration for existing time") {
+			config.getOptionalDuration("testConfig.timeout").get shouldEqual Duration.create(20, SECONDS)
+		}
+
+		it ("should get none for non-existing duration") {
+			config.getOptionalDuration("non-timeout") shouldBe None
+		}
 
     it ("should get provide at least one IPv$ address for any host") {
       ipv4 should fullyMatch regex """\d+\.\d+\.\d+\.\d+"""
