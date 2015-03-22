@@ -73,12 +73,13 @@ Design
 Read if you're making changes of zkcluster
 * membership is based on `zookeeper` ephemeral nodes, closed session would alter leader with `ZkMembershipChanged`
 * leadership is based on `curator` framework's `LeaderLatch`, new election will broadcast `ZkLeaderElected` to all nodes
-* partitions are based on ephemeral nodes, leader manages the initial partition creation and the rebalancing thereafter
+* partitions are calculated by the leader and write to the znode by `ZkPartitionsManager` in leader node.
 * partitions modification is only done by the leader, who asks its `ZkPartitionsManager` to enforce the modification
-* `ZkPartitionsManager` of leader communicates with all other `ZkPartitionsManager` from every follower to `onboard` or `dropoff` members of a partition using `akka-remote`
-* then the znode changes will trigger watchers from all nodes and the partitions become in sync finally
+* `ZkPartitionsManager` of follower nodes will watch the znode change in Zookeeper. Once the leader change the paritions after rebalancing, `ZkPartitionsManager` in follower nodes will get notified and update their memory snapshot of the partitions information.
 * whoever needs to be notified by the partitions change `ZkPartitionDiff` should send `ZkMonitorPartition` to the cluster actor getting registered
 
-`ZkMembershipMonitor` is the actor type who handles membership & leadership
-`ZkPartitionsManager` is the one who handles partitions management and leader/follower communication
-`ZkClusterActor` is the interfacing actor user should be sending queries to
+`ZkMembershipMonitor` is the actor type who handles membership & leadership.
+
+`ZkPartitionsManager` is the one who handles partitions management.
+
+`ZkClusterActor` is the interfacing actor user should be sending queries to.
