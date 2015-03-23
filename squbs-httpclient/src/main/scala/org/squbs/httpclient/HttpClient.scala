@@ -17,21 +17,20 @@
  */
 package org.squbs.httpclient
 
+import akka.actor._
+import akka.pattern.{CircuitBreaker, _}
 import akka.util.Timeout
-import org.slf4j.LoggerFactory
-import org.squbs.httpclient.HttpClientActorMessage.{MarkUpSuccess, MarkDownSuccess}
+import org.squbs.httpclient.HttpClientActorMessage.{MarkDownSuccess, MarkUpSuccess}
 import org.squbs.httpclient.endpoint.EndpointRegistry
-import akka.actor.{ActorRef, ActorSystem}
+import org.squbs.httpclient.env.{Default, Environment}
+import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
 import org.squbs.proxy.SimplePipelineConfig
+import spray.http.{HttpResponse, Uri}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.FromResponseUnmarshaller
-import scala.concurrent._
-import spray.http.{Uri, HttpResponse}
-import org.squbs.httpclient.env.{Default, Environment}
-import akka.pattern.CircuitBreaker
+
 import scala.collection.mutable.ListBuffer
-import akka.pattern._
-import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+import scala.concurrent._
 import scala.concurrent.duration._
 
 object Status extends Enumeration {
@@ -68,11 +67,21 @@ object HttpClientPathBuilder extends HttpClientPathBuilder
 
 case class HttpClient(name: String,
                       env: Environment = Default,
-                      var status: Status.Status = Status.UP,
-                      var config: Option[Configuration] = None,
-                      var fActorRef: Future[ActorRef] = null)(implicit system: ActorSystem) {
+                      status: Status.Status = Status.UP,
+                      config: Option[Configuration] = None)
+                     (actorCreator: (ActorRefFactory) => Future[ActorRef] = {(arf) =>
+                        import arf.dispatcher
+                        Future(arf.actorOf(Props(classOf[HttpClientActor], name, env)))
+                      })(implicit actorRefFactory: ActorRefFactory) { self =>
 
-  implicit val ec = system.dispatcher
+  val system = actorRefFactory match {
+    case sys: ActorSystem => sys
+    case ctx: ActorContext => ctx.system
+    case other => throw new IllegalArgumentException(s"Cannot create HttpClient with ActorRefFactory Impl ${other.getClass}")
+  }
+  implicit val ec = actorRefFactory.dispatcher
+
+  val fActorRef = actorCreator(actorRefFactory)
 
   val endpoint = {
     val serviceEndpoint = EndpointRegistry(system).resolve(name, env)
@@ -199,31 +208,29 @@ case class HttpClient(name: String,
   }
 
   def withConfig(config: Configuration)(implicit timeout: Timeout = 1 second): HttpClient = {
-    val hcActorRef = (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, env)).mapTo[ActorRef]
-    val newActorRef = hcActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateConfig(config)).mapTo[ActorRef]}
-    HttpClient(name, env, status, Some(config), newActorRef)
+    HttpClient(name, env, status, Some(config))(
+      (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateConfig(config)).mapTo[ActorRef]}
+    )
   }
 
   def withSettings(settings: Settings)(implicit timeout: Timeout = 1 second): HttpClient = {
-    val hcActorRef = (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, env)).mapTo[ActorRef]
-    val newActorRef = hcActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateSettings(settings)).mapTo[ActorRef]}
-    HttpClient(name, env, status, Some(config.getOrElse(Configuration()).copy(settings = settings)), newActorRef)
+    HttpClient(name, env, status, Some(config.getOrElse(Configuration()).copy(settings = settings)))(
+      (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateSettings(settings)).mapTo[ActorRef]}
+    )
   }
 
   def withPipeline(pipeline: Option[SimplePipelineConfig])(implicit timeout: Timeout = 1 second): HttpClient = {
-    val hcActorRef = (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, env)).mapTo[ActorRef]
-    val newActorRef = hcActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdatePipeline(pipeline)).mapTo[ActorRef]}
-    HttpClient(name, env, status, Some(config.getOrElse(Configuration()).copy(pipeline = pipeline)), newActorRef)
+    HttpClient(name, env, status, Some(config.getOrElse(Configuration()).copy(pipeline = pipeline)))(
+      (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdatePipeline(pipeline)).mapTo[ActorRef]}
+    )
   }
 
   def markDown(implicit timeout: Timeout = 1 second): Future[MarkDownSuccess.type] = {
-    val hcActorRef = (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, env)).mapTo[ActorRef]
-    hcActorRef flatMap { ref => (ref ? HttpClientActorMessage.MarkDown).mapTo[MarkDownSuccess.type]}
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.MarkDown).mapTo[MarkDownSuccess.type]}
   }
 
   def markUp(implicit timeout: Timeout = 1 second): Future[MarkUpSuccess.type] = {
-    val hcActorRef = (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, env)).mapTo[ActorRef]
-    hcActorRef flatMap { ref => (ref ? HttpClientActorMessage.MarkUp).mapTo[MarkUpSuccess.type]}
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.MarkUp).mapTo[MarkUpSuccess.type]}
   }
 
   def readyFuture: Future[Unit] = {
@@ -234,13 +241,8 @@ case class HttpClient(name: String,
 object HttpClientFactory {
 
   def get(name: String, env: Environment = Default)(implicit system: ActorSystem, timeout: Timeout = 1 second): HttpClient = {
-    HttpClientManager(system).httpClientMap.get((name, env)) match {
-      case Some(httpClient) => httpClient
-      case None =>
-        val hcActorRef = (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, env)).mapTo[ActorRef]
-        val httpClient = HttpClient(name, env, Status.UP, None, hcActorRef)
-        HttpClientManager(system).httpClientMap.put((name, env), httpClient)
-        httpClient
-    }
+    HttpClient(name, env, Status.UP, None)(
+      (_) => (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, env)).mapTo[ActorRef]
+    )
   }
 }

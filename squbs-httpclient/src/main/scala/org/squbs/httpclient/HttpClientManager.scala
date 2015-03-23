@@ -142,11 +142,13 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
 
 }
 
-class HttpClientCallerActor(client: HttpClient) extends Actor with HttpCallActorSupport with ActorLogging {
+class HttpClientCallerActor(svcName: String, env: Environment) extends Actor with HttpCallActorSupport with ActorLogging {
 
   implicit val system = context.system
 
   implicit val ec = system.dispatcher
+
+  def client = HttpClientManager(system).httpClientMap(svcName, env)
 
   override def receive: Actor.Receive = {
     case HttpClientActorMessage.Get(uri, reqSettings) =>
@@ -209,15 +211,17 @@ class HttpClientCallerActor(client: HttpClient) extends Actor with HttpCallActor
   }
 }
 
-class HttpClientActor(client: HttpClient) extends Actor with HttpCallActorSupport with ActorLogging {
+class HttpClientActor(svcName: String, env: Environment) extends Actor with HttpCallActorSupport with ActorLogging {
 
   import org.squbs.httpclient.HttpClientActorMessage._
 
-  private[HttpClientActor] val httpClientCallerActor = context.actorOf(Props(new HttpClientCallerActor(client)))
+  private[HttpClientActor] val httpClientCallerActor = context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env))
 
   implicit val ec = context.dispatcher
 
   implicit val system = context.system
+
+  def client = HttpClientManager(system).httpClientMap(svcName, env)
 
   override def receive: Actor.Receive = {
     case msg: HttpClientActorMessage.Get =>
@@ -233,27 +237,31 @@ class HttpClientActor(client: HttpClient) extends Actor with HttpCallActorSuppor
     case msg@ HttpClientActorMessage.Post(uri, content, reqSettings, json4sSupport) =>
       httpClientCallerActor.forward(msg)
     case MarkDown =>
-      client.status = Status.DOWN
-      HttpClientManager(system).httpClientMap.put((client.name, client.env), client)
+      HttpClientManager(system).httpClientMap.put((client.name, client.env),
+        client.copy(status = Status.DOWN)(actorCreator = (_) => Future.successful(self))
+      )
       sender ! MarkDownSuccess
     case MarkUp =>
-      client.status = Status.UP
-      HttpClientManager(system).httpClientMap.put((client.name, client.env), client)
+      HttpClientManager(system).httpClientMap.put((client.name, client.env),
+        client.copy(status = Status.UP)(actorCreator = (_) => Future.successful(self))
+      )
       sender ! MarkUpSuccess
     case UpdateConfig(conf) =>
-      client.config = Some(conf)
-      val httpClient = HttpClient(client.name, client.env, client.status, client.config, future {self})
-      HttpClientManager(system).httpClientMap.put((client.name, client.env), httpClient)
+      HttpClientManager(system).httpClientMap.put((client.name, client.env),
+        client.copy(config = Some(conf))(actorCreator = (_) => Future.successful(self))
+      )
       sender ! self
     case UpdateSettings(settings) =>
-      client.config = Some(client.config.getOrElse(Configuration()).copy(settings = settings))
-      val httpClient = HttpClient(client.name, client.env, client.status, client.config, future {self})
-      HttpClientManager(system).httpClientMap.put((client.name, client.env), httpClient)
+      val conf = client.config.getOrElse(Configuration()).copy(settings = settings)
+      HttpClientManager(system).httpClientMap.put((client.name, client.env),
+        client.copy(config = Some(conf))(actorCreator = (_) => Future.successful(self))
+      )
       sender ! self
     case UpdatePipeline(pipeline) =>
-      client.config = Some(client.config.getOrElse(Configuration()).copy(pipeline = pipeline))
-      val httpClient = HttpClient(client.name, client.env, client.status, client.config, future {self})
-      HttpClientManager(system).httpClientMap.put((client.name, client.env), httpClient)
+      val conf = client.config.getOrElse(Configuration()).copy(pipeline = pipeline)
+      HttpClientManager(system).httpClientMap.put((client.name, client.env),
+        client.copy(config = Some(conf))(actorCreator = (_) => Future.successful(self))
+      )
       sender ! self
     case Close =>
       context.stop(httpClientCallerActor)
@@ -277,11 +285,9 @@ class HttpClientManager extends Actor {
         case Some(httpClient) =>
           httpClient.fActorRef.pipeTo(sender)
         case None    =>
-          val hc = HttpClient(name, env)
-          val httpClientActor = context.actorOf(Props(new HttpClientActor(hc)))
-          hc.fActorRef = future{httpClientActor}
-          HttpClientManager(system).httpClientMap.put((name, env), hc)
-          sender ! httpClientActor
+          val httpClient = HttpClient(name, env)()
+          HttpClientManager(system).httpClientMap.put((name, env), httpClient)
+          httpClient.fActorRef pipeTo sender
       }
     case Delete(name, env) =>
       HttpClientManager(system).httpClientMap.get((name, env)) match {
