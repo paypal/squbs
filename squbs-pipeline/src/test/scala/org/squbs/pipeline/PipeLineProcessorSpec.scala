@@ -24,8 +24,8 @@ class PipeineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys
 		val ctx = RequestContext(request)
 		val target = TestActorRef[DummyTarget]
 
-		PipelineMgr(system).registerProcessor("getprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
-		val processorActor = PipelineMgr(system).getPipeline("getprocessor", target, self)
+		val processor = PipelineMgr(system).registerProcessor("getprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty)).get
+    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
 		processorActor ! ctx
 
 		val resp = expectMsgType[HttpResponse]
@@ -44,9 +44,8 @@ class PipeineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys
 		val ctx = RequestContext(request)
 		val target = TestActorRef[DummyTarget]
 
-		PipelineMgr(system).registerProcessor("myprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
-
-		val processorActor = PipelineMgr(system).getPipeline("myprocessor", target, self)
+		val processor = PipelineMgr(system).registerProcessor("myprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty)).get
+		val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
 		processorActor ! ctx
 
 		val resp = expectMsgType[ChunkedResponseStart]
@@ -72,9 +71,8 @@ class PipeineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys
 		val ctx = RequestContext(request)
 		val target = TestActorRef[DummyTarget]
 
-		PipelineMgr(system).registerProcessor("chunkprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty))
-
-		val processorActor = PipelineMgr(system).getPipeline("chunkprocessor", target, self)
+		val processor = PipelineMgr(system).registerProcessor("chunkprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty)).get
+		val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
 		processorActor ! ctx
 
 		val resp = expectMsgType[Confirmed]
@@ -137,8 +135,8 @@ class DummyTarget extends Actor {
 }
 
 class DummyProcessorFactory extends ProcessorFactory {
-	override def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = {
-		DummyProcessor
+	def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = {
+		Some(DummyProcessor)
 	}
 }
 

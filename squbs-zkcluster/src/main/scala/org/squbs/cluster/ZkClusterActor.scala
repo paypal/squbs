@@ -1,11 +1,13 @@
 package org.squbs.cluster
 
-import java.util
-
 import akka.actor._
 import akka.util.ByteString
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.cluster.JMX._
+
+import java.util
+
+import scala.util.Try
 
 /**
  * Created by zhuwang on 1/26/15.
@@ -16,11 +18,10 @@ private[cluster] case object ZkClusterUninitialized extends ZkClusterState
 private[cluster] case object ZkClusterActiveAsLeader extends ZkClusterState
 private[cluster] case object ZkClusterActiveAsFollower extends ZkClusterState
 
-private[cluster] case class ZkPartitionData(partitionKey: ByteString, 
-                                            members: Set[Address] = Set.empty, 
+private[cluster] case class ZkPartitionData(partitionKey: ByteString,
+                                            members: Set[Address] = Set.empty,
                                             expectedSize: Int,
                                             props: Array[Byte] = Array.empty)
-
 private[cluster] case class ZkClusterData(leader: Option[Address],
                                           members: Set[Address],
                                           partitions: Map[ByteString, ZkPartitionData])
@@ -32,46 +33,41 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
 
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._
-
+  
   private[this] implicit val segLogic = segmentationLogic
   import segLogic._
   
   private[this] implicit val log = logger
   private[cluster] var whenZkClientUpdated = Seq.empty[ActorRef]
   private[cluster] var whenPartitionUpdated = Set.empty[ActorRef]
-
+  
   //begin the process of electing a leader
-  private val zkMembershipMonitor = 
+  private val zkMembershipMonitor =
     context.actorOf(Props[ZkMembershipMonitor].withDispatcher("pinned-dispatcher"), "zkMembership")
+  
   //begin the process of partitioning management
   private val zkPartitionsManager = context.actorOf(Props[ZkPartitionsManager], "zkPartitions")
-
+  
   private[this] val mandatory:StateFunction = {
-
-    case Event(updatedEvent @ ZkClientUpdated(updated), _) =>
+    case Event(updatedEvent @ ZkClientUpdated(updated), zkClusterData) =>
       zkMembershipMonitor ! updatedEvent
       zkPartitionsManager ! updatedEvent
       whenZkClientUpdated.foreach(_ ! updatedEvent)
-      stay
-
+      stay using zkClusterData.copy(partitions = ZkPartitionsManager.loadPartitions())
     case Event(ZkMonitorClient, _) =>
       whenZkClientUpdated = whenZkClientUpdated :+ sender()
       stay
-
     case Event(ZkQueryMembership, zkClusterData) =>
       sender() ! ZkMembership(zkClusterData.members)
       stay
-
     case Event(ZkMonitorPartition, _) =>
       log.info("[follower/leader] monitor partitioning from:{}", sender().path)
       whenPartitionUpdated += sender
       stay
-
     case Event(ZkStopMonitorPartition, _) =>
       log.info("[follower/leader] stop monitor partitioning from:{}", sender().path)
       whenPartitionUpdated -= sender
       stay
-
     case Event(ZkListPartitions(member), zkClusterData) =>
       sender() ! ZkPartitions(zkClusterData.partitions.collect{
         case (partitionKey, ZkPartitionData(_, members, _, _)) if members.contains(member) => partitionKey
@@ -85,46 +81,49 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
     override def getLeader: String = stateData.leader.map(_.toString).toString
     override def getMembers: util.List[String] = stateData.members.map(_.toString).toList
   }
-
+  
   class PartitionsInfoBean extends PartitionsInfoMXBean {
     import scala.collection.JavaConversions._
     override def getPartitions: util.List[PartitionInfo] = stateData.partitions map {
       case (key, data) => PartitionInfo(key, partitionZkPath(key), data.members.mkString(","))
     } toList
   }
+  
   //the reason we put startWith into #preStart is to allow postRestart to trigger new FSM actor when recover from error
   override def preStart = {
-    register(new MembersInfoBean, prefix + membersInfoName)
-    register(new PartitionsInfoBean, prefix + partitionsInfoName)
-    startWith(ZkClusterUninitialized, ZkClusterData(None, Set.empty[Address], ZkPartitionsManager.loadPartitions()))
+    Try{
+      register(new MembersInfoBean, prefix + membersInfoName)
+      register(new PartitionsInfoBean, prefix + partitionsInfoName)
+    }
+    startWith(ZkClusterUninitialized, ZkClusterData(None, Set.empty[Address], Map.empty))
   }
   
   override def postStop = {
-    unregister(prefix + membersInfoName)
-    unregister(prefix + partitionsInfoName)
+    Try{
+      unregister(prefix + membersInfoName)
+      unregister(prefix + partitionsInfoName)
+    }
+    zkCluster.close
   }
-
+  
   when(ZkClusterUninitialized)(mandatory orElse {
-
     case Event(ZkLeaderElected(Some(address)), zkClusterData) =>
       log.info("[uninitialized] leader elected:{} and my zk address:{}", address, zkAddress)
+      val partitions = ZkPartitionsManager.loadPartitions()
       if(address.hostPort == zkAddress.hostPort) {
-        val rebalanced = rebalance(zkClusterData.partitions, zkClusterData.partitions, zkClusterData.members)
+        val rebalanced = rebalance(partitions, partitions, zkClusterData.members)
         goto(ZkClusterActiveAsLeader) using zkClusterData.copy(leader = Some(address), partitions = rebalanced)
       } else
-        goto(ZkClusterActiveAsFollower) using zkClusterData.copy(leader = Some(address))
-
+        goto(ZkClusterActiveAsFollower) using zkClusterData.copy(leader = Some(address), partitions = partitions)
     case Event(ZkMembersChanged(members), zkClusterData) =>
       log.info("[uninitialized] membership updated:{}", members)
       stay using zkClusterData.copy(members = members)
-
     case Event(_, _) =>
       stash
       stay
   })
-
+  
   when(ZkClusterActiveAsFollower)(mandatory orElse {
-
     case Event(ZkLeaderElected(Some(address)), zkClusterData) =>
       if(address.hostPort == zkAddress.hostPort) {
         // in case of leader dies before follower get the whole picture of partitions
@@ -134,16 +133,13 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
         goto(ZkClusterActiveAsLeader) using zkClusterData.copy(leader = Some(address), partitions = rebalanced)
       } else
         goto(ZkClusterActiveAsFollower) using zkClusterData.copy(leader = Some(address))
-
     case Event(ZkQueryLeadership, zkClusterData) =>
       log.info("[follower] leadership query answered:{} to:{}", zkClusterData.leader, sender().path)
       zkClusterData.leader.foreach(address => sender() ! ZkLeadership(address))
       stay
-
     case Event(ZkMembersChanged(members), zkClusterData) =>
       log.info("[follower] membership updated:{}", members)
       stay using zkClusterData.copy(members = members)
-      
     case Event(origin @ ZkQueryPartition(partitionKey, notification, sizeOpt, props, members), zkClusterData) =>
       log.info("[follower] partition query: {} with expected size {}, current snapshot: {}",
         keyToPath(partitionKey),
@@ -155,8 +151,8 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       // 3. partition available && sizeOpt empty => reply the parition
       // 4. partition available && partition.members.size != min(clusterSize, expectedSize) => ask leader
       // 5. partition available && partition.members.size == min(clusterSize, expectedSize, sizeOpt.getOrElse(expectedSize))
-      //  1) sizeOpt.get == expectedSize => reply the partition
-      //  2) sizeOpt.get != expectedSize => ask leader
+      // 1) sizeOpt.get == expectedSize => reply the partition
+      // 2) sizeOpt.get != expectedSize => ask leader
       zkClusterData.partitions.get(partitionKey) match {
         case Some(data @ ZkPartitionData(_, servants, originalExpectedSize, _))
           if sizeOpt.getOrElse(originalExpectedSize) == originalExpectedSize
@@ -179,46 +175,40 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
           })
           stay
       }
-
-    case Event(ZkPartitionsChanged(_, changes), zkClusterData) => 
+    case Event(ZkPartitionsChanged(_, changes), zkClusterData) =>
       // Only apply the changes that reachs the expected size or the total member size
       val (partitionsToRemove, updates) = changes partition {
         case (key, change) => change.members.isEmpty && change.expectedSize == 0
       }
-
       log.info("[follower] got the partitions to update {} and partitions to remove {} from partition manager",
         updates.map{case (key, members) => keyToPath(key) -> members},
         partitionsToRemove.map{case (key, members) => keyToPath(key)}
       )
-      if (changes.nonEmpty) {
-        notifyPartitionDiffs(zkClusterData.partitions, changes)("follower")
+      val newPartitions = zkClusterData.partitions ++ updates -- partitionsToRemove.keys
+      if (updates.nonEmpty || partitionsToRemove.nonEmpty) {
+        notifyPartitionDiffs(zkClusterData.partitions, newPartitions)("follower")
         // For the partitions without any members, we remove them from the memory map
-        stay using zkClusterData.copy(partitions = zkClusterData.partitions ++ updates -- partitionsToRemove.keys)
+        stay using zkClusterData.copy(partitions = newPartitions)
       } else stay
-
     case Event(remove:ZkRemovePartition, zkClusterData) =>
       zkClusterData.leader.foreach(address => {
         context.actorSelection(self.path.toStringWithAddress(address)) forward remove
       })
       stay
   })
-
+  
   when(ZkClusterActiveAsLeader)(mandatory orElse {
-
     case Event(ZkLeaderElected(Some(address)), zkClusterData) =>
       if (address.hostPort == zkAddress.hostPort)
         stay
       else
         goto(ZkClusterActiveAsFollower) using zkClusterData.copy(leader = Some(address))
-
     case Event(ZkQueryLeadership, zkClusterData) =>
       log.info("[leader] leadership query answered:{} to:{}", zkClusterData.leader, sender().path)
       zkClusterData.leader.foreach(address => sender() ! ZkLeadership(address))
       stay
-
     case Event(ZkMembersChanged(members), zkClusterData) =>
       log.info("[leader] membership updated:{}", members)
-
       if(zkClusterData.members == members){
         //corner case, in which members weren't really changed, avoid redundant rebalances
         stay
@@ -226,16 +216,14 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       else {
         val membersLeft = zkClusterData.members.diff(members)
         val partitionWithMemberLost = if(membersLeft.nonEmpty)
-          zkClusterData.partitions.mapValues{partition => 
+          zkClusterData.partitions.mapValues{partition =>
             partition.copy(members = partition.members.filterNot(membersLeft.contains))
           }
         else
           zkClusterData.partitions
-
         val rebalanced = rebalance(zkClusterData.partitions, partitionWithMemberLost, members)
         stay using zkClusterData.copy(members = members, partitions = rebalanced)
       }
-
     case Event(ZkQueryPartition(partitionKey, notification, sizeOpt, props, _), zkClusterData) =>
       log.info("[leader] partition query: {} with expected size {}, current snapshot: {}",
         keyToPath(partitionKey),
@@ -247,14 +235,14 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       // 2. partition not available && sizeOpt empty => PartitionNotFound
       // 3. partition available && sizeOpt empty => reply the parition
       // 4. partition available && partition.members.size != min(clusterSize, expectedSize) => rebalance using sizeOpt.getOrElse(expectedSize)
-      // 5. partition available && partition.members.size == min(clusterSize, expectedSize, sizeOpt.getOrElse(expectedSize)) 
-      //  1) sizeOpt.get == expectedSize => reply the partition
-      //  2) sizeOpt.get != expectedSize => resize & reply the partition
+      // 5. partition available && partition.members.size == min(clusterSize, expectedSize, sizeOpt.getOrElse(expectedSize))
+      // 1) sizeOpt.get == expectedSize => reply the partition
+      // 2) sizeOpt.get != expectedSize => resize & reply the partition
       zkClusterData.partitions.get(partitionKey) match {
-        case Some(existence @ ZkPartitionData(key, servants, originalExpectedSize, _)) 
+        case Some(existence @ ZkPartitionData(key, servants, originalExpectedSize, _))
           if servants.size == Math.min(zkClusterData.members.size, sizeOpt.getOrElse(originalExpectedSize))=> // 3, 5.1, 5.2
           log.info("[leader] partition exists:{} -> {}", keyToPath(partitionKey), servants)
-          sender() ! ZkPartition(partitionKey, servants, partitionKey, notification)
+          sender() ! ZkPartition(partitionKey, servants, partitionZkPath(partitionKey), notification)
           if (sizeOpt.nonEmpty && sizeOpt.get != originalExpectedSize) {
             zkPartitionsManager ! ZkResizePartition(key, sizeOpt.get)
             stay using zkClusterData.copy(
@@ -271,26 +259,24 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
           val expectedSize = sizeOpt getOrElse partitionOpt.get.expectedSize
           val rebalanced = rebalance(
             zkClusterData.partitions,
-            zkClusterData.partitions + 
+            zkClusterData.partitions +
               (partitionKey -> ZkPartitionData(partitionKey, expectedSize = expectedSize, props = props)),
             zkClusterData.members
           )
           sender() ! ZkPartition(
             partitionKey,
             rebalanced.get(partitionKey).map(_.members).getOrElse(Set.empty[Address]),
-            partitionKey,
+            partitionZkPath(partitionKey),
             notification
           )
           stay using zkClusterData.copy(partitions = rebalanced)
       }
-
     case Event(ZkPartitionsChanged(_, changes), zkClusterData) =>
       log.debug("[leader] I don't really care about changes {} because my snapshot {}",
         changes.map { case (key, members) => keyToPath(key) -> members},
         zkClusterData.partitions.map { case (key, members) => keyToPath(key) -> members}
       )
       stay
-
     case Event(remove @ ZkRemovePartition(partitionKey), zkClusterData) =>
       log.info("[leader] remove partition:{} forwarded to partition manager", keyToPath(partitionKey))
       zkPartitionsManager forward remove
@@ -298,68 +284,69 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       notifyPartitionDiffs(zkClusterData.partitions, newPartitions)("leader")
       stay using zkClusterData.copy(partitions = newPartitions)
   })
-
+  
   onTransition {
     case ZkClusterUninitialized -> ZkClusterActiveAsFollower =>
       //unstash all messages uninitialized state couldn't handle
       unstashAll
-
     case ZkClusterUninitialized -> ZkClusterActiveAsLeader =>
       //unstash all messages uninitialized state couldn't handle
       unstashAll
   }
-
+  
   private[cluster] def rebalance(current: Map[ByteString, ZkPartitionData],
                                  base: Map[ByteString, ZkPartitionData],
                                  members:Set[Address]): Map[ByteString, ZkPartitionData] = {
     if (base.isEmpty) return Map.empty
     //spareLeader only when there're more than 1 VMs in the cluster
-    val candidates = if(rebalanceLogic.spareLeader && members.size > 1) 
-      members.filterNot{candidate => stateData.leader.exists(candidate == _)} 
-    else 
+    val candidates = if(rebalanceLogic.spareLeader && members.size > 1)
+      members.filterNot{candidate => stateData.leader.exists(candidate == _)}
+    else
       members
-    
     val plan = rebalanceLogic.rebalance(
       rebalanceLogic.compensate(
         base.map{case(key, value) => key -> value.members},
-        candidates.toSeq, 
+        candidates.toSeq,
         (key) => base.get(key).get.expectedSize
-      ), 
+      ),
       members
     )
-    
     log.info("[leader] rebalance planned as:{}", plan.map{case (key, members) => keyToPath(key) -> members})
     val rebalanced = base map {
       case (key, value) => key -> value.copy(members = plan.getOrElse(key, value.members))
-    }       
+    }
     notifyPartitionDiffs(current, rebalanced)("leader")
-    
     val updates = rebalanced filterNot {
       case (key, value) if current.get(key).nonEmpty => value == current(key)
       case _ => false
     }
-    
     if (updates.nonEmpty) zkPartitionsManager ! ZkRebalance(updates)
-
     rebalanced
   }
-
+  
   private[cluster] def notifyPartitionDiffs(originalPartitions: Map[ByteString, ZkPartitionData],
                                             changes: Map[ByteString, ZkPartitionData])
                                            (role: String = "follower") = {
-    val partitionDiffs = changes map {
-      case(partitionKey, ZkPartitionData(_, newMembers, _, _)) =>
+    val partitionsToRemove = originalPartitions.keySet diff changes.keySet map {partitionKey =>
+      val dropOffMembers = originalPartitions.get(partitionKey).map(_.members).getOrElse(Set.empty)
+      if (dropOffMembers.nonEmpty) Some(ZkPartitionDiff(partitionKey, Set.empty, dropOffMembers)) else None
+    } collect {
+      case Some(remove) => remove
+    } toList
+    
+    val partitionDiffs = (changes map {
+      case(partitionKey, ZkPartitionData(_, newMembers, _, props)) =>
         val originalMembers = originalPartitions.get(partitionKey).map(_.members).getOrElse(Set.empty[Address])
         val onBoardMembers = newMembers diff originalMembers
         val dropOffMembers = originalMembers diff newMembers
         if (onBoardMembers.nonEmpty || dropOffMembers.nonEmpty)
-          Some(ZkPartitionDiff(partitionKey, onBoardMembers, dropOffMembers))
-        else 
+          Some(ZkPartitionDiff(partitionKey, onBoardMembers, dropOffMembers, props))
+        else
           None
     } collect {
       case Some(diff) => diff
-    } toList
-
+    } toList) ++ partitionsToRemove
+    
     if (partitionDiffs.nonEmpty) {
       log.debug("[{}] notify {} about the the partition changes {}",
         role,

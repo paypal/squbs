@@ -49,7 +49,7 @@ class ServiceRegistry(log: LoggingAdapter) {
       import scala.collection.JavaConversions._
       listenerRoutes.flatMap { case (listenerName, agent) =>
         agent() map { case (webContext, actor) =>
-            ListenerInfo(listenerName, webContext, actor.toString)
+          ListenerInfo(listenerName, webContext, actor.toString)
         }
       }.toSeq
     }
@@ -92,12 +92,12 @@ class ServiceRegistry(log: LoggingAdapter) {
    * upon seeing the first service registration.
    */
   private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
-                                         (implicit context: ActorContext) = {
+                                       (implicit context: ActorContext) = {
 
     val props = Props(classOf[ListenerActor], name, listenerRoutes(name))
     val listenerRef = context.actorOf(props, name)
 
-  //  register(new PredefinedActorBean(props, listenerRef, context.self), prefix + actorInfo + name )
+    // register(new PredefinedActorBean(props, listenerRef, context.self), prefix + actorInfo + name )
 
     listenerRef ! notifySender // listener needs to send the notifySender an ack when it is ready.
 
@@ -152,14 +152,12 @@ class ServiceRegistry(log: LoggingAdapter) {
 
       import org.squbs.unicomplex.JMX._
       unregister(prefix + listenersName)
-
     }
   }
 }
 
 private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
-    extends Actor with HttpService with ActorLogging  {
-
+  extends Actor with HttpService with ActorLogging {
 
   // the HttpService trait defines only one abstract member, which
   // connects the services environment to the enclosing actor or test
@@ -180,7 +178,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
     try {
       val d = RouteDefinition.startRoutes {
         WebContext.createWithContext[RouteDefinition](webContext) {
-        clazz.newInstance
+          clazz.newInstance
         }
       }
       context.parent ! Initialized(Success(None))
@@ -203,8 +201,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 }
 
 private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String, ActorRef]]) extends Actor
-    with ActorLogging {
-
+with ActorLogging {
 
   val pendingRequests = mutable.WeakHashMap.empty[ActorRef, ActorRef]
 
@@ -213,11 +210,9 @@ private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String
       val p = request.uri.path.toString()
       if (p startsWith "/") p substring 1 else p
     }
-
     val matches = routeMap() filter { case (webContext, _) =>
       path.startsWith(webContext) && (path.length == webContext.length || path.charAt(webContext.length) == '/')
     }
-
     if (matches.isEmpty) routeMap().get("")
     else Some(matches.maxBy(_._1.length)._2) // Return the longest match, just the actor portion.
   }
@@ -228,7 +223,6 @@ private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String
       ref.tell(Ack, context.parent)
       context.become(wsReceive)
   }
-
 
   def wsReceive: Receive = {
 
@@ -321,41 +315,27 @@ trait RouteDefinition {
 object WebContext {
 
   private[unicomplex] val localContext = new ThreadLocal[Option[String]] {
-
     override def initialValue(): Option[String] = None
-
   }
 
-
-
   def createWithContext[T](webContext: String)(fn: => T): T = {
-
     localContext.set(Some(webContext))
-
     val r = fn
-
     localContext.set(None)
-
     r
 
   }
-
 }
 
 
 
 trait WebContext {
-
   protected final val webContext: String = WebContext.localContext.get.get
-
 }
-
 /**
  * Other media types beyond what Spray supports.
  */
 object MediaTypeExt {
-  
   val `text/event-stream` = MediaTypes.register(
-      MediaType.custom("text", "event-stream", compressible = true))
-
+    MediaType.custom("text", "event-stream", compressible = true))
 }

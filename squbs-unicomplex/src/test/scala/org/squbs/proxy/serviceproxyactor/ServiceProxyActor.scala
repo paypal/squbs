@@ -131,7 +131,7 @@ class ChunkHandler(client: ActorRef, start: ChunkedRequestStart) extends Actor w
 
 class DummyProcessorForActor extends Processor with ProcessorFactory {
 
-  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = this
+  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = Some(this)
 
   override def processResponseChunk(ctx : RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
     val raw = new String(chunk.data.toByteArray)

@@ -65,7 +65,7 @@ class DummyProcessorForRoute extends Processor with ProcessorFactory {
     promise.future
   }
 
-  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = this
+  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = Some(this)
 }
 
 

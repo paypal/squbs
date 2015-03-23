@@ -2,7 +2,7 @@ package org.squbs.cluster
 
 import java.net.ServerSocket
 
-import akka.actor.{ActorSelection, ActorSystem}
+import akka.actor.{PoisonPill, Terminated, ActorSelection, ActorSystem}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 
@@ -24,7 +24,7 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
 
   private var actorSystems = Map.empty[String, ActorSystem]
 
-  def zkClusterExts = actorSystems map (sys => sys._1 -> ZkCluster(sys._2))
+  def zkClusterExts = actorSystems map { sys => sys._1 -> ZkCluster(sys._2)}
 
   def startCluster: Unit = {
     Random.setSeed(System.nanoTime)
@@ -34,7 +34,11 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
     } toMap
     
     // start the lazy actor
-    zkClusterExts.foreach(_._2.zkClusterActor)
+    zkClusterExts foreach { ext => 
+      watch(ext._2.zkClusterActor)
+      ext._2.addShutdownListener(actorSystems(ext._1).shutdown)
+    }
+    
     Thread.sleep(timeout.toMillis / 10)
     println()
     println("*********************************** Cluster Started ***********************************")
@@ -42,13 +46,12 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
 
   def shutdownCluster: Unit = {
     println("*********************************** Shutting Down the Cluster ***********************************")
-    actorSystems foreach (_._2.shutdown)
-    var retries = 10
-    while (!(actorSystems forall (_._2.isTerminated)) && retries > 0) {Thread.sleep(1000); retries -= 1}
-    zkClusterExts foreach (_._2.close)
-    ZkCluster(system).zkClientWithNs.delete.guaranteed.deletingChildrenIfNeeded.forPath("")
+    val exts = zkClusterExts
+    val head = exts.head
+    head._2.addShutdownListener(() => head._2.zkClientWithNs.delete.guaranteed.deletingChildrenIfNeeded.forPath(""))
+    exts.tail.foreach(ext => killSystem(ext._1))
+    killSystem(head._1)
     system.shutdown
-    println(s"${system.name} shutsdown")
   }
 
   implicit protected def int2SystemName(num: Int): String = s"member-$num"
@@ -57,18 +60,18 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
     system.actorSelection(zkCluster.zkClusterActor.path.toStringWithAddress(zkCluster.zkAddress))
 
   def killSystem(sysName: String): Unit = {
-    actorSystems(sysName).shutdown
-    var retries = 10
-    while (!actorSystems(sysName).isTerminated && retries > 0) {Thread.sleep(1000); retries -= 1}
-    zkClusterExts(sysName).close
+    zkClusterExts(sysName).zkClusterActor ! PoisonPill
+    expectMsgType[Terminated](timeout)
     actorSystems -= sysName
     println(s"system $sysName got killed")
   }
 
   def bringUpSystem(sysName: String): Unit = {
     actorSystems += sysName -> ActorSystem(sysName, akkaRemoteConfig withFallback zkConfig)
-    zkClusterExts(sysName).zkClusterActor
+    watch(zkClusterExts(sysName).zkClusterActor)
+    zkClusterExts(sysName).addShutdownListener(actorSystems(sysName).shutdown)
     println(s"system $sysName is up")
+    Thread.sleep(timeout.toMillis / 5)
   }
 
   @tailrec final def pickASystemRandomly(exclude: Option[String] = None): String = {
