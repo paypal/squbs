@@ -51,6 +51,24 @@ object HttpClientDemo1 extends App with HttpClientTestKit {
   }
 }
 
+object HttpClientDemo4 extends App with HttpClientTestKit {
+
+  implicit val system = ActorSystem("HttpClientDemo4")
+  implicit val timeout: Timeout = 3 seconds
+  import system.dispatcher
+  EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
+  import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
+  val response = HttpClientFactory.get("googlemap").get[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  response onComplete {
+    case Success(data: GoogleApiResult[Elevation]) =>
+      println("Success, elevation is: " + data.results.head.elevation)
+      shutdownActorSystem
+    case Failure(e) =>
+      println("Failure, the reason is: " + e.getMessage)
+      shutdownActorSystem
+  }
+}
+
 /**
  * Traditional API using get and unmarshall value
  */
