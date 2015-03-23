@@ -29,7 +29,7 @@ import akka.pattern._
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
 import org.squbs.pipeline.PipelineMgr
-import org.squbs.proxy.{CubeProxyActor, ProxySettings}
+import org.squbs.proxy.{ProxySetup, CubeProxyActor, ProxySettings}
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import spray.can.Http
 
@@ -587,6 +587,22 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     case StartCubeService(webContext, listeners, props, name, proxyName, initRequired) =>
 
+      def genProxy(setup : ProxySetup) = {
+        val hostActor = context.actorOf(props)
+        val proxy = try {
+          PipelineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings) match {
+            case None => hostActor
+            case Some(proc) => context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name)
+          }
+        } catch {
+          case t: Throwable =>
+            log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
+            initMap += hostActor -> Some(Failure(t))
+            hostActor
+        }
+
+        (hostActor, proxy)
+      }
       // Caution: The serviceActor may be the cubeActor in case of no proxy, or the proxy in case there is a proxy.
       val (cubeActor, serviceActor) = proxyName match {
         case None =>
@@ -594,19 +610,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
             case None =>
               val hostActor = context.actorOf(props, name) // no default proxy specified
               (hostActor, hostActor)
-            case Some(setup) =>
-              val hostActor = context.actorOf(props)
-							val proxy = try {
-								PipelineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
-								context.actorOf(Props(classOf[CubeProxyActor], setup.name, hostActor), name)
-							} catch {
-								case t: Throwable =>
-									log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
-									initMap += hostActor -> Some(Failure(t))
-									hostActor
-							}
-
-              (hostActor, proxy)
+            case Some(setup) => genProxy(setup)
           }
         case Some(pName) =>
            if(pName.trim.isEmpty){
@@ -619,18 +623,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
                  // Mark this service startup as failed.
                  initMap += (hostActor -> Some(Failure(new NoSuchElementException(s"Proxy $pName not defined."))))
                  (hostActor, hostActor)
-               case Some(setup) =>
-                 val hostActor = context.actorOf(props)
-								 val proxy = try {
-									 PipelineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings)
-									 context.actorOf(Props(classOf[CubeProxyActor], setup.name, hostActor), name)
-								 } catch {
-									 case t: Throwable =>
-										 log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
-										 initMap += hostActor -> Some(Failure(t))
-										 hostActor
-								 }
-								 (hostActor, proxy)
+               case Some(setup) => genProxy(setup)
              }
            }
       }

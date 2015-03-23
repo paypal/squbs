@@ -18,41 +18,30 @@
 package org.squbs.proxy
 
 import akka.actor._
-import com.typesafe.config.Config
 import org.squbs.pipeline._
 import spray.http._
-import spray.can.Http.RegisterChunkHandler
-import spray.http.Confirmed
-import scala.concurrent.Future
-import scala.util.{Failure, Success}
-import spray.http.ChunkedResponseStart
-import spray.http.HttpResponse
 
-class CubeProxyActor(processorName: String, target: ActorRef) extends Actor with ActorLogging {
+class CubeProxyActor(processor: Processor, target: ActorRef) extends Actor with ActorLogging {
 
-	def receive = {
-		case req: HttpRequest =>
-			val client = sender()
-			handleRequest(RequestContext(req), client)
+  def receive = {
+    case req: HttpRequest =>
+      val client = sender()
+      handleRequest(RequestContext(req), client)
 
-		case crs: ChunkedRequestStart =>
-			val client = sender()
-			handleRequest(RequestContext(crs.request, true), client)
+    case crs: ChunkedRequestStart =>
+      val client = sender()
+      handleRequest(RequestContext(crs.request, true), client)
 
-		//let underlying actor handle it
-		case other =>
-			target forward other
-	}
+    //let underlying actor handle it
+    case other =>
+      target forward other
+  }
 
   def handleRequest(requestCtx: RequestContext, responder: ActorRef) {
-		try {
-			val facade = PipelineMgr(context.system).getPipeline(processorName, target, responder)
-			facade tell(requestCtx, responder)
-		} catch {
-			case t: Throwable =>
-				log.error(s"Fail to get the pipeline with processor $processorName.", t)
-				responder ! HttpResponse(StatusCodes.InternalServerError, entity = "Internal Error Occurred")
-		}
+
+    val facade = context.actorOf(Props(classOf[PipelineProcessorActor], target, responder, processor))
+    facade tell(requestCtx, responder)
+
   }
 }
 

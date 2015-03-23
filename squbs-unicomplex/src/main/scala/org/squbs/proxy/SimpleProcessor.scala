@@ -27,7 +27,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 case class SimplePipelineConfig(reqPipe: Seq[_ <: Handler], respPipe: Seq[_ <: Handler])
 
-class SimpleProcessor(pipeConf: SimplePipelineConfig) extends Processor {
+case class SimpleProcessor(pipeConf: SimplePipelineConfig) extends Processor {
 	//inbound processing
 	def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		pipeConf.reqPipe.foldLeft(Future.successful(reqCtx)) { (ctx, handler) => ctx flatMap (handler.process(_))}
@@ -44,10 +44,10 @@ object SimpleProcessor {
 }
 
 class SimpleProcessorFactory extends ProcessorFactory {
-	def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor = {
+	def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = {
 		settings match {
-			case Some(conf) => new SimpleProcessor(SimplePipelineConfig(conf))
-			case _ => SimpleProcessor.empty
+			case Some(conf) => Some(SimpleProcessor(SimplePipelineConfig(conf)))
+			case _ => None
 		}
 	}
 }

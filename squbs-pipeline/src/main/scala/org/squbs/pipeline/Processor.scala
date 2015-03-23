@@ -87,5 +87,5 @@ trait Processor {
 }
 
 trait ProcessorFactory {
-  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Processor
+  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor]
 }

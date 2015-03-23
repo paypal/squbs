@@ -7,7 +7,7 @@ import spray.client.pipelining.SendReceive
 import spray.http.{ChunkedRequestStart, HttpRequest, HttpResponse}
 import HttpClientContextUtils._
 import org.squbs.proxy.{SimplePipelineConfig, SimpleProcessor}
-import org.squbs.pipeline.{PipelineMgr, RequestContext}
+import org.squbs.pipeline.{PipelineProcessorActor, PipelineMgr, RequestContext}
 
 /**
  * Created by jiamzhang on 2015/3/6.
@@ -18,14 +18,14 @@ class HttpClientPipelineActor(endpoint: Endpoint, pipelineConf: SimplePipelineCo
 		case request: HttpRequest =>
 			val responder = sender()
 			val targetAgent = context.actorOf(Props(classOf[HttpClientPipelineTargetActor], target))
-			val pipeproxy = PipelineMgr(context.system).getPipeline(new SimpleProcessor(pipelineConf), targetAgent, responder)
+			val pipeproxy = context.actorOf(Props(classOf[PipelineProcessorActor], targetAgent, responder, SimpleProcessor(pipelineConf)))
 			context.watch(pipeproxy)
 			pipeproxy ! RequestContext(request) +> endpoint
 
 		case request: ChunkedRequestStart =>
 			val responder = sender()
 			val targetAgent = context.actorOf(Props(classOf[HttpClientPipelineTargetActor], target))
-			val pipeproxy = PipelineMgr(context.system).getPipeline(new SimpleProcessor(pipelineConf), targetAgent, responder)
+			val pipeproxy = context.actorOf(Props(classOf[PipelineProcessorActor], targetAgent, responder, SimpleProcessor(pipelineConf)))
 			context.watch(pipeproxy)
 			pipeproxy ! RequestContext(request.request, true) +> endpoint
 

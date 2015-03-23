@@ -3,44 +3,35 @@ package org.squbs.pipeline
 import akka.actor._
 import com.typesafe.config.Config
 import org.slf4j.LoggerFactory
+
 import scala.util.Try
 
 /**
  * Created by jiamzhang on 2015/3/3.
  */
 class PipelineMgr extends Extension {
+  //TODO use agent
   @volatile private var processorMap = Map.empty[String, Processor]
   private val logger = LoggerFactory.getLogger(getClass)
 
-  def registerProcessor(name: String, processorFactory: String, config: Option[Config])(implicit actorRefFactory: ActorRefFactory) {
+  def registerProcessor(name: String, processorFactory: String, config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = {
     synchronized {
       try {
-        processorMap = processorMap + (name -> {
-          val factory = Class.forName(processorFactory).newInstance().asInstanceOf[ProcessorFactory]
-          factory.create(config)
-        })
+        processorMap.get(name).fold {
+          Class.forName(processorFactory).newInstance().asInstanceOf[ProcessorFactory].create(config) match {
+            case None => None
+            case v@Some(proc) =>
+              processorMap = processorMap + (name -> proc)
+              v
+          }
+        }(Some(_))
       } catch {
         case t: Throwable =>
           logger.error(s"Can't instantiate the processor with name of $name and factory class name of $processorFactory.", t)
           throw t
       }
     }
-  }
 
-  def registerProcessor(name: String, processor: Processor) {
-		processorMap = processorMap + (name -> processor)
-  }
-
-  def getPipeline(processorName: String, target: ActorRef, client: ActorRef)(implicit actorRefFactory: ActorRefFactory): ActorRef = {
-    val processor = processorMap.get(processorName) match {
-      case Some(proc) => proc
-      case _ => throw new IllegalArgumentException("No definition found for processor name:" + processorName)
-    }
-    actorRefFactory.actorOf(Props(classOf[PipelineProcessorActor], target, client, processor))
-  }
-
-  def getPipeline(processor: Processor, target: ActorRef, client: ActorRef)(implicit actorRefFactory: ActorRefFactory): ActorRef = {
-    actorRefFactory.actorOf(Props(classOf[PipelineProcessorActor], target, client, processor))
   }
 
 }
