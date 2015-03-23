@@ -1,4 +1,4 @@
-scalaVersion in ThisBuild := "2.11.2"
+scalaVersion in ThisBuild := "2.11.6"
 
 version in ThisBuild := "0.6.0-SNAPSHOT"
 

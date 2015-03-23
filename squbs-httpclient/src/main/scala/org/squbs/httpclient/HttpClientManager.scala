@@ -200,10 +200,10 @@ class HttpClientCallerActor(client: HttpClient) extends Actor with HttpCallActor
       implicit val timeout: Timeout = client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
       httpMethod match {
         case HttpMethods.POST =>
-          post[T](client, connector, uri, content).pipeTo(actorRef)
+          post[T](client, connector, uri, content, reqSettings).pipeTo(actorRef)
           context.unbecome
         case HttpMethods.PUT =>
-          put[T](client, connector, uri, content).pipeTo(actorRef)
+          put[T](client, connector, uri, content, reqSettings).pipeTo(actorRef)
           context.unbecome
       }
   }
