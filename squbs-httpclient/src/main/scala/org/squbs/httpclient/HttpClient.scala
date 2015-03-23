@@ -41,8 +41,6 @@ object Status extends Enumeration {
 
 trait HttpClientPathBuilder {
 
-  val logger = LoggerFactory.getLogger(this.getClass)
-
   def buildRequestUri(path: String, paramMap: Map[String, Any] = Map.empty[String, Any]): String = {
     if (paramMap.isEmpty) {
       Uri(path).toString
