@@ -22,7 +22,7 @@ import akka.pattern.{CircuitBreaker, _}
 import akka.util.Timeout
 import org.squbs.httpclient.HttpClientActorMessage.{MarkDownSuccess, MarkUpSuccess}
 import org.squbs.httpclient.endpoint.EndpointRegistry
-import org.squbs.httpclient.env.{Default, Environment}
+import org.squbs.httpclient.env.{EnvironmentRegistry, Default, Environment}
 import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
 import org.squbs.proxy.SimplePipelineConfig
 import spray.http.{HttpResponse, Uri}
@@ -102,7 +102,7 @@ case class HttpClient(name: String,
   }
 
   cb.onClose{
-    cbMetrics.status= CircuitBreakerStatus.Closed
+    cbMetrics.status = CircuitBreakerStatus.Closed
   }
 
   cb.onOpen{
@@ -241,8 +241,12 @@ case class HttpClient(name: String,
 object HttpClientFactory {
 
   def get(name: String, env: Environment = Default)(implicit system: ActorSystem, timeout: Timeout = 1 second): HttpClient = {
-    HttpClient(name, env, Status.UP, None)(
-      (_) => (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, env)).mapTo[ActorRef]
+    val newEnv = env match {
+      case Default => EnvironmentRegistry(system).resolve(name)
+      case _ => env
+    }
+    HttpClient(name, newEnv, Status.UP, None)(
+      (_) => (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, newEnv)).mapTo[ActorRef]
     )
   }
 }
