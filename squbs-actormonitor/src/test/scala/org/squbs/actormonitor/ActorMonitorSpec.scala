@@ -246,13 +246,13 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
 
       import ActorMonitorSpec._
-      val originalNum = getActorMonitorConfigBean("Count")
+      val originalNum = getActorMonitorConfigBean("Count").toString.toInt
 
       system.actorSelection("/user/TestCube/TestActor1") ! PoisonPill
       receiveOne(2 seconds) match {
         case msg =>
           awaitAssert(ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") == null, max= 2 second)
-          assert(getActorMonitorConfigBean("Count") == 11)
+          awaitAssert(getActorMonitorConfigBean("Count") == originalNum - 1, max = 2 second )
       }
     }
 
