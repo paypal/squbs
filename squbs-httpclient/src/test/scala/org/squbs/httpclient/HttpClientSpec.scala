@@ -67,6 +67,17 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
     result.entity.data.asString should be (fullTeamJson)
   }
 
+  "HttpClient with correct Endpoint calling raw.post and pass requestSettings" should "get the correct response" in {
+    val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), 5 seconds)
+    val response = HttpClientFactory.get("DummyService").raw.post[Employee]("/view", None, reqSettings)
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.headers.contains(RawHeader("res-req1-name", "res-test123456")) should be (true)
+    result.entity.nonEmpty should be (true)
+    result.entity.data.nonEmpty should be (true)
+    result.entity.data.asString should be (fullTeamJson)
+  }
+
   "HttpClient with correct Endpoint calling raw.get" should "prepend slash to the uri" in {
     val response = HttpClientFactory.get("DummyService").raw.get("view")
     val result = Await.result(response, 3 seconds)

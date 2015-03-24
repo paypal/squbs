@@ -84,7 +84,7 @@ trait DummyService extends SimpleRoutingApp {
       } ~
         //get, head, options
         path("view") {
-          (get | head | options) {
+          (get | head | options | post) {
             respondWithMediaType(MediaTypes.`application/json`)
             headerValueByName("req1-name") {
               value =>

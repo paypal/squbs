@@ -49,7 +49,7 @@ object HttpClientManagerMessage {
   case object DeleteAllSuccess
 
   /**
-   * Success => TrieMap[(String, Environment), (Client, ActorRef)]
+   * Success => TrieMap[(String, Environment), HttpClient]
    */
   case object GetAll
 }
@@ -101,28 +101,28 @@ object HttpClientActorMessage {
    * Failure => Throwable
    * @param uri
    */
-  case class Get(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings)
+  case class Get(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
 
   /**
    * Success => HttpResponse
    * Failure => Throwable
    * @param uri
    */
-  case class Options(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings)
+  case class Options(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
 
   /**
    * Success => HttpResponse
    * Failure => Throwable
    * @param uri
    */
-  case class Head(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings)
+  case class Head(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
 
   /**
    * Success => HttpResponse
    * Failure => Throwable
    * @param uri
    */
-  case class Delete(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings)
+  case class Delete(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
 
 
   /**
@@ -135,7 +135,7 @@ object HttpClientActorMessage {
    */
   case class Post[T](uri: String, content: Option[T],
                      marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
-                     requestSettings: RequestSettings = Configuration.defaultRequestSettings)
+                     reqSettings: RequestSettings = Configuration.defaultRequestSettings)
 
   /**
    * Success => HttpResponse
@@ -147,5 +147,5 @@ object HttpClientActorMessage {
    */
   case class Put[T](uri: String, content: Option[T],
                     marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
-                    requestSettings: RequestSettings = Configuration.defaultRequestSettings)
+                    reqSettings: RequestSettings = Configuration.defaultRequestSettings)
 }
