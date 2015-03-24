@@ -98,8 +98,6 @@ trait PipelineManager{
         case Status.DOWN =>
           throw HttpClientMarkDownException(client.name, client.env)
         case _ =>
-					import scala.concurrent.duration._
-					implicit val timeout = Timeout(3 seconds)
 					r: HttpRequest => (pipelineActor ? r).mapTo[HttpResponse]
       }
     }
