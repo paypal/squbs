@@ -297,7 +297,9 @@ object UnicomplexBoot {
         def actorCreator: Actor = WebContext.createWithContext[Actor](webContext) { actorClass.newInstance() }
         val props = Props(classOf[TypedCreatorFunctionConsumer], clazz, actorCreator _)
         val className = clazz.getSimpleName
-        val actorName = if (webContext.length > 0) s"$webContext-$className-handler" else s"root-$className-handler"
+        val actorName =
+          if (webContext.length > 0) s"${webContext.replace('/', '_')}-$className-handler"
+          else s"root-$className-handler"
         cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, proxyName, initRequired)
         Some((fullName, name, version, actorClass))
       } catch {
