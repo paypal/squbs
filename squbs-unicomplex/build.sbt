@@ -28,5 +28,3 @@ findbugsExcludeFilters := Some(scala.xml.XML.loadFile (baseDirectory.value / "fi
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")
-
-instrumentSettings

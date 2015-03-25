@@ -28,8 +28,6 @@ org.scalastyle.sbt.ScalastylePlugin.Settings
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-zkcluster")
 
-instrumentSettings
-
-parallelExecution in ScoverageTest := false
+//parallelExecution in ScoverageTest := false
 
 parallelExecution := false
