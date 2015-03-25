@@ -21,3 +21,4 @@ org.scalastyle.sbt.ScalastylePlugin.Settings
 
 // (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pattern")
 
+instrumentSettings

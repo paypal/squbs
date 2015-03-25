@@ -12,4 +12,8 @@ libraryDependencies ++= Seq(
 
 findbugsSettings
 
+
 org.scalastyle.sbt.ScalastylePlugin.Settings
+
+
+instrumentSettings

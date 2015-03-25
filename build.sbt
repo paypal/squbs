@@ -1,5 +1,3 @@
-import scoverage.ScoverageSbtPlugin._
-
 scalaVersion in ThisBuild := "2.11.6"
 
 version in ThisBuild := "0.6.0-SNAPSHOT"
@@ -8,15 +6,15 @@ organization in ThisBuild := "org.squbs"
 
 publishArtifact := false
 
-//addCommandAlias("coverage", "coverage test")
+addCommandAlias("coverage", "scoverage:test")
 
-ScoverageKeys.coverageMinimum in ThisBuild := 70
+ScoverageKeys.minimumCoverage in ThisBuild := 70
 
-ScoverageKeys.coverageFailOnMinimum in ThisBuild := true
+ScoverageKeys.failOnMinimumCoverage in ThisBuild := true
 
 fork in ThisBuild := true
 
-//parallelExecution in Test in ThisBuild := false
+parallelExecution in ScoverageTest in ThisBuild := false
 
 parallelExecution in ThisBuild := false
 
