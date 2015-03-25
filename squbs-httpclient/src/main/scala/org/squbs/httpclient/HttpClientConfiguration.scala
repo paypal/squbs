@@ -17,7 +17,9 @@
  */
 package org.squbs.httpclient
 
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
+import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.squbs.proxy.SimplePipelineConfig
 import spray.can.Http.ClientConnectionType
@@ -35,8 +37,14 @@ case class Settings(hostSettings: HostConnectorSettings = Configuration.defaultH
 
 object Configuration {
   val defaultHostSettings = HostConnectorSettings(ConfigFactory.load)
+
   val defaultCircuitBreakerSettings = CircuitBreakerSettings()
+
   val defaultRequestSettings = RequestSettings()
+
+  def defaultRequestSettings(config: Configuration) = {
+    RequestSettings(timeout = Timeout(config.settings.hostSettings.connectionSettings.requestTimeout.toMillis, TimeUnit.MILLISECONDS))
+  }
 }
 
 case class CircuitBreakerSettings(maxFailures: Int = 5,
@@ -46,4 +54,4 @@ case class CircuitBreakerSettings(maxFailures: Int = 5,
                                   fallbackHttpResponse: Option[HttpResponse] = None)
 
 case class RequestSettings(headers: List[HttpHeader] = List.empty[HttpHeader],
-                           timeout: Duration = Configuration.defaultHostSettings.connectionSettings.requestTimeout)
+                           timeout: Timeout = Timeout(Configuration.defaultHostSettings.connectionSettings.requestTimeout.toMillis, TimeUnit.MILLISECONDS))

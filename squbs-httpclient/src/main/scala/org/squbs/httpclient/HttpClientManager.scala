@@ -75,7 +75,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
   }
 
   def get(client: HttpClient, actorRef: ActorRef, uri: String,
-          reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+          reqSettings: RequestSettings)
          (implicit system: ActorSystem): Future[HttpResponse] = {
     val verifiedUri = verifyUri(client, uri)
     httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
@@ -83,7 +83,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
   }
 
   def post[T: Marshaller](client: HttpClient, actorRef: ActorRef, uri: String, content: Option[T],
-                          reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+                          reqSettings: RequestSettings)
                          (implicit system: ActorSystem): Future[HttpResponse] = {
     val verifiedUri = verifyUri(client, uri)
     httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
@@ -91,7 +91,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
   }
 
   def put[T: Marshaller](client: HttpClient, actorRef: ActorRef, uri: String, content: Option[T],
-                         reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+                         reqSettings: RequestSettings)
                         (implicit system: ActorSystem): Future[HttpResponse] = {
     val verifiedUri = verifyUri(client, uri)
     httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
@@ -99,7 +99,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
   }
 
   def head(client: HttpClient, actorRef: ActorRef, uri: String,
-           reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+           reqSettings: RequestSettings)
           (implicit system: ActorSystem): Future[HttpResponse] = {
     val verifiedUri = verifyUri(client, uri)
     httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
@@ -107,7 +107,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
   }
 
   def delete(client: HttpClient, actorRef: ActorRef, uri: String,
-             reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+             reqSettings: RequestSettings)
             (implicit system: ActorSystem): Future[HttpResponse] = {
     val verifiedUri = verifyUri(client, uri)
     httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
@@ -115,7 +115,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
   }
 
   def options(client: HttpClient, actorRef: ActorRef, uri: String,
-              reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+              reqSettings: RequestSettings)
              (implicit system: ActorSystem): Future[HttpResponse] = {
     val verifiedUri = verifyUri(client, uri)
     httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
@@ -171,7 +171,7 @@ class HttpClientCallerActor(svcName: String, env: Environment) extends Actor wit
       context.become(receivePostConnection(HttpMethods.POST, uri, content, reqSettings, client, sender(), marshaller))
   }
 
-  def receiveGetConnection(httpMethod: HttpMethod, uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings, httpClient: HttpClient, clientSender: ActorRef): Actor.Receive = {
+  def receiveGetConnection(httpMethod: HttpMethod, uri: String, reqSettings: RequestSettings, httpClient: HttpClient, clientSender: ActorRef): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
       implicit val timeout: Timeout = httpClient.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
       httpMethod match {
@@ -193,7 +193,7 @@ class HttpClientCallerActor(svcName: String, env: Environment) extends Actor wit
   def receivePostConnection[T](httpMethod: HttpMethod,
                                uri: String,
                                content: Option[T],
-                               reqSettings: RequestSettings = Configuration.defaultRequestSettings,
+                               reqSettings: RequestSettings,
                                client: HttpClient,
                                actorRef: ActorRef,
                                marshaller: Marshaller[T]): Actor.Receive = {

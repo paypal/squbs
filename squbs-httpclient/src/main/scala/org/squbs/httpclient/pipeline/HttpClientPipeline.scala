@@ -56,8 +56,7 @@ trait PipelineManager{
   val httpClientLogger = LoggerFactory.getLogger(this.getClass)
 
 
-  def hostConnectorSetup(client: HttpClient,
-                         reqSettings: RequestSettings = Configuration.defaultRequestSettings)(implicit system: ActorSystem) = {
+  def hostConnectorSetup(client: HttpClient, reqSettings: RequestSettings)(implicit system: ActorSystem) = {
     implicit def sslContext: SSLContext = {
       client.endpoint.config.settings.sslContext match {
         case Some(context) => context
@@ -73,14 +72,18 @@ trait PipelineManager{
     val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
     val isSecure = uri.scheme.toLowerCase.equals("https")
     val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
-    val clientConnectionSettings = client.endpoint.config.settings.hostSettings.connectionSettings.copy(requestTimeout = reqSettings.timeout)
+    val clientConnectionSettings = reqSettings match {
+      case Configuration.defaultHostSettings =>
+        val reqTimeout = Configuration.defaultRequestSettings(client.endpoint.config).timeout
+        client.endpoint.config.settings.hostSettings.connectionSettings.copy(requestTimeout = reqTimeout.duration)
+      case _                                 =>
+        client.endpoint.config.settings.hostSettings.connectionSettings.copy(requestTimeout = reqSettings.timeout.duration)
+    }
     val hostSettings = client.endpoint.config.settings.hostSettings.copy(connectionSettings = clientConnectionSettings)
     defaultHostConnectorSetup.copy(settings = Some(hostSettings), connectionType = client.endpoint.config.settings.connectionType)
   }
 
-  def invokeToHttpResponseWithoutSetup(client: HttpClient,
-                                       reqSettings: RequestSettings = Configuration.defaultRequestSettings,
-                                       actorRef: ActorRef)
+  def invokeToHttpResponseWithoutSetup(client: HttpClient, reqSettings: RequestSettings, actorRef: ActorRef)
                                       (implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
     implicit val ec = system.dispatcher
     val pipeConfig = client.endpoint.config.pipeline.getOrElse(SimplePipelineConfig.empty)
