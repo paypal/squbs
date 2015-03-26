@@ -594,7 +594,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
             if (stopJVM) System.exit(0)
 
           case Failure(e) =>
-            log.error(s"Error occurred during shutdown extensions: $e")
+            log.error(s"Error occurred during shutdown extensions: $e", e)
             if (stopJVM) System.exit(-1)
         }
       }
