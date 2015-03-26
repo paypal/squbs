@@ -57,6 +57,10 @@ object ServiceProxySpec {
     )
   ).withFallback(ConfigFactory.parseString(
     """
+      |  default-proxy {
+      |    type = squbs.proxy
+      |    processorFactory = org.squbs.proxy.pipedserviceproxyactor.DummyPipedProcessorFactoryForActor
+      |  }
       |
       |squbs.proxy {
       |  MyProxy1 {
@@ -68,24 +72,24 @@ object ServiceProxySpec {
       |  MyProxy2 {
       |    processorFactory = org.squbs.proxy.serviceproxyroute.DummyProcessorForRoute
       |  }
-      |  default {
-      |    processorFactory = org.squbs.proxy.pipedserviceproxyactor.DummyPipedProcessorFactoryForActor
-      |  }
 			|
-			|  confproxy {
-			|    processorFactory = org.squbs.proxy.SimpleProcessorFactory
-			|    settings = {
-			|      handlers {
-			|        confhandler1 = org.squbs.proxy.pipedserviceproxyactor.confhandler1
-			|        confhandler2 = org.squbs.proxy.pipedserviceproxyactor.confhandler2
-			|        confhandler3 = org.squbs.proxy.pipedserviceproxyactor.confhandler3
-			|        confhandlerempty = org.squbs.proxy.pipedserviceproxyactor.confhandlerEmpty
-			|      }
 			|
-			|      inbound = [confhandler1, confhandler2, confhandlerempty]
-			|      outbound = [confhandler3]
-			|    }
-			|  }
+      |}
+      |
+      |confproxy {
+      |    type = squbs.proxy
+      |    processorFactory = org.squbs.proxy.SimpleProcessorFactory
+      |    settings = {
+      |      handlers {
+      |        confhandler1 = org.squbs.proxy.pipedserviceproxyactor.confhandler1
+      |        confhandler2 = org.squbs.proxy.pipedserviceproxyactor.confhandler2
+      |        confhandler3 = org.squbs.proxy.pipedserviceproxyactor.confhandler3
+      |        confhandlerempty = org.squbs.proxy.pipedserviceproxyactor.confhandlerEmpty
+      |      }
+      |
+      |      inbound = [confhandler1, confhandler2, confhandlerempty]
+      |      outbound = [confhandler3]
+      |    }
       |}
       |
       |spray {
