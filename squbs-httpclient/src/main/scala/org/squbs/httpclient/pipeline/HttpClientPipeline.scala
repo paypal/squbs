@@ -74,7 +74,7 @@ trait PipelineManager{
     val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
     val clientConnectionSettings = reqSettings match {
       case Configuration.defaultHostSettings =>
-        val reqTimeout = Configuration.defaultRequestSettings(client.endpoint.config).timeout
+        val reqTimeout = Configuration.defaultRequestSettings(client.endpoint.config, client.config).timeout
         client.endpoint.config.settings.hostSettings.connectionSettings.copy(requestTimeout = reqTimeout.duration)
       case _                                 =>
         client.endpoint.config.settings.hostSettings.connectionSettings.copy(requestTimeout = reqSettings.timeout.duration)

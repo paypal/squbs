@@ -60,6 +60,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
              pipeline: Try[HttpRequest => Future[HttpResponse]],
              httpRequest: HttpRequest)(implicit system: ActorSystem): Future[HttpResponse] = {
     implicit val ec = system.dispatcher
+    httpClientLogger.debug("HttpRequest headers:" + httpRequest.headers.foreach(header => println(s"${header.name}=${header.value},")))
     pipeline match {
       case Success(res) =>
         withCircuitBreaker(client, res(httpRequest))

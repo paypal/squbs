@@ -42,8 +42,11 @@ object Configuration {
 
   val defaultRequestSettings = RequestSettings()
 
-  def defaultRequestSettings(config: Configuration) = {
-    RequestSettings(timeout = Timeout(config.settings.hostSettings.connectionSettings.requestTimeout.toMillis, TimeUnit.MILLISECONDS))
+  def defaultRequestSettings(endpointConfig: Configuration, config: Option[Configuration]) = {
+    config match {
+      case None => RequestSettings(timeout = Timeout(endpointConfig.settings.hostSettings.connectionSettings.requestTimeout.toMillis, TimeUnit.MILLISECONDS))
+      case Some(config) => RequestSettings(timeout = Timeout(config.settings.hostSettings.connectionSettings.requestTimeout.toMillis, TimeUnit.MILLISECONDS))
+    }
   }
 }
 

@@ -38,6 +38,6 @@ trait HttpClientTestKit {
 
   def shutdownActorSystem = {
     IO(Http).ask(Http.CloseAll)(30.seconds).await
-    system.shutdown()
+    system.shutdown
   }
 }
