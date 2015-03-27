@@ -776,3 +776,5 @@ spray.can.client {
   request-timeout = 20 s
 }
 ```
+
+Spray default request-timeout is 20s, connection-timeout is 10s, please refer reference.conf in spray-can jar
