@@ -2,6 +2,74 @@
 
 Orchestration is one of the major use cases for services, whether you try to orchestrate multiple service calls with as much concurrency, and therefore as good a response time, as possible, or you try to do multiple business operations, data writes, data reads, service calls, etc. dependent on each others, etc. The ability to concisely describe your business logic is essential to making the service easy to understand and maintain. The orchestration DSL - part of squbs-pattern - will make asynchronous code easy to write, read, and reason about.
 
+##Getting Started
+Lets get started with a simple, but complete example of orchestration. This orchestrator composes 3 interrelated asynchronous tasks:
+
+1. Loading the viewing user requesting this orchestration.
+2. Loading the item. Details may depend on the viewing user.
+3. Build an item view based on the user and item data.
+
+Lets dive into the flow and detail.
+
+```scala
+    // 1. Define the orchestrator actor.
+class MyOrchestrator extends Actor with Orchestrator {
+
+    // 2. Provide the initial expectOnce block that will receive the request message.
+  expectOnce {
+    case r: MyOrchestrationRequest => orchestrate(sender(), r)
+  }
+  
+    // 3. Define orchestrate - the orchestration function.
+  def orchestrate(requester: ActorRef, request: MyOrchestrationRequest) {
+    
+    // 5. Compose the orchestration flow using pipes (>>) as needed by the business logic.
+    val userF = loadViewingUser
+    val itemF = userF >> loadItem(itemId)
+    val itemViewF = (userF, itemF) >> buildItemView
+    
+    // 6. Conclude and send back the result of the orchestration.    
+    for {
+      user <- userF
+      item <- itemF
+      itemView <- itemViewF
+    } {
+      requester ! MyOrchestrationResult(user, item, itemView)
+      context.stop(self)
+    }
+    
+    // 7. Make sure to stop the orchestrator actor by calling
+    //    context.stop(self).
+  }
+  
+    // 8. Implement the orchestration functions as in the following patterns.
+  def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
+    val itemPromise = OPromise[Option[Item]]
+  
+    context.actorOf[ItemActor] ! ItemRequest(itemId, seller.id)
+  
+    expectOnce {
+      case item: Item    => itemPromise success Some(item)
+      case e: NoSuchItem => itemPromise success None
+    }
+  
+    itemPromise.future
+  }
+  
+  def loadViewingUser: OFuture[Option[User]] = {
+    val userPromise = OPromise[Option[User]]
+    ...
+    userPromise.future
+  }
+  
+  def buildItemView: OFuture[Option[ItemView]] = {
+    ...
+  }
+}
+```
+
+You may stop here and come back reading the rest later for a deep dive. Feel free to go further and satisfy your curious minds, though.
+
 ##Core Concepts
 
 ###Orchestrator
@@ -107,9 +175,9 @@ To allow an orchestrator to serve multiple orchestration requests, the orchestra
 
 The last part of an orchestration callback should stop the actor. This is done by calling `context.stop(self)` or `context stop self` if the infix notation is preferred.
 
-##Orchestration Code Flow
+##Complete Orchestration Flow
 
-Putting all the above concepts together, the followings represents the general code flow of an orchestrator:
+Here, we put all the above concepts together. Repeating the same example from Getting Started above with more complete explanations:
 
 ```scala
     // 1. Define the orchestrator actor.

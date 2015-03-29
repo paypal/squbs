@@ -212,9 +212,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       // 6 cubes registered above.
       val attrs = attr.asInstanceOf[Array[_]]
       attrs should have size 6
-      forAll (attrs) { attribute =>
-        attribute shouldBe a [javax.management.openmbean.CompositeData]
-      }
+      forAll (attrs) ( _ shouldBe a [javax.management.openmbean.CompositeData] )
     }
 
     "check cube state MXbean" in {

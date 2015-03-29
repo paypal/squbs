@@ -17,21 +17,20 @@
  */
 package org.squbs.httpclient
 
-import akka.util.Timeout
-import org.slf4j.LoggerFactory
-import org.squbs.httpclient.HttpClientActorMessage.{MarkUpSuccess, MarkDownSuccess}
-import org.squbs.httpclient.endpoint.EndpointRegistry
 import akka.actor.{ActorRef, ActorSystem}
+import akka.pattern.{CircuitBreaker, _}
+import akka.util.Timeout
+import org.squbs.httpclient.HttpClientActorMessage.{MarkDownSuccess, MarkUpSuccess}
+import org.squbs.httpclient.endpoint.EndpointRegistry
+import org.squbs.httpclient.env.{Default, Environment}
+import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
 import org.squbs.proxy.SimplePipelineConfig
+import spray.http.{HttpResponse, Uri}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.FromResponseUnmarshaller
-import scala.concurrent._
-import spray.http.{Uri, HttpResponse}
-import org.squbs.httpclient.env.{Default, Environment}
-import akka.pattern.CircuitBreaker
+
 import scala.collection.mutable.ListBuffer
-import akka.pattern._
-import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+import scala.concurrent._
 import scala.concurrent.duration._
 
 object Status extends Enumeration {
