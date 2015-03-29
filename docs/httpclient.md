@@ -735,4 +735,46 @@ case class HttpClientDemoActor(system: ActorSystem) extends Actor with HttpClien
 case object GoogleApiCall
 
 ```
- 
+
+### HttpClient Configuration Override
+
+Configuration Override Sequence:
+
+RequestSettings > withConfig API > Endpoint Configuration in EndpointResolver > Spray Configuration override in application.conf > reference.conf in spray-can jar
+
+RequestSettings could provide request timeout and HttpHeaders in request pipeline to override.
+```scala
+val httpClient: HttpClient = HttpClientFactory.get(name: String)
+val futureT: Future[T] = httpClient.get[T](uri: String, reqSettings: RequestSettings)
+
+```
+
+withConfig/UpdateConfig API could provide HttpClient Configuration override.
+```scala
+val httpClient: HttpClient = HttpClientFactory.get(name: String).withConfig(config: Configuration)
+
+```
+
+Endpoint Configuration in EndpointResolver
+```scala
+object XXXEndpointResolver extends EndpointResolver {
+    override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
+      if (svcName == name)
+        Some(Endpoint(uri: String, config: Configuration))
+      else
+        None
+    }
+
+    override def name: String = "xxx"
+  }
+```
+
+Spray Configuration override in application.conf
+
+```
+spray.can.client {
+  request-timeout = 20 s
+}
+```
+
+Spray default request-timeout is 20s, connection-timeout is 10s, please refer reference.conf in spray-can jar

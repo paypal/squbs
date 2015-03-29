@@ -2,11 +2,8 @@ findbugsSettings
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
-scalaVersion := "2.11.2"
-
-val akkaV = "2.3.6"
+val akkaV = "2.3.9"
 val squbsV = "0.6.0-SNAPSHOT"
-val rocksqubsV = "0.6.0-SNAPSHOT"
 
 dependencyOverrides ++= Set(
   "org.slf4j" % "slf4j-api" % "1.7.5",
@@ -16,10 +13,6 @@ dependencyOverrides ++= Set(
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "org.squbs" %% "squbs-unicomplex" % squbsV,
-  "com.ebay.squbs" %% "rocksqubs-kernel" % squbsV,
-  "com.ebay.squbs" %% "rocksqubs-perfmon" % squbsV,
-  "com.ebay.squbs" %% "rocksqubs-vi" % squbsV,
-  "com.ebay.kernel" % "uKernelCore" % "9.1.1-squbs-SNAPSHOT",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.4.2",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
