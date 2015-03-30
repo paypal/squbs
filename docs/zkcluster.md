@@ -1,12 +1,10 @@
-Overview
-========
+##Overview
 
 zkcluster is an `akka` extension which leverages `zookeeper` to manage akka cluster & partitions.
 it's similar to `akka-cluster` module for the sake of leadership & membership management.
 it's richer as it provides partitioning support, and eliminates the need of `entry-nodes`
 
-Configuration
--------------
+##Configuration
 
 we'll need a `/squbsconfig/zkcluster.conf` under runtime directory, it should provide the following properties:
 * connectionString: a string delimiting all zookeeper nodes of an ensemble with comma
@@ -21,8 +19,7 @@ zkCluster {
 }
 ~~~
 
-User Guide
-----------
+##User Guide
 
 simply register the extension as all normal akka extension
 ~~~scala
@@ -67,8 +64,13 @@ zkCluster(system).zkClusterActor ! PoisonPill
 zkCluster(system).addShutdownListener(listener: () => Unit)
 ~~~
 
-Design
-------
+##Dependencies
+
+Add the following dependency to your build.sbt or scala build file:
+
+"org.squbs" %% "squbs-zkcluster" % squbsVersion
+
+##Design
 
 Read if you're making changes of zkcluster
 * membership is based on `zookeeper` ephemeral nodes, closed session would alter leader with `ZkMembershipChanged`

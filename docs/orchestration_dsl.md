@@ -70,6 +70,12 @@ class MyOrchestrator extends Actor with Orchestrator {
 
 You may stop here and come back reading the rest later for a deep dive. Feel free to go further and satisfy your curious minds, though.
 
+##Dependencies
+
+Add the following dependency to your build.sbt or scala build file:
+
+"org.squbs" %% "squbs-pattern" % squbsVersion
+
 ##Core Concepts
 
 ###Orchestrator
