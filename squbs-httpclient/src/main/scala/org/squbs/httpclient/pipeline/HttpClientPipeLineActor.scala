@@ -3,11 +3,11 @@ package org.squbs.httpclient.pipeline
 import akka.actor._
 import akka.pattern._
 import org.squbs.httpclient.endpoint.Endpoint
-import spray.client.pipelining.SendReceive
-import spray.http.{ChunkedRequestStart, HttpRequest, HttpResponse}
-import HttpClientContextUtils._
+import org.squbs.httpclient.pipeline.HttpClientContextUtils._
+import org.squbs.pipeline.{PipelineProcessorActor, RequestContext}
 import org.squbs.proxy.{SimplePipelineConfig, SimpleProcessor}
-import org.squbs.pipeline.{PipelineProcessorActor, PipelineMgr, RequestContext}
+import spray.client.pipelining.SendReceive
+import spray.http._
 
 /**
  * Created by jiamzhang on 2015/3/6.
@@ -23,11 +23,13 @@ class HttpClientPipelineActor(endpoint: Endpoint, pipelineConf: SimplePipelineCo
 			pipeproxy ! RequestContext(request) +> endpoint
 
 		case request: ChunkedRequestStart =>
-			val responder = sender()
-			val targetAgent = context.actorOf(Props(classOf[HttpClientPipelineTargetActor], target))
-			val pipeproxy = context.actorOf(Props(classOf[PipelineProcessorActor], targetAgent, responder, SimpleProcessor(pipelineConf)))
-			context.watch(pipeproxy)
-			pipeproxy ! RequestContext(request.request, true) +> endpoint
+			// not supported yet
+			sender ! HttpResponse(StatusCodes.InternalServerError, HttpEntity("Chunked request is not supported yet"))
+//			val responder = sender()
+//			val targetAgent = context.actorOf(Props(classOf[HttpClientPipelineTargetActor], target))
+//			val pipeproxy = context.actorOf(Props(classOf[PipelineProcessorActor], targetAgent, responder, SimpleProcessor(pipelineConf)))
+//			context.watch(pipeproxy)
+//			pipeproxy ! RequestContext(request.request, true) +> endpoint
 
 		case Terminated(actor) =>
 			log.debug("The actor " + actor + " is terminated, stop myself")
