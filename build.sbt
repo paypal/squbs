@@ -18,7 +18,7 @@ parallelExecution in ScoverageTest in ThisBuild := false
 
 parallelExecution in ThisBuild := false
 
-updateOptions in ThisBuild := updateOptions.value.withConsolidatedResolution(true)
+updateOptions in ThisBuild := updateOptions.value.withCachedResolution(true)
 
 lazy val `squbs-pipeline` = project
 

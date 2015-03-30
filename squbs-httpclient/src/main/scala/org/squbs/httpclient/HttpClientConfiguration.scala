@@ -48,6 +48,8 @@ object Configuration {
       case Some(config) => RequestSettings(timeout = Timeout(config.settings.hostSettings.connectionSettings.requestTimeout.toMillis, TimeUnit.MILLISECONDS))
     }
   }
+  val defaultFutureTimeout: Timeout = 2 seconds
+
 }
 
 case class CircuitBreakerSettings(maxFailures: Int = 5,

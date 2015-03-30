@@ -31,7 +31,7 @@ import spray.httpx.unmarshalling.FromResponseUnmarshaller
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent._
-import scala.concurrent.duration._
+import Configuration._
 
 object Status extends Enumeration {
   type Status = Value
@@ -79,6 +79,7 @@ case class HttpClient(name: String,
     case ctx: ActorContext => ctx.system
     case other => throw new IllegalArgumentException(s"Cannot create HttpClient with ActorRefFactory Impl ${other.getClass}")
   }
+
   implicit val ec = actorRefFactory.dispatcher
 
   val fActorRef = actorCreator(actorRefFactory)
@@ -207,29 +208,34 @@ case class HttpClient(name: String,
     }
   }
 
-  def withConfig(config: Configuration)(implicit timeout: Timeout = 2 seconds): HttpClient = {
+  def withConfig(config: Configuration): HttpClient = {
+    implicit val timeout = defaultFutureTimeout
     HttpClient(name, env, status, Some(config))(
       (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateConfig(config)).mapTo[ActorRef]}
     )
   }
 
-  def withSettings(settings: Settings)(implicit timeout: Timeout = 2 seconds): HttpClient = {
+  def withSettings(settings: Settings): HttpClient = {
+    implicit val timeout = defaultFutureTimeout
     HttpClient(name, env, status, Some(config.getOrElse(Configuration()).copy(settings = settings)))(
       (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateSettings(settings)).mapTo[ActorRef]}
     )
   }
 
-  def withPipeline(pipeline: Option[SimplePipelineConfig])(implicit timeout: Timeout = 2 seconds): HttpClient = {
+  def withPipeline(pipeline: Option[SimplePipelineConfig]): HttpClient = {
+    implicit val timeout = defaultFutureTimeout
     HttpClient(name, env, status, Some(config.getOrElse(Configuration()).copy(pipeline = pipeline)))(
       (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdatePipeline(pipeline)).mapTo[ActorRef]}
     )
   }
 
-  def markDown(implicit timeout: Timeout = 2 seconds): Future[MarkDownSuccess.type] = {
+  def markDown: Future[MarkDownSuccess.type] = {
+    implicit val timeout = defaultFutureTimeout
     fActorRef flatMap { ref => (ref ? HttpClientActorMessage.MarkDown).mapTo[MarkDownSuccess.type]}
   }
 
-  def markUp(implicit timeout: Timeout = 2 seconds): Future[MarkUpSuccess.type] = {
+  def markUp: Future[MarkUpSuccess.type] = {
+    implicit val timeout = defaultFutureTimeout
     fActorRef flatMap { ref => (ref ? HttpClientActorMessage.MarkUp).mapTo[MarkUpSuccess.type]}
   }
 
@@ -240,13 +246,14 @@ case class HttpClient(name: String,
 
 object HttpClientFactory {
 
-  def get(name: String, env: Environment = Default)(implicit system: ActorSystem, timeout: Timeout = 2 seconds): HttpClient = {
+  def get(name: String, env: Environment = Default)(implicit system: ActorSystem): HttpClient = {
     val newEnv = env match {
       case Default => EnvironmentRegistry(system).resolve(name)
       case _ => env
     }
+    implicit val timeout = defaultFutureTimeout
     HttpClient(name, newEnv, Status.UP, None)(
-      (_) => (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, newEnv)).mapTo[ActorRef]
+    (_) => (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, newEnv)).mapTo[ActorRef]
     )
   }
 }
