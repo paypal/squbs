@@ -38,7 +38,7 @@ import org.squbs.unicomplex.{Unicomplex, JMX, UnicomplexBoot}
 import scala.concurrent.duration._
 
 
-object ActorMonitorSpec {
+object ActorMonitorSpec extends SLF4JLogging{
 
   val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
@@ -69,7 +69,7 @@ object ActorMonitorSpec {
       ManagementFactory.getPlatformMBeanServer.getAttribute(getObjName(actorName), att).asInstanceOf[String]
     } catch {
       case e: Exception =>
-        e.printStackTrace()
+        log.error(e.getMessage, e)
         null
     }
 
@@ -79,7 +79,7 @@ object ActorMonitorSpec {
       ManagementFactory.getPlatformMBeanServer.getAttribute(o, att).asInstanceOf[Int]
     } catch {
       case e: Exception =>
-        e.printStackTrace()
+        log.error(e.getMessage, e)
         null
     }
 
