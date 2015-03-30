@@ -172,8 +172,9 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     }
 
     "4.0) getActor of TestCube/TestActorWithRoute" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Actor")
-      assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"))
+      awaitAssert (
+        ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Actor")
+          .startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"), max=3 second)
     }
 
     "4.1) getClassName of TestCube/TestActorWithRoute" in {
