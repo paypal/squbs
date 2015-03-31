@@ -17,14 +17,15 @@
  */
 package org.squbs.actormonitor
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import akka.actor._
-import org.squbs.actormonitor.ActorMonitorBean._
 import org.squbs.lifecycle.GracefulStopHelper
+import org.squbs.unicomplex.Initialized
 import org.squbs.unicomplex.JMX._
-import org.squbs.unicomplex._
-
-import scala.collection.JavaConversions._
-import concurrent.duration._
+import scala.util.Success
+import collection.JavaConversions._
+import ActorMonitorBean._
 
 private[actormonitor] case class ActorMonitorConfig(maxActorCount: Int, maxChildrenDisplay: Int)
 
@@ -35,33 +36,23 @@ private[actormonitor] class ActorMonitor(_monitorConfig: ActorMonitorConfig) ext
   val monitorConfig = _monitorConfig
 
   register(new ActorMonitorConfigBean(monitorConfig, self, context), prefix + configBean )
-
-  pollingSystemState
-
+  context.actorSelection(s"/*") ! Identify(monitorConfig)
+ 
   override def postStop() {
     unregister(prefix + configBean)
     totalBeans.foreach {unregister(_)}
   }
 
   def receive = {
-    case msg@(Active | "refresh") =>
-      log.info("Got message of [{}], try to start/refresh the monitoring", msg)
+    case "refresh" =>
       totalBeans.foreach {unregister(_)}
       context.actorSelection(s"/*") ! Identify(monitorConfig)
-    case Failed | Stopping | Stopped =>
-    case _: LifecycleState =>
-      log.warning("Unicomplex is not ready yet, keep polling")
-      pollingSystemState
     case ActorIdentity(monitorConfig: ActorMonitorConfig , Some(actor))=>
       implicit val config = monitorConfig
       process(actor)
 
     case Terminated(actor) =>
       unregisterBean(actor)
-  }
-
-  private def pollingSystemState: Unit = {
-    context.system.scheduler.scheduleOnce(1 second, Unicomplex(context.system).uniActor, SystemState)
   }
 
   def process(actor: ActorRef) (implicit monitorConfig: ActorMonitorConfig , context: ActorContext) : Unit= {

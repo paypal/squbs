@@ -63,6 +63,14 @@ object ActorMonitorSpec extends SLF4JLogging{
     .initExtensions.start()
 
 
+  var originalNum = getActorMonitorConfigBean("Count").toString.toInt
+  Thread.sleep(2000)
+  while(originalNum < 12){
+    Thread.sleep(2000)
+    originalNum = getActorMonitorConfigBean("Count").toString.toInt
+    Thread.sleep(2000)
+  }
+
 
  def getActorMonitorBean(actorName: String, att: String) =
     try {
