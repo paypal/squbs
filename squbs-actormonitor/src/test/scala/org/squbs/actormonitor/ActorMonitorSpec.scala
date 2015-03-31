@@ -103,7 +103,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
     "1.1) getActor of TestCube/TestActor" in {
       awaitAssert (
-        ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Actor").startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"), max=3 second)
+        ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Actor").startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"), max=5 second)
     }
 
     "2.1) getClassName of TestCube/TestActor" in {
