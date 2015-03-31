@@ -1,9 +1,27 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.pipeline
 
 import akka.actor._
 import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import spray.http.Uri.Path
 import spray.http._
 
 import scala.collection.mutable.ListBuffer
@@ -37,6 +55,40 @@ class PipeineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys
 		val post = hs.find(_.name == "outbound")
 		post should not be None
 		post.get.value shouldBe "go"
+	}
+
+	"PipelineProcessor" should "handle the exception from remote correctly" in {
+		val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/error"))
+		val ctx = RequestContext(request)
+		val target = TestActorRef[DummyTarget]
+
+		val processor = PipelineMgr(system).registerProcessor("getprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty)).get
+		val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
+		processorActor ! ctx
+
+		val resp = expectMsgType[HttpResponse]
+		resp.status should be(StatusCodes.InternalServerError)
+	}
+
+	"PipelineProcessor" should "return error if response in ctx didn't set correctly" in {
+		val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/error"))
+		val ctx = RequestContext(request, false, null)
+		val processor = PipelineMgr(system).registerProcessor("getprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty)).get
+		val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], Actor.noSender, self, processor))
+		processorActor ! ctx
+
+		val resp = expectMsgType[HttpResponse]
+		resp should be(ExceptionalResponse.defaultErrorResponse)
+	}
+
+	"PipelineProcessor" should "forward unknown msg to client" in {
+		val processor = PipelineMgr(system).registerProcessor("getprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty)).get
+		val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], Actor.noSender, self, processor))
+
+		object Unknown {}
+		processorActor ! Unknown
+
+		expectMsg(Unknown)
 	}
 
 	"PipelineProcessorActor" should "handle the chunk response correctly" in {
@@ -103,6 +155,78 @@ class PipeineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys
 		post should not be None
 		post.get.value shouldBe "go"
 	}
+
+	"PipelineProcessorActor" should "handle exception from Processor correctly" in {
+		val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/hello"))
+		val ctx = RequestContext(request)
+		val target = TestActorRef[DummyTarget]
+
+		val phases = List("preInbound", "inbound", "postInbound", "preOutbound", "outbound")
+		phases.foreach(p => {
+			print("check:" + p)
+			val processor = new ExceptionProcessor(List(p))
+			val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
+			processorActor ! ctx
+
+			val res = expectMsgType[HttpResponse]
+			res.status should be(StatusCodes.InternalServerError)
+		})
+
+	}
+
+	"PipelineProcessorActor" should "handle exception from Processor for chunk response correctly" in {
+		val request = HttpRequest(HttpMethods.PUT, Uri("http://localhost:9900/hello"))
+		val ctx = RequestContext(request)
+		val target = TestActorRef[DummyTarget]
+
+		val phases = List("preOutbound", "outbound")
+		phases.foreach(p => {
+			print("check:" + p)
+			val processor = new ExceptionProcessor(List(p))
+			val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
+			processorActor ! ctx
+
+			val res = expectMsgType[HttpResponse]
+			res.status should be(StatusCodes.InternalServerError)
+		})
+
+	}
+
+	"Processor" should "handle request exception correctly" in {
+		val processor = PipelineMgr(system).registerProcessor("chunkprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty)).get
+		val request = HttpRequest(HttpMethods.PUT, Uri("http://localhost:9900/hello"))
+		val ctx = RequestContext(request)
+		val ex = new RuntimeException("test")
+		val result = processor.onRequestError(ctx, ex)
+		result.response.isInstanceOf[ExceptionalResponse] should be(true)
+		result.response.asInstanceOf[ExceptionalResponse].cause should be(Some(ex))
+
+	}
+
+	"Processor" should "handle response exception correctly" in {
+		val processor = PipelineMgr(system).registerProcessor("chunkprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty)).get
+		val request = HttpRequest(HttpMethods.PUT, Uri("http://localhost:9900/hello"))
+		val ctx = RequestContext(request)
+		val ex = new RuntimeException("test")
+		val result = processor.onResponseError(ctx, ex)
+		result.response.isInstanceOf[ExceptionalResponse] should be(true)
+		result.response.asInstanceOf[ExceptionalResponse].cause should be(Some(ex))
+		result.response.asInstanceOf[ExceptionalResponse].original should be(None)
+	}
+
+	"Processor" should "handle response exception with normal response correctly" in {
+		val processor = PipelineMgr(system).registerProcessor("chunkprocessor", "org.squbs.pipeline.DummyProcessorFactory", Some(ConfigFactory.empty)).get
+		val request = HttpRequest(HttpMethods.PUT, Uri("http://localhost:9900/hello"))
+		val response = DirectResponse(HttpResponse())
+		val ctx = RequestContext(request, false, response)
+
+		val ex = new RuntimeException("test")
+		val result = processor.onResponseError(ctx, ex)
+		result.response.isInstanceOf[ExceptionalResponse] should be(true)
+		result.response.asInstanceOf[ExceptionalResponse].cause should be(Some(ex))
+		result.response.asInstanceOf[ExceptionalResponse].original should be(Some(response))
+	}
+
 }
 
 case object DummyACK
@@ -111,6 +235,8 @@ class DummyTarget extends Actor {
 	private val msgCache = new ListBuffer[MessageChunk]()
 
 	override def receive = {
+		case r: HttpRequest if r.uri.path == Path("/error") =>
+			sender ! new RuntimeException("error")
 		case r: HttpRequest if r.method == HttpMethods.GET =>
 			sender() ! HttpResponse(StatusCodes.OK, entity = "DummyResponse")
 		case r: HttpRequest if r.method == HttpMethods.POST =>
@@ -138,6 +264,29 @@ class DummyProcessorFactory extends ProcessorFactory {
 	def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = {
 		Some(DummyProcessor)
 	}
+}
+
+class ExceptionProcessor(errorAt: List[String]) extends Processor {
+	def error(ctx: RequestContext, phase: String) = {
+		if (errorAt.contains(phase)) throw new RuntimeException()
+
+		ctx
+	}
+	//inbound processing
+	override def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = Future(error(reqCtx, "inbound"))
+
+	//outbound processing
+	override def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = Future(error(reqCtx, "outbound"))
+
+	//first chance to handle input request before processing request
+	override def preInbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = error(ctx, "preInbound")
+
+	override def postInbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = error(ctx, "postInbound")
+
+	override def preOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = error(ctx, "preOutbound")
+
+	//last chance to handle output
+	override def postOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = error(ctx, "postOutbound")
 }
 
 object DummyProcessor extends Processor {
