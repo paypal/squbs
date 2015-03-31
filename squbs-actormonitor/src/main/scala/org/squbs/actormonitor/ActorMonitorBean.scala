@@ -50,10 +50,12 @@ private[actormonitor] object ActorMonitorBean {
         case true => Some(obj)
         case false =>
           val m = try {
-            obj.getClass.getDeclaredMethod(methods.head)
+            val clazz = obj.getClass
+            clazz.getDeclaredMethod(methods.head)
           } catch {
             case e: Exception =>
-              obj.getClass.getSuperclass.getDeclaredMethod(methods.head)
+              val clazz = obj.getClass.getSuperclass
+              clazz.getDeclaredMethod(methods.head)
           }
           m.setAccessible(true)
           val nextObj = m.invoke(obj)
@@ -94,7 +96,13 @@ private[actormonitor] class ActorMonitorBean(actor: ActorRef)(implicit monitorCo
   }
 
   def getDispatcher = props.map(_.dispatcher).getOrElse("Error")
-  def getMailBoxSize = getPrivateValue(actor, List("actorCell", "numberOfMessages")).map(_.toString).getOrElse("N/A")
+  def getMailBoxSize =
+    actor.getClass.getName match {
+      case "akka.actor.RepointableActorRef" =>
+        getPrivateValue(actor, List("underlying", "numberOfMessages")).map(_.toString).getOrElse("N/A")
+      case clazz =>
+        getPrivateValue(actor, List("actorCell", "numberOfMessages")).map(_.toString).getOrElse("N/A")
+  }
 
   lazy val props : Option[Props] =
     actor.getClass.getName match {
