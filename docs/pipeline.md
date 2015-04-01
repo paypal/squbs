@@ -71,9 +71,7 @@ trait ProcessorFactory {
 
 Proxy Processor is used to describe the behaviour of the proxy, like how to handle HttpRequest, HttpResponse, chunked request/chunked response, etc. It provides some method hooks which allows user to define his own biz logic.
 
-You can check the Processor definition here:
-
-[aaa](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala#L31)
+You can check the [Processor definition](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala#L31)
 
 This Processor will be used along with the proxy actor (Here, it's PipelineProcessorActor) to perform the proxy behaviour:
 
