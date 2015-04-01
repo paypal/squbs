@@ -98,7 +98,7 @@ As described above, squbs has a default simple pipeline processor implementation
 
 With this impl, user can simply setup a proxy by:
 
-* **implementing handlers**
+#### implementing handlers
 
 ```scala
 trait Handler {
@@ -107,7 +107,7 @@ trait Handler {
 
 ```
 
-* **Make configuration**
+####  Make configuration
 
 ```
 myProxy {
@@ -119,15 +119,18 @@ myProxy {
   settings = {
 
     handlers = {
-      myhandler = com.myorg.myhandler
+      handler1 = com.myorg.myhandler1
+      handler2 = com.myorg.myhandler2
+      handler3 = com.myorg.myhandler3
+      handler4 = com.myorg.myhandler4
     }
 
-    inbound = []
-    outbound = []
+    inbound = [handler1, handler2]
+    outbound = [handler3, handler4]
   }
 
 }
 
 ```
-Or you might check [sample config with description](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/resources/reference.conf#L21)
+Or you might check [sample config with description](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/resources/reference.conf#L23)
 
