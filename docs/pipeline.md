@@ -77,7 +77,7 @@ https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-pipeline/src/main/sca
 
 This Processor will be used along with the proxy actor (Here, it's PipelineProcessorActor) to perform the proxy behaviour:
 
-
+![Processor](./img/Processor.jpg)
 
 You might feel that this Processor trait is kind of complex, but for most of the users, you don't have create an impl of your own.
 
