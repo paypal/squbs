@@ -47,6 +47,7 @@ object ActorMonitorSpec extends SLF4JLogging{
    "TestCube"
   ) map (dummyJarsDir + "/" + _)
 
+
   import scala.collection.JavaConversions._
 
   val mapConfig = ConfigFactory.parseMap(
@@ -62,6 +63,14 @@ object ActorMonitorSpec extends SLF4JLogging{
     .scanComponents(classPaths)
     .initExtensions.start()
 
+
+  var originalNum = getActorMonitorConfigBean("Count").toString.toInt
+  Thread.sleep(2000)
+  while(originalNum < 12){
+    Thread.sleep(2000)
+    originalNum = getActorMonitorConfigBean("Count").toString.toInt
+    Thread.sleep(2000)
+  }
 
 
  def getActorMonitorBean(actorName: String, att: String) =
@@ -100,6 +109,11 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
   }
 
   "ActorMonitor" must {
+
+    "1.0) getMailBoxSize of unicomplex" in {
+      val bean = ActorMonitorSpec.getActorMonitorBean("user/unicomplex", "MailBoxSize")
+      assert(bean == "0")
+    }
 
     "1.1) getActor of TestCube/TestActor" in {
       awaitAssert (
@@ -168,7 +182,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
     "3.6) getMailBoxSize of TestCube" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "MailBoxSize")
-      assert(bean == "N/A")
+      assert(bean == "0")
     }
 
     "4.0) getActor of TestCube/TestActorWithRoute" in {
@@ -206,6 +220,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "MailBoxSize")
       assert(bean == "0")
     }
+
 
     "5.0) getActor of TestCube/TestActorWithRoute/$a" in {
       awaitAssert(ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Actor").startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#"),
