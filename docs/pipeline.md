@@ -134,3 +134,12 @@ myProxy {
 ```
 Or you might check [sample config with description](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/resources/reference.conf#L23)
 
+In above config:
+
+* processorFactory: must be org.squbs.proxy.SimpleProcessorFactory, a predefined factory
+* settings.handlers: list of (handler name alias + handler class name)
+* settings.inbound: sequence of request handlers
+* settings.outbound: sequence of response handlers
+
+Again, if you want to have customized logic for other phase like preInbound or postOutbound, you can extends [SimpleProcessor](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L30) and create your own factory just like [SimpleProcessorFactory](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L46)
+
