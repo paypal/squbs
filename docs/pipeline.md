@@ -1,5 +1,6 @@
 #Proxy Of Squbs Service
 
+## Overview
 Sometimes, we may have common biz logic accross different squbs-services.
 For example: CAL, Authentication/Authorization, tracking, cookie management, A/B testing, etc.
 
@@ -11,6 +12,10 @@ That is to say:
 * All messages sent from resonder to squbs service will go thru the proxy actor
 * Vice versa, all messages sent from squbs service to responder will go thru the proxy actor.
 
+
+Below section will describe how to enable a proxy for squbs service.
+
+## Proxy declaration
 
 
 
