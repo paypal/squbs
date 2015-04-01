@@ -94,3 +94,40 @@ Below is a basic structure of the RequestContext and corresponding response wrap
 
 #Pipeline Proxy
 
+As described above, squbs has a default simple pipeline processor implementation.
+
+With this impl, user can simply setup a proxy by:
+
+* **implementing handlers**
+
+```scala
+trait Handler {
+	def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
+}
+
+```
+
+* **Make configuration**
+
+```
+myProxy {
+
+  type = squbs.proxy
+
+  processorFactory = org.squbs.proxy.SimpleProcessorFactory
+
+  settings = {
+
+    handlers = {
+      myhandler = com.myorg.myhandler
+    }
+
+    inbound = []
+    outbound = []
+  }
+
+}
+
+```
+Or you might check [sample config with description](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/resources/reference.conf#L21)
+
