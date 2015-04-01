@@ -4,7 +4,7 @@ organization in ThisBuild := "org.squbs.bottles"
 
 scalaVersion in ThisBuild := "2.11.6"
 
-version in ThisBuild := "0.6.0-SNAPSHOT"
+version in ThisBuild := "0.7.0-SNAPSHOT"
 
 publishArtifact := false
 
