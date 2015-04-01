@@ -143,3 +143,30 @@ In above config:
 
 Again, if you want to have customized logic for other phase like preInbound or postOutbound, you can extends [SimpleProcessor](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L30) and create your own factory just like [SimpleProcessorFactory](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L46)
 
+####  Default proxy
+
+Squbs has a [default proxy](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/resources/reference.conf#L23) defined in squbs-unicomplex
+
+So in your appliation, you can simply define your proxy config like this:
+```
+default-proxy {
+
+  settings = {
+
+    handlers = {
+      handler1 = com.myorg.myhandler1
+      handler2 = com.myorg.myhandler2
+      handler3 = com.myorg.myhandler3
+      handler4 = com.myorg.myhandler4
+    }
+
+    inbound = [handler1, handler2]
+    outbound = [handler3, handler4]
+  }
+
+}
+
+```
+
+
+
