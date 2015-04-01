@@ -19,7 +19,7 @@ Below section will describe how to enable a proxy for squbs service.
 
 In your squbs-meta.conf, you can specify proxy for your service:
 
-```json
+```
 
 squbs-services = [
   {
