@@ -79,5 +79,18 @@ This Processor will be used along with the proxy actor (Here, it's PipelineProce
 
 You might feel that this Processor trait is kind of complex, but for most of the users, you don't have create an impl of your own.
 
-Because squbs already provides a very lightweight pipeline based processor for you.
+Because squbs already provides a very lightweight pipeline based processor for you. 
+
+
+### RequestContext
+
+As you might see from Processor definition, a class called RequestContext is widely used.
+This class is an **immutable** data container which host all useful information accross the request-response lifecycle.
+
+Below is a basic structure of the RequestContext and corresponding response wrapper class information:
+
+![RequestContext](./img/RequestContext.jpg)
+
+
+#Pipeline Proxy
 
