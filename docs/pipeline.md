@@ -73,7 +73,7 @@ Proxy Processor is used to describe the behaviour of the proxy, like how to hand
 
 You can check the Processor definition here:
 
-[aaa])https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala#L31)
+[aaa](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala#L31)
 
 This Processor will be used along with the proxy actor (Here, it's PipelineProcessorActor) to perform the proxy behaviour:
 
