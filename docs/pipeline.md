@@ -17,5 +17,18 @@ Below section will describe how to enable a proxy for squbs service.
 
 ### Proxy declaration
 
+In your squbs-meta.conf, you can specify proxy for your service:
+
+```json
+
+squbs-services = [
+  {
+    class-name = com.ebay.myapp.MyActor
+    web-context = mypath
+    proxy-name = myProxy
+  }
+]
+
+```
 
 
