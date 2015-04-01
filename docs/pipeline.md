@@ -31,4 +31,38 @@ squbs-services = [
 
 ```
 
+Here're some rules about proxy-name:
+* If you don't specify any proxy-name, i.e.: omit the proxy-name, squbs will try to load a proxy named "default-proxy"
+* If you use empty string for proxy-name, which means you don't want any proxy applied for your serivce.
+* For any other name, squbs will try to load proxy config in .conf files
+
+
+### Proxy Configuration
+
+```
+myProxy {
+
+  type = squbs.proxy
+
+  processorFactory = org.myorg.app.SomeProcessorFactory
+
+  settings = {
+    
+  }
+
+}
+
+```
+
+Here're some explanation for above configurations:
+
+* proxy name:  As you can see from above, myProxy is the name of the proxy which is align with the definition in squbs-meta.conf
+* type :  must be squbs.proxy
+* processorFactory: A factory impl which can be used to create a proxy processor. (Processor will be discussed in later section)
+```scala
+trait ProcessorFactory {
+  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor]
+}
+```
+* settings : an optional config object which can be used by processorFactory.(As you can tell from the above create method)
 
