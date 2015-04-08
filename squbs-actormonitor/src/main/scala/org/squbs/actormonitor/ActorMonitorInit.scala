@@ -18,12 +18,11 @@
 package org.squbs.actormonitor
 
 import akka.actor._
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.LazyLogging
 import org.squbs.lifecycle.ExtensionLifecycle
 
 
-private class ActorMonitorInit extends ExtensionLifecycle  {
-  private val logger = LoggerFactory.getLogger(this.getClass)
+private class ActorMonitorInit extends ExtensionLifecycle with LazyLogging {
 
   override def postInit() {
     logger.info(s"postInit ${this.getClass}")

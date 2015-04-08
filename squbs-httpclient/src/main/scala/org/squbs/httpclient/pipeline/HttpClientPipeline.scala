@@ -17,22 +17,24 @@
  */
 package org.squbs.httpclient.pipeline
 
-import org.squbs.httpclient.pipeline.impl.RequestUpdateHeaderHandler
-import spray.httpx.{UnsuccessfulResponseException, PipelineException}
-import akka.actor.{Props, ActorRef, ActorSystem}
-import spray.httpx.unmarshalling._
-import scala.concurrent.Future
-import org.squbs.httpclient._
-import spray.http.{Uri, HttpRequest, HttpResponse}
-import scala.util.Try
+import javax.net.ssl.SSLContext
+
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern._
 import akka.util.Timeout
-import spray.can.Http
-import javax.net.ssl.SSLContext
-import spray.io.ClientSSLEngineProvider
+import com.typesafe.scalalogging.LazyLogging
+import org.squbs.httpclient._
 import org.squbs.httpclient.endpoint.Endpoint
-import org.slf4j.LoggerFactory
+import org.squbs.httpclient.pipeline.impl.RequestUpdateHeaderHandler
 import org.squbs.proxy.SimplePipelineConfig
+import spray.can.Http
+import spray.http.{HttpRequest, HttpResponse, Uri}
+import spray.httpx.unmarshalling._
+import spray.httpx.{PipelineException, UnsuccessfulResponseException}
+import spray.io.ClientSSLEngineProvider
+
+import scala.concurrent.Future
+import scala.util.Try
 
 object HttpClientUnmarshal{
 
@@ -51,10 +53,9 @@ object HttpClientUnmarshal{
   }
 }
 
-trait PipelineManager{
+trait PipelineManager extends LazyLogging {
 
-  val httpClientLogger = LoggerFactory.getLogger(this.getClass)
-
+  val httpClientLogger = logger
 
   def hostConnectorSetup(client: HttpClient, reqSettings: RequestSettings)(implicit system: ActorSystem) = {
     implicit def sslContext: SSLContext = {

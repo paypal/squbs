@@ -2,7 +2,7 @@ package org.squbs.proxy
 
 import akka.actor.{ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
 import com.typesafe.config.{Config, ConfigFactory, ConfigObject}
-import org.slf4j.{Logger, LoggerFactory}
+import com.typesafe.scalalogging.LazyLogging
 import org.squbs.unicomplex.ConfigUtil._
 
 import scala.collection.JavaConversions._
@@ -20,13 +20,11 @@ case class ProxySettings(default: Option[ProxySetup],
   }
 }
 
-object ProxySettings extends ExtensionId[ProxySettings] with ExtensionIdProvider {
+object ProxySettings extends ExtensionId[ProxySettings] with ExtensionIdProvider with LazyLogging {
 
   override def lookup = ProxySettings
 
   override def createExtension(system: ExtendedActorSystem) = ProxySettings(system.settings.config)
-
-  protected val logger: Logger = LoggerFactory.getLogger(getClass.getName)
 
   def apply(config: Config): ProxySettings = {
     val proxyConf = config.getOptionalConfig("squbs.proxy") getOrElse ConfigFactory.empty

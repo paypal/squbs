@@ -21,24 +21,20 @@ import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 
 import akka.actor._
-import akka.event.slf4j.SLF4JLogging
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
-
 import com.typesafe.config.ConfigFactory
+import com.typesafe.scalalogging.LazyLogging
 import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
-
-
-
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
-import org.squbs.unicomplex.{Unicomplex, JMX, UnicomplexBoot}
+import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
 
 import scala.concurrent.duration._
 
 
-object ActorMonitorSpec extends SLF4JLogging{
+object ActorMonitorSpec extends LazyLogging {
 
   val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
@@ -78,7 +74,7 @@ object ActorMonitorSpec extends SLF4JLogging{
       ManagementFactory.getPlatformMBeanServer.getAttribute(getObjName(actorName), att).asInstanceOf[String]
     } catch {
       case e: Exception =>
-        log.error(e.getMessage, e)
+        logger.error(e.getMessage, e)
         null
     }
 
@@ -88,7 +84,7 @@ object ActorMonitorSpec extends SLF4JLogging{
       ManagementFactory.getPlatformMBeanServer.getAttribute(o, att).asInstanceOf[Int]
     } catch {
       case e: Exception =>
-        log.error(e.getMessage, e)
+        logger.error(e.getMessage, e)
         null
     }
 

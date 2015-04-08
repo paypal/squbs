@@ -19,8 +19,9 @@ package org.squbs.proxy
 
 import akka.actor.{ActorContext, ActorRefFactory}
 import com.typesafe.config.{Config, ConfigFactory, ConfigValue}
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.LazyLogging
 import org.squbs.pipeline._
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable.{HashMap => HMap}
 import scala.concurrent.{ExecutionContext, Future}
@@ -52,8 +53,7 @@ class SimpleProcessorFactory extends ProcessorFactory {
 	}
 }
 
-object SimplePipelineConfig {
-	private val log = LoggerFactory.getLogger(this.getClass)
+object SimplePipelineConfig extends LazyLogging {
 
 	def apply(config: Config): SimplePipelineConfig = {
 		import org.squbs.unicomplex.ConfigUtil._
@@ -67,7 +67,7 @@ object SimplePipelineConfig {
 					handlerCache += (name -> Class.forName(clazz).newInstance.asInstanceOf[Handler])
 				} catch {
 					case t: Throwable =>
-						log.error("Can't instantiate the handler with name of:" + name)
+						logger.error("Can't instantiate the handler with name of:" + name)
 				}
 			case _ => // ignore
 		}

@@ -20,21 +20,21 @@ package org.squbs.actorregistry
 
 import akka.actor._
 import com.typesafe.config.Config
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.LazyLogging
 import org.squbs.lifecycle.ExtensionLifecycle
-import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import org.squbs.unicomplex.ConfigUtil
+import org.squbs.unicomplex.UnicomplexBoot.StartupType
+
 import scala.concurrent.duration._
 
 
-private class ActorRegistryInit extends ExtensionLifecycle  {
-  private val logger = LoggerFactory.getLogger(this.getClass)
+private class ActorRegistryInit extends ExtensionLifecycle with LazyLogging {
 
   override def postInit() {
     logger.info(s"postInit ${this.getClass}")
 
-    import boot._
     import ConfigUtil._
+    import boot._
 
     val registryConfig = config.getConfig("squbs-actorregistry")
 

@@ -2,17 +2,16 @@ package org.squbs.pipeline
 
 import akka.actor._
 import com.typesafe.config.Config
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.util.Try
 
 /**
  * Created by jiamzhang on 2015/3/3.
  */
-class PipelineMgr extends Extension {
+class PipelineMgr extends Extension with LazyLogging {
   //TODO use agent
   @volatile private var processorMap = Map.empty[String, Processor]
-  private val logger = LoggerFactory.getLogger(getClass)
 
   def registerProcessor(name: String, processorFactory: String, config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = {
     synchronized {
