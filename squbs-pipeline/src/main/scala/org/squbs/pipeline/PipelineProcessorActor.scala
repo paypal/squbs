@@ -121,17 +121,24 @@ class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Proc
   def onChunk(reqCtx: RequestContext): Receive = {
 
     case chunk: MessageChunk =>
-      finalOutput(reqCtx.copy(response = NormalResponse(processResponseChunk(reqCtx, chunk))))
+      processChunk(reqCtx) {
+        finalOutput(reqCtx.copy(response = NormalResponse(processResponseChunk(reqCtx, chunk))))
+      }
 
     case chunkEnd: ChunkedMessageEnd =>
-      finalOutput(reqCtx.copy(response = NormalResponse(processResponseChunkEnd(reqCtx, chunkEnd))))
+      processChunk(reqCtx) {
+        finalOutput(reqCtx.copy(response = NormalResponse(processResponseChunkEnd(reqCtx, chunkEnd))))
+      }
 
     case data@Confirmed(mc@(_: MessageChunk), ack) =>
-      val newChunk = processResponseChunk(reqCtx, mc)
-      finalOutput(reqCtx.copy(response = NormalResponse(Confirmed(newChunk, ack), sender())))
-
+      processChunk(reqCtx) {
+        val newChunk = processResponseChunk(reqCtx, mc)
+        finalOutput(reqCtx.copy(response = NormalResponse(Confirmed(newChunk, ack), sender())))
+      }
     case AckInfo(rawAck, receiver) =>
-      receiver tell(rawAck, self)
+      processChunk(reqCtx) {
+        receiver tell(rawAck, self)
+      }
   }
 
   private def postProcess(ctx: RequestContext) = {
