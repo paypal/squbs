@@ -48,7 +48,6 @@ trait Processor {
 
   //place holder for special use case like clean up thread local, usually don't need it.
   def inboundFinalize(ctx: RequestContext): Unit = {
-
   }
 
   //first chance to handle response before executing outbound
@@ -61,10 +60,12 @@ trait Processor {
     ctx
   }
 
-  //place holder for special use case like clean up thread local, usually don't need it.
+  //place holder for special use case like clean up thread local, usually don't need to override
   def outboundFinalize(ctx: RequestContext): Unit = {
-
   }
+
+  //hook method for special use case like install/cleanup thread local, usually don't need to override
+  def processChunk(ctx: RequestContext)(func: => Unit): Unit = func
 
   //sync method to process response chunk
   def processResponseChunk(ctx: RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
