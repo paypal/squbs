@@ -17,14 +17,14 @@
  */
 package org.squbs.pipeline
 
-import akka.actor.{ActorRefFactory, ActorContext}
+import akka.actor.{ActorContext, ActorRefFactory}
 import com.typesafe.config.Config
 import spray.http.{ChunkedMessageEnd, MessageChunk}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 trait Handler {
-	def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
+  def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
 }
 
 //Must be stateless
@@ -41,31 +41,47 @@ trait Processor {
     ctx
   }
 
+  //last chance to handle input request before sending request to underlying service
   def postInbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
     ctx
   }
 
+  //place holder for special use case like clean up thread local, usually don't need it.
+  def inboundFinalize(ctx: RequestContext): Unit = {
+
+  }
+
+  //first chance to handle response before executing outbound
   def preOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
     ctx
   }
 
-  //last chance to handle output
+  //last chance to handle output after executing outbound
   def postOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
     ctx
   }
 
+  //place holder for special use case like clean up thread local, usually don't need it.
+  def outboundFinalize(ctx: RequestContext): Unit = {
+
+  }
+
+  //sync method to process response chunk
   def processResponseChunk(ctx: RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
     chunk
   }
 
+  //sync method to process response chunk end
   def processResponseChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd)(implicit context: ActorContext): ChunkedMessageEnd = {
     chunkEnd
   }
 
+  //sync method to process request chunk
   def processRequestChunk(ctx: RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
     chunk
   }
 
+  //sync method to process request chunk end
   def processRequestChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd)(implicit context: ActorContext): ChunkedMessageEnd = {
     chunkEnd
   }
