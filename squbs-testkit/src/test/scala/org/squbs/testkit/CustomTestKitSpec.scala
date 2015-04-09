@@ -25,11 +25,11 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{FlatSpecLike, Matchers}
-import org.squbs.testkit.util.Ports
 import org.squbs.unicomplex.{JMX, RouteDefinition, UnicomplexBoot}
 import spray.client.pipelining._
 import spray.http.StatusCodes
 import spray.routing.Directives
+import spray.util.Utils._
 
 import scala.concurrent.Await
 
@@ -57,7 +57,7 @@ object CustomTestKitSpec {
 
   import scala.collection.JavaConversions._
 
-  val port = Ports.available(3888, 5000)
+  val (_, port) = temporaryServerHostnameAndPort()
 
   val testConfig = ConfigFactory.parseMap(
     Map(
