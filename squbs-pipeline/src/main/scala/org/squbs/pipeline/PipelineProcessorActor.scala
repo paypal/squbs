@@ -142,7 +142,14 @@ class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Proc
   }
 
   private def postProcess(ctx: RequestContext) = {
-    finalOutput(postOutbound(ctx))
+    val newCtx: RequestContext = try {
+      postOutbound(ctx)
+    } catch {
+      case t: Throwable =>
+        log.error(t, "Error in processing postProcess")
+        onResponseError(ctx, t)
+    }
+    finalOutput(newCtx)
   }
 
   private def finalOutput(ctx: RequestContext) = {
