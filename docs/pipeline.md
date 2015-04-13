@@ -1,7 +1,7 @@
 #Proxy Of Squbs Service
 
 ### Overview
-Sometimes, we may have common biz logic accross different squbs-services.
+Sometimes, we may have common biz logic across different squbs-services.
 For example: CAL, Authentication/Authorization, tracking, cookie management, A/B testing, etc.
 
 Usually we don't want the service owner to take care of these common stuffs in their Actor/Router.
