@@ -78,7 +78,7 @@ object BadUnicomplexBootSpec {
 }
 
 class BadUnicomplexBootSpec extends TestKit(BadUnicomplexBootSpec.boot.actorSystem) with ImplicitSender
-with WordSpecLike with Matchers with BeforeAndAfterAll
+with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll
 with AsyncAssertions {
 
   import org.squbs.unicomplex.BadUnicomplexBootSpec._
@@ -134,14 +134,16 @@ with AsyncAssertions {
       val attr = mbeanServer.getAttribute(cubesObjName, "Cubes")
       attr shouldBe a[Array[javax.management.openmbean.CompositeData]]
       // 5 cubes registered above.
-      attr.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 1
+      val cAttr = attr.asInstanceOf[Array[_]]
+      forAll (cAttr) (_ shouldBe a [javax.management.openmbean.CompositeData])
+      attr.asInstanceOf[Array[_]] should have size 1
     }
 
-    "preInit, init and postInit all extenstions" in {
-      boot.extensions.size should be(2)
+    "preInit, init and postInit all extensions" in {
+      boot.extensions.size should be (2)
       //boot.extensions.forall(_.extLifecycle.get.isInstanceOf[DummyExtension]) should be(true)
-      boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be("CstartpreInitpostInit")
-      boot.extensions(1).extLifecycle should be(None)
+      boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("CstartpreInitpostInit")
+      boot.extensions(1).extLifecycle should be (None)
 
     }
 

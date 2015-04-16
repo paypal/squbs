@@ -18,6 +18,7 @@
 package org.squbs.unicomplex
 
 import java.io.{File, FileInputStream, InputStreamReader, Reader}
+import java.net.URL
 import java.util.concurrent.TimeUnit
 import java.util.jar.JarFile
 import java.util.{Timer, TimerTask}
@@ -98,11 +99,25 @@ object UnicomplexBoot extends LazyLogging {
     }
   }
 
-  private[unicomplex] def scan(jarNames: Seq[String])(boot: UnicomplexBoot):
-        UnicomplexBoot = {
+  private[unicomplex] def scan(jarNames: Seq[String])(boot: UnicomplexBoot): UnicomplexBoot = {
     val configEntries = jarNames map readConfigs
-
     val jarConfigs = jarNames zip configEntries collect { case (jar, Some(cfg)) => (jar, cfg) }
+    resolveCubes(jarConfigs, boot)
+  }
+
+  private[unicomplex] def scanResources(resources: Seq[URL])(boot: UnicomplexBoot): UnicomplexBoot = {
+    val jarConfigs = resources map readConfigs collect { case Some(jarCfg) => jarCfg }
+    resolveCubes(jarConfigs, boot)
+  }
+
+  private[unicomplex] def scanResources(boot: UnicomplexBoot): UnicomplexBoot = {
+    val loader = getClass.getClassLoader
+    import scala.collection.JavaConversions._
+    val resources = Seq("conf", "json", "properties") flatMap { ext => loader.getResources(s"META-INF/squbs-meta.$ext") }
+    scanResources(resources)(boot)
+  }
+
+  private[this] def resolveCubes(jarConfigs: Seq[(String, Config)], boot: UnicomplexBoot) = {
 
     val cubeList = resolveAliasConflicts(jarConfigs map { case (jar, config) => readCube(jar, config) } collect {
       case Some(cube) => cube
@@ -111,7 +126,7 @@ object UnicomplexBoot extends LazyLogging {
     // Read listener and alias information.
     val (activeAliases, activeListeners, missingAliases) = findListeners(boot.config, cubeList)
     missingAliases foreach { name => logger.warn(s"Requested listener $name not found!") }
-    boot.copy(cubes = cubeList, jarConfigs = jarConfigs, jarNames = jarNames,
+    boot.copy(cubes = cubeList, jarConfigs = jarConfigs, jarNames = jarConfigs map (_._1),
       listeners = activeListeners, listenerAliases = activeAliases)
   }
 
@@ -162,6 +177,36 @@ object UnicomplexBoot extends LazyLogging {
         case Some(reader) => reader.close()
         case None =>
       }
+    }
+  }
+
+  private[this] def readConfigs(resource: URL): Option[(String, Config)] = {
+
+    // Taking the best guess at the jar name or classpath entry. Should work most of the time.
+    val jarName = resource.getProtocol match {
+      case "jar" =>
+        val jarURL = new URL(resource.getPath.split('!')(0))
+        jarURL.getProtocol match {
+          case "file" => jarURL.getPath
+          case _ => jarURL.toString
+        }
+      case "file" => // We assume the classpath entry ends before the last /META-INF/
+        val path = resource.getPath
+        val endIdx = path.lastIndexOf("/META-INF/")
+        if (endIdx > 0) path.substring(0, endIdx) else path
+      case _ =>
+        val path = resource.toString
+        val endIdx = path.lastIndexOf("/META-INF/")
+        if (endIdx > 0) path.substring(0, endIdx) else path
+    }
+
+    try {
+      val config = ConfigFactory.parseURL(resource)
+      Some((jarName, config))
+    } catch {
+      case e: Exception =>
+        logger.info(s"${e.getClass.getName} reading configuration from $jarName.\n ${e.getMessage}")
+        None
     }
   }
 
@@ -473,6 +518,10 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
   def createUsing(actorSystemCreator: (String, Config) => ActorSystem) = copy(actorSystemCreator = actorSystemCreator)
 
   def scanComponents(jarNames: Seq[String]): UnicomplexBoot = scan(jarNames)(this)
+
+  def scanResources(resources: Seq[URL]): UnicomplexBoot = UnicomplexBoot.scanResources(resources)(this)
+
+  def scanResources(): UnicomplexBoot = UnicomplexBoot.scanResources(this)
 
   def initExtensions: UnicomplexBoot = {
 
