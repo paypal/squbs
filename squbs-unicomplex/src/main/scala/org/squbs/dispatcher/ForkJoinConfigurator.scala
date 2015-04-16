@@ -25,8 +25,6 @@ import com.typesafe.config.Config
 
 import scala.concurrent.{BlockContext, CanAwait}
 
-// import scala.concurrent.forkjoin.ForkJoinPool
-
 class ForkJoinConfigurator(config: Config, prerequisites: DispatcherPrerequisites)
   extends ExecutorServiceConfigurator(config, prerequisites) {
 
@@ -87,7 +85,6 @@ case class AdaptedThreadFactory(delegateFactory: MonitorableThreadFactory)
     counterField.setAccessible(true)
     counterField.get(delegateFactory).asInstanceOf[AtomicLong]
   }
-
 }
 
 object AdaptedThreadFactory {
