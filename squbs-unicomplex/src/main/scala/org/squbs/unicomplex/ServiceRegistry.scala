@@ -27,6 +27,7 @@ import akka.io.IO
 import com.typesafe.config.Config
 import spray.can.Http
 import spray.can.server.ServerSettings
+import spray.http.HttpHeaders.RawHeader
 import spray.http.StatusCodes.NotFound
 import spray.http._
 import spray.io.ServerSSLEngineProvider
@@ -37,19 +38,29 @@ import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorRef)
+case class RegisterContext(listeners: Seq[String], webContext: String, actor: ContextServant)
+
+case class ContextServant(actor: ActorRef, proxied: Boolean = false)
+
+object WebContextHeader {
+  val name = classOf[WebContextHeader].getName
+
+  def apply(webCtx: String) = new WebContextHeader(webCtx)
+}
+
+class WebContextHeader(webCtx: String) extends RawHeader(WebContextHeader.name, webCtx)
 
 class ServiceRegistry(log: LoggingAdapter) {
 
-  var listenerRoutes = Map.empty[String, Agent[Map[String, ActorRef]]]
+  var listenerRoutes = Map.empty[String, Agent[Map[String, ContextServant]]]
 
   class ListenerBean extends ListenerMXBean {
 
     override def getListeners: java.util.List[ListenerInfo] = {
       import scala.collection.JavaConversions._
       listenerRoutes.flatMap { case (listenerName, agent) =>
-        agent() map { case (webContext, actor) =>
-          ListenerInfo(listenerName, webContext, actor.toString)
+        agent() map { case (webContext, servant) =>
+          ListenerInfo(listenerName, webContext, servant.actor.toString)
         }
       }.toSeq
     }
@@ -58,14 +69,14 @@ class ServiceRegistry(log: LoggingAdapter) {
   private[unicomplex] def prepListeners(listenerNames: Iterable[String])(implicit context: ActorContext) {
     import context.dispatcher
     listenerRoutes = listenerNames.map { listener =>
-      listener -> Agent[Map[String, ActorRef]](Map.empty)
+      listener -> Agent[Map[String, ContextServant]](Map.empty)
     }.toMap
 
     import org.squbs.unicomplex.JMX._
     register(new ListenerBean, prefix + listenersName)
   }
 
-  private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, actor: ActorRef) {
+  private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ContextServant) {
     listeners foreach { listener =>
       val agent = listenerRoutes(listener)
       agent.send { currentMap =>
@@ -73,7 +84,7 @@ class ServiceRegistry(log: LoggingAdapter) {
           case Some(ref) =>
             log.warning(s"Web context $webContext already registered on $listener. Ignoring new registration.")
             currentMap
-          case None => currentMap + (webContext -> actor)
+          case None => currentMap + (webContext -> servant)
         }
       }
     }
@@ -200,12 +211,12 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
   }
 }
 
-private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String, ActorRef]]) extends Actor
+private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String, ContextServant]]) extends Actor
 with ActorLogging {
 
   val pendingRequests = mutable.WeakHashMap.empty[ActorRef, ActorRef]
 
-  def contextActor(request: HttpRequest) = {
+  def contextActor(request: HttpRequest): (String, Option[ContextServant]) = {
     val path = {
       val p = request.uri.path.toString()
       if (p startsWith "/") p substring 1 else p
@@ -213,8 +224,11 @@ with ActorLogging {
     val matches = routeMap() filter { case (webContext, _) =>
       path.startsWith(webContext) && (path.length == webContext.length || path.charAt(webContext.length) == '/')
     }
-    if (matches.isEmpty) routeMap().get("")
-    else Some(matches.maxBy(_._1.length)._2) // Return the longest match, just the actor portion.
+    if (matches.isEmpty) ("", routeMap().get(""))
+    else {
+      val max = matches.maxBy(_._1.length)
+      (max._1, Some(max._2)) // Return the longest match, just the actor portion.
+    }
   }
 
   def receive = {
@@ -230,17 +244,17 @@ with ActorLogging {
 
     case req: HttpRequest =>
       contextActor(req) match {
-        case Some(actor) => actor forward req
-        case None => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
+        case (webCtx, Some(servant)) => servant.actor forward (if (servant.proxied) req.mapHeaders(WebContextHeader(webCtx) :: _) else req)
+        case (_, None) => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
       }
 
     case reqStart: ChunkedRequestStart =>
       contextActor(reqStart.request) match {
-        case Some(actor) =>
-          actor forward reqStart
-          pendingRequests += sender() -> actor
+        case (webCtx, Some(servant)) =>
+          servant.actor forward (if (servant.proxied) reqStart.copy(request = reqStart.request.mapHeaders(WebContextHeader(webCtx) :: _)) else reqStart)
+          pendingRequests += sender() -> servant.actor
           context.watch(sender())
-        case None => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
+        case (_, None) => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
       }
 
     case chunk: MessageChunk =>
@@ -260,16 +274,16 @@ with ActorLogging {
 
     case timedOut@Timedout(req: HttpRequest) =>
       contextActor(req) match {
-        case Some(actor) => actor forward timedOut
-        case None => log.warning(s"Received Timedout message for unknown context ${req.uri.path.toString()} .")
+        case (webCtx, Some(servant)) => servant.actor forward (if (servant.proxied) Timedout(req.mapHeaders(WebContextHeader(webCtx) :: _)) else timedOut)
+        case (_, None) => log.warning(s"Received Timedout message for unknown context ${req.uri.path.toString()} .")
       }
 
     case timedOut@Timedout(reqStart: ChunkedRequestStart) =>
       contextActor(reqStart.request) match {
-        case Some(actor) => actor forward timedOut
+        case (webCtx, Some(servant)) => servant.actor forward (if (servant.proxied) Timedout(reqStart.copy(request = reqStart.request.mapHeaders(WebContextHeader(webCtx) :: _))) else timedOut)
           pendingRequests -= sender()
           context.unwatch(sender())
-        case None => log.warning(
+        case (_, None) => log.warning(
           s"Received Timedout message for unknown context ${reqStart.request.uri.path.toString()} .")
       }
 
