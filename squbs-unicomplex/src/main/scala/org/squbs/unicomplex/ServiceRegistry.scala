@@ -222,11 +222,8 @@ with ActorLogging {
     val matches = routeMap() filter { case (webContext, _) =>
       path.startsWith(webContext) && (path.length == webContext.length || path.charAt(webContext.length) == '/')
     }
-    if (matches.isEmpty) routeMap().get("").fold(Option.empty[(String, ActorWrapper)])(Some("", _))
-    else {
-      val max = matches.maxBy(_._1.length)
-      Option((max._1, max._2)) // Return the longest match, just the actor portion.
-    }
+    if (matches.isEmpty) routeMap().get("") map { actor => ("", actor) }
+    else Some(matches.maxBy(_._1.length)) // Return the longest match, just the actor portion.
   }
 
   def receive = {
@@ -244,7 +241,7 @@ with ActorLogging {
       contextActor(req) match {
         case Some((webCtx, ProxiedActor(actor))) => actor forward req.mapHeaders(WebContextHeader(webCtx) :: _)
         case Some((_, SimpleActor(actor))) => actor forward req
-        case other => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
+        case _ => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
       }
 
     case reqStart: ChunkedRequestStart =>
@@ -258,7 +255,7 @@ with ActorLogging {
           forward(actor, reqStart.copy(request = reqStart.request.mapHeaders(WebContextHeader(webCtx) :: _)))
         case Some((_, SimpleActor(actor))) =>
           forward(actor, reqStart)
-        case other => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
+        case _ => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
       }
 
     case chunk: MessageChunk =>
@@ -282,7 +279,7 @@ with ActorLogging {
           actor forward Timedout(req.mapHeaders(WebContextHeader(webCtx) :: _))
         case Some((_, SimpleActor(actor))) =>
           actor forward timedOut
-        case other => log.warning(s"Received Timedout message for unknown context ${req.uri.path.toString()} .")
+        case _ => log.warning(s"Received Timedout message for unknown context ${req.uri.path.toString()} .")
       }
 
     case timedOut@Timedout(reqStart: ChunkedRequestStart) =>
@@ -296,7 +293,7 @@ with ActorLogging {
           forward(actor, Timedout(reqStart.copy(request = reqStart.request.mapHeaders(WebContextHeader(webCtx) :: _))))
         case Some((_, SimpleActor(actor))) =>
           forward(actor, timedOut)
-        case other => log.warning(
+        case _ => log.warning(
           s"Received Timedout message for unknown context ${reqStart.request.uri.path.toString()} .")
       }
 
