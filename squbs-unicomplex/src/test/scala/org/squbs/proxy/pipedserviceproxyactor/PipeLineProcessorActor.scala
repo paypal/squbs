@@ -1,7 +1,8 @@
 package org.squbs.proxy.pipedserviceproxyactor
 
-import akka.actor.{ActorContext, ActorLogging, Actor}
-import org.squbs.pipeline.{Handler, NormalResponse, ExceptionalResponse, RequestContext}
+import akka.actor.{ActorRefFactory, ActorContext, ActorLogging, Actor}
+import com.typesafe.config.Config
+import org.squbs.pipeline._
 import org.squbs.unicomplex.WebContext
 import spray.http.StatusCodes._
 import spray.http.{HttpHeaders, HttpResponse, HttpRequest}
@@ -25,29 +26,35 @@ class PipelineProcessorActor extends Actor with WebContext with ActorLogging {
 	}
 }
 
-class confhandler1 extends Handler {
+class confhandler1 extends Handler with HandlerFactory{
 	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		Future {
 			reqCtx.copy(request = reqCtx.request.copy(headers = HttpHeaders.RawHeader("confhandler1", "eBay") :: reqCtx.request.headers))
 		}
 	}
+
+  override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = Some(this)
 }
 
-class confhandlerEmpty extends Handler {
+class confhandlerEmpty extends Handler with HandlerFactory{
 	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		Future { reqCtx }
 	}
+
+  override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = Some(this)
 }
 
-class confhandler2 extends Handler {
+class confhandler2 extends Handler with HandlerFactory{
 	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		Future {
 			reqCtx.copy(attributes = reqCtx.attributes + ("confhandler2" -> "PayPal"))
 		}
 	}
+
+  override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = Some(this)
 }
 
-class confhandler3 extends Handler {
+class confhandler3 extends Handler with HandlerFactory{
 	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
 		Future {
 			val resp = (reqCtx.response, reqCtx.attribute[String]("confhandler2")) match {
@@ -67,5 +74,7 @@ class confhandler3 extends Handler {
 			reqCtx.copy(response = resp)
 		}
 	}
+
+  override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = Some(this)
 }
 

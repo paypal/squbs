@@ -27,6 +27,10 @@ trait Handler {
   def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
 }
 
+trait HandlerFactory {
+  def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler]
+}
+
 //Must be stateless
 trait Processor {
 
