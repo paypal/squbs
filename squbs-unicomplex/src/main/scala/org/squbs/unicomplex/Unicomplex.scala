@@ -591,14 +591,14 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         val hostActor = context.actorOf(props)
         val proxy = try {
           PipelineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings) match {
-            case None => hostActor
-            case Some(proc) => context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name)
+            case None => ContextServant(hostActor)
+            case Some(proc) => ContextServant(context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name),true)
           }
         } catch {
           case t: Throwable =>
             log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
             initMap += hostActor -> Some(Failure(t))
-            hostActor
+            ContextServant(hostActor)
         }
 
         (hostActor, proxy)
@@ -609,20 +609,20 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
           proxySettings.default match {
             case None =>
               val hostActor = context.actorOf(props, name) // no default proxy specified
-              (hostActor, hostActor)
+              (hostActor, ContextServant(hostActor))
             case Some(setup) => genProxy(setup)
           }
         case Some(pName) =>
            if(pName.trim.isEmpty){
              val hostActor = context.actorOf(props, name) // disable proxy
-             (hostActor, hostActor)
+             (hostActor, ContextServant(hostActor))
            }else{
              proxySettings.find(pName) match {
                case None =>
                   val hostActor = context.actorOf(props, name)
                  // Mark this service startup as failed.
                  initMap += (hostActor -> Some(Failure(new NoSuchElementException(s"Proxy $pName not defined."))))
-                 (hostActor, hostActor)
+                 (hostActor, ContextServant(hostActor))
                case Some(setup) => genProxy(setup)
              }
            }
