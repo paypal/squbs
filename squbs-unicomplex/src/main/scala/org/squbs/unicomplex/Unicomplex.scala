@@ -124,6 +124,12 @@ case class StopTimeout(timeout: FiniteDuration)
 case class StopCube(name: String)
 case class StartCube(name: String)
 
+sealed trait ActorWrapper {
+  val actor: ActorRef
+}
+case class SimpleActor(actor: ActorRef) extends ActorWrapper
+case class ProxiedActor(actor: ActorRef) extends ActorWrapper
+
 /**
  * The Unicomplex actor is the supervisor of the Unicomplex.
  * It starts actors that are part of the Unicomplex.
@@ -591,14 +597,14 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         val hostActor = context.actorOf(props)
         val proxy = try {
           PipelineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings) match {
-            case None => ContextServant(hostActor)
-            case Some(proc) => ContextServant(context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name),true)
+            case None => SimpleActor(hostActor)
+            case Some(proc) => ProxiedActor(context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name))
           }
         } catch {
           case t: Throwable =>
             log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
             initMap += hostActor -> Some(Failure(t))
-            ContextServant(hostActor)
+            SimpleActor(hostActor)
         }
 
         (hostActor, proxy)
@@ -609,20 +615,20 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
           proxySettings.default match {
             case None =>
               val hostActor = context.actorOf(props, name) // no default proxy specified
-              (hostActor, ContextServant(hostActor))
+              (hostActor, SimpleActor(hostActor))
             case Some(setup) => genProxy(setup)
           }
         case Some(pName) =>
            if(pName.trim.isEmpty){
              val hostActor = context.actorOf(props, name) // disable proxy
-             (hostActor, ContextServant(hostActor))
+             (hostActor, SimpleActor(hostActor))
            }else{
              proxySettings.find(pName) match {
                case None =>
                   val hostActor = context.actorOf(props, name)
                  // Mark this service startup as failed.
                  initMap += (hostActor -> Some(Failure(new NoSuchElementException(s"Proxy $pName not defined."))))
-                 (hostActor, ContextServant(hostActor))
+                 (hostActor, SimpleActor(hostActor))
                case Some(setup) => genProxy(setup)
              }
            }
