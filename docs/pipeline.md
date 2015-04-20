@@ -100,12 +100,22 @@ With this impl, user can simply setup a proxy by:
 
 #### implementing handlers
 
+Handler definition:
 ```scala
 trait Handler {
 	def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
 }
 
 ```
+HandlerFactory definition:
+```scala
+trait HandlerFactory {
+  def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler]
+}
+
+```
+
+Usually, you need to implement your own HandlerFactory to create your own handler.
 
 ####  Make configuration
 
@@ -117,18 +127,30 @@ myProxy {
   processorFactory = org.squbs.proxy.SimpleProcessorFactory
 
   settings = {
-
-    handlers = {
-      handler1 = com.myorg.myhandler1
-      handler2 = com.myorg.myhandler2
-      handler3 = com.myorg.myhandler3
-      handler4 = com.myorg.myhandler4
-    }
-
     inbound = [handler1, handler2]
     outbound = [handler3, handler4]
   }
 
+}
+
+handler1 {
+	type = pipeline.handler
+	factory = com.myorg.myhandler1
+}
+
+handler2 {
+	type = pipeline.handler
+	factory = com.myorg.myhandler2
+}
+
+handler3 {
+	type = pipeline.handler
+	factory = com.myorg.myhandler3
+}
+
+handler4 {
+	type = pipeline.handler
+	factory = com.myorg.myhandler4
 }
 
 ```
@@ -136,10 +158,11 @@ Or you might check [sample config with description](https://github.corp.ebay.com
 
 In above config:
 
-* processorFactory: must be org.squbs.proxy.SimpleProcessorFactory, a predefined factory
-* settings.handlers: list of (handler name alias + handler class name)
+* processorFactory: must be org.squbs.proxy.SimpleProcessorFactory.
 * settings.inbound: sequence of request handlers
 * settings.outbound: sequence of response handlers
+* handlerX.type : must be pipeline.handler
+* handlerX.factory : name of a class that implements HandlerFactory
 
 Again, if you want to have customized logic for other phase like preInbound or postOutbound, you can extends [SimpleProcessor](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L30) and create your own factory just like [SimpleProcessorFactory](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L46)
 
@@ -152,18 +175,30 @@ So in your appliation, you can simply define your proxy config like this:
 default-proxy {
 
   settings = {
-
-    handlers = {
-      handler1 = com.myorg.myhandler1
-      handler2 = com.myorg.myhandler2
-      handler3 = com.myorg.myhandler3
-      handler4 = com.myorg.myhandler4
-    }
-
     inbound = [handler1, handler2]
     outbound = [handler3, handler4]
   }
 
+}
+
+handler1 {
+	type = pipeline.handler
+	factory = com.myorg.myhandler1
+}
+
+handler2 {
+	type = pipeline.handler
+	factory = com.myorg.myhandler2
+}
+
+handler3 {
+	type = pipeline.handler
+	factory = com.myorg.myhandler3
+}
+
+handler4 {
+	type = pipeline.handler
+	factory = com.myorg.myhandler4
 }
 
 ```
