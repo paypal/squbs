@@ -110,7 +110,8 @@ class ServiceRegistry(log: LoggingAdapter) {
    */
   private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
                                        (implicit context: ActorContext) = {
-    val interface = if (config getBoolean "full-address") ConfigUtil.ipv4 else config getString "bind-address"
+    val interface = if (config getBoolean "full-address") ConfigUtil.ipv4
+                    else config getString "bind-address"
     val port = config getInt "bind-port"
     // assign the localPort only if local-port-header is true
     val localPort = config getOptionalBoolean ("local-port-header") find (patch => patch) map (_ => port)
@@ -225,8 +226,8 @@ with ActorLogging {
   val localPortHeader = localPort.map(LocalPortHeader(_))
 
   def contextActor(request: HttpRequest): Option[(HttpRequest, ActorRef)] = {
-    // internal method for patch listener's related header
-    def patchHeader(request: HttpRequest, webCtx: Option[String] = None) = webCtx.map(WebContextHeader(_)) ++ localPortHeader match {
+    // internal method for patch listener's related headers
+    def patchHeaders(request: HttpRequest, webCtx: Option[String] = None) = webCtx.map(WebContextHeader(_)) ++ localPortHeader match {
       case headers if headers.nonEmpty => request.mapHeaders(headers ++: _)
       case _ => request
     }
@@ -235,17 +236,18 @@ with ActorLogging {
       val p = request.uri.path.toString()
       if (p startsWith "/") p substring 1 else p
     }
+
     val rMap = routeMap()
     val matches = rMap filter { case (webContext, _) =>
       path.startsWith(webContext) && (path.length == webContext.length || path.charAt(webContext.length) == '/')
     }
-
-    // Return the longest match or the default one, just the actor portion.
-    val item = if (matches.isEmpty) rMap.get("") map("" -> _) else Some(matches.maxBy(_._1.length))
+    
+    val item = if (matches.isEmpty) rMap.get("") map("" -> _)
+               else Some(matches.maxBy(_._1.length)) // Return the longest match or the default one, just the actor portion.
 
     item flatMap  {
-      case (webCtx, ProxiedActor(actor)) => Some(patchHeader(request, Some(webCtx)), actor)
-      case (_, SimpleActor(actor)) => Some(patchHeader(request), actor)
+      case (webCtx, ProxiedActor(actor)) => Some(patchHeaders(request, Some(webCtx)), actor)
+      case (_, SimpleActor(actor)) => Some(patchHeaders(request), actor)
       case _ => None
     }
   }
