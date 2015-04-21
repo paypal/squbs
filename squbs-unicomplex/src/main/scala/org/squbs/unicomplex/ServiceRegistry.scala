@@ -37,6 +37,7 @@ import spray.routing._
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
+import ConfigUtil._
 
 case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorWrapper)
 
@@ -109,11 +110,10 @@ class ServiceRegistry(log: LoggingAdapter) {
    */
   private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
                                        (implicit context: ActorContext) = {
-    val interface = if(config getBoolean "full-address") ConfigUtil.ipv4
-    else config getString "bind-address"
+    val interface = if (config getBoolean "full-address") ConfigUtil.ipv4 else config getString "bind-address"
     val port = config getInt "bind-port"
-    // assign the localPort only if patch-local-port is true
-    val localPort = Some("patch-local-port").find(key => config.hasPath(key) && config.getBoolean(key)).map(_ => port)
+    // assign the localPort only if local-port-header is true
+    val localPort = config getOptionalBoolean ("local-port-header") find (patch => patch) map (_ => port)
     val props = Props(classOf[ListenerActor], name, listenerRoutes(name), localPort)
     val listenerRef = context.actorOf(props, name)
 
@@ -225,19 +225,31 @@ with ActorLogging {
   val localPortHeader = localPort.map(LocalPortHeader(_))
 
   def contextActor(request: HttpRequest): Option[(HttpRequest, ActorRef)] = {
+    // internal method for patch listener's related header
+    def patchHeader(request: HttpRequest, webCtx: Option[String] = None) = webCtx.map(WebContextHeader(_)) ++ localPortHeader match {
+      case headers if headers.nonEmpty => request.mapHeaders(headers ++: _)
+      case _ => request
+    }
+
     val path = {
       val p = request.uri.path.toString()
       if (p startsWith "/") p substring 1 else p
     }
-    val matches = routeMap() filter { case (webContext, _) =>
+    val rMap = routeMap()
+    val matches = rMap filter { case (webContext, _) =>
       path.startsWith(webContext) && (path.length == webContext.length || path.charAt(webContext.length) == '/')
     }
-    if (matches.isEmpty) routeMap().get("") map { actor => (patchListenerHeader(request), actor.actor) }
-    else Some(matches.maxBy(_._1.length)).map{item => (patchListenerHeader(request, Some(item._1)), item._2.actor)} // Return the longest match, just the actor portion.
+
+    // Return the longest match or the default one, just the actor portion.
+    val item = if (matches.isEmpty) rMap.get("") map("" -> _) else Some(matches.maxBy(_._1.length))
+
+    item flatMap  {
+      case (webCtx, ProxiedActor(actor)) => Some(patchHeader(request, Some(webCtx)), actor)
+      case (_, SimpleActor(actor)) => Some(patchHeader(request), actor)
+      case _ => None
+    }
   }
 
-  private def patchListenerHeader(request: HttpRequest, webCtx: Option[String] = None) =
-    request.mapHeaders(webCtx.map(WebContextHeader(_)) ++: localPortHeader ++: _)
 
   def receive = {
     // Notify the real sender for completion, but in lue of the parent

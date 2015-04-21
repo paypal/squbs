@@ -47,7 +47,7 @@ object LocalPortListenerSpecActorSystem {
           bind-address = "0.0.0.0"
           full-address = false
           bind-port = $port1
-          patch-local-port = true
+          local-port-header = true
           secure = false
           client-authn = false
           ssl-context = default
@@ -68,7 +68,7 @@ object LocalPortListenerSpecActorSystem {
           bind-address = "0.0.0.0"
           full-address = false
           bind-port =  $port3
-          patch-local-port = false
+          local-port-header = false
           secure = false
           client-authn = false
           ssl-context = default
@@ -92,20 +92,16 @@ class LocalPortListenerSpec extends TestKit(LocalPortListenerSpecActorSystem.boo
   
   val (port1, port2, port3) = LocalPortListenerSpecActorSystem.getPort
 
-  it should "patch local port well on patch-local-port = true" in {
+  it should "patch local port well on local-port-header = true" in {
     val pipeline = sendReceive
     Await.result(pipeline(Get(s"http://127.0.0.1:$port1/localport")), 1 second).entity.asString.toInt should be (port1)
 //    Await.result(pipeline(Get(s"http://127.0.0.1:$port2/localport")), 1 second).status.intValue should be (200)
   }
 
-  it should "not patch local port header if patch-local-port is false or absent" in {
+  it should "not patch local port header if local-port-header is false or absent" in {
     val pipeline = sendReceive
     Await.result(pipeline(Get(s"http://127.0.0.1:$port2/localport")), 1 second).entity.asString.toInt should be (0)
     Await.result(pipeline(Get(s"http://127.0.0.1:$port3/localport")), 1 second).entity.asString.toInt should be (0)
-  }
-
-  override protected def beforeAll(): Unit = {
-    
   }
 
   override protected def afterAll(): Unit = {
