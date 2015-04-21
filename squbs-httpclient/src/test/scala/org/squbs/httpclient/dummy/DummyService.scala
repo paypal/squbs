@@ -23,17 +23,15 @@ import scala.util.{Failure, Success}
 import scala.concurrent.duration._
 import spray.http._
 import spray.http.HttpHeaders.RawHeader
-import java.net.InetAddress
-import org.squbs.testkit.util.Ports
+import spray.util.Utils._
 
 case class Employee(id: Long, firstName: String, lastName: String, age: Int, male: Boolean)
 
 case class Team(description: String, members: List[Employee])
 
 object DummyService {
-  val dummyServiceIpAddress = InetAddress.getLocalHost.getHostAddress
 
-  val dummyServicePort = Ports.available(8888, 9999)
+  val (dummyServiceIpAddress, dummyServicePort) = temporaryServerHostnameAndPort()
 
   val dummyServiceEndpoint = s"http://$dummyServiceIpAddress:$dummyServicePort"
 }
