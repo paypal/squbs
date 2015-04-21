@@ -85,9 +85,9 @@ class ProxySettingsTest extends FlatSpecLike with Matchers {
         |}
       """.stripMargin)
 
-    the[IllegalArgumentException] thrownBy {
+    (the[IllegalArgumentException] thrownBy {
       ProxySettings(config)
-    } should have message "Proxy name is already used by proxy: MyProxy1"
+    }).getMessage should include ("Proxy name is already used by proxy: MyProxy")
   }
 
   "legacy config" should "work" in {
