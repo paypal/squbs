@@ -48,6 +48,13 @@ object WebContextHeader {
 
 class WebContextHeader(webCtx: String) extends RawHeader(WebContextHeader.name, webCtx)
 
+object LocalPortHeader {
+  val name: String = classOf[LocalPortHeader].getName
+  def apply(port: Int) = new LocalPortHeader(port)
+}
+
+class LocalPortHeader(port: Int) extends RawHeader(LocalPortHeader.name, port.toString)
+
 class ServiceRegistry(log: LoggingAdapter) {
 
   var listenerRoutes = Map.empty[String, Agent[Map[String, ActorWrapper]]]
@@ -102,8 +109,12 @@ class ServiceRegistry(log: LoggingAdapter) {
    */
   private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
                                        (implicit context: ActorContext) = {
-
-    val props = Props(classOf[ListenerActor], name, listenerRoutes(name))
+    val interface = if(config getBoolean "full-address") ConfigUtil.ipv4
+    else config getString "bind-address"
+    val port = config getInt "bind-port"
+    // assign the localPort only if patch-local-port is true
+    val localPort = Some("patch-local-port").find(key => config.hasPath(key) && config.getBoolean(key)).map(_ => port)
+    val props = Props(classOf[ListenerActor], name, listenerRoutes(name), localPort)
     val listenerRef = context.actorOf(props, name)
 
     // register(new PredefinedActorBean(props, listenerRef, context.self), prefix + actorInfo + name )
@@ -111,9 +122,7 @@ class ServiceRegistry(log: LoggingAdapter) {
     listenerRef ! notifySender // listener needs to send the notifySender an ack when it is ready.
 
     // create a new HttpServer using our handler tell it where to bind to
-    val interface = if(config getBoolean "full-address") ConfigUtil.ipv4
-      else config getString "bind-address"
-    val port = config getInt "bind-port"
+
     implicit val self = context.self
     implicit val system = context.system
 
@@ -209,12 +218,13 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
   }
 }
 
-private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String, ActorWrapper]]) extends Actor
+private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Map[String, ActorWrapper]], localPort: Option[Int] = None) extends Actor
 with ActorLogging {
 
   val pendingRequests = mutable.WeakHashMap.empty[ActorRef, ActorRef]
+  val localPortHeader = localPort.map(LocalPortHeader(_))
 
-  def contextActor(request: HttpRequest): Option[(String, ActorWrapper)] = {
+  def contextActor(request: HttpRequest): Option[(HttpRequest, ActorRef)] = {
     val path = {
       val p = request.uri.path.toString()
       if (p startsWith "/") p substring 1 else p
@@ -222,9 +232,12 @@ with ActorLogging {
     val matches = routeMap() filter { case (webContext, _) =>
       path.startsWith(webContext) && (path.length == webContext.length || path.charAt(webContext.length) == '/')
     }
-    if (matches.isEmpty) routeMap().get("") map { actor => ("", actor) }
-    else Some(matches.maxBy(_._1.length)) // Return the longest match, just the actor portion.
+    if (matches.isEmpty) routeMap().get("") map { actor => (patchListenerHeader(request), actor.actor) }
+    else Some(matches.maxBy(_._1.length)).map{item => (patchListenerHeader(request, Some(item._1)), item._2.actor)} // Return the longest match, just the actor portion.
   }
+
+  private def patchListenerHeader(request: HttpRequest, webCtx: Option[String] = None) =
+    request.mapHeaders(webCtx.map(WebContextHeader(_)) ++: localPortHeader ++: _)
 
   def receive = {
     // Notify the real sender for completion, but in lue of the parent
@@ -239,22 +252,16 @@ with ActorLogging {
 
     case req: HttpRequest =>
       contextActor(req) match {
-        case Some((webCtx, ProxiedActor(actor))) => actor forward req.mapHeaders(WebContextHeader(webCtx) :: _)
-        case Some((_, SimpleActor(actor))) => actor forward req
+        case Some((req, actor)) => actor forward req
         case _ => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
       }
 
     case reqStart: ChunkedRequestStart =>
-      def forward(actor: ActorRef, crs: ChunkedRequestStart) = {
-        actor forward crs
-        pendingRequests += sender() -> actor
-        context.watch(sender())
-      }
       contextActor(reqStart.request) match {
-        case Some((webCtx, ProxiedActor(actor))) =>
-          forward(actor, reqStart.copy(request = reqStart.request.mapHeaders(WebContextHeader(webCtx) :: _)))
-        case Some((_, SimpleActor(actor))) =>
-          forward(actor, reqStart)
+        case Some((req, actor)) =>
+          actor forward reqStart.copy(request = req)
+          pendingRequests += sender() -> actor
+          context.watch(sender())
         case _ => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
       }
 
@@ -275,24 +282,16 @@ with ActorLogging {
 
     case timedOut@Timedout(req: HttpRequest) =>
       contextActor(req) match {
-        case Some((webCtx, ProxiedActor(actor))) =>
-          actor forward Timedout(req.mapHeaders(WebContextHeader(webCtx) :: _))
-        case Some((_, SimpleActor(actor))) =>
-          actor forward timedOut
+        case Some((req, actor)) => actor forward Timedout(req)
         case _ => log.warning(s"Received Timedout message for unknown context ${req.uri.path.toString()} .")
       }
 
     case timedOut@Timedout(reqStart: ChunkedRequestStart) =>
-      def forward(actor: ActorRef, to: Timedout) = {
-        actor forward to
-        pendingRequests -= sender()
-        context.unwatch(sender())
-      }
       contextActor(reqStart.request) match {
-        case Some((webCtx, ProxiedActor(actor))) =>
-          forward(actor, Timedout(reqStart.copy(request = reqStart.request.mapHeaders(WebContextHeader(webCtx) :: _))))
-        case Some((_, SimpleActor(actor))) =>
-          forward(actor, timedOut)
+        case Some((req, actor)) =>
+          actor forward Timedout(reqStart.copy(request = req))
+          pendingRequests -= sender()
+          context.unwatch(sender())
         case _ => log.warning(
           s"Received Timedout message for unknown context ${reqStart.request.uri.path.toString()} .")
       }
@@ -310,6 +309,7 @@ with ActorLogging {
       log.info("Chunked input responder terminated.")
       pendingRequests -= responder
   }
+
 }
 
 object RouteDefinition {
