@@ -114,7 +114,7 @@ class ServiceRegistry(log: LoggingAdapter) {
                     else config getString "bind-address"
     val port = config getInt "bind-port"
     // assign the localPort only if local-port-header is true
-    val localPort = config getOptionalBoolean ("local-port-header") find (patch => patch) map (_ => port)
+    val localPort = config getOptionalBoolean ("local-port-header") flatMap (useHeader => if (useHeader) Some(port) else None)
     val props = Props(classOf[ListenerActor], name, listenerRoutes(name), localPort)
     val listenerRef = context.actorOf(props, name)
 
