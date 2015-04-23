@@ -98,6 +98,7 @@ case class ZkCluster(zkAddress: Address,
   
   private[cluster] def close = {
     stopped set true
+    zkClient.getConnectionStateListenable.removeListener(connectionStateListener)
     shutdownListeners foreach (_())
     zkClient.close
   }
