@@ -57,12 +57,12 @@ package object timeout {
   implicit final class TimeoutRuleInt(private val n: Int) extends AnyVal with TimeoutRuleConversions {
     override def sigma: TimeoutRule = SigmaTimeoutRule(n)
 
-    override def percentile: TimeoutRule = PercentileTimeoutRule(n.toDouble / 100)
+    override def percentile: TimeoutRule = PercentileTimeoutRule(n.toDouble)
   }
 
   implicit final class TimeoutRuleDouble(private val n: Double) extends AnyVal with TimeoutRuleConversions {
     override def sigma: TimeoutRule = SigmaTimeoutRule(n)
 
-    override def percentile: TimeoutRule = PercentileTimeoutRule(n / 100)
+    override def percentile: TimeoutRule = PercentileTimeoutRule(n)
   }
 }
