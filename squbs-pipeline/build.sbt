@@ -10,6 +10,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-agent" % akkaV,
   "com.typesafe.akka" %% "akka-slf4j" % akkaV,
   "org.slf4j" % "slf4j-api" % "1.7.5",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "io.spray" %% "spray-can"     % sprayV,
   "io.spray" %% "spray-http"    % sprayV,

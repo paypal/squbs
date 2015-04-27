@@ -62,19 +62,20 @@ object ServiceProxySpec {
       |    processorFactory = org.squbs.proxy.pipedserviceproxyactor.DummyPipedProcessorFactoryForActor
       |  }
       |
-      |squbs.proxy {
       |  MyProxy1 {
+      |    type = squbs.proxy
       |    processorFactory = org.squbs.proxy.serviceproxyactor.DummyProcessorForActor
       |    settings = {
       |
       |    }
       |  }
+      |
       |  MyProxy2 {
+      |    type = squbs.proxy
       |    processorFactory = org.squbs.proxy.serviceproxyroute.DummyProcessorForRoute
       |  }
 			|
 			|
-      |}
       |
       |confproxy {
       |    type = squbs.proxy

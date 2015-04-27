@@ -17,8 +17,6 @@
  */
 package org.squbs.unicomplex
 
-import java.io.File
-
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
@@ -26,7 +24,6 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs._
 import org.squbs.lifecycle.GracefulStop
 import spray.client.pipelining._
-import spray.http.StatusCodes
 import spray.routing.{Directives, Route}
 
 import scala.concurrent.Await
@@ -39,7 +36,8 @@ object LocalPortListenerSpecActorSystem {
   val config = ConfigFactory.parseString(
       s"""
         squbs {
-          actorsystem-name = "MultiListen"
+          actorsystem-name = "LocalPortListenerSpec"
+          prefix-jmx-name = true
         }
         default-listener {
           type = squbs.listener
@@ -74,9 +72,15 @@ object LocalPortListenerSpecActorSystem {
           ssl-context = default
           }
       """.stripMargin)
+
+  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
+  val classPaths = Array(
+    "LocalPortListener"
+  ) map (dummyJarsDir + "/" + _)
+
     val boot = UnicomplexBoot(config)
     		.createUsing { (name, config) => ActorSystem(name, config)}
-  			.scanComponents(Seq(new File("src/test/resources/classpaths/LocalPortListener").getAbsolutePath))
+  			.scanComponents(classPaths)
   			.initExtensions
   			.start()
   	

@@ -28,8 +28,8 @@ import akka.agent.Agent
 import akka.pattern._
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
-import org.squbs.pipeline.PipelineMgr
-import org.squbs.proxy.{ProxySetup, CubeProxyActor, ProxySettings}
+import org.squbs.pipeline.{Processor, PipelineManager}
+import org.squbs.proxy.CubeProxyActor
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import spray.can.Http
 
@@ -542,7 +542,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
   val cubeName = self.path.name
-  val proxySettings = ProxySettings(context.system)
+  val pipelineManager = PipelineManager(context.system)
 
   class CubeStateBean extends CubeStateMXBean {
 
@@ -593,45 +593,26 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     case StartCubeService(webContext, listeners, props, name, proxyName, initRequired) =>
 
-      def genProxy(setup : ProxySetup) = {
-        val hostActor = context.actorOf(props)
-        val proxy = try {
-          PipelineMgr(context.system).registerProcessor(setup.name, setup.factoryClazz, setup.settings) match {
-            case None => SimpleActor(hostActor)
-            case Some(proc) => ProxiedActor(context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name))
-          }
-        } catch {
-          case t: Throwable =>
-            log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
-            initMap += hostActor -> Some(Failure(t))
-            SimpleActor(hostActor)
-        }
 
-        (hostActor, proxy)
-      }
       // Caution: The serviceActor may be the cubeActor in case of no proxy, or the proxy in case there is a proxy.
-      val (cubeActor, serviceActor) = proxyName match {
-        case None =>
-          proxySettings.default match {
-            case None =>
-              val hostActor = context.actorOf(props, name) // no default proxy specified
-              (hostActor, SimpleActor(hostActor))
-            case Some(setup) => genProxy(setup)
-          }
-        case Some(pName) =>
-           if(pName.trim.isEmpty){
-             val hostActor = context.actorOf(props, name) // disable proxy
-             (hostActor, SimpleActor(hostActor))
-           }else{
-             proxySettings.find(pName) match {
-               case None =>
-                  val hostActor = context.actorOf(props, name)
-                 // Mark this service startup as failed.
-                 initMap += (hostActor -> Some(Failure(new NoSuchElementException(s"Proxy $pName not defined."))))
-                 (hostActor, SimpleActor(hostActor))
-               case Some(setup) => genProxy(setup)
-             }
-           }
+      val (cubeActor, serviceActor) = try {
+        proxyName.fold(pipelineManager.default) {
+          case "" => None
+          case other => pipelineManager.get(other)
+        } match {
+          case None =>
+            val hostActor = context.actorOf(props, name) // disable proxy
+            (hostActor, SimpleActor(hostActor))
+          case Some(proc) =>
+            val hostActor = context.actorOf(props)
+            (hostActor, ProxiedActor(context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name)))
+        }
+      } catch {
+        case t: Throwable =>
+          log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
+          val hostActor = context.actorOf(props, name) // disable proxy
+          initMap += hostActor -> Some(Failure(t))
+          (hostActor, SimpleActor(hostActor))
       }
 
       if (initRequired && !(initMap contains cubeActor)) initMap += cubeActor -> None

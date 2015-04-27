@@ -15,14 +15,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.proxy
+package org.squbs.pipeline
 
 import akka.actor._
 import akka.agent.Agent
 import com.typesafe.config.{Config, ConfigObject}
 import com.typesafe.scalalogging.LazyLogging
-import org.squbs.pipeline.{Handler, HandlerFactory}
-import org.squbs.unicomplex.ConfigUtil._
+import org.squbs.pipeline.ConfigHelper._
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -95,5 +94,6 @@ object PipelineHandlerManager extends ExtensionId[PipelineHandlerManager] with E
     handlerMap.toMap
   }
 }
+
 
 
