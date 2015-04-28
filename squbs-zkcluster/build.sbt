@@ -2,7 +2,7 @@ import de.johoop.findbugs4sbt.FindBugs._
 
 name := "squbs-zkcluster"
 
-version := "0.5.5-SNAPSHOT"
+version := "0.5.6-SNAPSHOT"
 
 val akkaV = "2.3.10"
 
