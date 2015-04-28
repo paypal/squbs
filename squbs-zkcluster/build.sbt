@@ -4,7 +4,7 @@ name := "squbs-zkcluster"
 
 version := "0.5.5-SNAPSHOT"
 
-val akkaV = "2.3.9"
+val akkaV = "2.3.10"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaV,
