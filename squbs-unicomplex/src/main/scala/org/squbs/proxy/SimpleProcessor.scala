@@ -78,5 +78,5 @@ object SimplePipelineConfig extends LazyLogging {
     }
   }
 
-  def empty = SimplePipelineConfig(Seq.empty, Seq.empty)
+  val empty = SimplePipelineConfig(Seq.empty, Seq.empty)
 }
