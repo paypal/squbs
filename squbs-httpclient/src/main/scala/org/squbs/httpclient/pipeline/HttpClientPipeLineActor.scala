@@ -12,7 +12,7 @@ import spray.http._
 /**
  * Created by jiamzhang on 2015/3/6.
  */
-class HttpClientPipelineActor(endpoint: Endpoint, pipelineConf: SimplePipelineConfig, target: SendReceive) extends Actor with ActorLogging {
+class HttpClientPipelineActor(clientName: String, pipelineConf: SimplePipelineConfig, target: SendReceive) extends Actor with ActorLogging {
 
   val pipeplineResolverRegistry = PipelineResolverRegistry(context.system)
 
@@ -25,7 +25,7 @@ class HttpClientPipelineActor(endpoint: Endpoint, pipelineConf: SimplePipelineCo
         case Some(proc) =>
           val pipeproxy = context.actorOf(Props(classOf[PipelineProcessorActor], targetAgent, responder, proc))
           context.watch(pipeproxy)
-          pipeproxy ! RequestContext(request) +> endpoint
+          pipeproxy ! RequestContext(request) +> ("HttpClient.name" -> clientName)
       }
 
 

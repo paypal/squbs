@@ -34,14 +34,14 @@ class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelin
   }
 
   "HttpClientPipelineActor" should "forward HttpRequest" in {
-    val actor = system.actorOf(Props(classOf[HttpClientPipelineActor], endpoint, config, pipeline))
+    val actor = system.actorOf(Props(classOf[HttpClientPipelineActor], "name1", config, pipeline))
     actor ! HttpRequest(uri = s"${DummyService.dummyServiceEndpoint}/view")
     expectMsgType[HttpResponse](timeout.duration).status should be (StatusCodes.OK)
     system stop actor
   }
 
   "HttpClientPipelineActor" should "forward chunked request" in {
-    val actor = system.actorOf(Props(classOf[HttpClientPipelineActor], endpoint, config, pipeline))
+    val actor = system.actorOf(Props(classOf[HttpClientPipelineActor], "name2", config, pipeline))
     val request = HttpRequest(
       HttpMethods.POST,
       s"${DummyService.dummyServiceEndpoint}/add",
