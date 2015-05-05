@@ -39,6 +39,11 @@ case class RequestContext(request: HttpRequest,
       case false => request
     }
   }
+
+  def +>(attributes: (String, Any)*): RequestContext = {
+    this.copy(attributes = this.attributes ++ attributes)
+  }
+
 }
 
 // $COVERAGE-OFF$

@@ -14,6 +14,21 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
 		system.shutdown()
 	}
 
+  "RequestContext" should "add attributes correctly" in {
+    val req = HttpRequest()
+    val ctx = RequestContext(req)
+
+    ctx.attributes.size should be(0)
+
+    val ctx1 = ctx +> ("key1" -> "value1")
+    ctx1.attribute("key1") should be(Some("value1"))
+
+    val ctx2 = ctx1 +> ("key2" -> 1) +> ("key3"-> new Exception("BadMan"))
+    ctx2.attribute("key2") should be(Some(1))
+    ctx2.attribute[Exception]("key3").get.getMessage should be("BadMan")
+    ctx2.attribute("key1") should be(Some("value1"))
+  }
+
 	"RequestContext" should "parse and wrap the request correctly" in {
 		val req = HttpRequest()
 		val ctx = RequestContext(req, false, attributes = Map("aaa" -> "dummy", "ccc" -> null))
