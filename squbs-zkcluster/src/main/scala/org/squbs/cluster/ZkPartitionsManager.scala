@@ -11,6 +11,7 @@ import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
 import scala.collection.JavaConversions._
+import scala.util.Try
 
 /**
  * Created by zhuwang on 1/26/15.
@@ -175,7 +176,7 @@ object ZkPartitionsManager {
       val parKey = ByteString(pathToKey(key))
       val size = partitionSize(parKey)
       val members = partitionServants(parKey)
-      val props = zkClient.getData.forPath(partitionZkPath(parKey))
+      val props = Try(zkClient.getData.forPath(partitionZkPath(parKey))) getOrElse Array.empty
       parKey -> ZkPartitionData(parKey, members, size, props)
     } toMap
   }

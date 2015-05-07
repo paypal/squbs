@@ -29,20 +29,18 @@ case class ZkCluster(zkAddress: Address,
   private[this] val stopped = new AtomicBoolean(false)
   private[this] var shutdownListeners = List.empty[() => Unit]
 
-  zkClient.getConnectionStateListenable.addListener(new ConnectionStateListener {
+  private[this] val connectionStateListener = new ConnectionStateListener {
     override def stateChanged(client: CuratorFramework, newState: ConnectionState): Unit = {
       newState match {
         case ConnectionState.LOST if !stopped.get =>
           logger.error("[zkCluster] connection lost!")
           system.eventStream.publish(ZkLost)
           zkClient = CuratorFrameworkFactory.newClient(zkConnectionString, retryPolicy)
-          zkClient.getConnectionStateListenable.addListener(this)
-          zkClient.start
-          zkClient.blockUntilConnected
+          init
         case ConnectionState.CONNECTED if !stopped.get =>
           logger.info("[zkCluster] connected send out the notification")
           system.eventStream.publish(ZkConnected)
-          initialize
+          znodesSetup
           zkClusterActor ! ZkClientUpdated(zkClientWithNs)
         case ConnectionState.SUSPENDED if !stopped.get =>
           logger.info("[zkCluster] connection suspended suspended")
@@ -51,24 +49,39 @@ case class ZkCluster(zkAddress: Address,
           logger.info("[zkCluster] reconnected")
           system.eventStream.publish(ZkReconnected)
           zkClusterActor ! ZkClientUpdated(zkClientWithNs)
-        case otherState => 
+        case otherState =>
           logger.warn(s"[zkCluster] connection state changed $otherState. What shall I do?")
       }
     }
-  })
+  }
 
-  zkClient.start
-  zkClient.blockUntilConnected
+  def init: Unit = synchronized {
+    zkClient.getConnectionStateListenable.addListener(connectionStateListener)
+    zkClient.start
+    zkClient.blockUntilConnected
+  }
+
+  init
 
   //this is the zk client that we'll use, using the namespace reserved throughout
-  implicit def zkClientWithNs = zkClient.usingNamespace(zkNamespace)
+  implicit def zkClientWithNs = synchronized {
+    try {
+      zkClient.usingNamespace(zkNamespace)
+    } catch {
+      case e: IllegalStateException =>
+        zkClient.close
+        zkClient = CuratorFrameworkFactory.newClient(zkConnectionString, retryPolicy)
+        init
+        zkClient.usingNamespace(zkNamespace)
+    }
+  }
 
   //all interactions with the zk cluster extension should be through the zkClusterActor below
   lazy val zkClusterActor = system.actorOf(Props[ZkClusterActor], "zkCluster")
   
   val remoteGuardian = system.actorOf(Props[RemoteGuardian], "remoteGuardian")
   
-  private[this] def initialize = {
+  private[this] def znodesSetup = {
     //make sure /leader, /members, /segments znodes are available
     guarantee("/leader", Some(Array[Byte]()), CreateMode.PERSISTENT)
     guarantee("/members", Some(Array[Byte]()), CreateMode.PERSISTENT)
@@ -85,6 +98,7 @@ case class ZkCluster(zkAddress: Address,
   
   private[cluster] def close = {
     stopped set true
+    zkClient.getConnectionStateListenable.removeListener(connectionStateListener)
     shutdownListeners foreach (_())
     zkClient.close
   }
