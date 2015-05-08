@@ -95,7 +95,7 @@ trait PipelineManager{
         pipeConfig.copy(reqPipe = requestPipelines)
       case true => pipeConfig
     }
-		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.name, updatedPipeConfig, pipeline))
+		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.name, client.endpoint, updatedPipeConfig, pipeline))
     Try{
       client.status match {
         case Status.DOWN =>
