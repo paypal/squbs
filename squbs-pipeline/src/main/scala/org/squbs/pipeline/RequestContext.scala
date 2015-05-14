@@ -40,8 +40,32 @@ case class RequestContext(request: HttpRequest,
     }
   }
 
+  //add some context attributes
   def +>(attributes: (String, Any)*): RequestContext = {
     this.copy(attributes = this.attributes ++ attributes)
+  }
+
+  //remove some context attributes
+  def ->(attributeKeys : String*) : RequestContext = {
+    this.copy(attributes = this.attributes -- attributeKeys)
+  }
+
+  def responseReady : Boolean = response match {
+    case nr : NormalResponse => true
+    case er : ExceptionalResponse => true
+    case _ => false
+  }
+
+  def addResponseHeaders(headers: HttpHeader*): RequestContext = {
+    response match {
+      case nr@NormalResponse(r) =>
+        copy(response = nr.update(r.copy(headers = r.headers ++ headers)))
+
+      case er@ExceptionalResponse(r, _, _) =>
+        copy(response = er.copy(response = r.copy(headers = r.headers ++ headers)))
+
+      case other => this //do nothing
+    }
   }
 
 }

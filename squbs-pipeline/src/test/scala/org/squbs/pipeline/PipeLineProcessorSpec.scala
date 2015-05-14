@@ -21,11 +21,13 @@ import akka.actor._
 import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
 import com.typesafe.config.Config
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import spray.http.HttpHeaders.RawHeader
 import spray.http.Uri.Path
 import spray.http._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
 
 /**
  * Created by jiamzhang on 2015/3/4.
@@ -36,6 +38,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
   override def afterAll {
     system.shutdown()
   }
+
 
   "PipelineProcessor" should "processs the piepline correctly" in {
     val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/hello"))
@@ -58,6 +61,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     post.get.value shouldBe "go"
   }
 
+
   "PipelineProcessor" should "handle the exception from remote correctly" in {
     val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/error"))
     val ctx = RequestContext(request)
@@ -69,7 +73,11 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
     val resp = expectMsgType[HttpResponse]
     resp.status should be(StatusCodes.InternalServerError)
+    resp.headers.find(_.name.equals("inbound")).get.value should be("go")
+    resp.headers.find(_.name.equals("outbound")).get.value should be("go")
+    resp.headers.find(_.name.equals("postoutbound")).get.value should be("go")
   }
+
 
   "PipelineProcessor" should "return error if response in ctx didn't set correctly" in {
     val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/error"))
@@ -79,7 +87,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     processorActor ! ctx
 
     val resp = expectMsgType[HttpResponse]
-    resp should be(ExceptionalResponse.defaultErrorResponse)
+    resp should be(ExceptionalResponse.defaultErrorResponse.copy(headers = RawHeader("inbound", "go") :: RawHeader("postoutbound", "go") :: Nil))
   }
 
   "PipelineProcessor" should "forward unknown msg to client" in {
@@ -317,12 +325,6 @@ object DummyProcessor extends Processor {
       Some(HttpHeaders.RawHeader(entry._1, entry._2.toString))
     }.toList
 
-    newctx.response match {
-      case n@NormalResponse(resp) =>
-        newctx.copy(response = n.update(resp.copy(headers = hs ++ resp.headers)))
-      case e: ExceptionalResponse =>
-        newctx.copy(response = e.copy(response = e.response.copy(headers = hs ++ e.response.headers)))
-      case _ => newctx
-    }
+    newctx.addResponseHeaders(hs: _*)
   }
 }

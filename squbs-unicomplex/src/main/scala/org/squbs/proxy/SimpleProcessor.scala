@@ -30,12 +30,19 @@ case class SimplePipelineConfig(reqPipe: Seq[_ <: Handler], respPipe: Seq[_ <: H
 case class SimpleProcessor(pipeConf: SimplePipelineConfig) extends Processor {
   //inbound processing
   def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
-    pipeConf.reqPipe.foldLeft(Future.successful(reqCtx)) { (ctx, handler) => ctx flatMap (handler.process(_))}
+    pipeConf.reqPipe.foldLeft(Future.successful(reqCtx)) {
+      (ctxFuture, handler) =>
+        ctxFuture flatMap {
+          ctx =>
+            if (ctx.responseReady) Future.successful(ctx) //bypass all subsequent handlers
+            else handler.process(ctx)
+        }
+    }
   }
 
   //outbound processing
   def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
-    pipeConf.respPipe.foldLeft(Future.successful(reqCtx)) { (ctx, handler) => ctx.flatMap(handler.process(_))}
+    pipeConf.respPipe.foldLeft(Future.successful(reqCtx)) { (ctxFuture, handler) => ctxFuture.flatMap(handler.process(_))}
   }
 }
 
