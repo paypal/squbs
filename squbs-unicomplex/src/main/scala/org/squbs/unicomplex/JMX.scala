@@ -43,6 +43,7 @@ object JMX {
   val listenersName    = "org.squbs.unicomplex:type=Listeners"
   val serverStats = "org.squbs.unicomplex:type=serverStats,listener="
   val systemSettingName   = "org.squbs.unicomplex:type=SystemSetting"
+  val forkJoinStatsName = "org.squbs.unicomplex:type=ForkJoinPool,name="
 
 
   implicit def string2objectName(name:String):ObjectName = new ObjectName(name)
@@ -164,6 +165,19 @@ trait ServerStatsMXBean {
 @MXBean
 trait SystemSettingMXBean {
   def getSystemSetting: util.List[SystemSetting]
+}
+
+@MXBean
+trait ForkJoinPoolMXBean {
+  def getPoolSize: Int
+  def getActiveThreadCount: Int
+  def getParallelism: Int
+  def getStealCount: Long
+  def getMode: String
+  def getQueuedSubmissionCount: Int
+  def getQueuedTaskCount: Long
+  def getRunningThreadCount: Int
+  def isQuiescent: Boolean
 }
 
 class SeverStats(name: String, httpListener: ActorRef) extends ServerStatsMXBean {

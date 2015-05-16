@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 
 import akka.dispatch._
 import com.typesafe.config.Config
+import org.squbs.unicomplex.{ConfigUtil, ForkJoinPoolMXBean, JMX}
 
 import scala.concurrent.{BlockContext, CanAwait}
 
@@ -34,21 +35,35 @@ class ForkJoinConfigurator(config: Config, prerequisites: DispatcherPrerequisite
       "The prerequisites for the ForkJoinExecutorConfigurator is a ForkJoinPool.ForkJoinWorkerThreadFactory!")
   }
 
-  class ForkJoinExecutorServiceFactory(val threadFactory: ForkJoinPool.ForkJoinWorkerThreadFactory,
+  class ForkJoinExecutorServiceFactory(val jmxPrefix: String, val name: String,
+                                       val threadFactory: ForkJoinPool.ForkJoinWorkerThreadFactory,
                                        val parallelism: Int) extends ExecutorServiceFactory {
-    def createExecutorService: ExecutorService =
-      new ForkJoinPool(parallelism, threadFactory, AdaptedThreadFactory.doNothing, true)
+    def createExecutorService: ExecutorService = {
+      val pool =
+        new ForkJoinPool(parallelism, threadFactory, AdaptedThreadFactory.doNothing, true) with ForkJoinPoolMXBean {
+          def getMode: String = if (getAsyncMode) "Async" else "Sync"
+        }
+      import JMX._
+      register(pool, jmxPrefix + '.' + forkJoinStatsName + name)
+      pool
+    }
+
   }
 
   final def createExecutorServiceFactory(id: String, threadFactory: ThreadFactory): ExecutorServiceFactory = {
-    val tf = threadFactory match {
+
+    val (tf, name) = threadFactory match {
       case m: MonitorableThreadFactory ⇒
         // add the dispatcher id to the thread names
-        AdaptedThreadFactory(m.withName(m.name + "-" + id))
-      case other ⇒ other
+        val name = m.name + "-" + id
+        (AdaptedThreadFactory(m.withName(name)), name)
+      case other ⇒ (other, id)
     }
     val fjConf = config.getConfig("fork-join-executor")
+    import ConfigUtil._
     new ForkJoinExecutorServiceFactory(
+      fjConf.getOptionalString("jmx-name-prefix") getOrElse "",
+      name,
       validate(tf),
       ThreadPoolConfig.scaledPoolSize(
         fjConf.getInt("parallelism-min"),
