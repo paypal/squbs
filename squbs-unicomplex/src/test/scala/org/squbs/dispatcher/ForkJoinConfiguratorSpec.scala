@@ -121,9 +121,9 @@ class ForkJoinConfiguratorSpec extends TestKit(ForkJoinConfiguratorSpec.boot.act
       val fjName =
         new ObjectName(jmxPrefix + '.' + forkJoinStatsName + "forkJoinConfiguratorSpec-akka.actor.default-dispatcher")
 
-//      val poolSize = mBeanServer.getAttribute(fjName, "PoolSize")
-//      poolSize shouldBe a [java.lang.Integer]
-//      poolSize.asInstanceOf[java.lang.Integer].intValue should be > 0
+      val poolSize = mBeanServer.getAttribute(fjName, "PoolSize")
+      poolSize shouldBe a [java.lang.Integer]
+      poolSize.asInstanceOf[java.lang.Integer].intValue should be > 0
 
       val activeThreadCount = mBeanServer.getAttribute(fjName, "ActiveThreadCount")
       activeThreadCount shouldBe a [java.lang.Integer]
