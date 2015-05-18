@@ -17,28 +17,23 @@
  */
 package org.squbs.unicomplex
 
-import java.io.File
+import org.scalatest.{FunSpecLike, Matchers}
+import spray.http.HttpRequest
 
-import akka.actor.ActorSystem
-import org.squbs.lifecycle.GracefulStop
+class HttpRequestUtilSpec extends FunSpecLike with Matchers {
 
+  import org.squbs.unicomplex.HttpRequestUtil._
 
-object Bootstrap extends App {
+  describe("HttpRequestUtil") {
 
-  println("Booting unicomplex")
+    it("should get web context") {
 
-  // Note, the config directories may change during extension init. It is important to re-read the full config
-  // for the actor system start.
-  UnicomplexBoot { (name, config) => ActorSystem(name, config) }
-    .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
-    .initExtensions
-    .stopJVMOnExit
-    .start()
-}
+      var request = HttpRequest()
+      request.getWebContext should be(None)
 
+      request = request.copy(headers = WebContextHeader("abc") :: request.headers)
+      request.getWebContext should be(Some("abc"))
+    }
 
-object Shutdown extends App {
-  val preConfig = UnicomplexBoot.getFullConfig(None)
-  val actorSystemName = preConfig.getString("squbs.actorsystem-name")
-  Unicomplex(actorSystemName) ! GracefulStop
+  }
 }

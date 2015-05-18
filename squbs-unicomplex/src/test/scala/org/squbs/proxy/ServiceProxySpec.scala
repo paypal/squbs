@@ -62,36 +62,45 @@ object ServiceProxySpec {
       |    processorFactory = org.squbs.proxy.pipedserviceproxyactor.DummyPipedProcessorFactoryForActor
       |  }
       |
-      |squbs.proxy {
       |  MyProxy1 {
+      |    type = squbs.proxy
       |    processorFactory = org.squbs.proxy.serviceproxyactor.DummyProcessorForActor
       |    settings = {
       |
       |    }
       |  }
+      |
       |  MyProxy2 {
+      |    type = squbs.proxy
       |    processorFactory = org.squbs.proxy.serviceproxyroute.DummyProcessorForRoute
       |  }
 			|
 			|
-      |}
       |
       |confproxy {
       |    type = squbs.proxy
       |    processorFactory = org.squbs.proxy.SimpleProcessorFactory
       |    settings = {
-      |      handlers {
-      |        confhandler1 = org.squbs.proxy.pipedserviceproxyactor.confhandler1
-      |        confhandler2 = org.squbs.proxy.pipedserviceproxyactor.confhandler2
-      |        confhandler3 = org.squbs.proxy.pipedserviceproxyactor.confhandler3
-      |        confhandlerempty = org.squbs.proxy.pipedserviceproxyactor.confhandlerEmpty
-      |      }
-      |
       |      inbound = [confhandler1, confhandler2, confhandlerempty]
       |      outbound = [confhandler3]
       |    }
       |}
-      |
+      |confhandler1 {
+      |    type = pipeline.handler
+      |    factory = org.squbs.proxy.pipedserviceproxyactor.confhandler1
+      |}
+      |confhandler2 {
+      |    type = pipeline.handler
+      |    factory = org.squbs.proxy.pipedserviceproxyactor.confhandler2
+      |}
+      |confhandler3 {
+      |    type = pipeline.handler
+      |    factory = org.squbs.proxy.pipedserviceproxyactor.confhandler3
+      |}
+      |confhandlerempty {
+      |    type = pipeline.handler
+      |    factory = org.squbs.proxy.pipedserviceproxyactor.confhandlerEmpty
+      |}
       |spray {
       |  can {
       |    client {

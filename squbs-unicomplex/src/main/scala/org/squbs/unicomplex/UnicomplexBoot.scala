@@ -351,7 +351,7 @@ object UnicomplexBoot extends LazyLogging {
 
     def getProxyName(serviceConfig: Config): Option[String] = {
       Try {
-        serviceConfig.getString("proxy-name")
+        serviceConfig.getString("proxy-name").trim
       } match {
         case Success(proxyName) => Some(proxyName)
         case Failure(t) => None // not defined
