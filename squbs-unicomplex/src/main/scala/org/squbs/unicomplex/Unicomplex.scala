@@ -380,7 +380,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       val serviceRef = serviceRegistry.startListener(name, conf, notifySender = sender())
       context.become ({
         case b: Http.Bound => import org.squbs.unicomplex.JMX._
-          JMX.register(new SeverStats(name, sender()), prefix + serverStats + name)
+          JMX.register(new ServerStats(name, sender()), prefix + serverStats + name)
           serviceListeners = serviceListeners + (name -> Some((serviceRef, sender())))
           if (serviceListeners.size == serviceRegistry.listenerRoutes.size) {
             listenersBound = true

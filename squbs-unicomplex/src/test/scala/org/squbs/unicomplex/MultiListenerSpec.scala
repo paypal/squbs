@@ -103,12 +103,28 @@ class MultiListenerSpec extends TestKit(MutliListenerSpecActorSystem.boot.actorS
 
   it should "register the JMXBean for spray status" in {
     import org.squbs.unicomplex.JMX._
-    get(prefix(system) + serverStats + "default-listener", "TotalConnections") should not be (-1)
-    get(prefix(system) + serverStats + "second-listener", "TotalRequests") should not be (-1)
-  }
+    val statsBase = prefix(system) + serverStats
+    get(statsBase + "default-listener", "ListenerName").asInstanceOf[String] should be ("default-listener")
+    get(statsBase + "default-listener", "TotalConnections").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "default-listener", "RequestsTimedOut").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "default-listener", "OpenRequests").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "default-listener", "Uptime").asInstanceOf[String] should fullyMatch regex """\d{2}:\d{2}:\d{2}\.\d{3}"""
+    get(statsBase + "default-listener", "MaxOpenRequests").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "default-listener", "OpenConnections").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "default-listener", "MaxOpenConnections").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "default-listener", "TotalRequests").asInstanceOf[Long] should be >= 0L
 
-  override protected def beforeAll(): Unit = {
-    
+
+    get(statsBase + "second-listener", "ListenerName").asInstanceOf[String] should be ("second-listener")
+    get(statsBase + "second-listener", "TotalConnections").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "second-listener", "RequestsTimedOut").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "second-listener", "OpenRequests").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "second-listener", "Uptime").asInstanceOf[String] should fullyMatch regex """\d{2}:\d{2}:\d{2}\.\d{3}"""
+    get(statsBase + "second-listener", "MaxOpenRequests").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "second-listener", "OpenConnections").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "second-listener", "MaxOpenConnections").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "second-listener", "TotalRequests").asInstanceOf[Long] should  be >= 0L
+
   }
 
   override protected def afterAll(): Unit = {

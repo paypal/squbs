@@ -17,7 +17,6 @@
  */
 package org.squbs.dispatcher
 
-import java.lang.management.ManagementFactory
 import java.util.concurrent.TimeUnit
 import javax.management.ObjectName
 
@@ -29,7 +28,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.AsyncAssertions
 import org.scalatest.{BeforeAndAfterAll, Inspectors, Matchers, WordSpecLike}
 import org.squbs.lifecycle.GracefulStop
-import org.squbs.unicomplex.{Unicomplex, JMX, UnicomplexBoot}
+import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
 import spray.can.Http
 import spray.http._
 import spray.util.Utils
@@ -117,46 +116,21 @@ class ForkJoinConfiguratorSpec extends TestKit(ForkJoinConfiguratorSpec.boot.act
 
     "expose proper ForkJoinPool MXBean stats" in {
       import org.squbs.unicomplex.JMX._
-      val mBeanServer = ManagementFactory.getPlatformMBeanServer
       val fjName =
         new ObjectName(jmxPrefix + '.' + forkJoinStatsName + "forkJoinConfiguratorSpec-akka.actor.default-dispatcher")
 
-      val poolSize = mBeanServer.getAttribute(fjName, "PoolSize")
-      poolSize shouldBe a [java.lang.Integer]
-      poolSize.asInstanceOf[java.lang.Integer].intValue should be > 0
-
-      val activeThreadCount = mBeanServer.getAttribute(fjName, "ActiveThreadCount")
-      activeThreadCount shouldBe a [java.lang.Integer]
-      activeThreadCount.asInstanceOf[java.lang.Integer].intValue should be >= 0
-
-      val parallelism = mBeanServer.getAttribute(fjName, "Parallelism")
-      parallelism shouldBe a [java.lang.Integer]
-      parallelism.asInstanceOf[java.lang.Integer].intValue should be > 0
-
-      val stealCount = mBeanServer.getAttribute(fjName, "StealCount")
-      stealCount shouldBe a [java.lang.Long]
-      stealCount.asInstanceOf[java.lang.Long].longValue should be > 0L
-
-      val mode = mBeanServer.getAttribute(fjName, "Mode")
-      mode shouldBe a [String]
-      mode.asInstanceOf[String] should be ("Async")
-
-      val queuedSubmissionCount = mBeanServer.getAttribute(fjName, "QueuedSubmissionCount")
-      queuedSubmissionCount shouldBe a [java.lang.Integer]
-      queuedSubmissionCount.asInstanceOf[java.lang.Integer].intValue should be >= 0
-
-      val queuedTaskCount = mBeanServer.getAttribute(fjName, "QueuedTaskCount")
-      queuedTaskCount shouldBe a [java.lang.Long]
-      queuedTaskCount.asInstanceOf[java.lang.Long].longValue should be >= 0L
-
-      val runningThreadCount = mBeanServer.getAttribute(fjName, "RunningThreadCount")
-      runningThreadCount shouldBe a [java.lang.Integer]
-      runningThreadCount.asInstanceOf[java.lang.Integer].intValue should be >= 0
-
-      val quiescent = mBeanServer.getAttribute(fjName, "Quiescent")
-      quiescent shouldBe a [java.lang.Boolean]
+      get(fjName, "PoolSize").asInstanceOf[Int] should be > 0
+      get(fjName, "ActiveThreadCount").asInstanceOf[Int] should be >= 0
+      get(fjName, "Parallelism").asInstanceOf[Int] should be > 0
+      get(fjName, "StealCount").asInstanceOf[Long] should be > 0L
+      get(fjName, "Mode").asInstanceOf[String] should be ("Async")
+      get(fjName, "QueuedSubmissionCount").asInstanceOf[Int] should be >= 0
+      get(fjName, "QueuedTaskCount").asInstanceOf[Long] should be >= 0L
+      get(fjName, "RunningThreadCount").asInstanceOf[Int] should be >= 0
+      get(fjName, "Quiescent") shouldBe a [java.lang.Boolean]
     }
   }
+
   override def afterAll() {
     Unicomplex(system).uniActor ! GracefulStop
   }

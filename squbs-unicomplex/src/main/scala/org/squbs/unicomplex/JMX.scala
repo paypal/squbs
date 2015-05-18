@@ -41,7 +41,7 @@ object JMX {
   val extensionsName  = "org.squbs.unicomplex:type=Extensions"
   val cubeStateName   = "org.squbs.unicomplex:type=CubeState,name="
   val listenersName    = "org.squbs.unicomplex:type=Listeners"
-  val serverStats = "org.squbs.unicomplex:type=serverStats,listener="
+  val serverStats = "org.squbs.unicomplex:type=ServerStats,listener="
   val systemSettingName   = "org.squbs.unicomplex:type=SystemSetting"
   val forkJoinStatsName = "org.squbs.unicomplex:type=ForkJoinPool,name="
 
@@ -180,7 +180,7 @@ trait ForkJoinPoolMXBean {
   def isQuiescent: Boolean
 }
 
-class SeverStats(name: String, httpListener: ActorRef) extends ServerStatsMXBean {
+class ServerStats(name: String, httpListener: ActorRef) extends ServerStatsMXBean {
   import akka.pattern._
   import scala.concurrent.duration._
   import spray.util._
