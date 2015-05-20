@@ -114,7 +114,7 @@ class ServiceRegistry(log: LoggingAdapter) {
       import scala.collection.JavaConversions._
       listenerRoutes.flatMap { case (listenerName, agent) =>
         agent() map { case (webContext, servant) =>
-          ListenerInfo(listenerName, webContext.toString(), servant.actor.toString)
+          ListenerInfo(listenerName, webContext.toString(), servant.actor.toString())
         }
       }.toSeq
     }
@@ -316,8 +316,8 @@ with ActorLogging {
 
     case _: Http.Connected => sender() ! Http.Register(self)
 
-    case req: HttpRequest =>
-      reqAndActor(req) match {
+    case request: HttpRequest =>
+      reqAndActor(request) match {
         case Some((req, actor)) => actor forward req
         case _ => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
       }
@@ -346,10 +346,10 @@ with ActorLogging {
         case None => log.warning("Received request chunk end from unknown request. Possibly already timed out.")
       }
 
-    case timedOut@Timedout(req: HttpRequest) =>
-      reqAndActor(req) match {
+    case timedOut@Timedout(request: HttpRequest) =>
+      reqAndActor(request) match {
         case Some((req, actor)) => actor forward Timedout(req)
-        case _ => log.warning(s"Received Timedout message for unknown context ${req.uri.path.toString()} .")
+        case _ => log.warning(s"Received Timedout message for unknown context ${request.uri.path.toString()} .")
       }
 
     case timedOut@Timedout(reqStart: ChunkedRequestStart) =>
