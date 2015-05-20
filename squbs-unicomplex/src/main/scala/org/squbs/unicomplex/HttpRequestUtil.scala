@@ -19,9 +19,6 @@ package org.squbs.unicomplex
 
 import spray.http.HttpRequest
 
-/**
- * Created by lma on 2015/4/16.
- */
 object HttpRequestUtil {
 
   implicit class HttpRequestAdapter(request: HttpRequest) {

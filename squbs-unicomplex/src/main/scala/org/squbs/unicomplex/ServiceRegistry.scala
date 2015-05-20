@@ -53,14 +53,16 @@ object RegisterContext {
     if (lengthDiff < 0) false
     else {
       if (path.startsWith(target)) {
-        if (lengthDiff > 0) true else path.charCount == target.charCount //NOTE : Path("abc/def").startWith(Path("abc/de")) will be true
+        //NOTE : Path("abc/def").startWith(Path("abc/de")) will be true
+        if (lengthDiff > 0) true else path.charCount == target.charCount
       } else false
     }
   }
 
-  private[unicomplex] def merge[T](oldRegistry: Seq[(Path, T)], webContext: String, servant: T, overrideWarning: => Unit = {}): Seq[(Path, T)] = {
-    val newMemeber = (Path(webContext), servant)
-    if (oldRegistry.size == 0) Seq(newMemeber)
+  private[unicomplex] def merge[T](oldRegistry: Seq[(Path, T)], webContext: String, servant: T,
+                                   overrideWarning: => Unit = {}): Seq[(Path, T)] = {
+    val newMember = (Path(webContext), servant)
+    if (oldRegistry.size == 0) Seq(newMember)
     else {
       val buffer = ListBuffer[(Path, T)]()
       var added = false
@@ -68,18 +70,18 @@ object RegisterContext {
         entry =>
           if (added) buffer += entry
           else
-          if (entry._1.equals(newMemeber._1)) {
+          if (entry._1.equals(newMember._1)) {
             overrideWarning
-            buffer += newMemeber
+            buffer += newMember
             added = true
           } else {
-            if (newMemeber._1.length >= entry._1.length) {
-              buffer += newMemeber += entry
+            if (newMember._1.length >= entry._1.length) {
+              buffer += newMember += entry
               added = true
             } else buffer += entry
           }
       }
-      if (!added) buffer += newMemeber
+      if (!added) buffer += newMember
       buffer.toSeq
     }
   }
@@ -167,16 +169,15 @@ class ServiceRegistry(log: LoggingAdapter) {
     else config getString "bind-address"
     val port = config getInt "bind-port"
     // assign the localPort only if local-port-header is true
-    val localPort = config getOptionalBoolean ("local-port-header") flatMap (useHeader => if (useHeader) Some(port) else None)
+    val localPort = config getOptionalBoolean "local-port-header" flatMap { useHeader =>
+      if (useHeader) Some(port) else None
+    }
     val props = Props(classOf[ListenerActor], name, listenerRoutes(name), localPort)
     val listenerRef = context.actorOf(props, name)
 
-    // register(new PredefinedActorBean(props, listenerRef, context.self), prefix + actorInfo + name )
-
     listenerRef ! notifySender // listener needs to send the notifySender an ack when it is ready.
 
-    // create a new HttpServer using our handler tell it where to bind to
-
+    // Create a new HttpServer using our handler and tell it where to bind to
     implicit val self = context.self
     implicit val system = context.system
 
@@ -264,8 +265,10 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
         null
     }
 
-  implicit val rejectionHandler: RejectionHandler = routeDef.rejectionHandler.getOrElse(PartialFunction.empty[List[Rejection], Route])
-  implicit val exceptionHandler: ExceptionHandler = routeDef.exceptionHandler.getOrElse(PartialFunction.empty[Throwable, Route])
+  implicit val rejectionHandler: RejectionHandler =
+    routeDef.rejectionHandler getOrElse PartialFunction.empty[List[Rejection], Route]
+  implicit val exceptionHandler: ExceptionHandler =
+    routeDef.exceptionHandler getOrElse PartialFunction.empty[Throwable, Route]
 
   def receive = {
     case request =>
@@ -273,34 +276,34 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
   }
 }
 
-private[unicomplex] class ListenerActor(name: String, routeMap: Agent[Seq[(Path, ActorWrapper)]], localPort: Option[Int] = None) extends Actor
+private[unicomplex] class ListenerActor(name: String, routes: Agent[Seq[(Path, ActorWrapper)]],
+                                        localPort: Option[Int] = None) extends Actor
 with ActorLogging {
   import RegisterContext._
 
   val pendingRequests = mutable.WeakHashMap.empty[ActorRef, ActorRef]
   val localPortHeader = localPort.map(LocalPortHeader(_))
 
-  def contextActor(request: HttpRequest): Option[(HttpRequest, ActorRef)] = {
-    // internal method for patch listener's related headers
-    def patchHeaders(request: HttpRequest, webCtx: Option[String] = None) = webCtx.map(WebContextHeader(_)) ++ localPortHeader match {
-      case headers if headers.nonEmpty => request.mapHeaders(headers ++: _)
-      case _ => request
-    }
+  // Finds the route/request handling actor and patches the request with required headers in one shot, if found.
+  def reqAndActor(request: HttpRequest): Option[(HttpRequest, ActorRef)] = {
 
-    var path = request.uri.path
-    if(path.startsWithSlash) path = path.tail //normalize it to make sure not start with '/'
+    import request.uri.path
+    val normPath = if (path.startsWithSlash) path.tail else path //normalize it to make sure not start with '/'
+    val routeOption = routes() find { case (contextPath, _) => pathMatch(normPath, contextPath) }
 
-    val item = routeMap().find {
-      entry => pathMatch(path, entry._1)
-    }
-
-    item flatMap {
+    routeOption flatMap {
       case (webCtx, ProxiedActor(actor)) => Some(patchHeaders(request, Some(webCtx.toString())), actor)
       case (_, SimpleActor(actor)) => Some(patchHeaders(request), actor)
       case _ => None
     }
   }
 
+  // internal method for patch listener's related headers
+  def patchHeaders(request: HttpRequest, webCtx: Option[String] = None): HttpRequest =
+    webCtx.map(WebContextHeader(_)) ++ localPortHeader match {
+      case headers if headers.nonEmpty => request.mapHeaders(headers ++: _)
+      case _ => request
+    }
 
   def receive = {
     // Notify the real sender for completion, but in lue of the parent
@@ -314,13 +317,13 @@ with ActorLogging {
     case _: Http.Connected => sender() ! Http.Register(self)
 
     case req: HttpRequest =>
-      contextActor(req) match {
+      reqAndActor(req) match {
         case Some((req, actor)) => actor forward req
         case _ => sender() ! HttpResponse(NotFound, "The requested resource could not be found.")
       }
 
     case reqStart: ChunkedRequestStart =>
-      contextActor(reqStart.request) match {
+      reqAndActor(reqStart.request) match {
         case Some((req, actor)) =>
           actor forward reqStart.copy(request = req)
           pendingRequests += sender() -> actor
@@ -344,13 +347,13 @@ with ActorLogging {
       }
 
     case timedOut@Timedout(req: HttpRequest) =>
-      contextActor(req) match {
+      reqAndActor(req) match {
         case Some((req, actor)) => actor forward Timedout(req)
         case _ => log.warning(s"Received Timedout message for unknown context ${req.uri.path.toString()} .")
       }
 
     case timedOut@Timedout(reqStart: ChunkedRequestStart) =>
-      contextActor(reqStart.request) match {
+      reqAndActor(reqStart.request) match {
         case Some((req, actor)) =>
           actor forward Timedout(reqStart.copy(request = req))
           pendingRequests -= sender()

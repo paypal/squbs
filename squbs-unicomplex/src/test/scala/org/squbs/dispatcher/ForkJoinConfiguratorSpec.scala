@@ -53,7 +53,7 @@ object ForkJoinConfiguratorSpec {
 
   val jmxPrefix = "forkJoinConfiguratorSpec"
 
-  var config = ConfigFactory.parseString(
+  val config = ConfigFactory.parseString(
     s"""
       |squbs {
       |  actorsystem-name = forkJoinConfiguratorSpec

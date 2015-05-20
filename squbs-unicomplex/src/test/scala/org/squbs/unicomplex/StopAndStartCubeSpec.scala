@@ -28,10 +28,6 @@ import org.squbs.lifecycle.GracefulStop
 import scala.util.Try
 import scala.concurrent.duration._
 
-/**
- * Created by zhuwang on 9/24/14.
- */
-
 object StopAndStartCubeSpec {
   val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 

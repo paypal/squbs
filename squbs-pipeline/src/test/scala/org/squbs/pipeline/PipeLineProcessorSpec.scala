@@ -28,9 +28,6 @@ import spray.http._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
- * Created by jiamzhang on 2015/3/4.
- */
 class PipeineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys"))
 with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
