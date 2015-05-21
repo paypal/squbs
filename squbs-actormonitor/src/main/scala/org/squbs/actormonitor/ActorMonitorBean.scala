@@ -82,15 +82,15 @@ private[actormonitor] trait ActorMonitorMXBean {
 private[actormonitor] class ActorMonitorBean(actor: ActorRef)(implicit monitorConfig: ActorMonitorConfig) extends ActorMonitorMXBean {
   import ActorMonitorBean._
 
-  def getActor = actor.toString
-  def getClassName = props.map(_.actorClass.getCanonicalName).getOrElse("Error")
+  def getActor = actor.toString()
+  def getClassName = props.map(_.actorClass().getCanonicalName).getOrElse("Error")
   def getRouteConfig = props.map(_.routerConfig.toString).getOrElse("Error")
   def getParent = getPrivateValue(actor, List("getParent")).map(_.toString).getOrElse("")
   def getChildren =  {
     val children = getDescendant(actor)
     import monitorConfig._
     children.size match {
-      case count if (count > maxChildrenDisplay) => children.take(maxChildrenDisplay).mkString(",") + s"... total:$count"
+      case count if count > maxChildrenDisplay => children.take(maxChildrenDisplay).mkString(",") + s"... total:$count"
       case _ => children.mkString(",")
     }
   }
