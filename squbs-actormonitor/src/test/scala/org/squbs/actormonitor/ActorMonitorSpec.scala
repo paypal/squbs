@@ -30,6 +30,7 @@ import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
 import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
+import spray.util.Utils
 
 import scala.concurrent.duration._
 
@@ -43,18 +44,18 @@ object ActorMonitorSpec extends LazyLogging {
    "TestCube"
   ) map (dummyJarsDir + "/" + _)
 
+  val (_, port) = Utils.temporaryServerHostnameAndPort()
 
-  import scala.collection.JavaConversions._
+  val config = ConfigFactory.parseString(
+    s"""
+       |squbs {
+       |  actorsystem-name = ActorMonitorSpec
+       |  ${JMX.prefixConfig} = true
+       |}
+       |default-listener.bind-port = $port
+    """.stripMargin)
 
-  val mapConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name"    -> "ActorMonitorSpec",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-port" -> org.squbs.nextPort.toString
-    )
-  )
-
-  val boot = UnicomplexBoot(mapConfig)
+  val boot = UnicomplexBoot(config)
     .createUsing {(name, config) => ActorSystem(name, config)}
     .scanComponents(classPaths)
     .initExtensions.start()
@@ -255,7 +256,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
 
     "6.1) getBean after actor has been stop" in {
-      awaitAssert((ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") != null), max= 2 second)
+      awaitAssert(ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") != null, max= 2 second)
 
 
       import ActorMonitorSpec._
