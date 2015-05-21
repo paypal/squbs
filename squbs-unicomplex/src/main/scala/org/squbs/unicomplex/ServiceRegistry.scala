@@ -277,8 +277,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 }
 
 private[unicomplex] class ListenerActor(name: String, routes: Agent[Seq[(Path, ActorWrapper)]],
-                                        localPort: Option[Int] = None) extends Actor
-with ActorLogging {
+                                        localPort: Option[Int] = None) extends Actor with ActorLogging {
   import RegisterContext._
 
   val pendingRequests = mutable.WeakHashMap.empty[ActorRef, ActorRef]
