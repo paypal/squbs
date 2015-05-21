@@ -99,218 +99,141 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
 
     "1) check ActorRegistry" in {
       system.actorSelection("/user/ActorRegistryCube/ActorRegistry") ! Identify("test")
-      receiveOne(timeout.duration) match {
-        case ActorIdentity(result, Some(ref)) =>
-          assert(true)
-        case _ =>
-          assert(false)
-      }
+      receiveOne(timeout.duration) should matchPattern { case ActorIdentity(_, Some(_)) => }
     }
 
     "1.1) check ActorRegistryConfigBean " in {
-      assert(ActorRegistrySpec.getActorRegistryConfigBean("Count") == 2)
-      assert(ActorRegistrySpec.getActorRegistryConfigBean("Timeout") == 1000)
+      ActorRegistrySpec.getActorRegistryConfigBean("Count") should be (2)
+      ActorRegistrySpec.getActorRegistryConfigBean("Timeout") should be (1000)
     }
 
     "2) check TestActor" in {
       system.actorSelection("/user/TestCube/TestActor") ! Identify("test")
-      receiveOne(timeout.duration) match {
-        case ActorIdentity(result, Some(ref)) =>
-          assert(true)
-        case _ =>
-          assert(false)
-      }
+      receiveOne(timeout.duration) should matchPattern { case ActorIdentity(_, Some(_)) => }
     }
 
     "3) check ActorRegistryBean" in {
-      val bean = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor", "ActorMessageTypeList")
-      assert(bean.toString != null)
+      ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor", "ActorMessageTypeList") should not be null
     }
 
 
     "4.1) ActorLookup ! TestRequest(...)" in {
       ActorLookup ! TestRequest("ActorLookup")
-      receiveOne(timeout.duration) match {
-        case TestResponse(msg) =>
-          assert(msg === "ActorLookup")
-        case x =>
-          assert(false)
-      }
+      receiveOne(timeout.duration) should matchPattern { case TestResponse("ActorLookup") => }
     }
 
     "4.2) ActorLookup ? TestRequest(...)" in {
       val f = ActorLookup ? TestRequest("ActorLookup")
-      Try(Await.result(f, timeout.duration)) match {
-        case x =>
-          assert(x==Success(TestResponse("ActorLookup")))
-
-      }
+      Try(Await.result(f, timeout.duration)) should matchPattern { case Success(TestResponse("ActorLookup")) => }
     }
 
     "5) ActorLookup() ! TestRequest(...)" in {
       ActorLookup() ! TestRequest("ActorLookup")
-      receiveOne(timeout.duration) match {
-        case TestResponse(msg) =>
-          assert(msg === "ActorLookup")
-        case x =>
-          assert(false)
-      }
+      receiveOne(timeout.duration) should matchPattern { case TestResponse("ActorLookup") => }
     }
 
     "5.1) ActorLookup().resolveOne" in {
       val vFuture = ActorLookup().resolveOne(FiniteDuration(100, MILLISECONDS))
-      Try(Await.result(vFuture, timeout.duration)) match {
-        case x =>
-          assert(x==Failure(org.squbs.actorregistry.ActorNotFound(ActorLookup(None,None,None))))
+      Try(Await.result(vFuture, timeout.duration)) should matchPattern {
+        case Failure(org.squbs.actorregistry.ActorNotFound(ActorLookup(None,None,None))) =>
       }
     }
 
     "5.2) ActorLookup('TestActor').resolveOne" in {
       val vFuture = ActorLookup("TestActor").resolveOne(FiniteDuration(100, MILLISECONDS))
-      Try(Await.result(vFuture, timeout.duration)) match {
-        case Success(actor: ActorRef) =>
-          assert(actor.path.name == "TestActor")
-        case _ =>
-          assert(false)
+      Try(Await.result(vFuture, timeout.duration)) should matchPattern {
+        case Success(actor: ActorRef) if actor.path.name === "TestActor" =>
       }
     }
 
     "5.3) new ActorLookup(requestClass=Some(Class[TestRequest])).resolveOne" in {
       val l= new ActorLookup(requestClass=Some(classOf[TestRequest]))
       val vFuture = l.resolveOne(FiniteDuration(100, MILLISECONDS))
-      Try(Await.result(vFuture, timeout.duration)) match {
-        case Success(actor: ActorRef) =>
-          assert(actor.path.name == "TestActor")
-        case _ =>
-          assert(false)
+      Try(Await.result(vFuture, timeout.duration)) should matchPattern {
+        case Success(actor: ActorRef) if actor.path.name === "TestActor" =>
       }
     }
 
 
     "6.0) ActorLookup[TestResponse].resolveOne" in {
       val vFuture = ActorLookup[TestResponse].resolveOne
-      Try(Await.result(vFuture, timeout.duration)) match {
-        case Success(actor: ActorRef) =>
-          assert(actor.path.name == "TestActor")
-        case _ =>
-          assert(false)
+      Try(Await.result(vFuture, timeout.duration)) should matchPattern {
+        case Success(actor: ActorRef) if actor.path.name === "TestActor" =>
       }
     }
 
     "6.1) ActorLookup[TestResponse] ! TestRequest(...)" in {
       ActorLookup[TestResponse] ! TestRequest("ActorLookup[TestResponse]")
-      receiveOne(timeout.duration) match {
-        case TestResponse(msg) =>
-          assert(msg === "ActorLookup[TestResponse]")
-        case x =>
-          assert(false)
-      }
+      receiveOne(timeout.duration) should matchPattern { case TestResponse("ActorLookup[TestResponse]") => }
     }
 
     "6.2) ActorLookup[TestResponse] ? TestRequest(...)" in {
       val f = ActorLookup[TestResponse] ? TestRequest("ActorLookup[TestResponse]")
-      Try(Await.result(f, timeout.duration)) match {
-        case x =>
-          assert(x == Success(TestResponse("ActorLookup[TestResponse]")))
+      Try(Await.result(f, timeout.duration)) should matchPattern {
+        case Success(TestResponse("ActorLookup[TestResponse]")) =>
       }
-    }
+     }
 
     "7) ActorLookup('TestActor') ! TestRequest(...)" in {
       ActorLookup("TestActor") ! TestRequest("ActorLookup('TestActor')")
-      receiveOne(timeout.duration) match {
-        case TestResponse(msg) =>
-          assert(msg === "ActorLookup('TestActor')")
-        case x =>
-          assert(false)
-      }
+      receiveOne(timeout.duration) should matchPattern { case TestResponse("ActorLookup('TestActor')") => }
     }
 
     "8) ActorLookup[TestResponse]('TestActor') ! TestRequest(...)" in {
       ActorLookup[TestResponse]("TestActor") ! TestRequest("ActorLookup[TestResponse]('TestActor')")
-      receiveOne(timeout.duration) match {
-        case TestResponse(msg) =>
-          assert(msg === "ActorLookup[TestResponse]('TestActor')")
-        case x =>
-          assert(false)
+      receiveOne(timeout.duration) should matchPattern {
+        case TestResponse("ActorLookup[TestResponse]('TestActor')") =>
       }
     }
 
     "9) ActorLookup[TestResponse] ! Identify" in {
       ActorLookup[TestResponse] ! Identify(3)
-      receiveOne(timeout.duration) match {
-        case ActorIdentity(3,Some(x:ActorRef))=>
-          assert(x.path.name === "TestActor")
-        case x =>
-          assert(false)
+      receiveOne(timeout.duration) should matchPattern {
+        case ActorIdentity(3, Some(actor: ActorRef)) if actor.path.name === "TestActor" =>
       }
     }
 
     "10) ActorLookup[TestResponse] ! TestRequest" in {
       ActorLookup[TestResponse] ! TestRequest
-      receiveOne(timeout.duration) match {
-        case x =>
-          assert(x === TestResponse)
-      }
+      receiveOne(timeout.duration) should be (TestResponse)
     }
 
     "11) ActorLookup[TestResponse] ! TestRequest" in {
       ActorLookup[TestResponse] ! TestRequest
-      receiveOne(timeout.duration) match {
-        case x =>
-          assert(x === TestResponse)
-      }
+      receiveOne(timeout.duration) should be (TestResponse)
     }
 
     "12) ActorLookup[String] ! NotExist " in {
       ActorLookup[String] ! "NotExist"
-      receiveOne(timeout.duration) match {
-        case msg : ActorNotFound =>
-            assert(true)
-        case _ =>
-            assert(false)
-      }
+      receiveOne(timeout.duration) shouldBe an [ActorNotFound]
     }
 
     "13) ActorLookup('TestActor1') ! TestRequest1" in {
       val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
       assert(before != null)
       ActorLookup[String]("TestActor1") ! TestRequest1("13")
-      receiveOne(timeout.duration) match {
-        case msg: ActorNotFound =>
-          assert(true)
-        case _ =>
-          assert(false)
-      }
+      receiveOne(timeout.duration) shouldBe an [ActorNotFound]
     }
 
     "14) ActorLookup[String]('TestActor1') ! TestRequest1" in {
       val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
       assert(before != null)
       ActorLookup("TestActor1") ! TestRequest1("13")
-      receiveOne(timeout.duration) match {
-        case TestResponse(msg) =>
-          assert(msg=="13")
-      }
+      receiveOne(timeout.duration) should matchPattern { case TestResponse("13") => }
     }
 
     "15) ActorLookup ! PoisonPill" in {
       val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
       assert(before != null)
       ActorLookup("TestActor1") ! PoisonPill
-      receiveOne(timeout.duration) match {
-        case msg =>
-            val after = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
-            assert(after == null)
-      }
+      receiveOne(timeout.duration)
+      ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList") should be (null)
     }
 
     "16) kill ActorRegistry" in {
       system.actorSelection("/user/ActorRegistryCube/ActorRegistry") ! PoisonPill
-      receiveOne(timeout.duration) match {
-        case msg =>
-            val after = ManagementFactory.getPlatformMBeanServer.queryNames(ActorRegistrySpec.getObjName("*"), null)
-            assert(after.size == 0)
-      }
+      receiveOne(timeout.duration)
+      ManagementFactory.getPlatformMBeanServer.queryNames(ActorRegistrySpec.getObjName("*"), null) shouldBe empty
     }
   }
 }
