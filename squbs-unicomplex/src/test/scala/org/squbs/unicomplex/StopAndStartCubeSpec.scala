@@ -19,14 +19,15 @@ package org.squbs.unicomplex
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{ActorIdentity, Identify, ActorSystem}
+import akka.actor.{ActorIdentity, ActorSystem, Identify}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
+import spray.util.Utils
 
-import scala.util.Try
 import scala.concurrent.duration._
+import scala.util.Try
 
 object StopAndStartCubeSpec {
   val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
@@ -37,17 +38,19 @@ object StopAndStartCubeSpec {
     "DummySvc"
   ) map (dummyJarsDir + "/" + _)
 
-  import scala.collection.JavaConversions._
+  val (_, port) = Utils.temporaryServerHostnameAndPort()
 
-  val mapConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name"    -> "StopAndStartCubeSpec",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-port" -> org.squbs.nextPort
-    )
+  val config = ConfigFactory.parseString(
+    s"""
+       |squbs {
+       |  actorsystem-name = StopAndStartCubeSpec
+       |  ${JMX.prefixConfig} = true
+       |}
+       |default-listener.bind-port = $port
+    """.stripMargin
   )
 
-  val boot = UnicomplexBoot(mapConfig)
+  val boot = UnicomplexBoot(config)
     .createUsing {(name, config) => ActorSystem(name, config)}
     .scanComponents(classPaths)
     .initExtensions.start()
@@ -83,7 +86,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   "Unicomplex" should "not be able to stop a stopped cube" in {
     Unicomplex(system).uniActor ! StopCube("DummyCube")
-    expectNoMsg
+    expectNoMsg()
   }
 
   "Unicomplex" should "be able to start a cube" in {
@@ -94,13 +97,13 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     system.actorSelection("/user/DummyCube") ! Identify("hello")
     within(10 seconds) {
       val id = expectMsgType[ActorIdentity]
-      id.ref should not be (None)
+      id.ref should not be None
     }
   }
 
   "Unicomplex" should "not be able to start a running cube" in {
     Unicomplex(system).uniActor ! StartCube("DummyCube")
-    expectNoMsg
+    expectNoMsg()
   }
 
 }

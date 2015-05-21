@@ -27,7 +27,6 @@ import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.AsyncAssertions
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
-import org.squbs._
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.streamSvc.ChunkedRequestHandler
 import spray.can.Http
@@ -47,27 +46,27 @@ object StreamTestSpec {
     "StreamSvc"
   ) map (dummyJarsDir + "/" + _)
 
-  import scala.collection.JavaConversions._
+  val (_, port) = Utils.temporaryServerHostnameAndPort()
 
-  val mapConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name"    -> "StreamTest",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-port" -> nextPort.toString
-    )
+  val config = ConfigFactory.parseString(
+    s"""
+       |squbs {
+       |  actorsystem-name = StreamTest
+       |  ${JMX.prefixConfig} = true
+       |}
+       |default-listener.bind-port = $port
+    """.stripMargin
   )
 
-  val boot = UnicomplexBoot(mapConfig)
+  val boot = UnicomplexBoot(config)
     .createUsing {(name, config) => ActorSystem(name, config)}
     .scanComponents(classPaths)
     .initExtensions
     .start()
-
 }
 
-class StreamTestSpec extends TestKit(StreamTestSpec.boot.actorSystem) with ImplicitSender
-with WordSpecLike with Matchers with BeforeAndAfterAll
-with AsyncAssertions {
+class StreamTestSpec extends TestKit(StreamTestSpec.boot.actorSystem) with ImplicitSender with WordSpecLike
+    with Matchers with BeforeAndAfterAll with AsyncAssertions {
 
   implicit val timeout: akka.util.Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
@@ -94,8 +93,10 @@ with AsyncAssertions {
     "upload file with correct parts" in {
 
       // locate the path to akka-actor jar in the file system and turn it into a stream of BodyPart-s
-      //val actor_jar_path = System.getProperty("java.class.path").split(java.io.File.pathSeparator).filter(p => p.indexOf("akka-actor") != -1)(0)
-      val actor_jar_path = StreamTestSpec.getClass.getResource("/classpaths/StreamSvc/akka-actor_2.10-2.3.2.jar1").getPath
+      //val actor_jar_path = System.getProperty("java.class.path").split(java.io.File.pathSeparator).filter(
+      // p => p.indexOf("akka-actor") != -1)(0)
+      val actor_jar_path =
+        StreamTestSpec.getClass.getResource("/classpaths/StreamSvc/akka-actor_2.10-2.3.2.jar1").getPath
       val actorFile = new java.io.File (actor_jar_path)
       println("stream file path:"+actor_jar_path)
       println("Exists:"+actorFile.exists())
@@ -104,7 +105,9 @@ with AsyncAssertions {
       val fileLength = actorFile.length()
       log.debug (s"akka-actor file=$actorFile size=$fileLength")
       val chunks = HttpData (actorFile).toChunkStream(65000)
-      val parts = chunks.zipWithIndex.flatMap { case (httpData, index) => Seq(BodyPart(HttpEntity(httpData), s"segment-$index"))} toSeq
+      val parts = chunks.zipWithIndex.flatMap {
+        case (httpData, index) => Seq(BodyPart(HttpEntity(httpData), s"segment-$index"))
+      } toSeq
 
 
       val multipartFormData = MultipartFormData ( parts)
@@ -116,10 +119,8 @@ with AsyncAssertions {
 
       log.debug(s"file-upload result: $uploadResult")
 
-      ChunkedRequestHandler.byteCount should be(fileLength)
+      ChunkedRequestHandler.byteCount should be (fileLength)
       ChunkedRequestHandler.chunkCount should be (parts.length)
-
-
     }
   }
 }

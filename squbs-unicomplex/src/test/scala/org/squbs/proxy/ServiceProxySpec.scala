@@ -18,24 +18,24 @@
 package org.squbs.proxy
 
 import java.util.concurrent.TimeUnit
+
 import akka.actor.ActorSystem
 import akka.io.IO
+import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
+import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
 import spray.can.Http
-import spray.http._
+import spray.client.pipelining._
+import spray.http.{HttpRequest, HttpResponse, _}
+import spray.util._
+
 import scala.concurrent.duration._
 import scala.util.Try
-import spray.client.pipelining._
-import spray.http.HttpRequest
-import spray.http.HttpResponse
-import akka.pattern.ask
-import spray.util._
-import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot, JMX}
 
 object ServiceProxySpec {
 
@@ -47,15 +47,17 @@ object ServiceProxySpec {
     "PipedServiceProxyActor"
   ) map (dummyJarsDir + "/" + _)
 
-  import scala.collection.JavaConversions._
+  val (_, port) = Utils.temporaryServerHostnameAndPort()
 
-  val mapConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name" -> "ServiceProxySpec",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-port" -> org.squbs.nextPort.toString
-    )
-  ).withFallback(ConfigFactory.parseString(
+  val config = ConfigFactory.parseString(
+    s"""
+       |squbs {
+       |  actorsystem-name = ServiceProxySpec
+       |  ${JMX.prefixConfig} = true
+       |}
+       |default-listener.bind-port = $port
+     """.stripMargin
+  ) withFallback ConfigFactory.parseString(
     """
       |  default-proxy {
       |    type = squbs.proxy
@@ -112,12 +114,10 @@ object ServiceProxySpec {
 			|akka {
 			|  loglevel = DEBUG
 			|}
-      |
-      |
     """.stripMargin
-  ))
+  )
 
-  val boot = UnicomplexBoot(mapConfig)
+  val boot = UnicomplexBoot(config)
     .createUsing {
     (name, config) => ActorSystem(name, config)
   }
@@ -237,7 +237,7 @@ with AsyncAssertions {
       }
       assert(services.size == 5)
 
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyroute/msg/hello")))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyroute/msg/hello"))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
@@ -245,7 +245,7 @@ with AsyncAssertions {
         response.headers.find(h => h.name.equals("dummyRespHeader")).get.value should be("CCOE")
       }
 
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyactor/msg/hello")))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyactor/msg/hello"))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
@@ -255,7 +255,7 @@ with AsyncAssertions {
 
 			val baseReq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor/msg/hello"))
 
-      (IO(Http) ! baseReq)
+      IO(Http) ! baseReq
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status shouldBe StatusCodes.OK
@@ -264,7 +264,7 @@ with AsyncAssertions {
         response.headers.find(h => h.name.equals("dummyRespHeader2")).get.value shouldBe "CCOE"
       }
 
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor1/msg/hello")))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor1/msg/hello"))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.OK)
@@ -275,7 +275,7 @@ with AsyncAssertions {
 
 			val confreq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor2/msg/hello"))
 
-			(IO(Http) ! confreq)
+			IO(Http) ! confreq
 			within(timeout.duration) {
 				val response = expectMsgType[HttpResponse]
 				response.status shouldBe StatusCodes.OK
@@ -292,11 +292,10 @@ with AsyncAssertions {
 			}
 
       println("Success......")
-
     }
 
     "failed in processing request" in {
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyactor/msg/processingRequestError")))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyactor/msg/processingRequestError"))
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status should be(StatusCodes.InternalServerError)
@@ -305,7 +304,7 @@ with AsyncAssertions {
     }
 
     "chunk response" in {
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyactor/msg/hello-chunk")))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyactor/msg/hello-chunk"))
       within(timeout.duration) {
         val responseStart = expectMsgType[ChunkedResponseStart]
         val response = responseStart.response
@@ -318,14 +317,11 @@ with AsyncAssertions {
         expectMsg(MessageChunk("2a"))
         expectMsg(MessageChunk("3a"))
         expectMsg(ChunkedMessageEnd("abc"))
-
       }
-
-
     }
 
     "chunk response with confirm" in {
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyactor/msg/hello-chunk-confirm")))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyactor/msg/hello-chunk-confirm"))
       within(timeout.duration) {
         val responseStart = expectMsgType[ChunkedResponseStart]
         val response = responseStart.response
@@ -339,14 +335,10 @@ with AsyncAssertions {
         expectMsg(MessageChunk("2a"))
         expectMsg(MessageChunk("3a"))
         expectMsg(ChunkedMessageEnd("123"))
-
       }
-
-
     }
 
     "chunk request with RegisterChunkHandler" in {
-
       val actor_jar_path = ServiceProxySpec.getClass.getResource("/classpaths/StreamSvc/akka-actor_2.10-2.3.2.jar1").getPath
       val actorFile = new java.io.File(actor_jar_path)
       println("stream file path:" + actor_jar_path)
@@ -371,14 +363,10 @@ with AsyncAssertions {
       //println(response.entity.data.length)
       //println(response)
 
-
       response.entity.data.length should be(fileLength)
 
       response.headers.find(h => h.name.equals("dummyReqHeader")).get.value should be("PayPal")
       response.headers.find(h => h.name.equals("dummyRespHeader")).get.value should be("CDC")
-
     }
-
-
   }
 }

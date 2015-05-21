@@ -34,6 +34,7 @@ import org.squbs.unicomplex.dummyextensions.DummyExtension
 import org.squbs.unicomplex.dummysvcactor.GetWebContext
 import spray.can.Http
 import spray.http._
+import spray.util.Utils
 
 import scala.concurrent.duration._
 import scala.util.Try
@@ -51,17 +52,19 @@ object UnicomplexSpec {
     "DummyExtensions.jar"
   ) map (dummyJarsDir + "/" + _)
 
-  import scala.collection.JavaConversions._
+  val (_, port) = Utils.temporaryServerHostnameAndPort()
 
-  val mapConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name"    -> "unicomplexSpec",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-port" -> org.squbs.nextPort().toString
-    )
+  val config = ConfigFactory.parseString(
+    s"""
+       |squbs {
+       |  actorsystem-name = unicomplexSpec
+       |  ${JMX.prefixConfig} = true
+       |}
+       |default-listener.bind-port = $port
+    """.stripMargin
   )
 
-  val boot = UnicomplexBoot(mapConfig)
+  val boot = UnicomplexBoot(config)
     .createUsing {(name, config) => ActorSystem(name, config)}
     .scanComponents(classPaths)
     .initExtensions.start()

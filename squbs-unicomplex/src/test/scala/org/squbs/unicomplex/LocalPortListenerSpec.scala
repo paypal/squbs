@@ -21,17 +21,17 @@ import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
-import org.squbs._
 import org.squbs.lifecycle.GracefulStop
 import spray.client.pipelining._
 import spray.routing.{Directives, Route}
+import spray.util.Utils
 
 import scala.concurrent.Await
 
 object LocalPortListenerSpecActorSystem {
-  val port1 = nextPort()
-  val port2 = nextPort()
-  val port3 = nextPort()
+  val (_, port1) = Utils.temporaryServerHostnameAndPort()
+  val (_, port2) = Utils.temporaryServerHostnameAndPort()
+  val (_, port3) = Utils.temporaryServerHostnameAndPort()
 
   val config = ConfigFactory.parseString(
       s"""

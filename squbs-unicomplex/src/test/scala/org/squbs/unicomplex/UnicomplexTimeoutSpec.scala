@@ -8,11 +8,11 @@ import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
-import org.squbs._
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.dummysvcactor.RegisterTimeoutHandler
 import spray.can.Http
 import spray.http._
+import spray.util.Utils
 
 import scala.concurrent.duration._
 import scala.util.Try
@@ -25,6 +25,8 @@ object UnicomplexTimeoutSpec {
     "DummySvcActor"
   ) map (dummyJarsDir + "/" + _)
 
+  val (_, port) = Utils.temporaryServerHostnameAndPort()
+
   val aConfig = ConfigFactory.parseString(
     s"""
        |squbs {
@@ -32,7 +34,7 @@ object UnicomplexTimeoutSpec {
        |  ${JMX.prefixConfig} = true
        |}
        |default-listener {
-       |  bind-port = $nextPort
+       |  bind-port = $port
        |}
        |spray.can.server {
        |  request-timeout = 5s
@@ -47,8 +49,7 @@ object UnicomplexTimeoutSpec {
 }
 
 class UnicomplexTimeoutSpec extends TestKit(UnicomplexTimeoutSpec.boot.actorSystem) with ImplicitSender
-with WordSpecLike with Matchers with BeforeAndAfterAll
-with AsyncAssertions {
+    with WordSpecLike with Matchers with BeforeAndAfterAll with AsyncAssertions {
 
   implicit val timeout: akka.util.Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
@@ -69,16 +70,10 @@ with AsyncAssertions {
       system.settings.config getString "spray.can.server.request-timeout" should be ("5s")
       system.actorSelection("/user/DummySvcActor/dummysvcactor-DummySvcActor-handler") ! RegisterTimeoutHandler
       val path = "/dummysvcactor/timeout"
-      (IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port$path")))
+      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port$path"))
       within(timeout.duration) {
         val timedOut = expectMsgType[Timedout]
-        timedOut.request match {
-          case req: HttpRequest =>
-            req.uri.path.toString() should be (path)
-          case x =>
-            println(s"Received unexpected TimedOut with type ${x.getClass.getName}")
-            assert(false)
-        }
+        timedOut.request should matchPattern { case req: HttpRequest if req.uri.path.toString === path => }
       }
     }
   }
