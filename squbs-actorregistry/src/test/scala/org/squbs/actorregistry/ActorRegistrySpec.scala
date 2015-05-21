@@ -23,15 +23,14 @@ import javax.management.ObjectName
 import akka.actor._
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
-
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.actorregistry.testcube._
-
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
-import org.squbs.unicomplex.{Unicomplex, JMX, UnicomplexBoot}
+import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
+import spray.util.Utils
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -46,17 +45,18 @@ object ActorRegistrySpec {
    "TestCube"
   ) map (dummyJarsDir + "/" + _)
 
-  import scala.collection.JavaConversions._
+  val (_, port) = Utils.temporaryServerHostnameAndPort()
 
-  val mapConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name"    -> "ActorRegistrySpec",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-port" -> org.squbs.nextPort.toString
-    )
-  )
+  val config = ConfigFactory.parseString(
+    s"""
+       |squbs {
+       |  actorsystem-name = ActorRegistrySpec
+       |  ${JMX.prefixConfig} = true
+       |}
+       |default-listener.bind-port = $port
+    """.stripMargin)
 
-  val boot = UnicomplexBoot(mapConfig)
+  val boot = UnicomplexBoot(config)
     .createUsing {(name, config) => ActorSystem(name, config)}
     .scanComponents(classPaths)
     .initExtensions.start()
