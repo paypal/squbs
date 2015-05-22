@@ -29,7 +29,8 @@ case class Endpoint(uri: String, config: Configuration = Configuration())
 object Endpoint {
 
   def check(endpoint: String) = {
-    require(endpoint.toLowerCase.startsWith("http://") || endpoint.toLowerCase.startsWith("https://"), "service should be start with http:// or https://")
+    require(endpoint.toLowerCase.startsWith("http://") || endpoint.toLowerCase.startsWith("https://"),
+      "service should be started with http:// or https://")
   }
 }
 
@@ -48,14 +49,14 @@ class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension w
       case None =>
         endpointResolvers.prepend(resolver)
       case Some(routing) =>
-        logger.warn("Endpoint Resolver:" + resolver.name + " has been registry, skip current endpoint resolver registry!")
+        logger.warn(s"Endpoint Resolver: ${resolver.name} already registered, skipped!")
     }
   }
 
   def unregister(name: String) = {
     endpointResolvers.find(_.name == name) match {
       case None =>
-        logger.warn("Endpoint Resolver:" + name + " cannot be found, skip current endpoint resolver unregistry!")
+        logger.warn("Endpoint Resolver:" + name + " cannot be found, skipped unregister!")
       case Some(resolver) =>
         endpointResolvers.remove(endpointResolvers.indexOf(resolver))
     }
@@ -66,20 +67,22 @@ class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension w
   }
 
   def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-    val resolvedEndpoint = endpointResolvers.foldLeft[Option[Endpoint]](None){(endpoint: Option[Endpoint], resolver: EndpointResolver) =>
-      endpoint match {
-        case Some(_) =>
-          endpoint
-        case None     =>
-          resolver.resolve(svcName, env)
-      }
+    val resolvedEndpoint = endpointResolvers.foldLeft[Option[Endpoint]](None){
+      (endpoint: Option[Endpoint], resolver: EndpointResolver) =>
+        endpoint match {
+          case Some(_) =>
+            endpoint
+          case None     =>
+            resolver.resolve(svcName, env)
+        }
     }
     resolvedEndpoint match {
       case Some(ep) =>
         logger.debug(s"Endpoint can be resolved by ($svcName, $env), the endpoint uri is:" + ep.uri)
         resolvedEndpoint
-      case None if (svcName != null && (svcName.startsWith("http://") || svcName.startsWith("https://"))) =>
-        logger.debug(s"Endpoint can be resolved with service name match http:// or https:// pattern by ($svcName, $env), the endpoint uri is:" + svcName)
+      case None if svcName != null && (svcName.startsWith("http://") || svcName.startsWith("https://")) =>
+        logger.debug(s"Endpoint can be resolved with service name match http:// or https:// pattern by " +
+          s"($svcName, $env), the endpoint uri is:" + svcName)
         Some(Endpoint(svcName))
       case _ =>
         logger.warn(s"Endpoint can not be resolved by ($svcName, $env)!")
@@ -90,5 +93,6 @@ class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension w
 
 object EndpointRegistry extends ExtensionId[EndpointRegistryExtension]{
 
-  override def createExtension(system: ExtendedActorSystem): EndpointRegistryExtension = new EndpointRegistryExtension(system)
+  override def createExtension(system: ExtendedActorSystem): EndpointRegistryExtension =
+    new EndpointRegistryExtension(system)
 }

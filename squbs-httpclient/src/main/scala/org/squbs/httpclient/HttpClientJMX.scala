@@ -97,9 +97,8 @@ trait HttpClientMXBean {
 
 case class HttpClientBean(system: ActorSystem) extends HttpClientMXBean {
 
-  override def getHttpClientInfo: java.util.List[HttpClientInfo] = {
-    HttpClientManager(system).httpClientMap.values.toList map {mapToHttpClientInfo(_)}
-  }
+  override def getHttpClientInfo: java.util.List[HttpClientInfo] =
+    HttpClientManager(system).httpClientMap.values.toList map mapToHttpClientInfo
 
   private def mapToHttpClientInfo(httpClient: HttpClient) = {
     val name = httpClient.name
@@ -147,7 +146,7 @@ trait EndpointResolverMXBean {
 case class EndpointResolverBean(system: ActorSystem) extends EndpointResolverMXBean {
 
   override def getHttpClientEndpointResolverInfo: util.List[EndpointResolverInfo] = {
-    EndpointRegistry(system).endpointResolvers.zipWithIndex map {toEndpointResolverInfo(_)}
+    EndpointRegistry(system).endpointResolvers.zipWithIndex map toEndpointResolverInfo
   }
 
   private def toEndpointResolverInfo(resolverWithIndex: (EndpointResolver, Int)): EndpointResolverInfo = {
@@ -172,7 +171,7 @@ trait EnvironmentResolverMXBean {
 case class EnvironmentResolverBean(system: ActorSystem) extends EnvironmentResolverMXBean {
 
   override def getHttpClientEnvironmentResolverInfo: util.List[EnvironmentResolverInfo] = {
-    EnvironmentRegistry(system).environmentResolvers.zipWithIndex map {toEnvironmentResolverInfo(_)}
+    EnvironmentRegistry(system).environmentResolvers.zipWithIndex map toEnvironmentResolverInfo
   }
 
   private def toEnvironmentResolverInfo(resolverWithIndex: (EnvironmentResolver, Int)): EnvironmentResolverInfo = {
@@ -205,7 +204,7 @@ trait CircuitBreakerMXBean {
 case class CircuitBreakerBean(system: ActorSystem) extends CircuitBreakerMXBean {
 
   override def getHttpClientCircuitBreakerInfo: util.List[CircuitBreakerInfo] = {
-    HttpClientManager(system).httpClientMap.values.toList map {mapToHttpClientCircuitBreakerInfo(_)}
+    HttpClientManager(system).httpClientMap.values.toList map mapToHttpClientCircuitBreakerInfo
   }
 
   private def mapToHttpClientCircuitBreakerInfo(httpClient: HttpClient) = {
@@ -224,10 +223,10 @@ case class CircuitBreakerBean(system: ActorSystem) extends CircuitBreakerMXBean 
     val cbLastMinMetrics = httpClient.cbMetrics.cbLastDurationCall.groupBy[ServiceCallStatus](_.status) map { data =>
       data._1 -> data._2.size
     }
-    val lastDurationSuccess = cbLastMinMetrics.get(ServiceCallStatus.Success).getOrElse(0)
-    val lastDurationFallback = cbLastMinMetrics.get(ServiceCallStatus.Fallback).getOrElse(0)
-    val lastDurationFailFast = cbLastMinMetrics.get(ServiceCallStatus.FailFast).getOrElse(0)
-    val lastDurationException = cbLastMinMetrics.get(ServiceCallStatus.Exception).getOrElse(0)
+    val lastDurationSuccess = cbLastMinMetrics.getOrElse(ServiceCallStatus.Success, 0)
+    val lastDurationFallback = cbLastMinMetrics.getOrElse(ServiceCallStatus.Fallback, 0)
+    val lastDurationFailFast = cbLastMinMetrics.getOrElse(ServiceCallStatus.FailFast, 0)
+    val lastDurationException = cbLastMinMetrics.getOrElse(ServiceCallStatus.Exception, 0)
     val lastDurationTotal = lastDurationSuccess + lastDurationFallback + lastDurationFailFast + lastDurationException
     val df = new java.text.DecimalFormat("0.00%")
     val lastDurationErrorRate = lastDurationTotal match {

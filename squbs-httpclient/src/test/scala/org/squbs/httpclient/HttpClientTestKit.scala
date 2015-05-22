@@ -30,14 +30,14 @@ trait HttpClientTestKit {
 
   implicit val system: ActorSystem
 
-  def clearHttpClient = {
-    EndpointRegistry(system).endpointResolvers.clear
-    EnvironmentRegistry(system).environmentResolvers.clear
-    HttpClientManager(system).httpClientMap.clear
+  def clearHttpClient() = {
+    EndpointRegistry(system).endpointResolvers.clear()
+    EnvironmentRegistry(system).environmentResolvers.clear()
+    HttpClientManager(system).httpClientMap.clear()
   }
 
-  def shutdownActorSystem = {
+  def shutdownActorSystem() = {
     IO(Http).ask(Http.CloseAll)(30.seconds).await
-    system.shutdown
+    system.shutdown()
   }
 }

@@ -73,22 +73,25 @@ trait PipelineManager extends LazyLogging {
     val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
     val isSecure = uri.scheme.toLowerCase.equals("https")
     val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
+    import client.endpoint.config.settings.hostSettings.connectionSettings
     val clientConnectionSettings = reqSettings match {
-      case Configuration.defaultHostSettings =>
+      case Configuration.defaultHostSettings => // TODO: Need to look at this match. Looks fishy.
         val reqTimeout = Configuration.defaultRequestSettings(client.endpoint.config, client.config).timeout
-        client.endpoint.config.settings.hostSettings.connectionSettings.copy(requestTimeout = reqTimeout.duration)
+        connectionSettings.copy(requestTimeout = reqTimeout.duration)
       case _                                 =>
-        client.endpoint.config.settings.hostSettings.connectionSettings.copy(requestTimeout = reqSettings.timeout.duration)
+        connectionSettings.copy(requestTimeout = reqSettings.timeout.duration)
     }
     val hostSettings = client.endpoint.config.settings.hostSettings.copy(connectionSettings = clientConnectionSettings)
-    defaultHostConnectorSetup.copy(settings = Some(hostSettings), connectionType = client.endpoint.config.settings.connectionType)
+    defaultHostConnectorSetup.copy(
+      settings = Some(hostSettings), connectionType = client.endpoint.config.settings.connectionType)
   }
 
   def invokeToHttpResponseWithoutSetup(client: HttpClient, reqSettings: RequestSettings, actorRef: ActorRef)
                                       (implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
     implicit val ec = system.dispatcher
     val pipeConfig = client.endpoint.config.pipeline.getOrElse(SimplePipelineConfig.empty)
-    implicit val timeout: Timeout = client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
+    implicit val timeout: Timeout =
+      client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
     val updatedPipeConfig = reqSettings.headers.isEmpty match {
       case false  =>
@@ -96,7 +99,8 @@ trait PipelineManager extends LazyLogging {
         pipeConfig.copy(reqPipe = requestPipelines)
       case true => pipeConfig
     }
-		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.name, client.endpoint, updatedPipeConfig, pipeline))
+		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.name, client.endpoint,
+      updatedPipeConfig, pipeline))
     Try{
       client.status match {
         case Status.DOWN =>

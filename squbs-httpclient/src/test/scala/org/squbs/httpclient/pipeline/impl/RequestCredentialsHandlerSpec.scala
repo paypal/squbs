@@ -23,9 +23,10 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.pipeline.RequestContext
 import spray.http.{BasicHttpCredentials, HttpRequest, OAuth2BearerToken}
 
-class RequestCredentialsHandlerSpec extends TestKit(ActorSystem("RequestCredentialsHandlerSpecSys")) with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll {
+class RequestCredentialsHandlerSpec extends TestKit(ActorSystem("RequestCredentialsHandlerSpecSys"))
+    with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll {
 
-	override def afterAll {
+	override def afterAll() {
 		system.shutdown()
 	}
 
@@ -36,7 +37,7 @@ class RequestCredentialsHandlerSpec extends TestKit(ActorSystem("RequestCredenti
 
 		agentActor ! RequestContext(httpRequest)
 		val updateHttpRequest = expectMsgType[RequestContext].request
-		updateHttpRequest.headers.length shouldBe 1
+		updateHttpRequest.headers should have size 1
 		updateHttpRequest.headers.head.name shouldBe "Authorization"
 		updateHttpRequest.headers.head.value shouldBe "Bearer test123"
 	}
@@ -48,7 +49,7 @@ class RequestCredentialsHandlerSpec extends TestKit(ActorSystem("RequestCredenti
 
 		agentActor ! RequestContext(httpRequest)
 		val updateHttpRequest = expectMsgType[RequestContext].request
-		updateHttpRequest.headers.length should be(1)
+		updateHttpRequest.headers should have size 1
 		updateHttpRequest.headers.head.name should be("Authorization")
 		updateHttpRequest.headers.head.value should be("Basic dXNlcm5hbWU6cGFzc3dvcmQ=")
 	}

@@ -17,16 +17,16 @@
  */
 package org.squbs.httpclient.pipeline.impl
 
-import akka.actor.{Props, ActorSystem}
+import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers, FlatSpec}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.pipeline.{NormalResponse, RequestContext}
-import spray.http.{HttpRequest, HttpHeader, HttpResponse}
 import spray.http.HttpHeaders.RawHeader
+import spray.http.{HttpHeader, HttpRequest, HttpResponse}
 
 class ResponseHeaderHandlerSpec extends TestKit(ActorSystem("ResponseHeaderHandlerSpec")) with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll {
 
-	override def afterAll {
+	override def afterAll() {
 		system.shutdown()
 	}
 
@@ -36,12 +36,12 @@ class ResponseHeaderHandlerSpec extends TestKit(ActorSystem("ResponseHeaderHandl
      val handler = new ResponseAddHeaderHandler(httpHeader)
 
 		 val agentActor = system.actorOf(Props(classOf[HandlerAgentActor], handler))
-     agentActor ! RequestContext(HttpRequest(), false, NormalResponse(httpResponse))
+     agentActor ! RequestContext(HttpRequest(), isChunkRequest = false, NormalResponse(httpResponse))
 		 val updateHttpResponse = expectMsgType[RequestContext].response match {
 			 case n@NormalResponse(resp) => resp
 			 case _ => httpResponse
 		 }
-     updateHttpResponse.headers.length shouldBe 1
+     updateHttpResponse.headers should have size 1
      updateHttpResponse.headers.head shouldBe httpHeader
    }
 
@@ -51,12 +51,12 @@ class ResponseHeaderHandlerSpec extends TestKit(ActorSystem("ResponseHeaderHandl
      val httpResponse = HttpResponse(headers = List[HttpHeader](httpHeader1, httpHeader2))
      val handler = new ResponseRemoveHeaderHandler(httpHeader1)
 		 val agentActor = system.actorOf(Props(classOf[HandlerAgentActor], handler))
-		 agentActor ! RequestContext(HttpRequest(), false, NormalResponse(httpResponse))
+		 agentActor ! RequestContext(HttpRequest(), isChunkRequest = false, NormalResponse(httpResponse))
 		 val updateHttpResponse = expectMsgType[RequestContext].response match {
 			 case n@NormalResponse(resp) => resp
 			 case _ => httpResponse
 		 }
-     updateHttpResponse.headers.length shouldBe 1
+     updateHttpResponse.headers should have size 1
      updateHttpResponse.headers.head shouldBe httpHeader2
    }
 
@@ -66,12 +66,12 @@ class ResponseHeaderHandlerSpec extends TestKit(ActorSystem("ResponseHeaderHandl
      val httpResponse = HttpResponse(headers = List[HttpHeader](httpHeader1))
      val handler = new ResponseUpdateHeaderHandler(httpHeader2)
 		 val agentActor = system.actorOf(Props(classOf[HandlerAgentActor], handler))
-		 agentActor ! RequestContext(HttpRequest(), false, NormalResponse(httpResponse))
+		 agentActor ! RequestContext(HttpRequest(), isChunkRequest = false, NormalResponse(httpResponse))
 		 val updateHttpResponse = expectMsgType[RequestContext].response match {
 			 case n@NormalResponse(resp) => resp
 			 case _ => httpResponse
 		 }
-     updateHttpResponse.headers.length shouldBe 1
+     updateHttpResponse.headers should have size 1
      updateHttpResponse.headers.head shouldBe httpHeader2
    }
  }

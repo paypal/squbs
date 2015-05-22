@@ -34,7 +34,7 @@ object ServiceCallStatus extends Enumeration {
   val Success, Fallback, FailFast, Exception = Value
 }
 
-case class ServiceCall(val callTime: Long, val status: ServiceCallStatus)
+case class ServiceCall(callTime: Long, status: ServiceCallStatus)
 
 case class CircuitBreakerMetrics(var status: CircuitBreakerStatus,
                                  var successTimes: Long,
@@ -50,15 +50,15 @@ trait CircuitBreakerSupport{
     val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](response)
     val fallbackHttpResponse = client.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse
     (fallbackHttpResponse, client.cbMetrics.status) match {
-      case (Some(response), CircuitBreakerStatus.Closed) =>
+      case (Some(resp), CircuitBreakerStatus.Closed) =>
         collectCbMetrics(client, ServiceCallStatus.Success)
-        runCircuitBreaker fallbackTo future{response}
+        runCircuitBreaker fallbackTo Future{resp}
       case (None, CircuitBreakerStatus.Closed) =>
         collectCbMetrics(client, ServiceCallStatus.Success)
         runCircuitBreaker
-      case (Some(response), _) =>
+      case (Some(resp), _) =>
         collectCbMetrics(client, ServiceCallStatus.Fallback)
-        runCircuitBreaker fallbackTo future{response}
+        runCircuitBreaker fallbackTo Future{resp}
       case (None, _)           =>
         collectCbMetrics(client, ServiceCallStatus.FailFast)
         runCircuitBreaker

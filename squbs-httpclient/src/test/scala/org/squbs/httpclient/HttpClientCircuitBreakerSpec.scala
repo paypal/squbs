@@ -30,55 +30,55 @@ with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAf
 
   implicit val timeout: Timeout = 3 seconds
 
-  override def beforeEach {
+  override def beforeEach() {
     EndpointRegistry(system).register(DummyServiceEndpointResolver)
   }
 
-  override def afterAll {
-    shutdownActorSystem
+  override def afterAll() {
+    shutdownActorSystem()
   }
 
-  override def afterEach {
-    clearHttpClient
+  override def afterEach() {
+    clearHttpClient()
   }
 
   "HttpClient with Success ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
     httpClient.cbMetrics.successTimes should be (0)
-    httpClient.cbMetrics.cbLastDurationCall.size should be (0)
+    httpClient.cbMetrics.cbLastDurationCall should have size 0
     collectCbMetrics(httpClient, ServiceCallStatus.Success)
     httpClient.cbMetrics.successTimes should be (1)
-    httpClient.cbMetrics.cbLastDurationCall.size should be (1)
-    httpClient.cbMetrics.cbLastDurationCall(0).status should be (ServiceCallStatus.Success)
+    httpClient.cbMetrics.cbLastDurationCall should have size 1
+    httpClient.cbMetrics.cbLastDurationCall.head.status should be (ServiceCallStatus.Success)
   }
 
   "HttpClient with Fallback ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
     httpClient.cbMetrics.fallbackTimes should be (0)
-    httpClient.cbMetrics.cbLastDurationCall.size should be (0)
+    httpClient.cbMetrics.cbLastDurationCall should have size 0
     collectCbMetrics(httpClient, ServiceCallStatus.Fallback)
     httpClient.cbMetrics.fallbackTimes should be (1)
-    httpClient.cbMetrics.cbLastDurationCall.size should be (1)
-    httpClient.cbMetrics.cbLastDurationCall(0).status should be (ServiceCallStatus.Fallback)
+    httpClient.cbMetrics.cbLastDurationCall should have size 1
+    httpClient.cbMetrics.cbLastDurationCall.head.status should be (ServiceCallStatus.Fallback)
   }
 
   "HttpClient with FailFast ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
     httpClient.cbMetrics.failFastTimes should be (0)
-    httpClient.cbMetrics.cbLastDurationCall.size should be (0)
+    httpClient.cbMetrics.cbLastDurationCall should have size 0
     collectCbMetrics(httpClient, ServiceCallStatus.FailFast)
     httpClient.cbMetrics.failFastTimes should be (1)
-    httpClient.cbMetrics.cbLastDurationCall.size should be (1)
-    httpClient.cbMetrics.cbLastDurationCall(0).status should be (ServiceCallStatus.FailFast)
+    httpClient.cbMetrics.cbLastDurationCall should have size 1
+    httpClient.cbMetrics.cbLastDurationCall.head.status should be (ServiceCallStatus.FailFast)
   }
 
   "HttpClient with Exception ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
     httpClient.cbMetrics.exceptionTimes should be (0)
-    httpClient.cbMetrics.cbLastDurationCall.size should be (0)
+    httpClient.cbMetrics.cbLastDurationCall should have size 0
     collectCbMetrics(httpClient, ServiceCallStatus.Exception)
     httpClient.cbMetrics.exceptionTimes should be (1)
-    httpClient.cbMetrics.cbLastDurationCall.size should be (1)
-    httpClient.cbMetrics.cbLastDurationCall(0).status should be (ServiceCallStatus.Exception)
+    httpClient.cbMetrics.cbLastDurationCall should have size 1
+    httpClient.cbMetrics.cbLastDurationCall.head.status should be (ServiceCallStatus.Exception)
   }
 }

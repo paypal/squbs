@@ -39,12 +39,12 @@ class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelin
   val config = SimplePipelineConfig.empty
   val pipeline = spray.client.pipelining.sendReceive
 
-  override def beforeAll {
+  override def beforeAll() {
     startDummyService(system)
   }
 
-  override def afterAll {
-    shutdownActorSystem
+  override def afterAll() {
+    shutdownActorSystem()
   }
 
   "HttpClientPipelineActor" should "forward HttpRequest" in {

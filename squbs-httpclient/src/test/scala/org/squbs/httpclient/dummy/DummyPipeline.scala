@@ -21,9 +21,11 @@ import org.squbs.httpclient.pipeline.impl.{RequestAddHeaderHandler, ResponseAddH
 import org.squbs.proxy.SimplePipelineConfig
 import spray.http.HttpHeaders.RawHeader
 
-object DummyRequestPipeline extends SimplePipelineConfig(Seq(new RequestAddHeaderHandler(RawHeader("req1-name", "req1-value"))), Seq.empty)
+object DummyRequestPipeline extends SimplePipelineConfig(
+	Seq(new RequestAddHeaderHandler(RawHeader("req1-name", "req1-value"))), Seq.empty)
 
-object DummyResponsePipeline extends SimplePipelineConfig(Seq.empty, Seq(new ResponseAddHeaderHandler(RawHeader("res1-name", "res1-value"))))
+object DummyResponsePipeline extends SimplePipelineConfig(
+	Seq.empty, Seq(new ResponseAddHeaderHandler(RawHeader("res1-name", "res1-value"))))
 
 object DummyRequestResponsePipeline extends SimplePipelineConfig(
 				Seq(new RequestAddHeaderHandler(RawHeader("req2-name", "req2-value"))),

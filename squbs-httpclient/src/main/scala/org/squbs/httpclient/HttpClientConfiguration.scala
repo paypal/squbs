@@ -19,6 +19,7 @@ package org.squbs.httpclient
 
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
+
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.squbs.proxy.SimplePipelineConfig
@@ -42,10 +43,14 @@ object Configuration {
 
   val defaultRequestSettings = RequestSettings()
 
+  private [httpclient] def requestTimeout(c: Configuration): Long = requestTimeout(c.settings.hostSettings)
+
+  private [httpclient] def requestTimeout(s: HostConnectorSettings):Long = s.connectionSettings.requestTimeout.toMillis
+
   def defaultRequestSettings(endpointConfig: Configuration, config: Option[Configuration]) = {
     config match {
-      case None => RequestSettings(timeout = Timeout(endpointConfig.settings.hostSettings.connectionSettings.requestTimeout.toMillis, TimeUnit.MILLISECONDS))
-      case Some(config) => RequestSettings(timeout = Timeout(config.settings.hostSettings.connectionSettings.requestTimeout.toMillis, TimeUnit.MILLISECONDS))
+      case None => RequestSettings(timeout = Timeout(requestTimeout(endpointConfig), TimeUnit.MILLISECONDS))
+      case Some(conf) => RequestSettings(timeout = Timeout(requestTimeout(conf), TimeUnit.MILLISECONDS))
     }
   }
   val defaultFutureTimeout: Timeout = 2 seconds
@@ -58,5 +63,6 @@ case class CircuitBreakerSettings(maxFailures: Int = 5,
                                   lastDuration: FiniteDuration = 60 seconds,
                                   fallbackHttpResponse: Option[HttpResponse] = None)
 
+import Configuration._
 case class RequestSettings(headers: List[HttpHeader] = List.empty[HttpHeader],
-                           timeout: Timeout = Timeout(Configuration.defaultHostSettings.connectionSettings.requestTimeout.toMillis, TimeUnit.MILLISECONDS))
+                           timeout: Timeout = Timeout(requestTimeout(defaultHostSettings), TimeUnit.MILLISECONDS))

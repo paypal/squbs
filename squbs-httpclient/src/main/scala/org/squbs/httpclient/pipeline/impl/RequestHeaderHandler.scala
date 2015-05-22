@@ -23,7 +23,8 @@ import spray.http.HttpHeader
 import scala.concurrent.{ExecutionContext, Future}
 
 class RequestAddHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+	    Future[RequestContext] = {
 		val originalHeaders = reqCtx.request.headers
 		Future {
 			reqCtx.copy(request = reqCtx.request.copy(headers = originalHeaders :+ httpHeader))
@@ -32,19 +33,22 @@ class RequestAddHeaderHandler(httpHeader: HttpHeader) extends Handler {
 }
 
 class RequestRemoveHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+      Future[RequestContext] = {
 		val originalHeaders = reqCtx.request.headers.groupBy[Boolean](_.name == httpHeader.name)
 		Future {
-			reqCtx.copy(request = reqCtx.request.copy(headers = originalHeaders.get(false).getOrElse(List.empty[HttpHeader])))
+			reqCtx.copy(request = reqCtx.request.copy(headers = originalHeaders.getOrElse(false, List.empty[HttpHeader])))
 		}
 	}
 }
 
 class RequestUpdateHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+      Future[RequestContext] = {
 		val originalHeaders = reqCtx.request.headers.groupBy[Boolean](_.name == httpHeader.name)
 		Future {
-			reqCtx.copy(request = reqCtx.request.copy(headers = (originalHeaders.get(false).getOrElse(List.empty[HttpHeader]) :+ httpHeader)))
+			reqCtx.copy(request =
+        reqCtx.request.copy(headers = originalHeaders.getOrElse(false, List.empty[HttpHeader]) :+ httpHeader))
 		}
 	}
 }

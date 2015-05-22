@@ -37,17 +37,18 @@ object HttpClientDemo1 extends App with HttpClientTestKit {
   import system.dispatcher
   EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
 
-  val response = HttpClientFactory.get("googlemap").raw.get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.get("googlemap").raw.
+    get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
       println("Success, response entity is: " + res.entity.asString)
-      shutdownActorSystem
+      shutdownActorSystem()
     case Success(res@HttpResponse(code, _, _, _)) =>
       println("Success, the status code is: " + code)
-      shutdownActorSystem
+      shutdownActorSystem()
     case Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
-      shutdownActorSystem
+      shutdownActorSystem()
   }
 }
 
@@ -58,14 +59,15 @@ object HttpClientDemo4 extends App with HttpClientTestKit {
   import system.dispatcher
   EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
-  val response = HttpClientFactory.get("googlemap").get[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.get("googlemap").
+    get[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(data: GoogleApiResult[Elevation]) =>
       println("Success, elevation is: " + data.results.head.elevation)
-      shutdownActorSystem
+      shutdownActorSystem()
     case Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
-      shutdownActorSystem
+      shutdownActorSystem()
   }
 }
 
@@ -81,7 +83,8 @@ object HttpClientDemo2 extends App with HttpClientTestKit{
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
   import HttpClientUnmarshal._
 
-  val response = HttpClientFactory.get("googlemap").raw.get("api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  val response = HttpClientFactory.get("googlemap").raw.
+    get("api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
     case Success(res@HttpResponse(StatusCodes.OK, _, _, _)) =>
       val obj = res.unmarshalTo[GoogleApiResult[Elevation]]
@@ -91,13 +94,13 @@ object HttpClientDemo2 extends App with HttpClientTestKit{
         case Failure(e) =>
           println("Failure, the reason is: " + e.getMessage)
       }
-      shutdownActorSystem
+      shutdownActorSystem()
     case Success(res@HttpResponse(code, _, _, _)) =>
       println("Success, the status code is: " + code)
-      shutdownActorSystem
+      shutdownActorSystem()
     case Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
-      shutdownActorSystem
+      shutdownActorSystem()
   }
 }
 
@@ -134,13 +137,13 @@ case class HttpClientDemoActor(system: ActorSystem) extends Actor with HttpClien
           println("unmarshal error is:" + e.getMessage)
       }
 
-      shutdownActorSystem
+      shutdownActorSystem()
     case HttpResponse(code, _, _, _) =>
       println("Success, the status code is: " + code)
-      shutdownActorSystem
+      shutdownActorSystem()
     case akka.actor.Status.Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
-      shutdownActorSystem
+      shutdownActorSystem()
   }
 }
 

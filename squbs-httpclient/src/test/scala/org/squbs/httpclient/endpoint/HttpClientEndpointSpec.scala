@@ -19,42 +19,44 @@ package org.squbs.httpclient.endpoint
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import org.scalatest.{FlatSpecLike, BeforeAndAfterEach, FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterEach, FlatSpecLike, Matchers}
 import org.squbs.httpclient.dummy.DummyLocalhostResolver
 import org.squbs.httpclient.env._
-import org.squbs.httpclient.{HttpClientTestKit, HttpClientException}
+import org.squbs.httpclient.{HttpClientException, HttpClientTestKit}
 
-class HttpClientEndpointSpec extends TestKit(ActorSystem("HttpClientEndpointSpec")) with FlatSpecLike with HttpClientTestKit with Matchers with BeforeAndAfterEach{
+class HttpClientEndpointSpec extends TestKit(ActorSystem("HttpClientEndpointSpec")) with FlatSpecLike
+    with HttpClientTestKit with Matchers with BeforeAndAfterEach {
 
-  override def afterEach = {
-    clearHttpClient
+  override def afterEach() = {
+    clearHttpClient()
   }
 
   "EndpointRegistry" should "contain DummyLocalhostResolver" in {
     EndpointRegistry(system).register(DummyLocalhostResolver)
-    EndpointRegistry(system).endpointResolvers.length should be (1)
+    EndpointRegistry(system).endpointResolvers should have size 1
     EndpointRegistry(system).endpointResolvers.head should be (DummyLocalhostResolver)
   }
 
   "EndpointRegistry register twice of the same resolver" should "contain once" in {
     EndpointRegistry(system).register(DummyLocalhostResolver)
     EndpointRegistry(system).register(DummyLocalhostResolver)
-    EndpointRegistry(system).endpointResolvers.length should be (1)
+    EndpointRegistry(system).endpointResolvers should have size 1
     EndpointRegistry(system).endpointResolvers.head should be (DummyLocalhostResolver)
   }
 
   "EndpointRegistry unregister not existing resolver" should "be ignored" in {
     EndpointRegistry(system).register(DummyLocalhostResolver)
     EndpointRegistry(system).unregister("NotExistingResolver")
-    EndpointRegistry(system).endpointResolvers.length should be (1)
+    EndpointRegistry(system).endpointResolvers should have size 1
     EndpointRegistry(system).endpointResolvers.head should be (DummyLocalhostResolver)
   }
 
   "DummyLocalhostResolver" should "be return to the correct value" in {
     EndpointRegistry(system).register(DummyLocalhostResolver)
-    EndpointRegistry(system).route("abcService") should not be (None)
-    EndpointRegistry(system).route("abcService").get.name should be ("DummyLocalhostResolver")
-    EndpointRegistry(system).route("abcService").get.resolve("abcService") should be (Some(Endpoint("http://localhost:8080")))
+    val resolver = EndpointRegistry(system).route("abcService")
+    resolver should not be None
+    resolver.get.name should be ("DummyLocalhostResolver")
+    resolver.get.resolve("abcService") should be (Some(Endpoint("http://localhost:8080")))
   }
 
   "DummyLocalhostResolver" should "be throw out HttpClientException if env isn't Dev" in {
@@ -66,7 +68,7 @@ class HttpClientEndpointSpec extends TestKit(ActorSystem("HttpClientEndpointSpec
 
   "DummyLocalhostResolver" should "be return to the correct value if env is Dev" in {
     EndpointRegistry(system).register(DummyLocalhostResolver)
-    EndpointRegistry(system).route("abcService", DEV) should not be (None)
+    EndpointRegistry(system).route("abcService", DEV) should not be None
     EndpointRegistry(system).route("abcService", DEV).get.name should be ("DummyLocalhostResolver")
     EndpointRegistry(system).resolve("abcService", DEV) should be (Some(Endpoint("http://localhost:8080")))
   }
@@ -74,20 +76,21 @@ class HttpClientEndpointSpec extends TestKit(ActorSystem("HttpClientEndpointSpec
   "Latter registry EndpointResolver" should "have high priority" in {
     EndpointRegistry(system).register(DummyLocalhostResolver)
     EndpointRegistry(system).register(new EndpointResolver {
-      override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = Some(Endpoint("http://localhost:9090"))
+      override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] =
+        Some(Endpoint("http://localhost:9090"))
 
       override def name: String = "override"
     })
-    EndpointRegistry(system).endpointResolvers.length should be (2)
-    EndpointRegistry(system).endpointResolvers.head should not be (DummyLocalhostResolver)
+    EndpointRegistry(system).endpointResolvers should have size 2
+    EndpointRegistry(system).endpointResolvers.head should not be DummyLocalhostResolver
     EndpointRegistry(system).endpointResolvers.head.name should be ("override")
-    EndpointRegistry(system).route("abcService") should not be (None)
+    EndpointRegistry(system).route("abcService") should not be None
     EndpointRegistry(system).route("abcService").get.name should be ("override")
     EndpointRegistry(system).resolve("abcService") should be (Some(Endpoint("http://localhost:9090")))
   }
 
   "It" should "fallback to the previous EndpointResolver if latter one cannot be resolve" in {
-    EndpointRegistry(system).register(DummyLocalhostResolver)
+    EndpointRegistry(system).register(resolver = DummyLocalhostResolver)
     EndpointRegistry(system).register(new EndpointResolver {
       override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
         svcName match {
@@ -98,10 +101,10 @@ class HttpClientEndpointSpec extends TestKit(ActorSystem("HttpClientEndpointSpec
 
       override def name: String = "unique"
     })
-    EndpointRegistry(system).endpointResolvers.length should be (2)
-    EndpointRegistry(system).route("abcService") should not be (None)
+    EndpointRegistry(system).endpointResolvers should have size 2
+    EndpointRegistry(system).route("abcService") should not be None
     EndpointRegistry(system).route("abcService").get.name should be ("DummyLocalhostResolver")
-    EndpointRegistry(system).route("unique") should not be (None)
+    EndpointRegistry(system).route("unique") should not be None
     EndpointRegistry(system).route("unique").get.name should be ("unique")
     EndpointRegistry(system).resolve("abcService") should be (Some(Endpoint("http://localhost:8080")))
     EndpointRegistry(system).resolve("unique") should be (Some(Endpoint("http://www.ebay.com")))
@@ -120,11 +123,11 @@ class HttpClientEndpointSpec extends TestKit(ActorSystem("HttpClientEndpointSpec
     })
     EndpointRegistry(system).register(DummyLocalhostResolver)
 
-    EndpointRegistry(system).endpointResolvers.length should be (2)
+    EndpointRegistry(system).endpointResolvers should have size 2
     EndpointRegistry(system).endpointResolvers.head should be (DummyLocalhostResolver)
     EndpointRegistry(system).resolve("unique") should be (Some(Endpoint("http://localhost:8080")))
     EndpointRegistry(system).unregister("DummyLocalhostResolver")
-    EndpointRegistry(system).endpointResolvers.length should be (1)
+    EndpointRegistry(system).endpointResolvers should have size 1
     EndpointRegistry(system).resolve("unique") should be (Some(Endpoint("http://www.ebay.com")))
   }
 }
