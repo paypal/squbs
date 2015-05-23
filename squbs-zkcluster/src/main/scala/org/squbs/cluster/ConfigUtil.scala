@@ -25,9 +25,9 @@ object ConfigUtil {
     val addresses = mutable.Set.empty[String]
     val enum = NetworkInterface.getNetworkInterfaces
     while (enum.hasMoreElements) {
-      val addrs = enum.nextElement.getInetAddresses
-      while (addrs.hasMoreElements) {
-        addresses += addrs.nextElement.getHostAddress
+      val address = enum.nextElement.getInetAddresses
+      while (address.hasMoreElements) {
+        addresses += address.nextElement.getHostAddress
       }
     }
     val pattern = "\\d+\\.\\d+\\.\\d+\\.\\d+".r

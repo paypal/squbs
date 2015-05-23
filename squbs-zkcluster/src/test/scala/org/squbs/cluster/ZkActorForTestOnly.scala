@@ -35,19 +35,19 @@ class ZkActorForTestOnly(val externalConfigDir:String) extends LazyLogging {
     val outputDir = externalConfigDir
     val members = Seq("localhost")
 
-    System.setProperty("zookeeper.log.dir", outputDir);
-    System.setProperty("Dzookeeper.root.logger", "info");
+    System.setProperty("zookeeper.log.dir", outputDir)
+    System.setProperty("zookeeper.root.logger", "info")
 
     val dataDir = new File(outputDir, "data")
-    if(!dataDir.exists()){
+    if (!dataDir.exists()) {
       dataDir.mkdir()
     }
-    val txlogDir = new File(outputDir, "txlog")
-    if(!txlogDir.exists()){
-      txlogDir.mkdir()
+    val txLogDir = new File(outputDir, "txlog")
+    if (!txLogDir.exists()) {
+      txLogDir.mkdir()
     }
 
-    val id = myid(members)
+    val id = myId(members)
     log.warn("[zk] me:{} and myid:{} vs members:{}", me, id, members)
 
     if(id == "0"){
@@ -56,12 +56,13 @@ class ZkActorForTestOnly(val externalConfigDir:String) extends LazyLogging {
     else {
       Files.write(id, new File(dataDir, "myid"), Charsets.UTF_8)
 
-      val cfg = zoo(members, dataDir.getAbsolutePath.replaceAll("\\\\", "/"), txlogDir.getAbsolutePath.replaceAll("\\\\", "/"), port = port)
+      val cfg = zoo(members, dataDir.getAbsolutePath.replaceAll("\\\\", "/"), 
+        txLogDir.getAbsolutePath.replaceAll("\\\\", "/"), port = port)
       log.warn("[zk] zoo.cfg:{}", cfg)
       Files.write(cfg, new File(outputDir, "zoo.cfg"), Charsets.UTF_8)
 
       zkThread = new Thread(new ThreadGroup("zkclustergroup"), new Runnable(){
-        override def run = {
+        override def run() = {
           try {
             val initializeAndRun = classOf[ZooKeeperServerMain].getDeclaredMethod("initializeAndRun", classOf[Array[String]])
             initializeAndRun.setAccessible(true)
@@ -69,30 +70,30 @@ class ZkActorForTestOnly(val externalConfigDir:String) extends LazyLogging {
           }
           catch {
             case _: InterruptedException =>
-              println("zkcluster mock interruped")
+              println("zkcluster mock interrupted")
             case e: Exception =>
               println("zkcluster mock got other exceptions:")
-              e.printStackTrace
+              e.printStackTrace()
           }
         }
       })
       zkThread.setDaemon(true)
-      zkThread.start
+      zkThread.start()
     }
   }
 
-  def postStop = {
+  def postStop() = {
     try {
-      zkThread.interrupt
+      zkThread.interrupt()
     }
     catch{
-      case e:Exception => println(e)
+      case e: Exception => println(e)
     }
   }
 
   private[this] def me = InetAddress.getLocalHost
 
-  def myid(members:Seq[String]) = {
+  def myId(members:Seq[String]) = {
     members match {
       case Seq("localhost") => "1"
       case _ => (members.indexWhere(InetAddress.getByName(_) == me) + 1).toString

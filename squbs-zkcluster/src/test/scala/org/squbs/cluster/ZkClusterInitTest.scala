@@ -45,17 +45,17 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
   val par3 = ByteString("myPar3")
   
   implicit val log = logger
-  implicit def string2ByteArray(s: String) = s.toCharArray map (c => c.toByte)
-  implicit def ByteArray2String(array: Array[Byte]) = (for (i <- 0 until array.length) yield array(i).toChar).mkString
-  
-  override def beforeAll = {
+  implicit def string2ByteArray(s: String): Array[Byte] = s.toCharArray map (c => c.toByte)
+  implicit def ByteArray2String(array: Array[Byte]): String = array.map(_.toChar).mkString
+
+  override def beforeAll() = {
     // Don't need to start the cluster for now
     // We preset the data in Zookeeper instead.
     val zkClient = CuratorFrameworkFactory.newClient(
       zkConfig.getString("zkCluster.connectionString"),
       new ExponentialBackoffRetry(1000, 3))
-    zkClient.start
-    zkClient.blockUntilConnected
+    zkClient.start()
+    zkClient.blockUntilConnected()
     implicit val zkClientWithNS = zkClient.usingNamespace(zkConfig.getString("zkCluster.namespace"))
     guarantee("/leader", Some(Array[Byte]()), CreateMode.PERSISTENT)
     guarantee("/members", Some(Array[Byte]()), CreateMode.PERSISTENT)
@@ -70,13 +70,13 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
     guarantee(s"/segments/segment-0/${keyToPath(par3)}", Some("myPar3"), CreateMode.PERSISTENT)
     guarantee(s"/segments/segment-0/${keyToPath(par3)}/servants", None, CreateMode.PERSISTENT)
     guarantee(s"/segments/segment-0/${keyToPath(par3)}/$$size", Some(3), CreateMode.PERSISTENT)
-    zkClient.close
+    zkClient.close()
   }
   
-  override def afterAll = shutdownCluster
+  override def afterAll() = shutdownCluster()
   
   "ZkCluster" should "list the partitions" in {
-    startCluster
+    startCluster()
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkListPartitions(ext.zkAddress), self)
         println(expectMsgType[ZkPartitions](timeout))
@@ -86,15 +86,15 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
   "ZkCluster" should "load persisted partition information and sync across the cluster" in {
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(par1), self)
-        expectMsgType[ZkPartition](timeout).members.size should be (3)
+        expectMsgType[ZkPartition](timeout).members should have size 3
     }
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(par2), self)
-        expectMsgType[ZkPartition](timeout).members.size should be (3)
+        expectMsgType[ZkPartition](timeout).members should have size 3
     }
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(par3), self)
-        expectMsgType[ZkPartition](timeout).members.size should be (3)
+        expectMsgType[ZkPartition](timeout).members should have size 3
     }
   }
   

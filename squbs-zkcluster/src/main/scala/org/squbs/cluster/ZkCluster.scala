@@ -27,8 +27,7 @@ import org.apache.curator.framework.state.{ConnectionState, ConnectionStateListe
 import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.zookeeper.CreateMode
-
-import scala.collection.JavaConversions._
+import org.squbs.cluster.rebalance._
 
 case class ZkCluster(zkAddress: Address,
                      zkConnectionString: String,
@@ -51,12 +50,12 @@ case class ZkCluster(zkAddress: Address,
           system.eventStream.publish(ZkLost)
           zkClient = CuratorFrameworkFactory.newClient(zkConnectionString, retryPolicy)
           zkClient.getConnectionStateListenable.addListener(this)
-          zkClient.start
-          zkClient.blockUntilConnected
+          zkClient.start()
+          zkClient.blockUntilConnected()
         case ConnectionState.CONNECTED if !stopped.get =>
           logger.info("[zkCluster] connected send out the notification")
           system.eventStream.publish(ZkConnected)
-          initialize
+          initialize()
           zkClusterActor ! ZkClientUpdated(zkClientWithNs)
         case ConnectionState.SUSPENDED if !stopped.get =>
           logger.info("[zkCluster] connection suspended suspended")
@@ -71,8 +70,8 @@ case class ZkCluster(zkAddress: Address,
     }
   })
 
-  zkClient.start
-  zkClient.blockUntilConnected
+  zkClient.start()
+  zkClient.blockUntilConnected()
 
   //this is the zk client that we'll use, using the namespace reserved throughout
   implicit def zkClientWithNs = zkClient.usingNamespace(zkNamespace)
@@ -82,8 +81,8 @@ case class ZkCluster(zkAddress: Address,
   
   val remoteGuardian = system.actorOf(Props[RemoteGuardian], "remoteGuardian")
   
-  private[this] def initialize = {
-    //make sure /leader, /members, /segments znodes are available
+  private[this] def initialize() = {
+    //make sure /leader, /members, /segments zNodes are available
     guarantee("/leader", Some(Array[Byte]()), CreateMode.PERSISTENT)
     guarantee("/members", Some(Array[Byte]()), CreateMode.PERSISTENT)
     guarantee("/segments", Some(Array[Byte]()), CreateMode.PERSISTENT)
@@ -97,10 +96,10 @@ case class ZkCluster(zkAddress: Address,
   
   def addShutdownListener(listener: () => Unit) = shutdownListeners = listener :: shutdownListeners
   
-  private[cluster] def close = {
+  private[cluster] def close() = {
     stopped set true
     shutdownListeners foreach (_())
-    zkClient.close
+    zkClient.close()
   }
 }
 
@@ -108,10 +107,18 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with La
 
   override def lookup(): ExtensionId[_ <: Extension] = ZkCluster
 
+  val fallbackConfig = ConfigFactory.parseString(
+    """
+      |zkCluster {
+      |  segments = 128
+      |  spareLeader = false
+      |}
+    """.stripMargin
+  )
+
+
   override def createExtension(system: ExtendedActorSystem): ZkCluster = {
-    val configuration = system.settings.config withFallback(ConfigFactory.parseMap(Map(
-      "zkCluster.segments" -> Int.box(128),
-      "zkCluster.spareLeader" -> Boolean.box(false))))
+    val configuration = system.settings.config withFallback fallbackConfig
     val zkConnectionString = configuration.getString("zkCluster.connectionString")
     val zkNamespace = configuration.getString("zkCluster.namespace")
     val zkSegments = configuration.getInt("zkCluster.segments")

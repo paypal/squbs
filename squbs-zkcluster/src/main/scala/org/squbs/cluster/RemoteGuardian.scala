@@ -36,7 +36,7 @@ class RemoteGuardian extends Actor with ActorLogging {
     context.system.settings.config.getInt("zkCluster.suicide-threshold")
   } getOrElse 3
   
-  override def preStart = context.system.eventStream.subscribe(self, classOf[QuarantinedEvent])
+  override def preStart() = context.system.eventStream.subscribe(self, classOf[QuarantinedEvent])
   
   private[this] var quarantinedRemotes = Set.empty[Address]
   
@@ -49,7 +49,7 @@ class RemoteGuardian extends Actor with ActorLogging {
         case ZkMembership(members) => members -- quarantinedRemotes foreach {address =>
           context.actorSelection(self.path.toStringWithAddress(address)) ! Identify("ping")
         }
-        case QuarantinedEvent(remote, uid) => quarantinedRemotes += remote
+        case QuarantinedEvent(qRemote, _) => quarantinedRemotes += qRemote
           if (quarantinedRemotes.size >= suicideThreshold) {
             log.error("[RemoteGuardian] cannot reach {} any more. Performing a suicide ... ", quarantinedRemotes)
             zkCluster.addShutdownListener(context.system.shutdown)

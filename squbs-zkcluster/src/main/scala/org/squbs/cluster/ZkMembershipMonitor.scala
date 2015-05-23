@@ -47,7 +47,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
   private[this] var zkLeaderLatch: LeaderLatch = null
   private[this] val stopped = new AtomicBoolean(false)
   
-  def initialize = {
+  def initialize() = {
     //watch over leader changes
     val leader = zkClientWithNs.getData.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
@@ -55,7 +55,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
         if(!stopped.get) {
           event.getType match {
             case EventType.NodeCreated | EventType.NodeDataChanged =>
-              zkClusterActor ! ZkLeaderElected(zkClientWithNs.getData.usingWatcher(this).forPath("/leader"))
+              zkClusterActor ! ZkLeaderElected(zkClientWithNs.getData.usingWatcher(this).forPath("/leader").toAddress)
             case EventType.NodeDeleted =>
               self ! ZkAcquireLeadership
             case _ =>
@@ -106,22 +106,22 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
     }
 
     refresh(members)
-    if (leader != null) zkClusterActor ! ZkLeaderElected(leader)
+    if (leader != null) zkClusterActor ! ZkLeaderElected(leader.toAddress)
   }
   
-  override def postStop = {
+  override def postStop() = {
     //stop the leader latch to quit the competition
     stopped set true
-    if (zkLeaderLatch != null) zkLeaderLatch.close
+    if (zkLeaderLatch != null) zkLeaderLatch.close()
   }
   
   def receive: Actor.Receive = {
     case ZkClientUpdated(updated) =>
       // differentiate first connected to ZK or reconnect after connection lost
-      if (zkLeaderLatch != null) zkLeaderLatch.close
+      if (zkLeaderLatch != null) zkLeaderLatch.close()
       zkLeaderLatch = new LeaderLatch(zkClientWithNs, "/leadership")
-      zkLeaderLatch.start
-      initialize
+      zkLeaderLatch.start()
+      initialize()
     case ZkAcquireLeadership =>
       //repeatedly enroll in the leadership competition once the last attempt fails
       val oneSecond = 1.second

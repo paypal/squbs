@@ -40,7 +40,7 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
 
   def zkClusterExts = actorSystems map { sys => sys._1 -> ZkCluster(sys._2)}
 
-  def startCluster: Unit = {
+  def startCluster(): Unit = {
     Random.setSeed(System.nanoTime)
     actorSystems = (0 until clusterSize) map {num =>
       val sysName: String = num
@@ -58,14 +58,14 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
     println("*********************************** Cluster Started ***********************************")
   }
 
-  def shutdownCluster: Unit = {
+  def shutdownCluster(): Unit = {
     println("*********************************** Shutting Down the Cluster ***********************************")
     val exts = zkClusterExts
     val head = exts.head
     head._2.addShutdownListener(() => head._2.zkClientWithNs.delete.guaranteed.deletingChildrenIfNeeded.forPath(""))
     exts.tail.foreach(ext => killSystem(ext._1))
     killSystem(head._1)
-    system.shutdown
+    system.shutdown()
   }
 
   implicit protected def int2SystemName(num: Int): String = s"member-$num"

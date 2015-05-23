@@ -35,19 +35,20 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
     Thread.sleep(timeout.toMillis / 10)
   }
   
-  override def beforeAll = startCluster
+  override def beforeAll() = startCluster()
   
-  override def afterAll = shutdownCluster
+  override def afterAll() = shutdownCluster()
   
   "ZkCluster" should "respond to partition creation query whose size is larger than the cluster" in {
     val parKey = ByteString("myPar")
     zkClusterExts(pickASystemRandomly()) tell (ZkQueryPartition(parKey, expectedSize = Some(clusterSize + 1)), self)
     val members = expectMsgType[ZkPartition](timeout).members
-    members.map(_.system).toSet should be ((0 until clusterSize) map int2SystemName toSet)
+    members.map(_.system) should be ((0 until clusterSize) map int2SystemName toSet)
     Thread.sleep(timeout.toMillis / 10)
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(parKey), self)
-        expectMsgType[ZkPartition](timeout).members.map(_.system).toSet should be ((0 until clusterSize) map int2SystemName toSet)
+        expectMsgType[ZkPartition](timeout).
+          members.map(_.system) should be ((0 until clusterSize) map int2SystemName toSet)
     }
   }
   
@@ -55,11 +56,12 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
     val parKey = ByteString("myPar")
     zkClusterExts(pickASystemRandomly()) tell (ZkQueryPartition(parKey, expectedSize = Some(clusterSize)), self)
     val members = expectMsgType[ZkPartition](timeout).members
-    members.map(_.system).toSet should be ((0 until clusterSize) map int2SystemName toSet)
+    members.map(_.system) should be ((0 until clusterSize) map int2SystemName toSet)
     Thread.sleep(timeout.toMillis / 10)
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(parKey), self)
-        expectMsgType[ZkPartition](timeout).members.map(_.system).toSet should be ((0 until clusterSize) map int2SystemName toSet)
+        expectMsgType[ZkPartition](timeout).
+          members.map(_.system) should be ((0 until clusterSize) map int2SystemName toSet)
     }
   }
   
@@ -67,11 +69,12 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
     val parKey = ByteString("myPar")
     zkClusterExts(pickASystemRandomly()) tell (ZkQueryPartition(parKey, expectedSize = Some(clusterSize + 2)), self)
     val members = expectMsgType[ZkPartition](timeout).members
-    members.map(_.system).toSet should be ((0 until clusterSize) map int2SystemName toSet)
+    members.map(_.system) should be ((0 until clusterSize) map int2SystemName toSet)
     Thread.sleep(timeout.toMillis / 10)
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(parKey), self)
-        expectMsgType[ZkPartition](timeout).members.map(_.system).toSet should be ((0 until clusterSize) map int2SystemName toSet)
+        expectMsgType[ZkPartition](timeout).
+          members.map(_.system) should be ((0 until clusterSize) map int2SystemName toSet)
     }
   }
   
@@ -79,33 +82,34 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
     val parKey = ByteString("myPar")
     zkClusterExts(pickASystemRandomly()) tell (ZkQueryPartition(parKey, expectedSize = Some(clusterSize)), self)
     val members = expectMsgType[ZkPartition](timeout).members
-    members.map(_.system).toSet should be ((0 until clusterSize) map int2SystemName toSet)
+    members.map(_.system) should be ((0 until clusterSize) map int2SystemName toSet)
     Thread.sleep(timeout.toMillis / 10)
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(parKey), self)
-        expectMsgType[ZkPartition](timeout).members.map(_.system).toSet should be ((0 until clusterSize) map int2SystemName toSet)
+        expectMsgType[ZkPartition](timeout).
+          members.map(_.system) should be ((0 until clusterSize) map int2SystemName toSet)
     }
   }
   
   "ZkCluster" should "rebalance if the partition size decreased" in {
     val parKey = ByteString("myPar")
     zkClusterExts(pickASystemRandomly()) tell (ZkQueryPartition(parKey, expectedSize = Some(clusterSize - 1)), self)
-    expectMsgType[ZkPartition](timeout).members.size should be (clusterSize - 1)
+    expectMsgType[ZkPartition](timeout).members should have size (clusterSize - 1)
     Thread.sleep(timeout.toMillis / 10)
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(parKey), self)
-        expectMsgType[ZkPartition](timeout).members.size should be (clusterSize - 1)
+        expectMsgType[ZkPartition](timeout).members should have size (clusterSize - 1)
     }
   }
 
   "ZkCluster" should "rebalance if the partition size increased" in {
     val parKey = ByteString("myPar")
     zkClusterExts(pickASystemRandomly()) tell (ZkQueryPartition(parKey, expectedSize = Some(clusterSize)), self)
-    expectMsgType[ZkPartition](timeout).members.size should be (clusterSize)
+    expectMsgType[ZkPartition](timeout).members should have size clusterSize
     Thread.sleep(timeout.toMillis / 10)
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(parKey), self)
-        expectMsgType[ZkPartition](timeout).members.size should be (clusterSize)
+        expectMsgType[ZkPartition](timeout).members should have size clusterSize
     }
   }
   
@@ -123,8 +127,8 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(parKey), self)
         val members = expectMsgType[ZkPartition](timeout).members
-        members.size should be (clusterSize - 1)
-        members.map(_.system) should not contain(unluckyGuy)
+        members should have size (clusterSize - 1)
+        members.map(_.system) should not contain unluckyGuy
     }
   }
 
@@ -141,8 +145,8 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(parKey), self)
         val members = expectMsgType[ZkPartition](timeout).members
-        members.size should be (clusterSize - 2)
-        members.map(_.system) should not contain(leaderName)
+        members should have size (clusterSize - 2)
+        members.map(_.system) should not contain leaderName
     }
   }
 }
