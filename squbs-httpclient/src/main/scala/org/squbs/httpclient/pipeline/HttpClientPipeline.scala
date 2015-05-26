@@ -75,10 +75,10 @@ trait PipelineManager extends LazyLogging {
     val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
     import client.endpoint.config.settings.hostSettings.connectionSettings
     val clientConnectionSettings = reqSettings match {
-      case Configuration.defaultHostSettings => // TODO: Need to look at this match. Looks fishy.
+      case Configuration.defaultRequestSettings =>
         val reqTimeout = Configuration.defaultRequestSettings(client.endpoint.config, client.config).timeout
         connectionSettings.copy(requestTimeout = reqTimeout.duration)
-      case _                                 =>
+      case _                                    =>
         connectionSettings.copy(requestTimeout = reqSettings.timeout.duration)
     }
     val hostSettings = client.endpoint.config.settings.hostSettings.copy(connectionSettings = clientConnectionSettings)
