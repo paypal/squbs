@@ -73,10 +73,10 @@ trait PipelineManager{
     val isSecure = uri.scheme.toLowerCase.equals("https")
     val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
     val clientConnectionSettings = reqSettings match {
-      case Configuration.defaultHostSettings =>
+      case Configuration.defaultRequestSettings =>
         val reqTimeout = Configuration.defaultRequestSettings(client.endpoint.config, client.config).timeout
         client.endpoint.config.settings.hostSettings.connectionSettings.copy(requestTimeout = reqTimeout.duration)
-      case _                                 =>
+      case _                                    =>
         client.endpoint.config.settings.hostSettings.connectionSettings.copy(requestTimeout = reqSettings.timeout.duration)
     }
     val hostSettings = client.endpoint.config.settings.hostSettings.copy(connectionSettings = clientConnectionSettings)
