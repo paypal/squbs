@@ -25,9 +25,6 @@ import akka.actor.ActorContext
 
 import scala.beans.BeanProperty
 
-/**
- * Created by zhuwang on 11/4/14.
- */
 object JMX {
 
   val membersInfoName = "org.squbs.zkcluster:type=MembersInfo"

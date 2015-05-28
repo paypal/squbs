@@ -15,30 +15,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org
+package org.squbs.pattern
 
-import java.io.IOException
-import java.net.ServerSocket
+package object orchestration {
 
-/**
- * copied from twitter util for testing purpose only.
- */
-package object squbs {
-
-
-  /**
-   * A generator of random local [[java.net.InetSocketAddress]] objects with
-   * ephemeral ports.
-   */
-  def nextPort(): Int = {
-    val s = new ServerSocket(0)
-    try {
-      s.getLocalPort
-    } catch {
-      case e:Throwable =>
-          throw new Exception("Couldn't find an open port: %s".format(e.getMessage))
-    } finally {
-      s.close()
+  implicit class OrchestrationStructure[A](val f: OFuture[A]) extends AnyVal {
+    def >>[T](fn: A=>OFuture[T]): OFuture[T] = {
+      f flatMap fn
     }
   }
+
+[2..22#  implicit class OrchestrationStructure1[[#A1#]](val ft: ([#OFuture[A1]#])) extends AnyVal {
+    def >>[T](fn: ([#A1#])=>OFuture[T]): OFuture[T] = {
+      [#ft._1 flatMap (a1 =># ] fn([#a1#])[#)# ]
+    }
+  }#
+
+]
 }

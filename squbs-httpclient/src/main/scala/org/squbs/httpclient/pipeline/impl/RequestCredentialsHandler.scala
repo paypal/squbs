@@ -19,4 +19,5 @@ package org.squbs.httpclient.pipeline.impl
 
 import spray.http.{HttpHeaders, HttpCredentials}
 
-class RequestCredentialsHandler(credentials: HttpCredentials) extends RequestAddHeaderHandler(HttpHeaders.Authorization(credentials))
+class RequestCredentialsHandler(credentials: HttpCredentials)
+  extends RequestAddHeaderHandler(HttpHeaders.Authorization(credentials))

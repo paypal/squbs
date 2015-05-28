@@ -44,29 +44,29 @@ object DummyServiceMain extends App with DummyService {
 trait DummyService extends SimpleRoutingApp {
 
   val fullTeam = Team("Scala Team", List[Employee](
-    Employee(1, "Zhuchen", "Wang", 20, true),
-    Employee(2, "Roy", "Zhou", 25, true),
-    Employee(3, "Ping", "Zhao", 30, false),
-    Employee(4, "Dennis", "Kuang", 35, false)
+    Employee(1, "Zhuchen", "Wang", 20, male = true),
+    Employee(2, "Roy", "Zhou", 25, male = true),
+    Employee(3, "Ping", "Zhao", 30, male = false),
+    Employee(4, "Dennis", "Kuang", 35, male = false)
   ))
 
-  val newTeamMember = Employee(5, "Leon", "Ma", 35, true)
+  val newTeamMember = Employee(5, "Leon", "Ma", 35, male = true)
 
   val fullTeamJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Dennis\",\"lastName\":\"Kuang\",\"age\":35,\"male\":false}]}"
   val fullTeamWithDelJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false}]}"
   val fullTeamWithAddJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Dennis\",\"lastName\":\"Kuang\",\"age\":35,\"male\":false},{\"id\":5,\"firstName\":\"Leon\",\"lastName\":\"Ma\",\"age\":35,\"male\":true}]}"
 
   val fullTeamWithDel = Team("Scala Team", List[Employee](
-    Employee(1, "Zhuchen", "Wang", 20, true),
-    Employee(2, "Roy", "Zhou", 25, true),
-    Employee(3, "Ping", "Zhao", 30, false)
+    Employee(1, "Zhuchen", "Wang", 20, male = true),
+    Employee(2, "Roy", "Zhou", 25, male = true),
+    Employee(3, "Ping", "Zhao", 30, male = false)
   ))
 
   val fullTeamWithAdd = Team("Scala Team", List[Employee](
-    Employee(1, "Zhuchen", "Wang", 20, true),
-    Employee(2, "Roy", "Zhou", 25, true),
-    Employee(3, "Ping", "Zhao", 30, false),
-    Employee(4, "Dennis", "Kuang", 35, false),
+    Employee(1, "Zhuchen", "Wang", 20, male = true),
+    Employee(2, "Roy", "Zhou", 25, male = true),
+    Employee(3, "Ping", "Zhao", 30, male = false),
+    Employee(4, "Dennis", "Kuang", 35, male = false),
     newTeamMember
   ))
 
@@ -142,7 +142,7 @@ trait DummyService extends SimpleRoutingApp {
               complete {
                 val employee = fullTeam.members.find(_.id == id)
                 employee match {
-                  case Some(employee) => Team(fullTeam.description, fullTeam.members.filterNot(_ == employee))
+                  case Some(emp) => Team(fullTeam.description, fullTeam.members.filterNot(_ == emp))
                   case None => "cannot find the employee"
                 }
               }
@@ -156,5 +156,4 @@ trait DummyService extends SimpleRoutingApp {
         system.shutdown()
     }
   }
-
 }

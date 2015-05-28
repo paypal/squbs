@@ -51,15 +51,17 @@ class Json4sJacksonSpec extends FlatSpec with Matchers{
   "FullTypeHints Example (inheritance)" should "have correct behaviour of read/write" in {
     import Json4sJacksonFullTypeHintsProtocolExample._
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
-    val jsonString = """{"animals":[{"jsonClass":"org.squbs.httpclient.json.Dog","name":"lucky"},{"jsonClass":"org.squbs.httpclient.json.Fish","weight":3.4}]}"""
+    val jsonString = """{"animals":[{"jsonClass":"org.squbs.httpclient.json.Dog","name":"lucky"},""" +
+      """{"jsonClass":"org.squbs.httpclient.json.Fish","weight":3.4}]}"""
     write(animals) should be (jsonString)
     read[Animals](jsonString) should be (animals)
   }
 
-  "Custome Example (inheritance)" should "have correct behaviour of read/write" in {
+  "Custom Example (inheritance)" should "have correct behaviour of read/write" in {
     import Json4sJacksonCustomProtocolExample._
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
-    val jsonString = """{"animals":[{"$type$":"org.squbs.httpclient.json.Dog","name":"lucky"},{"$type$":"org.squbs.httpclient.json.Fish","weight":3.4}]}"""
+    val jsonString = """{"animals":[{"$type$":"org.squbs.httpclient.json.Dog","name":"lucky"},""" +
+      """{"$type$":"org.squbs.httpclient.json.Fish","weight":3.4}]}"""
     write(animals) should be (jsonString)
     read[Animals](jsonString) should be (animals)
   }

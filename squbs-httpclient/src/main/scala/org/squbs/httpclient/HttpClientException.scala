@@ -22,13 +22,13 @@ import org.squbs.httpclient.env._
 class HttpClientException(message: String) extends RuntimeException(message) with Serializable
 
 case class HttpClientMarkDownException(svcName: String, env: Environment = Default)
-  extends HttpClientException(s"HttpClient:($svcName,$env) has been markdown!")
+  extends HttpClientException(s"HttpClient:($svcName,$env) has been marked down!")
 
 case class HttpClientExistException(svcName: String, env: Environment = Default)
-  extends HttpClientException(s"HttpClient:($svcName,$env) has been registry!")
+  extends HttpClientException(s"HttpClient:($svcName,$env) has been registered!")
 
 case class HttpClientNotExistException(svcName: String, env: Environment = Default)
-  extends HttpClientException(s"HttpClient:($svcName,$env) hasn't been registry!")
+  extends HttpClientException(s"HttpClient:($svcName,$env) has not been registered!")
 
 case class HttpClientEndpointNotExistException(svcName: String, env: Environment = Default)
   extends HttpClientException(s"HttpClient:($svcName,$env) endpoint cannot be resolved!")

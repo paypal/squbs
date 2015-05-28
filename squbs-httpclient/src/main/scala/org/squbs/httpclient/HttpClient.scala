@@ -42,7 +42,7 @@ trait HttpClientPathBuilder {
 
   def buildRequestUri(path: String, paramMap: Map[String, Any] = Map.empty[String, Any]): String = {
     if (paramMap.isEmpty) {
-      Uri(path).toString
+      Uri(path).toString()
     } else {
       var trimPath = path
       if (path.length > 1 && path.charAt(path.length - 1) == '/'){
@@ -58,7 +58,7 @@ trait HttpClientPathBuilder {
         pair._2.isInstanceOf[Char]   ||
         pair._2.isInstanceOf[Boolean]
       }.map(pair => (pair._1, pair._2.toString))
-      Uri(trimPath).withQuery(filteredParamMap).toString
+      Uri(trimPath).withQuery(filteredParamMap).toString()
     }
   }
 }

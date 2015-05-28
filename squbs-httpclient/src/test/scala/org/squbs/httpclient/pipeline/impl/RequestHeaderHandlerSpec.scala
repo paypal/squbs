@@ -26,7 +26,7 @@ import spray.http.{HttpHeader, HttpRequest}
 
 class RequestHeaderHandlerSpec extends TestKit(ActorSystem("RequestHeaderHandlerSpecSys")) with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll {
 
-	override def afterAll {
+	override def afterAll() {
 		system.shutdown()
 	}
 
@@ -39,7 +39,7 @@ class RequestHeaderHandlerSpec extends TestKit(ActorSystem("RequestHeaderHandler
 		agentActor ! RequestContext(httpRequest)
 
 		val updateHttpRequest = expectMsgType[RequestContext].request
-		updateHttpRequest.headers.length shouldBe 1
+		updateHttpRequest.headers should have size 1
     updateHttpRequest.headers.head shouldBe httpHeader
   }
 
@@ -53,7 +53,7 @@ class RequestHeaderHandlerSpec extends TestKit(ActorSystem("RequestHeaderHandler
 
 		agentActor ! RequestContext(httpRequest)
 		val updateHttpRequest = expectMsgType[RequestContext].request
-    updateHttpRequest.headers.length shouldBe 1
+    updateHttpRequest.headers should have size 1
     updateHttpRequest.headers.head shouldBe httpHeader2
   }
 
@@ -67,7 +67,7 @@ class RequestHeaderHandlerSpec extends TestKit(ActorSystem("RequestHeaderHandler
 
 		agentActor ! RequestContext(httpRequest)
 		val updateHttpRequest = expectMsgType[RequestContext].request
-    updateHttpRequest.headers.length shouldBe 1
+    updateHttpRequest.headers should have size 1
     updateHttpRequest.headers.head shouldBe httpHeader2
   }
 }

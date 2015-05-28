@@ -1,3 +1,20 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.cluster
 
 import java.util.concurrent.atomic.AtomicBoolean
@@ -12,10 +29,6 @@ import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
 import scala.collection.JavaConversions._
 import scala.util.Try
-
-/**
- * Created by zhuwang on 1/26/15.
- */
 
 private[cluster] case class ZkRebalance(planedPartitions: Map[ByteString, ZkPartitionData])
 private[cluster] case class ZkPartitionsChanged(segment:String, partitions: Map[ByteString, ZkPartitionData])
@@ -43,13 +56,13 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
   private[this] var partitionWatchers = Map.empty[String, CuratorWatcher]
   private[this] val stopped = new AtomicBoolean(false)
   
-  def initialize = {
+  def initialize() = {
     segmentsToPartitions = zkClientWithNs.getChildren.forPath("/segments").map{
       segment => segment -> watchOverSegment(segment)
     }.toMap
   }
 
-  override def postStop = stopped set true
+  override def postStop() = stopped set true
   
   def watchOverSegment(segment:String) = {
     val segmentZkPath = s"/segments/${keyToPath(segment)}"
@@ -108,10 +121,10 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
     try {
       guarantee(servantsOfParZkPath(partitionKey), None, CreateMode.PERSISTENT)
       guarantee(sizeOfParZkPath(partitionKey), None, CreateMode.PERSISTENT)
-      val servants: Set[Address] =
-        zkClientWithNs.getData.usingWatcher(partitionWatcher).forPath(servantsOfParZkPath(partitionKey))
-      val expectedSize: Int =
-        zkClientWithNs.getData.usingWatcher(partitionWatcher).forPath(sizeOfParZkPath(partitionKey))
+      val servants =
+        zkClientWithNs.getData.usingWatcher(partitionWatcher).forPath(servantsOfParZkPath(partitionKey)).toAddressSet
+      val expectedSize =
+        zkClientWithNs.getData.usingWatcher(partitionWatcher).forPath(sizeOfParZkPath(partitionKey)).toInt
       Some(ZkPartitionData(partitionKey, servants, partitionSize(partitionKey), expectedSize))
     }
     catch {
@@ -123,12 +136,12 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
   def receive: Actor.Receive = {
     
     case ZkClientUpdated(updated) =>
-      initialize
+      initialize()
     
     case ZkSegmentChanged(segment, changes) =>
       log.debug("[partitions] segment change detected from zk: {}", segment -> (changes map (keyToPath(_))))
       val onBoardPartitions = changes.diff(segmentsToPartitions.getOrElse(segment, Set.empty))
-        .map(partitionKey => (partitionKey -> watchOverPartition(segment, partitionKey, partitionWatchers(segment))))
+        .map(partitionKey => partitionKey -> watchOverPartition(segment, partitionKey, partitionWatchers(segment)))
         .collect{case (key, Some(partition)) => key -> partition}.toMap
       val dropOffPartitions = segmentsToPartitions.getOrElse(segment, Set.empty) diff changes
       segmentsToPartitions += (segment -> changes)
@@ -186,7 +199,7 @@ object ZkPartitionsManager {
                                 segmentationLogic: SegmentationLogic): Set[Address] = {
     import segmentationLogic._
     try{
-      zkClient.getData.forPath(servantsOfParZkPath(partitionKey))
+      zkClient.getData.forPath(servantsOfParZkPath(partitionKey)).toAddressSet
     }
     catch{
       case _:Throwable => Set.empty
@@ -198,7 +211,7 @@ object ZkPartitionsManager {
                             segmentationLogic: SegmentationLogic): Int = {
     import segmentationLogic._
     try{
-      zkClient.getData.forPath(sizeOfParZkPath(partitionKey))
+      zkClient.getData.forPath(sizeOfParZkPath(partitionKey)).toInt
     }
     catch{
       case _:Throwable => 0

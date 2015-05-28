@@ -1,3 +1,20 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.cluster
 
 import java.net.ServerSocket
@@ -10,9 +27,6 @@ import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.util.Random
 
-/**
- * Created by zhuwang on 1/28/15.
- */
 import org.squbs.cluster.ZkClusterMultiActorSystemTestKit._
 
 abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
@@ -26,7 +40,7 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
 
   def zkClusterExts = actorSystems map { sys => sys._1 -> ZkCluster(sys._2)}
 
-  def startCluster: Unit = {
+  def startCluster(): Unit = {
     Random.setSeed(System.nanoTime)
     actorSystems = (0 until clusterSize) map {num =>
       val sysName: String = num
@@ -44,14 +58,14 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
     println("*********************************** Cluster Started ***********************************")
   }
 
-  def shutdownCluster: Unit = {
+  def shutdownCluster(): Unit = {
     println("*********************************** Shutting Down the Cluster ***********************************")
     val exts = zkClusterExts
     val head = exts.head
     head._2.addShutdownListener(() => head._2.zkClientWithNs.delete.guaranteed.deletingChildrenIfNeeded.forPath(""))
     exts.tail.foreach(ext => killSystem(ext._1))
     killSystem(head._1)
-    system.shutdown
+    system.shutdown()
   }
 
   implicit protected def int2SystemName(num: Int): String = s"member-$num"

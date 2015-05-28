@@ -21,24 +21,21 @@ import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 
 import akka.actor._
-import akka.event.slf4j.SLF4JLogging
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
-
 import com.typesafe.config.ConfigFactory
+import com.typesafe.scalalogging.LazyLogging
 import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
-
-
-
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
-import org.squbs.unicomplex.{Unicomplex, JMX, UnicomplexBoot}
+import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
+import spray.util.Utils
 
 import scala.concurrent.duration._
 
 
-object ActorMonitorSpec extends SLF4JLogging{
+object ActorMonitorSpec extends LazyLogging {
 
   val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
@@ -47,18 +44,18 @@ object ActorMonitorSpec extends SLF4JLogging{
    "TestCube"
   ) map (dummyJarsDir + "/" + _)
 
+  val (_, port) = Utils.temporaryServerHostnameAndPort()
 
-  import scala.collection.JavaConversions._
+  val config = ConfigFactory.parseString(
+    s"""
+       |squbs {
+       |  actorsystem-name = ActorMonitorSpec
+       |  ${JMX.prefixConfig} = true
+       |}
+       |default-listener.bind-port = $port
+    """.stripMargin)
 
-  val mapConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name"    -> "ActorMonitorSpec",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-port" -> org.squbs.nextPort.toString
-    )
-  )
-
-  val boot = UnicomplexBoot(mapConfig)
+  val boot = UnicomplexBoot(config)
     .createUsing {(name, config) => ActorSystem(name, config)}
     .scanComponents(classPaths)
     .initExtensions.start()
@@ -78,7 +75,7 @@ object ActorMonitorSpec extends SLF4JLogging{
       ManagementFactory.getPlatformMBeanServer.getAttribute(getObjName(actorName), att).asInstanceOf[String]
     } catch {
       case e: Exception =>
-        log.error(e.getMessage, e)
+        logger.error(e.getMessage, e)
         null
     }
 
@@ -88,7 +85,7 @@ object ActorMonitorSpec extends SLF4JLogging{
       ManagementFactory.getPlatformMBeanServer.getAttribute(o, att).asInstanceOf[Int]
     } catch {
       case e: Exception =>
-        log.error(e.getMessage, e)
+        logger.error(e.getMessage, e)
         null
     }
 
@@ -111,155 +108,146 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
   "ActorMonitor" must {
 
     "1.0) getMailBoxSize of unicomplex" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/unicomplex", "MailBoxSize")
-      assert(bean == "0")
+      ActorMonitorSpec.getActorMonitorBean("user/unicomplex", "MailBoxSize") should be ("0")
     }
 
     "1.1) getActor of TestCube/TestActor" in {
       awaitAssert (
-        ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Actor").startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"), max=5 second)
+        ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Actor").
+          startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"), max= 5 seconds)
     }
 
     "2.1) getClassName of TestCube/TestActor" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "ClassName")
-      assert(bean == "org.squbs.actormonitor.testcube.TestActor")
+      bean should be ("org.squbs.actormonitor.testcube.TestActor")
     }
 
     "2.2) getRouteConfig of TestCube/TestActor" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "RouteConfig")
-      assert(bean == "NoRouter")
+      ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "RouteConfig") should be ("NoRouter")
     }
 
     "2.3) getParent of TestCube/TestActor" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Parent")
-      assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube#"))
+      bean should startWith ("Actor[akka://ActorMonitorSpec/user/TestCube#")
     }
 
     "2.4) getChildren of TestCube/TestActor" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Children")
-      assert(bean == "")
+      ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Children") shouldBe empty
     }
 
     "2.5) getDispatcher of TestCube/TestActor" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Dispatcher")
-      assert(bean == "akka.actor.default-dispatcher")
+      bean should be ("akka.actor.default-dispatcher")
     }
 
     "2.6) getMailBoxSize of TestCube/TestActor" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "MailBoxSize")
-      assert(bean == "0")
+      ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "MailBoxSize") should be ("0")
     }
 
    "3.0) getActor of TestCube" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Actor")
-      assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube#"))
+      bean should startWith ("Actor[akka://ActorMonitorSpec/user/TestCube#")
     }
 
     "3.1) check ActorBean ClassName of TestCube" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "ClassName")
-      assert(bean == "org.squbs.unicomplex.CubeSupervisor")
+      bean should be ("org.squbs.unicomplex.CubeSupervisor")
     }
 
     "3.2) getRouteConfig of TestCube" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "RouteConfig")
-      assert(bean == "NoRouter")
+      ActorMonitorSpec.getActorMonitorBean("user/TestCube", "RouteConfig") should be ("NoRouter")
     }
 
     "3.3) getParent of TestCube" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Parent")
-      assert(bean == "Actor[akka://ActorMonitorSpec/user]")
+      ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Parent") should be ("Actor[akka://ActorMonitorSpec/user]")
     }
 
     "3.4) getChildren of TestCube" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Children")
-      assert(bean.contains("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#") && bean.contains("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"))
+      bean should include ("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#")
+      bean should include ("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#")
     }
 
     "3.5) getDispatcher of TestCube" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Dispatcher")
-      assert(bean == "akka.actor.default-dispatcher")
+      ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Dispatcher") should be ("akka.actor.default-dispatcher")
     }
 
     "3.6) getMailBoxSize of TestCube" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "MailBoxSize")
-      assert(bean == "0")
+      ActorMonitorSpec.getActorMonitorBean("user/TestCube", "MailBoxSize") should be ("0")
     }
 
     "4.0) getActor of TestCube/TestActorWithRoute" in {
       awaitAssert (
         ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Actor")
-          .startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"), max=6 second)
+          .startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"), max = 6 seconds)
     }
 
     "4.1) getClassName of TestCube/TestActorWithRoute" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "ClassName")
-      assert(bean == "akka.routing.RouterActor")
+      bean should be ("akka.routing.RouterActor")
     }
 
     "4.2) getRouteConfig of TestCube/TestActorWithRoute" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "RouteConfig")
-      assert(bean == "RoundRobinPool(1,Some(DefaultResizer(1,10,1,0.2,0.3,0.1,10)),OneForOneStrategy(-1,Duration.Inf,true),akka.actor.default-dispatcher,false)")
+      bean should be ("RoundRobinPool(1,Some(DefaultResizer(1,10,1,0.2,0.3,0.1,10))," +
+        "OneForOneStrategy(-1,Duration.Inf,true),akka.actor.default-dispatcher,false)")
     }
 
     "4.3) getParent of TestCube/TestActorWithRoute" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Parent")
-      assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube#"))
+      bean should startWith ("Actor[akka://ActorMonitorSpec/user/TestCube#")
     }
 
     "4.4) getChildren of TestCube/TestActorWithRoute" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Children")
-      assert(bean.contains("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#"))
+      bean should include ("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#")
     }
 
     "4.5) getDispatcher of TestCube/TestActorWithRoute" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Dispatcher")
-      assert(bean == "akka.actor.default-dispatcher")
+      bean should be ("akka.actor.default-dispatcher")
     }
 
     "4.6) getMailBoxSize of TestCube/TestActorWithRoute" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "MailBoxSize")
-      assert(bean == "0")
+      ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "MailBoxSize") should be ("0")
     }
 
-
     "5.0) getActor of TestCube/TestActorWithRoute/$a" in {
-      awaitAssert(ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Actor").startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#"),
-      max = 2 second)
+      awaitAssert(
+        ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Actor").
+          startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#"),
+        max = 2 seconds)
     }
 
     "5.1) getClassName of TestCube/TestActorWithRoute/$a" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "ClassName")
-      assert(bean == "org.squbs.actormonitor.testcube.TestActorWithRoute")
+      bean should be ("org.squbs.actormonitor.testcube.TestActorWithRoute")
     }
 
     "5.2) getRouteConfig of TestCube/TestActorWithRoute/$a" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "RouteConfig")
-      assert(bean == "NoRouter")
+      ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "RouteConfig") should be ("NoRouter")
     }
 
     "5.3) getParent of TestCube/TestActorWithRoute/$a" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Parent")
-      assert(bean.startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"))
+      bean should startWith ("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#")
     }
 
     "5.4) getChildren of TestCube/TestActorWithRoute/$a" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Children")
-      assert(bean == "")
+      ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Children") should be ("")
     }
 
     "5.5) getDispatcher of TestCube/TestActorWithRoute/$a" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Dispatcher")
-      assert(bean == "blocking-dispatcher")
+      bean should be ("blocking-dispatcher")
     }
 
     "5.6) getMailBoxSize of TestCube/TestActorWithRoute/$a" in {
-      val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "MailBoxSize")
-      assert(bean == "0")
+      ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "MailBoxSize") should be ("0")
     }
 
-
     "6.1) getBean after actor has been stop" in {
-      awaitAssert((ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") != null), max= 2 second)
+      awaitAssert(ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") != null, max = 2 seconds)
 
 
       import ActorMonitorSpec._
@@ -275,12 +263,10 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
     "7.0) ActorMonitorConfigBean" in {
       import ActorMonitorSpec._
-      assert(getActorMonitorConfigBean("MaxCount") == 500)
-      assert(getActorMonitorConfigBean("MaxChildrenDisplay") == 20)
+      getActorMonitorConfigBean("MaxCount") should be (500)
+      getActorMonitorConfigBean("MaxChildrenDisplay") should be (20)
     }
-
   }
-
 }
 
 

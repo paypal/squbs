@@ -24,13 +24,14 @@ import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import org.squbs.httpclient.{Settings, HttpClientTestKit, Configuration}
 import javax.net.ssl.SSLContext
 
-class SimpleServiceEndpointResolverSpec extends TestKit(ActorSystem("SimpleServiceEndpointResolverSpec")) with FlatSpecLike with HttpClientTestKit with Matchers with BeforeAndAfterAll{
+class SimpleServiceEndpointResolverSpec extends TestKit(ActorSystem("SimpleServiceEndpointResolverSpec"))
+    with FlatSpecLike with HttpClientTestKit with Matchers with BeforeAndAfterAll{
 
-  override def afterAll = {
-    clearHttpClient
+  override def afterAll() = {
+    clearHttpClient()
   }
 
-  "SimpleServiceEndpintResolver" should "have the correct behaviour" in {
+  "SimpleServiceEndpointResolver" should "have the correct behaviour" in {
     val simpleResolver = SimpleServiceEndpointResolver("simple", Map[String, Configuration](
       "http://localhost:8080" -> Configuration(),
       "https://localhost:8443" -> Configuration(settings = Settings(sslContext = Some(SSLContext.getDefault)))
@@ -38,7 +39,8 @@ class SimpleServiceEndpointResolverSpec extends TestKit(ActorSystem("SimpleServi
     simpleResolver.name should be ("simple")
     EndpointRegistry(system).register(simpleResolver)
     EndpointRegistry(system).resolve("http://localhost:8080") should be (Some(Endpoint("http://localhost:8080")))
-    EndpointRegistry(system).resolve("https://localhost:8443") should be (Some(Endpoint("https://localhost:8443", Configuration(settings = Settings(sslContext = Some(SSLContext.getDefault))))))
+    EndpointRegistry(system).resolve("https://localhost:8443") should be (Some(Endpoint("https://localhost:8443",
+      Configuration(settings = Settings(sslContext = Some(SSLContext.getDefault))))))
     EndpointRegistry(system).resolve("notExisting") should be (None)
     EndpointRegistry(system).unregister(simpleResolver.name)
   }

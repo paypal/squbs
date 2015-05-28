@@ -1,3 +1,20 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.cluster
 
 import java.util.concurrent.atomic.AtomicBoolean
@@ -11,10 +28,6 @@ import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
-
-/**
- * Created by zhuwang on 1/26/15.
- */
 
 private[cluster] case object ZkAcquireLeadership
 private[cluster] case class ZkLeaderElected(address: Option[Address])
@@ -34,7 +47,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
   private[this] var zkLeaderLatch: LeaderLatch = null
   private[this] val stopped = new AtomicBoolean(false)
   
-  def initialize = {
+  def initialize() = {
     //watch over leader changes
     val leader = zkClientWithNs.getData.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
@@ -42,7 +55,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
         if(!stopped.get) {
           event.getType match {
             case EventType.NodeCreated | EventType.NodeDataChanged =>
-              zkClusterActor ! ZkLeaderElected(zkClientWithNs.getData.usingWatcher(this).forPath("/leader"))
+              zkClusterActor ! ZkLeaderElected(zkClientWithNs.getData.usingWatcher(this).forPath("/leader").toAddress)
             case EventType.NodeDeleted =>
               self ! ZkAcquireLeadership
             case _ =>
@@ -93,22 +106,22 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
     }
 
     refresh(members)
-    if (leader != null) zkClusterActor ! ZkLeaderElected(leader)
+    if (leader != null) zkClusterActor ! ZkLeaderElected(leader.toAddress)
   }
   
-  override def postStop = {
+  override def postStop() = {
     //stop the leader latch to quit the competition
     stopped set true
-    if (zkLeaderLatch != null) zkLeaderLatch.close
+    if (zkLeaderLatch != null) zkLeaderLatch.close()
   }
   
   def receive: Actor.Receive = {
     case ZkClientUpdated(updated) =>
       // differentiate first connected to ZK or reconnect after connection lost
-      if (zkLeaderLatch != null) zkLeaderLatch.close
+      if (zkLeaderLatch != null) zkLeaderLatch.close()
       zkLeaderLatch = new LeaderLatch(zkClientWithNs, "/leadership")
-      zkLeaderLatch.start
-      initialize
+      zkLeaderLatch.start()
+      initialize()
     case ZkAcquireLeadership =>
       //repeatedly enroll in the leadership competition once the last attempt fails
       val oneSecond = 1.second

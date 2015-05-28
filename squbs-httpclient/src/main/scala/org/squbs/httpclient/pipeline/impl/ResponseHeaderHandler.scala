@@ -25,25 +25,22 @@ import spray.http.HttpHeader
 import scala.concurrent.{ExecutionContext, Future}
 
 class ResponseAddHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
-		Future {
-			reqCtx.copy(response = reqCtx.response + httpHeader)
-		}
-  }
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+	    Future[RequestContext] = Future {
+		reqCtx.copy(response = reqCtx.response + httpHeader)
+	}
 }
 
 class ResponseRemoveHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
-    Future {
-			reqCtx.copy(response = reqCtx.response - httpHeader)
-		}
-  }
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+	    Future[RequestContext] = Future {
+		reqCtx.copy(response = reqCtx.response - httpHeader)
+	}
 }
 
 class ResponseUpdateHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
-    Future {
-			reqCtx.copy(response = reqCtx.response - httpHeader + httpHeader)
-		}
+	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+      Future[RequestContext] = Future {
+    reqCtx.copy(response = reqCtx.response - httpHeader + httpHeader)
   }
 }

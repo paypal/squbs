@@ -21,8 +21,8 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
-import org.squbs._
 import org.squbs.lifecycle.GracefulStop
+import spray.util.Utils
 
 object MultipleUnicomplexTest {
 
@@ -35,34 +35,39 @@ object MultipleUnicomplexTest {
     "InitFailCube"
   ) map (dummyJarsDir + "/" + _)
 
-  import scala.collection.JavaConversions._
+  val (_, port1) = Utils.temporaryServerHostnameAndPort()
+  val (_, port2) = Utils.temporaryServerHostnameAndPort()
 
-  val mapConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name"    -> "MultipleUnicomplexTest1",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-port" -> nextPort.toString
-    )
+
+  val config = ConfigFactory.parseString(
+    s"""
+       |squbs {
+       |  actorsystem-name = MultipleUnicomplexTest1
+       |  ${JMX.prefixConfig} = true
+       |}
+       |default-listener.bind-port = $port1
+     """.stripMargin
   )
 
-  val mapConfig2 = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name"    -> "MultipleUnicomplexTest2",
-      "squbs." + JMX.prefixConfig -> Boolean.box(false),
-      "default-listener.bind-port" -> nextPort.toString
-    )
+  val config2 = ConfigFactory.parseString(
+    s"""
+       |squbs {
+       |  actorsystem-name = MultipleUnicomplexTest2
+       |  ${JMX.prefixConfig} = true
+       |}
+       |default-listener.bind-port = $port2
+     """.stripMargin
   )
 
-  val boot = UnicomplexBoot(mapConfig)
+  val boot = UnicomplexBoot(config)
     .createUsing {(name, config) => ActorSystem(name, config)}
     .scanComponents(classPaths)
     .initExtensions.start()
 
-  val boot2 = UnicomplexBoot(mapConfig2)
+  val boot2 = UnicomplexBoot(config2)
     .createUsing {(name, config) => ActorSystem(name, config)}
     .scanComponents(classPaths)
     .initExtensions.start()
-
 }
 
 class MultipleUnicomplexTest extends TestKit(MultipleUnicomplexTest.boot.actorSystem) with ImplicitSender
@@ -71,14 +76,14 @@ class MultipleUnicomplexTest extends TestKit(MultipleUnicomplexTest.boot.actorSy
   val sys1 = system
   val sys2 = MultipleUnicomplexTest.boot2.actorSystem
   
-  override def beforeAll {
+  override def beforeAll() {
     sys.addShutdownHook {
       Unicomplex(sys2).uniActor ! GracefulStop
       Unicomplex(sys1).uniActor ! GracefulStop
     }
   }
   
-  override def afterAll {
+  override def afterAll() {
     Unicomplex(sys2).uniActor ! GracefulStop
     Unicomplex(sys1).uniActor ! GracefulStop
   }
@@ -91,16 +96,16 @@ class MultipleUnicomplexTest extends TestKit(MultipleUnicomplexTest.boot.actorSy
         expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])], Seq[Extension])]
       systemState should be(Failed)
       val cubeAReport = cubes.values.find(_._1.info.name == "CubeA").flatMap(_._2)
-      cubeAReport should not be (None)
+      cubeAReport should not be None
       assert(cubeAReport.get.state == Active)
       val cubeBReport = cubes.values.find(_._1.info.name == "CubeB").flatMap(_._2)
-      cubeBReport should not be (None)
+      cubeBReport should not be None
       cubeBReport.get.state should be(Active)
       val initFailReport = cubes.values.find(_._1.info.name == "InitFail").flatMap(_._2)
-      initFailReport should not be (None)
+      initFailReport should not be None
       initFailReport.get.state should be(Failed)
       val initBlockReport = cubes.values.find(_._1.info.name == "InitBlock").flatMap(_._2)
-      initBlockReport should not be (None)
+      initBlockReport should not be None
       initBlockReport.get.state should be(Initializing)
 
       Unicomplex(sys2).uniActor ! ReportStatus
@@ -108,16 +113,16 @@ class MultipleUnicomplexTest extends TestKit(MultipleUnicomplexTest.boot.actorSy
         expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])], Seq[Extension])]
       systemState2 should be(Failed)
       val cubeAReport2 = cubes2.values.find(_._1.info.name == "CubeA").flatMap(_._2)
-      cubeAReport2 should not be (None)
+      cubeAReport2 should not be None
       assert(cubeAReport2.get.state == Active)
       val cubeBReport2 = cubes2.values.find(_._1.info.name == "CubeB").flatMap(_._2)
-      cubeBReport2 should not be (None)
+      cubeBReport2 should not be None
       cubeBReport2.get.state should be(Active)
       val initFailReport2 = cubes.values.find(_._1.info.name == "InitFail").flatMap(_._2)
-      initFailReport2 should not be (None)
+      initFailReport2 should not be None
       initFailReport2.get.state should be(Failed)
       val initBlockReport2 = cubes.values.find(_._1.info.name == "InitBlock").flatMap(_._2)
-      initBlockReport2 should not be (None)
+      initBlockReport2 should not be None
       initBlockReport2.get.state should be(Initializing)
     }
   }

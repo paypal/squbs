@@ -22,8 +22,6 @@ import java.io.File
 import akka.actor.ActorSystem
 import org.squbs.lifecycle.GracefulStop
 
-import scala.util.Try
-
 
 object Bootstrap extends App {
 
@@ -31,15 +29,8 @@ object Bootstrap extends App {
 
   // Note, the config directories may change during extension init. It is important to re-read the full config
   // for the actor system start.
-  // TODO need to solve the classpath issue
-  private val extJars = Option(System.getProperty("java.ext.dirs")) map (_.split(File.pathSeparator) flatMap {dir =>
-    Try(new File(dir).listFiles map (_.getAbsolutePath)) getOrElse Array.empty[String]
-  }) getOrElse Array.empty[String]
-  
-  println(s"Found ext jars: $extJars")
-  
   UnicomplexBoot { (name, config) => ActorSystem(name, config) }
-    .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator) ++ extJars)
+    .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
     .initExtensions
     .stopJVMOnExit
     .start()

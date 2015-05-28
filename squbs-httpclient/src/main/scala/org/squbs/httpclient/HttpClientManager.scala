@@ -125,7 +125,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
 
   private def verifyUri(client: HttpClient, uri: String) = {
     val baseUri = Uri(client.endpoint.uri)
-    val basePath = baseUri.path.toString
+    val basePath = baseUri.path.toString()
     var trimBasePath = basePath
     if (trimBasePath != "" && trimBasePath.charAt(0) == '/') {
       trimBasePath = trimBasePath.substring(1)
@@ -178,16 +178,16 @@ class HttpClientCallerActor(svcName: String, env: Environment) extends Actor wit
       httpMethod match {
         case HttpMethods.GET =>
           get(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome
+          context.unbecome()
         case HttpMethods.DELETE =>
           delete(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome
+          context.unbecome()
         case HttpMethods.HEAD =>
           head(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome
+          context.unbecome()
         case HttpMethods.OPTIONS =>
           options(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome
+          context.unbecome()
       }
   }
 
@@ -204,10 +204,10 @@ class HttpClientCallerActor(svcName: String, env: Environment) extends Actor wit
       httpMethod match {
         case HttpMethods.POST =>
           post[T](client, connector, uri, content, reqSettings).pipeTo(actorRef)
-          context.unbecome
+          context.unbecome()
         case HttpMethods.PUT =>
           put[T](client, connector, uri, content, reqSettings).pipeTo(actorRef)
-          context.unbecome
+          context.unbecome()
       }
   }
 }
@@ -284,7 +284,7 @@ class HttpClientManager extends Actor {
     case client @ Get(name, env) =>
       HttpClientManager(system).httpClientMap.get((name, env)) match {
         case Some(httpClient) =>
-          httpClient.fActorRef.pipeTo(sender)
+          httpClient.fActorRef.pipeTo(sender())
         case None    =>
           val httpClient = HttpClient(name, env)()
           HttpClientManager(system).httpClientMap.put((name, env), httpClient)
@@ -299,7 +299,7 @@ class HttpClientManager extends Actor {
           sender ! HttpClientNotExistException(name, env)
       }
     case DeleteAll =>
-      HttpClientManager(system).httpClientMap.clear
+      HttpClientManager(system).httpClientMap.clear()
       sender ! DeleteAllSuccess
     case GetAll =>
       sender ! HttpClientManager(system).httpClientMap

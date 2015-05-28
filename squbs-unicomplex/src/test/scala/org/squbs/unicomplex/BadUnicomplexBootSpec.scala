@@ -20,6 +20,7 @@ package org.squbs.unicomplex
 import java.lang.management.ManagementFactory
 import java.util.concurrent.TimeUnit
 import javax.management.ObjectName
+
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
@@ -27,6 +28,8 @@ import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.dummyextensions.DummyExtension
+import spray.util.Utils
+
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -42,15 +45,17 @@ object BadUnicomplexBootSpec {
     "NoMetaCube"
   ) map (dummyJarsDir + "/" + _)
 
-  import scala.collection.JavaConversions._
+  val (_, port) = Utils.temporaryServerHostnameAndPort()
 
-  val mapConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name" -> "BadUnicomplexBootSpec",
-      "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-port" -> org.squbs.nextPort.toString
-    )
-  ).withFallback(ConfigFactory.parseString(
+  val config = ConfigFactory.parseString(
+    s"""
+       |squbs {
+       |  actorsystem-name = BadUnicomplexBootSpec
+       |  ${JMX.prefixConfig} = true
+       |}
+       |default-listener.bind-port = $port
+    """.stripMargin
+  ) withFallback ConfigFactory.parseString(
     """
       |
       |akka.actor.deployment {
@@ -62,12 +67,12 @@ object BadUnicomplexBootSpec {
       |
       |
     """.stripMargin
-  ))
+  )
 
   //for coverage
   UnicomplexBoot { (name, config) => ActorSystem(name, config) }
 
-  val boot = UnicomplexBoot(mapConfig)
+  val boot = UnicomplexBoot(config)
     .createUsing {
     (name, config) => ActorSystem(name, config)
   }
@@ -78,7 +83,7 @@ object BadUnicomplexBootSpec {
 }
 
 class BadUnicomplexBootSpec extends TestKit(BadUnicomplexBootSpec.boot.actorSystem) with ImplicitSender
-with WordSpecLike with Matchers with BeforeAndAfterAll
+with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll
 with AsyncAssertions {
 
   import org.squbs.unicomplex.BadUnicomplexBootSpec._
@@ -134,27 +139,29 @@ with AsyncAssertions {
       val attr = mbeanServer.getAttribute(cubesObjName, "Cubes")
       attr shouldBe a[Array[javax.management.openmbean.CompositeData]]
       // 5 cubes registered above.
-      attr.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 1
+      val cAttr = attr.asInstanceOf[Array[_]]
+      forAll (cAttr) (_ shouldBe a [javax.management.openmbean.CompositeData])
+      attr.asInstanceOf[Array[_]] should have size 1
     }
 
-    "preInit, init and postInit all extenstions" in {
-      boot.extensions.size should be(2)
+    "preInit, init and postInit all extensions" in {
+      boot.extensions.size should be (2)
       //boot.extensions.forall(_.extLifecycle.get.isInstanceOf[DummyExtension]) should be(true)
-      boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be("CstartpreInitpostInit")
-      boot.extensions(1).extLifecycle should be(None)
+      boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("CstartpreInitpostInit")
+      boot.extensions(1).extLifecycle should be (None)
 
     }
 
     "start again" in {
       the[IllegalStateException] thrownBy {
         boot.start()
-      } should have message ("Unicomplex already started!")
+      } should have message "Unicomplex already started!"
 
 
     }
 
     "stopJVMOnExit" in {
-      boot.stopJVMOnExit.stopJVM should be(true)
+      boot.stopJVMOnExit shouldBe 'stopJVM
     }
 
     "externalConfigDir" in {

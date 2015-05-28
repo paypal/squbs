@@ -58,26 +58,27 @@ class EnvironmentRegistryExtension(system: ExtendedActorSystem) extends Extensio
     environmentResolvers.find(_.name == resolver.name) match {
       case None =>
         environmentResolvers.prepend(resolver)
-      case Some(resolver) =>
-        logger.warn("Env Resolver:" + resolver.name + " has been registry, skip current env resolver registry!")
+      case Some(oldResolver) =>
+        logger.warn("Env Resolver:" + oldResolver.name + " already registered, skipped!")
     }
   }
 
   def unregister(name: String) = {
     environmentResolvers.find(_.name == name) match {
       case None =>
-        logger.warn("Env Resolver:" + name + " cannot be found, skip current env resolver unregistry!")
+        logger.warn("Env Resolver:" + name + " cannot be found, skipping unregister!")
       case Some(resolver) =>
         environmentResolvers.remove(environmentResolvers.indexOf(resolver))
     }
   }
 
   def resolve(svcName: String): Environment = {
-    val resolvedEnv = environmentResolvers.foldLeft[Environment](Default){(env: Environment, resolver: EnvironmentResolver) =>
-      env match {
-        case Default => resolver.resolve(svcName)
-        case _       => env
-      }
+    val resolvedEnv = environmentResolvers.foldLeft[Environment](Default){
+      (env: Environment, resolver: EnvironmentResolver) =>
+        env match {
+          case Default => resolver.resolve(svcName)
+          case _       => env
+        }
     }
     logger.debug(s"Environment can be resolved by ($svcName), the environment is: " + resolvedEnv.lowercaseName)
     resolvedEnv

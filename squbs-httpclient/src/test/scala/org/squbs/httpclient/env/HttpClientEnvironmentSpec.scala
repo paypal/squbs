@@ -23,18 +23,19 @@ import org.squbs.httpclient.HttpClientTestKit
 import org.squbs.httpclient.dummy.{DummyProdEnvironmentResolver, DummyPriorityEnvironmentResolver}
 import org.scalatest._
 
-class HttpClientEnvironmentSpec extends TestKit(ActorSystem("HttpClientEnvironmentSpec")) with FlatSpecLike with HttpClientTestKit with Matchers with BeforeAndAfterEach{
+class HttpClientEnvironmentSpec extends TestKit(ActorSystem("HttpClientEnvironmentSpec")) with FlatSpecLike
+    with HttpClientTestKit with Matchers with BeforeAndAfterEach{
 
-  override def beforeEach = {
+  override def beforeEach() = {
     EnvironmentRegistry(system).register(DummyProdEnvironmentResolver)
   }
 
-  override def afterEach = {
-    clearHttpClient
+  override def afterEach() = {
+    clearHttpClient()
   }
 
   "EnvironmentResolverRegistry" should "contain DummyProdEnvironmentResolver" in {
-    EnvironmentRegistry(system).environmentResolvers.length should be (1)
+    EnvironmentRegistry(system).environmentResolvers should have size 1
     EnvironmentRegistry(system).environmentResolvers.head should be (DummyProdEnvironmentResolver)
   }
 

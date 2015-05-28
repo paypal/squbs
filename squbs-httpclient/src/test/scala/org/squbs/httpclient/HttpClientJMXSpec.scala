@@ -37,23 +37,24 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
 
   implicit val timeout: Timeout = 30 seconds
 
-  override def beforeEach = {
+  override def beforeEach() = {
     EndpointRegistry(system).register(new EndpointResolver {
-      override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = Some(Endpoint("http://www.ebay.com"))
+      override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] =
+        Some(Endpoint("http://www.ebay.com"))
       override def name: String = "hello"
     })
   }
 
-  override def afterEach = {
-    clearHttpClient
+  override def afterEach() = {
+    clearHttpClient()
   }
 
-  override def beforeAll = {
+  override def beforeAll() = {
     startDummyService(system)
   }
 
   override def afterAll() {
-    shutdownActorSystem
+    shutdownActorSystem()
   }
 
   "HttpClient with svcName" should "show up the correct value of HttpClientBean" in {
@@ -61,7 +62,7 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
     Await.result(httpClient1.readyFuture, timeout.duration)
     val httpClient2 = HttpClientFactory.get("hello2")
     Await.result(httpClient2.readyFuture, timeout.duration)
-    HttpClientBean(system).getHttpClientInfo.size should be (2)
+    HttpClientBean(system).getHttpClientInfo should have size 2
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello1") should be (HttpClientInfo("hello1", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello2") should be (HttpClientInfo("hello2", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
@@ -71,45 +72,45 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
     Await.result(httpClient1.readyFuture, timeout.duration)
     val httpClient2 = HttpClientFactory.get("hello4")
     Await.result(httpClient2.readyFuture, timeout.duration)
-    HttpClientBean(system).getHttpClientInfo.size should be (2)
+    HttpClientBean(system).getHttpClientInfo should have size 2
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello3") should be (HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler","org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler"))
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello4") should be (HttpClientInfo("hello4", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient with configuration" should "show up the correct value of HttpClientBean" in {
-    val httpClient = HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80))))
+    val httpClient = HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(hostSettings = HostConnectorSettings(10 ,10, 10, pipelining = true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80))))
     Await.result(httpClient.readyFuture, timeout.duration)
     val markDownStatus = HttpClientFactory.get("hello6").markDown
     Await.result(markDownStatus, timeout.duration)
-    HttpClientBean(system).getHttpClientInfo.size should be (2)
+    HttpClientBean(system).getHttpClientInfo should have size 2
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello5") should be (HttpClientInfo("hello5", "default", "http://www.ebay.com", "UP", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello6") should be (HttpClientInfo("hello6", "default", "http://www.ebay.com", "DOWN", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient Endpoint Resolver Info" should "show up the correct value of EndpointResolverBean" in {
     EndpointRegistry(system).register(DummyServiceEndpointResolver)
-    EndpointResolverBean(system).getHttpClientEndpointResolverInfo.size should be (2)
+    EndpointResolverBean(system).getHttpClientEndpointResolverInfo should have size 2
     EndpointResolverBean(system).getHttpClientEndpointResolverInfo.get(0).position should be (0)
     EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
     EndpointResolverBean(system).getHttpClientEndpointResolverInfo.get(0).resolver should be ("org.squbs.httpclient.dummy.DummyServiceEndpointResolver$")
   }
 
   "HttpClient Environment Resolver Info" should "show up the correct value of EnvironmentResolverBean" in {
-    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo.size should be (0)
+    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo should have size 0
     EnvironmentRegistry(system).register(DummyProdEnvironmentResolver)
-    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo.size should be (1)
+    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo should have size 1
     EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo.get(0).position should be (0)
     EnvironmentRegistry(system).resolve("abc") should be (PROD)
     EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo.get(0).resolver should be ("org.squbs.httpclient.dummy.DummyProdEnvironmentResolver$")
   }
 
   "HttpClient Circuit Breaker Info" should "show up some value of CircuitBreakerBean" in {
-    CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.size should be (0)
+    CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo should have size 0
     EndpointRegistry(system).register(DummyServiceEndpointResolver)
     val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/view")
     val result = Await.result(response, timeout.duration)
     result.status should be (StatusCodes.OK)
-    CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.size should be (1)
+    CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo should have size 1
     val cbInfo = CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.get(0)
     cbInfo.name should be ("DummyService")
     cbInfo.status should be ("Closed")

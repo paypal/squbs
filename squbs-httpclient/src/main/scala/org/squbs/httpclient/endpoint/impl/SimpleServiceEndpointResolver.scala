@@ -29,7 +29,7 @@ case class SimpleServiceEndpointResolver(resolverName: String, serviceMap: Map[S
     serviceMap.contains(svcName) match {
       case true =>
         val config = if (serviceMap.get(svcName) == Some(null)) Configuration()
-                     else serviceMap.get(svcName).getOrElse(Configuration())
+                     else serviceMap.getOrElse(svcName, Configuration())
         Some(Endpoint(svcName, config))
       case false =>
         None

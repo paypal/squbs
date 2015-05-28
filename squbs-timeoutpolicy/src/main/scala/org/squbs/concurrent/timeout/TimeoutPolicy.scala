@@ -20,7 +20,7 @@ package org.squbs.concurrent.timeout
 import java.lang.management.ManagementFactory
 
 import akka.agent.Agent
-import akka.event.slf4j.SLF4JLogging
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -33,7 +33,7 @@ import scala.concurrent.duration._
  * @param ec implicit parameter of ExecutionContext
  */
 abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, startOverCount: Int)
-                            (implicit ec: ExecutionContext) extends SLF4JLogging{
+                            (implicit ec: ExecutionContext) extends LazyLogging {
   require(initial != null, "initial duration is required")
   require(startOverCount > 0, "slidePoint should be positive")
 
@@ -66,7 +66,7 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
       val timeTaken = System.nanoTime() - start
       if (timeTaken < 0) {
         //TODO only happened if user forgot to call waitTime first, should we throw an exception out?
-        log.warn("call end without call waitTime first, ignore this transaction")
+        logger.warn("call end without call waitTime first, ignore this transaction")
       } else {
         val isTimeout = timeTaken > waitTime.toNanos
         TimeoutPolicy.this.update(timeTaken, isTimeout)
@@ -192,7 +192,7 @@ object PercentileTimeoutRule {
 /**
  * Factories for the Timeout policies.
  */
-object TimeoutPolicy extends SLF4JLogging {
+object TimeoutPolicy extends LazyLogging {
   val debugMode = ManagementFactory.getRuntimeMXBean.getInputArguments.toString.indexOf("jdwp") >= 0
 
   private val policyMap = new collection.mutable.WeakHashMap[String, TimeoutPolicy]
@@ -213,7 +213,7 @@ object TimeoutPolicy extends SLF4JLogging {
     require(initial != null, "initial is required")
     require(debug != null, "debug is required")
     if (debugMode) {
-      log.warn("running in debug mode, use the debug duration instead")
+      logger.warn("running in debug mode, use the debug duration instead")
       new FixedTimeoutPolicy(name, debug, startOverCount)
     } else {
       val policy = rule match {
