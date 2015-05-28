@@ -57,7 +57,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
   
   //begin the process of electing a leader
   private val zkMembershipMonitor =
-    context.actorOf(Props[ZkMembershipMonitor].withDispatcher("pinned-dispatcher"), "zkMembership")
+    context.actorOf(Props[ZkMembershipMonitor].withDispatcher("ZkMembershipMonitor-dispatcher"), "zkMembership")
   
   //begin the process of partitioning management
   private val zkPartitionsManager = context.actorOf(Props[ZkPartitionsManager], "zkPartitions")

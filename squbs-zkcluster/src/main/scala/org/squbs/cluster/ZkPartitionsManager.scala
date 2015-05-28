@@ -28,6 +28,7 @@ import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
 import scala.collection.JavaConversions._
+import scala.util.Try
 
 private[cluster] case class ZkRebalance(planedPartitions: Map[ByteString, ZkPartitionData])
 private[cluster] case class ZkPartitionsChanged(segment:String, partitions: Map[ByteString, ZkPartitionData])
@@ -188,7 +189,7 @@ object ZkPartitionsManager {
       val parKey = ByteString(pathToKey(key))
       val size = partitionSize(parKey)
       val members = partitionServants(parKey)
-      val props = zkClient.getData.forPath(partitionZkPath(parKey))
+      val props = Try(zkClient.getData.forPath(partitionZkPath(parKey))) getOrElse Array.empty
       parKey -> ZkPartitionData(parKey, members, size, props)
     } toMap
   }

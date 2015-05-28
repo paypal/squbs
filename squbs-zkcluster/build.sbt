@@ -1,9 +1,8 @@
 import de.johoop.findbugs4sbt.FindBugs._
-import Versions._
 
 name := "squbs-zkcluster"
 
-//val akkaV = "2.3.9"
+val akkaV = "2.3.10"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaV,
