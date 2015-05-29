@@ -90,6 +90,11 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
     }
   }
 
+  // API for java
+  def execute[T](f: TimedFn[T]): T = {
+    execute((t: FiniteDuration) => f.get(t))
+  }
+
   /**
    * Obtains a new TimeoutTransaction object.
    * @return The newly created TimeoutTransaction object associated with this TimeoutPolicy.
@@ -103,10 +108,20 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
    * @param newStartOverCount new start over count
    * @return statistics of before the reset operation
    */
-  def reset(initial: Option[FiniteDuration] = None, newStartOverCount: Int = 0): Metrics = {
+  def reset(initial: Option[FiniteDuration] = None, newStartOverCount: Int): Metrics = {
     val previous = agent()
-    agent send {_.reset(initial, newStartOverCount)}
+    agent send {
+      _.reset(initial, newStartOverCount)
+    }
     previous
+  }
+
+  def reset() {
+    reset(newStartOverCount = 0)
+  }
+
+  def reset(initial: Option[FiniteDuration]) {
+    reset(initial, 0)
   }
 
   /**
@@ -115,7 +130,9 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
    */
   def metrics = agent()
 
-  private[timeout] def update(time: Double, isTimeout: Boolean): Unit = agent send {_.update(time, isTimeout)}
+  private[timeout] def update(time: Double, isTimeout: Boolean): Unit = agent send {
+    _.update(time, isTimeout)
+  }
 }
 
 /**
@@ -125,8 +142,8 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
  * @param startOverCount max total transaction count for start over the statistics
  * @param ec implicit parameter of ExecutionContext
  */
-class FixedTimeoutPolicy(name: Option[String], initial: FiniteDuration, startOverCount:Int)(implicit ec:ExecutionContext)
-    extends TimeoutPolicy(name, initial, startOverCount) {
+class FixedTimeoutPolicy(name: Option[String], initial: FiniteDuration, startOverCount: Int)(implicit ec: ExecutionContext)
+  extends TimeoutPolicy(name, initial, startOverCount) {
   override def waitTime: FiniteDuration = metrics.initial
 
 }
@@ -140,9 +157,9 @@ class FixedTimeoutPolicy(name: Option[String], initial: FiniteDuration, startOve
  * @param sigmaUnits unit of sigma, must be positive
  * @param minSamples min sample for the policy take effect
  */
-class EmpiricalTimeoutPolicy(name: Option[String], initial: FiniteDuration, startOverCount:Int, sigmaUnits: Double,
-                             minSamples: Int)(implicit ec:ExecutionContext)
-    extends TimeoutPolicy(name, initial, startOverCount) {
+class EmpiricalTimeoutPolicy(name: Option[String], initial: FiniteDuration, startOverCount: Int, sigmaUnits: Double,
+                             minSamples: Int)(implicit ec: ExecutionContext)
+  extends TimeoutPolicy(name, initial, startOverCount) {
   require(minSamples > 0, "miniSamples should be positive")
   require(sigmaUnits > 0, "sigmaUnits should be positive")
 
@@ -184,8 +201,8 @@ object PercentileTimeoutRule {
    * @return The new SigmaTimeoutRule based on these percentiles.
    */
   def apply(percent: Double) = {
-    require(percent > 0 && percent < 1, "percent should be in (0-1)")
-    new SigmaTimeoutRule(MathUtil.erfInv(percent) * math.sqrt(2))
+    require(percent > 0 && percent < 100, "percent should be in (0-100)")
+    new SigmaTimeoutRule(MathUtil.erfInv(percent / 100) * math.sqrt(2))
   }
 }
 
@@ -227,15 +244,15 @@ object TimeoutPolicy extends LazyLogging {
     }
   }
 
-//  def create(initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
-//            debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)
-//           (implicit ec: ExecutionContext): TimeoutPolicy =
-//    apply(None, initial, rule, debug, minSamples, startOverCount)
-//
-//  def createWithName(name: String, initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
-//            debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)
-//           (implicit ec: ExecutionContext): TimeoutPolicy =
-//    apply(Option(name), initial, rule, debug, minSamples, startOverCount)
+  //  def create(initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
+  //            debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)
+  //           (implicit ec: ExecutionContext): TimeoutPolicy =
+  //    apply(None, initial, rule, debug, minSamples, startOverCount)
+  //
+  //  def createWithName(name: String, initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
+  //            debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)
+  //           (implicit ec: ExecutionContext): TimeoutPolicy =
+  //    apply(Option(name), initial, rule, debug, minSamples, startOverCount)
 
   /**
    *
@@ -255,4 +272,51 @@ object TimeoutPolicy extends LazyLogging {
 
 }
 
+// API for java
+object TimeoutPolicyBuilder {
+  def create(initial: FiniteDuration, ec: ExecutionContext) =
+    TimeoutPolicyBuilder(initial = initial)(ec)
+}
 
+case class TimeoutPolicyBuilder(name: Option[String] = None,
+                                initial: FiniteDuration,
+                                rule: TimeoutRule = FixedTimeoutRule,
+                                debug: FiniteDuration = 1000 seconds,
+                                minSamples: Int = 1000,
+                                startOverCount: Int = Int.MaxValue)
+                               (implicit ec: ExecutionContext) {
+
+  import TimeoutPolicyType._
+
+  def build: TimeoutPolicy = {
+    TimeoutPolicy(name, initial, rule, debug, minSamples, startOverCount)
+  }
+
+  def name(name: String): TimeoutPolicyBuilder = copy(name = Option(name))
+
+  def initial(initial: FiniteDuration): TimeoutPolicyBuilder = copy(initial = initial)
+
+  def rule(unit: Double, policyType: TimeoutPolicyType): TimeoutPolicyBuilder = {
+    policyType match {
+      case SIGMA =>
+        copy(rule = SigmaTimeoutRule(unit))
+      case PERCENTILE =>
+        copy(rule = PercentileTimeoutRule(unit))
+      case FIXED =>
+        copy(rule = FixedTimeoutRule)
+      case _ =>
+        throw new IllegalArgumentException("Invalid TimeoutPolicyType or unit")
+    }
+  }
+
+  def rule(policyType: TimeoutPolicyType): TimeoutPolicyBuilder = {
+    require(policyType == FIXED)
+    rule(0, policyType)
+  }
+
+  def debug(debug: FiniteDuration): TimeoutPolicyBuilder = copy(debug = debug)
+
+  def minSamples(minSamples: Int): TimeoutPolicyBuilder = copy(minSamples = minSamples)
+
+  def startOverCount(startOverCount: Int): TimeoutPolicyBuilder = copy(startOverCount = startOverCount)
+}
