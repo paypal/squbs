@@ -43,11 +43,13 @@ case class RegisterContext(listeners: Seq[String], webContext: String, actor: Ac
 
 object WebContextHeader {
   val name = classOf[WebContextHeader].getName
-
+  val lowerName = name.toLowerCase
   def apply(webCtx: String) = new WebContextHeader(webCtx)
 }
 
-class WebContextHeader(webCtx: String) extends RawHeader(WebContextHeader.name, webCtx)
+class WebContextHeader(webCtx: String) extends RawHeader(WebContextHeader.name, webCtx){
+  override val lowercaseName = WebContextHeader.lowerName
+}
 
 object LocalPortHeader {
   val name: String = classOf[LocalPortHeader].getName
