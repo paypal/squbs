@@ -41,22 +41,28 @@ import ConfigUtil._
 
 case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorWrapper)
 
+case class SqubsRawHeader(name: String, value: String, lowercaseName: String) extends HttpHeader {
+  def render[R <: Rendering](r: R): r.type = r ~~ name ~~ ':' ~~ ' ' ~~ value
+}
+
+
 object WebContextHeader {
   val name = classOf[WebContextHeader].getName
   val lowerName = name.toLowerCase
+
   def apply(webCtx: String) = new WebContextHeader(webCtx)
 }
 
-class WebContextHeader(webCtx: String) extends RawHeader(WebContextHeader.name, webCtx){
-  override val lowercaseName = WebContextHeader.lowerName
-}
+class WebContextHeader(webCtx: String) extends SqubsRawHeader(WebContextHeader.name, webCtx, WebContextHeader.lowerName)
 
 object LocalPortHeader {
   val name: String = classOf[LocalPortHeader].getName
+  val lowerName = name.toLowerCase
+
   def apply(port: Int) = new LocalPortHeader(port)
 }
 
-class LocalPortHeader(port: Int) extends RawHeader(LocalPortHeader.name, port.toString)
+class LocalPortHeader(port: Int) extends SqubsRawHeader(LocalPortHeader.name, port.toString, LocalPortHeader.lowerName)
 
 class ServiceRegistry(log: LoggingAdapter) {
 
