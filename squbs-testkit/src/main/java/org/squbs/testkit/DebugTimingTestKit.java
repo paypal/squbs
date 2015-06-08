@@ -15,28 +15,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.testkit
+package org.squbs.testkit;
 
-import akka.testkit.TestKitBase
+import akka.actor.ActorSystem;
+import akka.testkit.JavaTestKit;
+import scala.concurrent.duration.Duration;
 
-import scala.concurrent.duration._
+public class DebugTimingTestKit extends JavaTestKit{
+    public DebugTimingTestKit(ActorSystem system) {
+        super(system);
+    }
 
-object DebugTiming {
-
-  val debugMode = java.lang.management.ManagementFactory.getRuntimeMXBean.
-    getInputArguments.toString.indexOf("jdwp") >= 0
-
-  val debugTimeout = 10000.seconds
-
-  if (debugMode) println(
-    "\n##################\n" +
-      s"IMPORTANT: Detected system running in debug mode. Test timeouts overridden to $debugTimeout.\n" +
-      "##################\n\n")
-}
-
-trait DebugTiming extends TestKitBase {
-  import DebugTiming._
-  override def receiveOne(max: Duration): AnyRef =
-    if (debugMode) super.receiveOne(debugTimeout)
-    else super.receiveOne(max)
+    @Override
+    public Object receiveOne(Duration max) {
+        if (DebugTiming$.MODULE$.debugMode()) {
+            return super.receiveOne(DebugTiming$.MODULE$.debugTimeout());
+        } else {
+            return super.receiveOne(max);
+        }
+    }
 }

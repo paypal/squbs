@@ -20,13 +20,14 @@ package org.squbs.testkit.stress
 import java.lang.management.ManagementFactory
 import javax.management.{Attribute, ObjectName}
 
-import akka.actor.{ActorRef, Actor}
+import akka.actor.{Actor, ActorRef}
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.math._
 
 case class StartLoad(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration, submitFn: () => Unit)
+case class StartLoadJ(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration, submitFn: LoadFn)
 case class StartStats(startTimeNs: Long, warmUp: FiniteDuration, steady: FiniteDuration, interval: FiniteDuration)
 case object Ping
 case object GetStats
@@ -37,6 +38,10 @@ class LoadActor extends Actor {
 
   def receive = {
     case s: StartLoad => context.become(runLoad(sender(), s))
+    case sj: StartLoadJ => {
+      val startLoad = StartLoad(sj.startTimeNs, sj.tps, sj.warmUp, sj.steady, {() => sj.submitFn.submit()})
+      context.become(runLoad(sender(), startLoad))
+    }
   }
 
   def runLoad(requester: ActorRef, startMessage: StartLoad): Receive = {

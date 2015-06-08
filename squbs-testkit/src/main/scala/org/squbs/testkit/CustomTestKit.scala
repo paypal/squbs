@@ -17,17 +17,17 @@
  */
 package org.squbs.testkit
 
-import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{Suite, BeforeAndAfterAll}
-import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot}
 import akka.actor.ActorSystem
+import akka.testkit.{ImplicitSender, TestKit}
+import org.scalatest.{BeforeAndAfterAll, Suite}
 import org.squbs.lifecycle.GracefulStop
+import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot}
 
 object CustomTestKit {
 
   val actorSystems = collection.concurrent.TrieMap.empty[String, ActorSystem]
 
-  private def checkInit(actorSystem: ActorSystem) {
+  private[testkit] def checkInit(actorSystem: ActorSystem) {
     if (actorSystems.putIfAbsent(actorSystem.name, actorSystem) == None)
       sys.addShutdownHook {
         actorSystem.shutdown()

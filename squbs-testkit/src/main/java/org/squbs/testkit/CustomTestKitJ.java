@@ -15,28 +15,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.testkit
+package org.squbs.testkit;
 
-import akka.testkit.TestKitBase
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import org.squbs.lifecycle.GracefulStop$;
+import org.squbs.unicomplex.Unicomplex$;
+import org.squbs.unicomplex.UnicomplexBoot;
+import org.squbs.unicomplex.UnicomplexExtension;
 
-import scala.concurrent.duration._
+public class CustomTestKitJ {
+    static ActorSystem actorSystem;
 
-object DebugTiming {
+    public static void beforeClass(UnicomplexBoot boot) {
+        actorSystem = boot.actorSystem();
+        CustomTestKit$.MODULE$.checkInit(actorSystem);
+    }
 
-  val debugMode = java.lang.management.ManagementFactory.getRuntimeMXBean.
-    getInputArguments.toString.indexOf("jdwp") >= 0
-
-  val debugTimeout = 10000.seconds
-
-  if (debugMode) println(
-    "\n##################\n" +
-      s"IMPORTANT: Detected system running in debug mode. Test timeouts overridden to $debugTimeout.\n" +
-      "##################\n\n")
-}
-
-trait DebugTiming extends TestKitBase {
-  import DebugTiming._
-  override def receiveOne(max: Duration): AnyRef =
-    if (debugMode) super.receiveOne(debugTimeout)
-    else super.receiveOne(max)
+    public static void afterAll() {
+        UnicomplexExtension unicomplex = Unicomplex$.MODULE$.get(actorSystem);
+        unicomplex.uniActor().tell(GracefulStop$.MODULE$, ActorRef.noSender());
+    }
 }

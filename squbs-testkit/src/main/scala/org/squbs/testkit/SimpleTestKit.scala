@@ -17,12 +17,13 @@
  */
 package org.squbs.testkit
 
-import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{Suite, BeforeAndAfterAll}
-import org.squbs.unicomplex.UnicomplexBoot
-import akka.actor.ActorSystem
 import java.io.File
+
+import akka.actor.ActorSystem
+import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
+import org.scalatest.{BeforeAndAfterAll, Suite}
+import org.squbs.unicomplex.UnicomplexBoot
 
 object SimpleTestKit {
 
@@ -35,7 +36,7 @@ object SimpleTestKit {
               .initExtensions
   boot.start()
 
-  private def checkInit(actorSystem: ActorSystem) {
+  private[testkit] def checkInit(actorSystem: ActorSystem) {
       sys.addShutdownHook {
         actorSystem.shutdown()
       }
