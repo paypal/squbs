@@ -1,5 +1,7 @@
 package org.squbs.cluster
 
+import java.util.concurrent.TimeUnit
+
 import akka.testkit.ImplicitSender
 import akka.util.ByteString
 import com.typesafe.scalalogging.LazyLogging
@@ -40,7 +42,7 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
       zkConfig.getString("zkCluster.connectionString"),
       new ExponentialBackoffRetry(1000, 3))
     zkClient.start
-    zkClient.blockUntilConnected
+    zkClient.blockUntilConnected(30, TimeUnit.SECONDS) shouldBe true
     implicit val zkClientWithNS = zkClient.usingNamespace(zkConfig.getString("zkCluster.namespace"))
     guarantee("/leader", Some(Array[Byte]()), CreateMode.PERSISTENT)
     guarantee("/members", Some(Array[Byte]()), CreateMode.PERSISTENT)

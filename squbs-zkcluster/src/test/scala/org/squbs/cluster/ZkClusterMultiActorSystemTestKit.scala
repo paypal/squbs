@@ -146,8 +146,8 @@ object ZkClusterMultiActorSystemTestKit {
   lazy val zkConfig = ConfigFactory.parseString(
     s"""
       |zkCluster {
-      |  connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-596c.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
-      |  //connectionString = "127.0.0.1:2181"
+      |  //connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-596c.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
+      |  connectionString = "stage2p2084.qa.paypal.com:2181"
       |  namespace = "zkclustersystest-$now"
       |  segments = 1
       |}
