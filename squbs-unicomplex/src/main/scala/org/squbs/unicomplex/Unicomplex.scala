@@ -66,8 +66,6 @@ object Unicomplex extends ExtensionId[UnicomplexExtension] with ExtensionIdProvi
 
   override def createExtension(system: ExtendedActorSystem) = new UnicomplexExtension(system)
 
-  override def get(system: ActorSystem): UnicomplexExtension = super.get(system)
-
   type InitReport = Try[Option[String]]
 
   def config(implicit context: ActorContext): Config = apply(context.system).config

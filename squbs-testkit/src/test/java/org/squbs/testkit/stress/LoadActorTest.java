@@ -17,10 +17,7 @@
  */
 package org.squbs.testkit.stress;
 
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.PoisonPill$;
-import akka.actor.Props;
+import akka.actor.*;
 import akka.testkit.JavaTestKit;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -62,7 +59,7 @@ public class LoadActorTest{
                 System.out.println(r);
                 Assert.assertEquals("Pong", r);
             }
-            loadActor.tell(PoisonPill$.MODULE$, getRef());
+            loadActor.tell(PoisonPill.getInstance(), getRef());
         }};
     }
 }
