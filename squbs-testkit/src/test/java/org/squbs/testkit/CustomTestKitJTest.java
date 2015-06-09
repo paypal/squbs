@@ -21,6 +21,7 @@ import akka.actor.ActorRef;
 import akka.actor.Props;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -29,30 +30,31 @@ import org.squbs.unicomplex.UnicomplexBoot;
 import java.util.HashMap;
 import java.util.Map;
 
-public class CustomTestKitJTest extends CustomTestKitJ {
+public class CustomTestKitJTest {
 
-    static UnicomplexBoot boot;
+    static CustomTestKitJ customTestKitJ;
 
-    static {
+    @BeforeClass
+    public static void beforeAll() {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("squbs.actorsystem-name", "myTest");
         configMap.put("squbs.external-config-dir", "actorCalLogTestConfig");
 
         Config testConfig = ConfigFactory.parseMap(configMap);
-        boot = UnicomplexBoot.apply(testConfig).start();
+        UnicomplexBoot boot = UnicomplexBoot.apply(testConfig).start();
+        customTestKitJ = new CustomTestKitJ(boot);
     }
 
 
-
-    @BeforeClass
-    public static void beforeAll() {
-        beforeClass(boot);
+    @AfterClass
+    public static void afterAll() {
+        customTestKitJ.shutdown();
     }
 
     @Test
     public void testIt() {
-        new DebugTimingTestKit(actorSystem) {{
-            ActorRef testActor = actorSystem.actorOf(Props.create(TestActorJ.class));
+        new DebugTimingTestKit(customTestKitJ.getActorSystem()) {{
+            ActorRef testActor = getSystem().actorOf(Props.create(TestActorJ.class));
             testActor.tell("Ping", getRef());
             Object response = receiveOne(duration("10 seconds"));
             Assert.assertEquals("Pong", response);

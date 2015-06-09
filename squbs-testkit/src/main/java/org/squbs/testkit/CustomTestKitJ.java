@@ -25,15 +25,19 @@ import org.squbs.unicomplex.UnicomplexBoot;
 import org.squbs.unicomplex.UnicomplexExtension;
 
 public class CustomTestKitJ {
-    static ActorSystem actorSystem;
+    private ActorSystem actorSystem;
 
-    public static void beforeClass(UnicomplexBoot boot) {
-        actorSystem = boot.actorSystem();
+    public CustomTestKitJ(UnicomplexBoot boot) {
+        this.actorSystem = boot.actorSystem();
         CustomTestKit$.MODULE$.checkInit(actorSystem);
     }
 
-    public static void afterAll() {
-        UnicomplexExtension unicomplex = Unicomplex$.MODULE$.get(actorSystem);
-        unicomplex.uniActor().tell(GracefulStop$.MODULE$, ActorRef.noSender());
+
+    public void shutdown() {
+        Unicomplex$.MODULE$.get(actorSystem).uniActor().tell(GracefulStop$.MODULE$, ActorRef.noSender());
+    }
+
+    public ActorSystem getActorSystem() {
+        return actorSystem;
     }
 }

@@ -19,15 +19,23 @@ package org.squbs.testkit;
 
 import akka.actor.ActorRef;
 import akka.actor.Props;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class SimpleTestKitJTest extends SimpleTestKitJ {
+public class SimpleTestKitJTest {
+
+    static SimpleTestKitJ simpleTestKit = new SimpleTestKitJ();
+
+    @AfterClass
+    public static void afterAll() {
+        simpleTestKit.shutdown();
+    }
 
     @Test
     public void testIt() {
-        new DebugTimingTestKit(actorSystem){{
-            ActorRef testActor = actorSystem.actorOf(Props.create(TestActorJ.class));
+        new DebugTimingTestKit(simpleTestKit.getActorSystem()){{
+            ActorRef testActor = getSystem().actorOf(Props.create(TestActorJ.class));
             testActor.tell("Ping", getRef());
             Object response = receiveOne(duration("10 seconds"));
             Assert.assertEquals("Pong", response);

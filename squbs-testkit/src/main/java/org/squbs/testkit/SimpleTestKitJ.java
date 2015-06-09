@@ -18,13 +18,22 @@
 package org.squbs.testkit;
 
 import akka.actor.ActorSystem;
-import org.junit.BeforeClass;
+import akka.testkit.JavaTestKit;
 
 public class SimpleTestKitJ {
-    static ActorSystem actorSystem;
-    @BeforeClass
-    public static void beforeAll() {
-        actorSystem = SimpleTestKit$.MODULE$.boot().actorSystem();
+    private ActorSystem actorSystem;
+
+    public SimpleTestKitJ() {
+        this.actorSystem = SimpleTestKit.boot().actorSystem();
         SimpleTestKit$.MODULE$.checkInit(actorSystem);
+    }
+
+
+    public ActorSystem getActorSystem() {
+        return actorSystem;
+    }
+
+    public void shutdown() {
+        JavaTestKit.shutdownActorSystem(actorSystem);
     }
 }
