@@ -49,8 +49,9 @@ public class LoadActorTest{
             int ir = 500;
             long startTime = System.nanoTime();
             ActorRef loadActor = system.actorOf(Props.create(LoadActor.class));
-            loadActor.tell(new StartLoadJ(startTime, ir, warmUp, steady, () ->
-                    system.actorOf(Props.create(TestActorJ.class)).tell("Ping", getRef())), getRef());
+            loadActor.tell(new StartLoad(startTime, ir, warmUp, steady, () -> {
+                system.actorOf(Props.create(TestActorJ.class)).tell("Ping", getRef());
+            }), getRef());
 
             // just verify the LoadFn
             Object[] response = receiveN(10);

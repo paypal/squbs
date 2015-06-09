@@ -36,9 +36,9 @@ with ImplicitSender with FunSpecLike with Matchers {
     val loadActor = system.actorOf(Props[LoadActor])
     val statsActor = system.actorOf(Props[CPUStatsActor])
     val statLogger = system.actorOf(Props(classOf[StatLogger], startTime, warmUp, steady, loadActor, statsActor))
-    loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
+    loadActor ! StartLoad(startTime, ir, warmUp, steady) {
       system.actorOf(Props[LoadTestActor]) ! TestPing
-    })
+    }
     statsActor ! StartStats(startTime, warmUp, steady, 1 seconds)
 
     var responseCount = 0l
@@ -76,9 +76,9 @@ with ImplicitSender with FunSpecLike with Matchers {
     val loadActor = system.actorOf(Props[LoadActor])
     val statsActor = system.actorOf(Props[CPUStatsActor])
     val statLogger = system.actorOf(Props(classOf[StatLogger], startTime, warmUp, steady, loadActor, statsActor))
-    loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
+    loadActor ! StartLoad(startTime, ir, warmUp, steady) {
       system.actorOf(Props[LoadTestActor]) ! TestPing
-    })
+    }
     statsActor ! StartStats(startTime, warmUp, steady, 1 seconds)
 
     var responseCount = 0l

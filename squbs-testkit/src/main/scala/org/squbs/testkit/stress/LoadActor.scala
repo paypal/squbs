@@ -23,11 +23,16 @@ import javax.management.{Attribute, ObjectName}
 import akka.actor.{Actor, ActorRef}
 
 import scala.annotation.tailrec
+import scala.compat.java8.JProcedure0
 import scala.concurrent.duration._
 import scala.math._
 
-case class StartLoad(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration, submitFn: () => Unit)
-case class StartLoadJ(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration, submitFn: LoadFn)
+case class StartLoad(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration)(submitFn: => Unit) {
+  def this(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration, submitFn: JProcedure0) =
+    this(startTimeNs, tps, warmUp, steady){ submitFn() }
+  def submit() = submitFn
+}
+
 case class StartStats(startTimeNs: Long, warmUp: FiniteDuration, steady: FiniteDuration, interval: FiniteDuration)
 case object Ping
 case object GetStats
@@ -37,17 +42,13 @@ case class CPUStats(avg: Double, sDev: Double)
 class LoadActor extends Actor {
 
   def receive = {
-    case s: StartLoad => context.become(runLoad(sender(), s))
-    case sj: StartLoadJ => {
-      val startLoad = StartLoad(sj.startTimeNs, sj.tps, sj.warmUp, sj.steady, {() => sj.submitFn.submit()})
-      context.become(runLoad(sender(), startLoad))
-    }
+    case s: StartLoad =>
+      context.become(runLoad(sender(), s))
   }
 
   def runLoad(requester: ActorRef, startMessage: StartLoad): Receive = {
     import context.dispatcher
     import startMessage._
-
     var requestsSoFar = 0L
     var steadyRequests = 0L
     var lastWakeUp = Long.MinValue
@@ -78,7 +79,7 @@ class LoadActor extends Actor {
         @tailrec
         def invoke(times: Int) {
           if (times > 0) {
-            submitFn()
+            submit()
             invoke(times - 1)
           }
         }
