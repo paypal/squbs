@@ -15,29 +15,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.testkit;
+package org.squbs.testkit.japi
 
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import org.squbs.lifecycle.GracefulStop$;
-import org.squbs.unicomplex.Unicomplex$;
-import org.squbs.unicomplex.UnicomplexBoot;
-import org.squbs.unicomplex.UnicomplexExtension;
+import org.squbs.lifecycle.GracefulStop
+import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot}
+import org.squbs.testkit.{CustomTestKit => SCustomTestKit}
 
-public class CustomTestKitJ {
-    private ActorSystem actorSystem;
+class CustomTestKit(val boot: UnicomplexBoot) {
+  val actorSystem = boot.actorSystem
 
-    public CustomTestKitJ(UnicomplexBoot boot) {
-        this.actorSystem = boot.actorSystem();
-        CustomTestKit$.MODULE$.checkInit(actorSystem);
-    }
+  SCustomTestKit.checkInit(actorSystem)
 
-
-    public void shutdown() {
-        Unicomplex$.MODULE$.get(actorSystem).uniActor().tell(GracefulStop$.MODULE$, ActorRef.noSender());
-    }
-
-    public ActorSystem getActorSystem() {
-        return actorSystem;
-    }
+  def shutdown() = Unicomplex(actorSystem).uniActor ! GracefulStop
 }

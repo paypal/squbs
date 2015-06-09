@@ -15,23 +15,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.testkit;
+package org.squbs.testkit.japi;
 
-import akka.actor.ActorSystem;
-import akka.testkit.JavaTestKit;
-import scala.concurrent.duration.Duration;
+import akka.actor.ActorRef;
+import akka.actor.Props;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Test;
+import org.squbs.testkit.TestActorJ;
 
-public class DebugTimingTestKit extends JavaTestKit{
-    public DebugTimingTestKit(ActorSystem system) {
-        super(system);
+public class SimpleTestKitTest {
+
+    static SimpleTestKit simpleTestKit = new SimpleTestKit();
+
+    @AfterClass
+    public static void afterAll() {
+        simpleTestKit.shutdown();
     }
 
-    @Override
-    public Object receiveOne(Duration max) {
-        if (DebugTiming$.MODULE$.debugMode()) {
-            return super.receiveOne(DebugTiming$.MODULE$.debugTimeout());
-        } else {
-            return super.receiveOne(max);
-        }
+    @Test
+    public void testIt() {
+        new DebugTimingTestKit(simpleTestKit.actorSystem()){{
+            ActorRef testActor = getSystem().actorOf(Props.create(TestActorJ.class));
+            testActor.tell("Ping", getRef());
+            Object response = receiveOne(duration("10 seconds"));
+            Assert.assertEquals("Pong", response);
+        }};
     }
 }

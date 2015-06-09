@@ -15,30 +15,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.testkit;
+package org.squbs.testkit.japi
 
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Test;
+import akka.testkit.JavaTestKit
+import org.squbs.testkit.{SimpleTestKit => SSimpleTestKit}
 
-public class SimpleTestKitJTest {
+class SimpleTestKit {
+  val actorSystem = SSimpleTestKit.boot.actorSystem
 
-    static SimpleTestKitJ simpleTestKit = new SimpleTestKitJ();
+  SSimpleTestKit.checkInit(actorSystem)
 
-    @AfterClass
-    public static void afterAll() {
-        simpleTestKit.shutdown();
-    }
-
-    @Test
-    public void testIt() {
-        new DebugTimingTestKit(simpleTestKit.getActorSystem()){{
-            ActorRef testActor = getSystem().actorOf(Props.create(TestActorJ.class));
-            testActor.tell("Ping", getRef());
-            Object response = receiveOne(duration("10 seconds"));
-            Assert.assertEquals("Pong", response);
-        }};
-    }
+  def shutdown() = JavaTestKit.shutdownActorSystem(actorSystem)
 }

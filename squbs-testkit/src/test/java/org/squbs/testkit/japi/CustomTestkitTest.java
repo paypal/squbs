@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.testkit;
+package org.squbs.testkit.japi;
 
 import akka.actor.ActorRef;
 import akka.actor.Props;
@@ -25,14 +25,14 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.squbs.testkit.TestActorJ;
 import org.squbs.unicomplex.UnicomplexBoot;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class CustomTestKitJTest {
-
-    static CustomTestKitJ customTestKitJ;
+public class CustomTestkitTest {
+    static CustomTestKit customTestKit;
 
     @BeforeClass
     public static void beforeAll() {
@@ -42,18 +42,18 @@ public class CustomTestKitJTest {
 
         Config testConfig = ConfigFactory.parseMap(configMap);
         UnicomplexBoot boot = UnicomplexBoot.apply(testConfig).start();
-        customTestKitJ = new CustomTestKitJ(boot);
+        customTestKit = new CustomTestKit(boot);
     }
 
 
     @AfterClass
     public static void afterAll() {
-        customTestKitJ.shutdown();
+        customTestKit.shutdown();
     }
 
     @Test
     public void testIt() {
-        new DebugTimingTestKit(customTestKitJ.getActorSystem()) {{
+        new DebugTimingTestKit(customTestKit.actorSystem()) {{
             ActorRef testActor = getSystem().actorOf(Props.create(TestActorJ.class));
             testActor.tell("Ping", getRef());
             Object response = receiveOne(duration("10 seconds"));

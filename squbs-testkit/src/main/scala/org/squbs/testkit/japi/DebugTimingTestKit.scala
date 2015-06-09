@@ -15,25 +15,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.testkit;
+package org.squbs.testkit.japi
 
-import akka.actor.ActorSystem;
-import akka.testkit.JavaTestKit;
+import akka.actor.ActorSystem
+import akka.testkit.JavaTestKit
+import org.squbs.testkit.DebugTiming
 
-public class SimpleTestKitJ {
-    private ActorSystem actorSystem;
+import scala.concurrent.duration.Duration
 
-    public SimpleTestKitJ() {
-        this.actorSystem = SimpleTestKit.boot().actorSystem();
-        SimpleTestKit$.MODULE$.checkInit(actorSystem);
-    }
-
-
-    public ActorSystem getActorSystem() {
-        return actorSystem;
-    }
-
-    public void shutdown() {
-        JavaTestKit.shutdownActorSystem(actorSystem);
-    }
+class DebugTimingTestKit(actorSystem: ActorSystem) extends JavaTestKit(actorSystem) {
+  override def receiveOne(max: Duration): AnyRef =
+    if (DebugTiming.debugMode) super.receiveOne(DebugTiming.debugTimeout)
+    else super.receiveOne(max)
 }
