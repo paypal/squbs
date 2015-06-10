@@ -30,7 +30,7 @@ import scala.math._
 case class StartLoad(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration)(submitFn: => Unit) {
   def this(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration, submitFn: JProcedure0) =
     this(startTimeNs, tps, warmUp, steady){ submitFn() }
-  def submit() = submitFn
+  private[stress] def invokeOnce() = submitFn
 }
 
 case class StartStats(startTimeNs: Long, warmUp: FiniteDuration, steady: FiniteDuration, interval: FiniteDuration)
@@ -79,7 +79,7 @@ class LoadActor extends Actor {
         @tailrec
         def invoke(times: Int) {
           if (times > 0) {
-            submit()
+            invokeOnce()
             invoke(times - 1)
           }
         }

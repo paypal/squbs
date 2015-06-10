@@ -21,7 +21,7 @@ import akka.testkit.JavaTestKit
 import org.squbs.testkit.{SimpleTestKit => SSimpleTestKit}
 
 class SimpleTestKit {
-  val actorSystem = SSimpleTestKit.boot.actorSystem
+  val actorSystem = SSimpleTestKit.boot.start().actorSystem
 
   SSimpleTestKit.checkInit(actorSystem)
 
