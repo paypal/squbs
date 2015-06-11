@@ -20,13 +20,19 @@ package org.squbs.testkit.stress
 import java.lang.management.ManagementFactory
 import javax.management.{Attribute, ObjectName}
 
-import akka.actor.{ActorRef, Actor}
+import akka.actor.{Actor, ActorRef}
 
 import scala.annotation.tailrec
+import scala.compat.java8.JProcedure0
 import scala.concurrent.duration._
 import scala.math._
 
-case class StartLoad(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration, submitFn: () => Unit)
+case class StartLoad(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration)(submitFn: => Unit) {
+  def this(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration, submitFn: JProcedure0) =
+    this(startTimeNs, tps, warmUp, steady){ submitFn() }
+  private[stress] def invokeOnce() = submitFn
+}
+
 case class StartStats(startTimeNs: Long, warmUp: FiniteDuration, steady: FiniteDuration, interval: FiniteDuration)
 case object Ping
 case object GetStats
@@ -36,13 +42,13 @@ case class CPUStats(avg: Double, sDev: Double)
 class LoadActor extends Actor {
 
   def receive = {
-    case s: StartLoad => context.become(runLoad(sender(), s))
+    case s: StartLoad =>
+      context.become(runLoad(sender(), s))
   }
 
   def runLoad(requester: ActorRef, startMessage: StartLoad): Receive = {
     import context.dispatcher
     import startMessage._
-
     var requestsSoFar = 0L
     var steadyRequests = 0L
     var lastWakeUp = Long.MinValue
@@ -73,7 +79,7 @@ class LoadActor extends Actor {
         @tailrec
         def invoke(times: Int) {
           if (times > 0) {
-            submitFn()
+            invokeOnce()
             invoke(times - 1)
           }
         }
