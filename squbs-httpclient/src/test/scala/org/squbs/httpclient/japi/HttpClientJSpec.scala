@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.squbs.httpclient
+package org.squbs.httpclient.japi
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
@@ -24,11 +24,12 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
+import org.squbs.httpclient.{HttpClientJ, HttpClientTestKit, RequestSettings}
 import spray.http.HttpHeaders.RawHeader
-import spray.http.{HttpHeader, HttpResponse, StatusCodes}
+import spray.http.{HttpHeader, StatusCodes}
 
+import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
 import scala.util.Success
 
 class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatSpecLike

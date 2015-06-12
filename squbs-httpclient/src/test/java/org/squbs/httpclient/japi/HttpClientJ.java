@@ -1,6 +1,9 @@
-package org.squbs.httpclient;
+package org.squbs.httpclient.japi;
 
 import akka.actor.ActorSystem;
+import org.squbs.httpclient.HttpClient;
+import org.squbs.httpclient.HttpClientFactory;
+import org.squbs.httpclient.RequestSettings;
 import scala.Option;
 import scala.concurrent.Future;
 import spray.http.HttpResponse;
