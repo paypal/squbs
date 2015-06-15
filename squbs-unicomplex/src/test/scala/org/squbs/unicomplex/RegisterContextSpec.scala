@@ -164,5 +164,9 @@ class RegisterContextSpec extends FlatSpecLike with Matchers {
     finding should not be (None)
     finding.get._2 should be("new")
 
+    finding = result find {
+      entry => pathMatch(Path("abcd/a"), entry._1) // abcd should not match either abc/def nor abc
+    }
+    finding.get._2 should be("empty")
   }
 }
