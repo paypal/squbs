@@ -26,6 +26,7 @@ import org.squbs.testkit.SlowTest
 import org.squbs.testkit.stress._
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 /**
  * Unlike OrchestratorStressTest which stresses all orchestration functions to the max allows no concurrency,

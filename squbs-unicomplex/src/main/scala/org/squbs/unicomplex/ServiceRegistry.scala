@@ -38,6 +38,7 @@ import spray.routing._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.postfixOps
 import scala.util.{Failure, Success}
 import ConfigUtil._
 
@@ -49,7 +50,7 @@ object RegisterContext {
    * the input path should be normalized, i.e: remove the leading slash
    */
   private[unicomplex] def pathMatch(path: Path, target: Path): Boolean = {
-    if((path.length < target.length)) false
+    if(path.length < target.length) false
     else {
       def innerMatch(path: Path, target:Path):Boolean = {
         if (target.isEmpty) true
@@ -65,7 +66,7 @@ object RegisterContext {
   private[unicomplex] def merge[T](oldRegistry: Seq[(Path, T)], webContext: String, servant: T,
                                    overrideWarning: => Unit = {}): Seq[(Path, T)] = {
     val newMember = (Path(webContext), servant)
-    if (oldRegistry.size == 0) Seq(newMember)
+    if (oldRegistry.isEmpty) Seq(newMember)
     else {
       val buffer = ListBuffer[(Path, T)]()
       var added = false
