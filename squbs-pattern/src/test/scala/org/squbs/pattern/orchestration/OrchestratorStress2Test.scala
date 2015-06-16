@@ -45,9 +45,9 @@ with ImplicitSender with FunSpecLike with Matchers {
 
     val loadActor = system.actorOf(Props[LoadActor])
     val statsActor = system.actorOf(Props[CPUStatsActor])
-    loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
+    loadActor ! StartLoad(startTime, ir, warmUp, steady){
       system.actorOf(Props[SimpleForComprehension2Actor]) ! OrchestrationRequest("SyncLoadTest")
-    })
+    }
     statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
 
     var sumFinishTime = 0l
@@ -86,9 +86,9 @@ with ImplicitSender with FunSpecLike with Matchers {
 
     val loadActor = system.actorOf(Props[LoadActor])
     val statsActor = system.actorOf(Props[CPUStatsActor])
-    loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
+    loadActor ! StartLoad(startTime, ir, warmUp, steady){
       system.actorOf(Props[Test2Orchestrator]) ! OrchestrationRequest("LoadTest")
-    })
+    }
     statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
 
     var sumSubmitTime = 0l
@@ -137,9 +137,9 @@ with ImplicitSender with FunSpecLike with Matchers {
 
     val loadActor = system.actorOf(Props[LoadActor])
     val statsActor = system.actorOf(Props[CPUStatsActor])
-    loadActor ! StartLoad(startTime, ir, warmUp, steady, { () =>
+    loadActor ! StartLoad(startTime, ir, warmUp, steady){
       system.actorOf(Props[TestAsk2Orchestrator]) ! OrchestrationRequest("LoadTest")
-    })
+    }
     statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
 
     var sumSubmitTime = 0l
