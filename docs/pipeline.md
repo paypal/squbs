@@ -71,7 +71,7 @@ trait ProcessorFactory {
 
 Proxy Processor is used to describe the behaviour of the proxy, like how to handle HttpRequest, HttpResponse, chunked request/chunked response, etc. It provides some method hooks which allows user to define his own biz logic.
 
-You can check the [Processor definition](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala#L31)
+You can check the [Processor definition](https://github.paypal.com/Squbs/squbs/blob/master/squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala#L31)
 
 This Processor will be used along with the proxy actor (Here, it's PipelineProcessorActor) to perform the proxy behaviour:
 
@@ -154,7 +154,7 @@ handler4 {
 }
 
 ```
-Or you might check [sample config with description](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/resources/reference.conf#L23)
+Or you might check [sample config with description](https://github.paypal.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/resources/reference.conf#L23)
 
 In above config:
 
@@ -164,11 +164,11 @@ In above config:
 * handlerX.type : must be pipeline.handler
 * handlerX.factory : name of a class that implements HandlerFactory
 
-Again, if you want to have customized logic for other phase like preInbound or postOutbound, you can extends [SimpleProcessor](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L30) and create your own factory just like [SimpleProcessorFactory](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L46)
+Again, if you want to have customized logic for other phase like preInbound or postOutbound, you can extends [SimpleProcessor](https://github.paypal.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L30) and create your own factory just like [SimpleProcessorFactory](https://github.paypal.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L46)
 
 ####  Default proxy
 
-Squbs has a [default proxy](https://github.corp.ebay.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/resources/reference.conf#L23) defined in squbs-unicomplex
+Squbs has a [default proxy](https://github.paypal.com/Squbs/squbs/blob/master/squbs-unicomplex/src/main/resources/reference.conf#L23) defined in squbs-unicomplex
 
 So in your appliation, you can simply define your proxy config like this:
 ```
