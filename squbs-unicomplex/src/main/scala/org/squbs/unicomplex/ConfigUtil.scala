@@ -17,12 +17,11 @@
  */
 package org.squbs.unicomplex
 
-import java.net.NetworkInterface
+import java.net.{Inet4Address, NetworkInterface}
 
 import com.typesafe.config.{Config, ConfigException}
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 import scala.util.matching.Regex
@@ -96,23 +95,10 @@ object ConfigUtil {
   }
 
   def ipv4 = {
-    val addresses = mutable.Set.empty[String]
-    val enum = NetworkInterface.getNetworkInterfaces
-    while (enum.hasMoreElements) {
-      val addrs = enum.nextElement.getInetAddresses
-      while (addrs.hasMoreElements) {
-        addresses += addrs.nextElement.getHostAddress
-      }
+    val addresses = NetworkInterface.getNetworkInterfaces flatMap (_.getInetAddresses) filter { a =>
+      a.isInstanceOf[Inet4Address] && !a.isLoopbackAddress
     }
-
-    val pattern = "\\d+\\.\\d+\\.\\d+\\.\\d+".r
-    val matched = addresses.filter({
-      case pattern() => true
-      case _ => false
-    })
-      .filter(_ != "127.0.0.1")
-
-    matched.head
+    addresses.next().getHostAddress
   }
 
 }
