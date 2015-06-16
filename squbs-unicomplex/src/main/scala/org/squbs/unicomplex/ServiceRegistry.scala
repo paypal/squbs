@@ -49,13 +49,16 @@ object RegisterContext {
    * the input path should be normalized, i.e: remove the leading slash
    */
   private[unicomplex] def pathMatch(path: Path, target: Path): Boolean = {
-    val lengthDiff = path.length - target.length
-    if (lengthDiff < 0) false
+    if((path.length < target.length)) false
     else {
-      if (path.startsWith(target)) {
-        //NOTE : Path("abc/def").startWith(Path("abc/de")) will be true
-        if (lengthDiff > 0) true else path.charCount == target.charCount
-      } else false
+      def innerMatch(path: Path, target:Path):Boolean = {
+        if (target.isEmpty) true
+        else target.head.equals(path.head) match {
+          case true => innerMatch(path.tail, target.tail)
+          case _ => false
+        }
+      }
+      innerMatch(path, target)
     }
   }
 
