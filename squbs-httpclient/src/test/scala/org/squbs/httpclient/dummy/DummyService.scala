@@ -17,6 +17,9 @@
  */
 package org.squbs.httpclient.dummy
 
+import java.util
+
+import org.squbs.httpclient.japi.{TeamBean, EmployeeBean}
 import spray.routing.SimpleRoutingApp
 import akka.actor.ActorSystem
 import scala.util.{Failure, Success}
@@ -42,6 +45,16 @@ object DummyServiceMain extends App with DummyService {
 }
 
 trait DummyService extends SimpleRoutingApp {
+
+  val fullTeamBean = {
+    val list = new util.ArrayList[EmployeeBean]()
+    list.add(new EmployeeBean(1, "Zhuchen", "Wang", 20, true))
+    list.add(new EmployeeBean(2, "Roy", "Zhou", 25, true))
+    list.add(new EmployeeBean(3, "Ping", "Zhao", 30, false))
+    list.add(new EmployeeBean(4, "Dennis", "Kuang", 35, false))
+
+    new TeamBean("Scala Team", list)
+  }
 
   val fullTeam = Team("Scala Team", List[Employee](
     Employee(1, "Zhuchen", "Wang", 20, male = true),
@@ -103,6 +116,32 @@ trait DummyService extends SimpleRoutingApp {
               } ~
               complete {
                 fullTeam
+              }
+          }
+        } ~
+        //get, head, options
+        path("viewj") {
+          (get | head | options | post) {
+            respondWithMediaType(MediaTypes.`application/json`)
+            headerValueByName("req1-name") {
+              value =>
+                respondWithHeader(RawHeader("res-req1-name", "res-" + value)) {
+                  complete {
+                    fullTeamBean
+                  }
+                }
+            } ~
+              headerValueByName("req2-name") {
+                value =>
+                  respondWithHeader(RawHeader("res-req2-name", "res-" + value)){
+                    complete {
+                      fullTeamBean
+                    }
+                  }
+
+              } ~
+              complete {
+                fullTeamBean
               }
           }
         } ~
