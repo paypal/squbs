@@ -17,18 +17,17 @@
  */
 package spary.http.japi
 
-import java.util.Collections
-
 import com.typesafe.scalalogging.LazyLogging
 import spray.http.HttpHeaders.RawHeader
 import spray.http._
 import spray.http.parser.HttpParser
 import collection.JavaConversions._
+import scala.collection.mutable.ListBuffer
 
 class HttpResponseBuilder {
   private var status: StatusCode = StatusCodes.OK
   private var entity: HttpEntity = HttpEntity.Empty
-  private var headers: java.util.List[HttpHeader] = Collections.emptyList()
+  private val headers = new ListBuffer[HttpHeader]
   private var protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 
   def status(status: StatusCode): HttpResponseBuilder = {
@@ -53,7 +52,13 @@ class HttpResponseBuilder {
   def entity(data: Array[Byte]): HttpResponseBuilder = this.entity(HttpEntity(data))
 
   def headers(headers: java.util.List[HttpHeader]): HttpResponseBuilder = {
-    if (headers != null) this.headers = headers
+    if (headers != null) this.headers ++= headers
+    this
+  }
+
+  def header(header: HttpHeader): HttpResponseBuilder = {
+    assert(header != null, "header can't be null")
+    this.headers += header
     this
   }
 

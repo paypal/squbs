@@ -86,6 +86,13 @@ public class JApiTest {
         assertEquals(1, withHeaders.headers().length());
         assertEquals(httpHeaders.get(0), withHeaders.headers().apply(0));
 
+        HttpHeader header1 = HttpHeaderFactory.create("header1", "value1");
+        HttpHeader header2 = HttpHeaderFactory.create("header2", "value2");
+        HttpResponse withHeaders2 = new HttpResponseBuilder().header(header1).header(header2).build();
+        assertEquals(2, withHeaders2.headers().length());
+        assertEquals(header1, withHeaders2.headers().apply(0));
+        assertEquals(header2, withHeaders2.headers().apply(1));
+
         HttpResponse withProtocol = new HttpResponseBuilder().protocol("HTTP/1.0").build();
         assertEquals(HttpProtocols.HTTP$div1$u002E0(), withProtocol.protocol());
     }
