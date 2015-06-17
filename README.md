@@ -1,4 +1,6 @@
 
+TODO: Re-write the README for external publishing
+
 #squbs
 
 Welcome to squbs (pronounced "skewbs")! We will assimilate your technology and culture. Resistance is futile.
@@ -39,14 +41,3 @@ Akka itself is a great system that enforces loose coupling. squbs is an attempt 
 * Capability-based dependencies (I need cubes that can do "something" for me - not I need cube "somebody")
 
 * Cube deployment database (I need to recall/upgrade all my cubes version x.y.z. Tell me where they are all deployed.)
-
-
-#Projects
-
-[squbs](https://github.corp.ebay.com/Squbs/squbs): The core infrastructure for squbs without the eBay operationalization (intended for open source)
-
-[rocksqubs](https://github.corp.ebay.com/Squbs/rocksqubs): The eBay operationalization layer, hardening squbs for handling billions of service requests a day
-
-[samples](https://github.corp.ebay.com/Squbs/squbs/tree/master/samples): Service and application sample cubes, messages, and services
-
-[sbt-ebay](https://github.corp.ebay.com/Squbs/sbt-ebay): SBT plugin for ebay PaaS integration and operationalization.

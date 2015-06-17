@@ -30,6 +30,7 @@ import spray.can.client.{ClientConnectionSettings, HostConnectorSettings}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Await}
+import scala.language.postfixOps
 import spray.http.{HttpResponse, StatusCodes}
 
 class HttpClientJMXSpec extends TestKit(ActorSystem("HttpClientJMXSpec")) with FlatSpecLike with Matchers
