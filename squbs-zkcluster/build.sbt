@@ -16,7 +16,8 @@ libraryDependencies ++= Seq(
   "com.google.protobuf" % "protobuf-java" % "2.5.0",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test->*" exclude("org.jboss.netty", "netty"),
-  "org.mockito" % "mockito-core" % "1.9.5" % "test"
+  "org.mockito" % "mockito-core" % "1.9.5" % "test",
+  "org.apache.zookeeper" % "zookeeper" % "3.4.6"
 )
 
 findbugsSettings
