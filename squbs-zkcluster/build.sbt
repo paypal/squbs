@@ -17,7 +17,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test->*" exclude("org.jboss.netty", "netty"),
   "org.mockito" % "mockito-core" % "1.9.5" % "test",
-  "org.apache.zookeeper" % "zookeeper" % "3.4.6"
+  "org.apache.zookeeper" % "zookeeper" % "3.4.6" % "test"
 )
 
 findbugsSettings
