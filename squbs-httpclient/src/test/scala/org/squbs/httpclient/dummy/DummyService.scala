@@ -20,6 +20,7 @@ package org.squbs.httpclient.dummy
 import java.util
 
 import org.squbs.httpclient.japi.{TeamBean, EmployeeBean}
+import org.squbs.httpclient.json.Json4jJacksonProtocol
 import spray.routing.SimpleRoutingApp
 import akka.actor.ActorSystem
 import scala.util.{Failure, Success}
@@ -141,6 +142,7 @@ trait DummyService extends SimpleRoutingApp {
 
               } ~
               complete {
+                import Json4jJacksonProtocol._
                 fullTeamBean
               }
           }

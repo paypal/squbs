@@ -10,26 +10,35 @@ public class EmployeeBean {
     private int age;
     private boolean male;
 
-    public EmployeeBean(long id, String firstName, String lastName, int age, boolean male) {
-        this.firstName = firstName;
-        this.id = id;
-        this.lastName = lastName;
-        this.age = age;
-        this.male = male;
+    //must have a default one for unmarshalling
+    public EmployeeBean(){
+
     }
 
-    public String getFirstName(){return firstName;}
+    public EmployeeBean(long id1, String firstName1, String lastName1, int age1, boolean male1) {
+        this.firstName = firstName1;
+        this.id = id1;
+        this.lastName = lastName1;
+        this.age = age1;
+        this.male = male1;
+    }
 
-    public String getLastName(){return lastName;}
+//    public String getFirstName() {
+//        return firstName;
+//    }
+//
+//    public String getLastName() {
+//        return lastName;
+//    }
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("EmployeeBean[")
                 .append("id=").append(id)
                 .append(",firstName=").append(firstName)
-                .append(",lastName=").append(firstName)
-                .append(",age=").append(firstName)
-                .append(",male=").append(firstName)
+                .append(",lastName=").append(lastName)
+                .append(",age=").append(age)
+                .append(",male=").append(male)
                 .append("]");
         return sb.toString();
     }
