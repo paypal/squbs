@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package spary.http.japi
+package spray.http.japi
 
 import com.typesafe.scalalogging.LazyLogging
 import spray.http.HttpHeaders.RawHeader
