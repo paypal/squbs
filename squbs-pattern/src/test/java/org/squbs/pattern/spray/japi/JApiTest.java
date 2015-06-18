@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package spray.http.japi;
+package org.squbs.pattern.spray.japi;
 
 import org.junit.Test;
 import spray.http.*;

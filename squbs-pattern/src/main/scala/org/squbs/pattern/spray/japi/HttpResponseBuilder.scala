@@ -15,13 +15,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package spray.http.japi
+package org.squbs.pattern.spray.japi
 
 import com.typesafe.scalalogging.LazyLogging
 import spray.http.HttpHeaders.RawHeader
 import spray.http._
 import spray.http.parser.HttpParser
-import collection.JavaConversions._
+
+import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 
 class HttpResponseBuilder {
