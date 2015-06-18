@@ -6,15 +6,15 @@ it's richer as it provides partitioning support, and eliminates the need of `ent
 
 ##Configuration
 
-we'll need a `/squbsconfig/zkcluster.conf` under runtime directory, it should provide the following properties:
+we'll need a `/squbsconfig/zkcluster.conf` directory under the runtime directory, it should provide the following properties:
 * connectionString: a string delimiting all zookeeper nodes of an ensemble with comma
 * namespace: a string that is a valid path of znode, which will be the parent of all znodes created thereafter
-* segments: number of partition segments to scale the number of partitions: https://github.corp.ebay.com/huzhou/pubsubak/issues/11
+* segments: number of partition segments to scale the number of partitions
 
 ~~~
 zkCluster {
-    connectionString = "zk-node-phx-0-213163.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-1-213164.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-2-213165.phx-os1.stratus.dev.ebay.com:2181"
-    namespace = "channelservicedev"
+    connectionString = "zk-node-01.squbs.org:2181,zk-node-02.squbs.org:2181,zk-node-03.squbs.org:2181"
+    namespace = "clusteredservicedev"
     segments = 128
 }
 ~~~

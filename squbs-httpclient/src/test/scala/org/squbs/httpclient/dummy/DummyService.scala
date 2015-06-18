@@ -21,6 +21,7 @@ import spray.routing.SimpleRoutingApp
 import akka.actor.ActorSystem
 import scala.util.{Failure, Success}
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import spray.http._
 import spray.http.HttpHeaders.RawHeader
 import spray.util.Utils._
@@ -43,30 +44,30 @@ object DummyServiceMain extends App with DummyService {
 
 trait DummyService extends SimpleRoutingApp {
 
-  val fullTeam = Team("Scala Team", List[Employee](
-    Employee(1, "Zhuchen", "Wang", 20, male = true),
-    Employee(2, "Roy", "Zhou", 25, male = true),
-    Employee(3, "Ping", "Zhao", 30, male = false),
-    Employee(4, "Dennis", "Kuang", 35, male = false)
+  val fullTeam = Team("squbs Team", List[Employee](
+    Employee(1, "John", "Doe", 20, male = true),
+    Employee(2, "Mike", "Moon", 25, male = true),
+    Employee(3, "Jane", "Williams", 30, male = false),
+    Employee(4, "Liz", "Taylor", 35, male = false)
   ))
 
-  val newTeamMember = Employee(5, "Leon", "Ma", 35, male = true)
+  val newTeamMember = Employee(5, "Jack", "Ripper", 35, male = true)
 
-  val fullTeamJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Dennis\",\"lastName\":\"Kuang\",\"age\":35,\"male\":false}]}"
-  val fullTeamWithDelJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false}]}"
-  val fullTeamWithAddJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Dennis\",\"lastName\":\"Kuang\",\"age\":35,\"male\":false},{\"id\":5,\"firstName\":\"Leon\",\"lastName\":\"Ma\",\"age\":35,\"male\":true}]}"
+  val fullTeamJson = "{\"description\":\"squbs Team\",\"members\":[{\"id\":1,\"firstName\":\"John\",\"lastName\":\"Doe\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Mike\",\"lastName\":\"Moon\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Liz\",\"lastName\":\"Taylor\",\"age\":35,\"male\":false}]}"
+  val fullTeamWithDelJson = "{\"description\":\"squbs Team\",\"members\":[{\"id\":1,\"firstName\":\"John\",\"lastName\":\"Doe\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Mike\",\"lastName\":\"Moon\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false}]}"
+  val fullTeamWithAddJson = "{\"description\":\"squbs Team\",\"members\":[{\"id\":1,\"firstName\":\"John\",\"lastName\":\"Doe\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Mike\",\"lastName\":\"Moon\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Liz\",\"lastName\":\"Taylor\",\"age\":35,\"male\":false},{\"id\":5,\"firstName\":\"Jack\",\"lastName\":\"Ripper\",\"age\":35,\"male\":true}]}"
 
-  val fullTeamWithDel = Team("Scala Team", List[Employee](
-    Employee(1, "Zhuchen", "Wang", 20, male = true),
-    Employee(2, "Roy", "Zhou", 25, male = true),
-    Employee(3, "Ping", "Zhao", 30, male = false)
+  val fullTeamWithDel = Team("squbs Team", List[Employee](
+    Employee(1, "John", "Doe", 20, male = true),
+    Employee(2, "Mike", "Moon", 25, male = true),
+    Employee(3, "Jane", "Williams", 30, male = false)
   ))
 
-  val fullTeamWithAdd = Team("Scala Team", List[Employee](
-    Employee(1, "Zhuchen", "Wang", 20, male = true),
-    Employee(2, "Roy", "Zhou", 25, male = true),
-    Employee(3, "Ping", "Zhao", 30, male = false),
-    Employee(4, "Dennis", "Kuang", 35, male = false),
+  val fullTeamWithAdd = Team("squbs Team", List[Employee](
+    Employee(1, "John", "Doe", 20, male = true),
+    Employee(2, "Mike", "Moon", 25, male = true),
+    Employee(3, "Jane", "Williams", 30, male = false),
+    Employee(4, "Liz", "Taylor", 35, male = false),
     newTeamMember
   ))
 

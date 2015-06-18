@@ -28,6 +28,7 @@ import org.squbs.proxy.SimplePipelineConfig
 import spray.http._
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelineActorSpec"))
   with ImplicitSender with FlatSpecLike with Matchers with HttpClientTestKit with DummyService with BeforeAndAfterAll {
@@ -59,7 +60,7 @@ class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelin
     val request = HttpRequest(
       HttpMethods.POST,
       s"${DummyService.dummyServiceEndpoint}/add",
-      entity = HttpEntity("{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true}")
+      entity = HttpEntity("{\"id\":1,\"firstName\":\"John\",\"lastName\":\"Doe\",\"age\":20,\"male\":true}")
     )
     request.asPartStream(16) foreach {actor ! _}
     expectMsgType[HttpResponse](timeout.duration).status should be (StatusCodes.InternalServerError)

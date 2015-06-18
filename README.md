@@ -1,52 +1,33 @@
-
 #squbs
 
-Welcome to squbs (pronounced "skewbs")! We will assimilate your technology and culture. Resistance is futile.
+squbs (pronounced "skewbs")is a software container and a suite of components enabling standardization and operationalization of Akka and Spray applications/services in a large scale, managed, cloud environment. It standardizes how Akka/Spray applications are deployed in different environments and how they are hooked up to the operational environments of large, internet-scale organizations.
 
-squbs is a modular actor-based services framework build on top of Scala, Akka, and Spray. It is modeled after social and organizational paradigms dividing code into symbiotic groups or modules called "cubes." Cubes consist of a supervisory actor and other actors (you can call them "drones" if you like). The supervisory actor is responsible for handling or dispatching messages sent to the cube. Cubes and drones talk to each other asynchronously and work in synergy in an ongoing attempt to promote evolutions and perfect themselves.
+##squbs Components
 
+1. **Unicomplex**: The micro-container that bootstraps and standardizes the deployment of Akka/Spray applications and how they are configured, allowing teams other than PD to understand the configuration and tweak the configuration of applications, partly at runtime, as needed. In addition, the Unicomplex encourages coexistence of different modules and/or operational tooling in a flexible, loosely-coupled fashion that will not incur any code change in order to include new ops tooling or drop out/change some ops tooling. For instance, in cases where we have mixed cloud environments such as private and public cloud needing different operational tools, the same codebase will work with both allowing deployment-time addition of environment-specific tooling.
 
-##Definitions
+2. **TestKit**: Used to help test applications written for squbs, or even Akka applications altogether. It provides unit test and small scale load testing facilities that can be run as part of CI.
 
+3. **ZKCluster**: A ZooKeeper-based, datacenter-aware clustering library allowing clustered applications or services to span datacenter and hold the availability characteristics across data centers. This is needed for applications that need intra-cluster communications.
 
-*Unicomplex*: The core of squbs managing the actor system, bootstrapping, and possible actor capability directories and hot upgrading of the cubes.
+4. **HttpClient**: An operationalized, simplified client that supports both environment and endpoint resolution to fit into different operational environments (QA, Prod) as well as organizational requirements (Topo, direct).
 
-*Cube*: A self contained module consisting of its own supervisory actor that gets bootstrapped. The cube's supervisory actor is looked up by name (actorFor) or by actorSelection and receives asynchronous messages through its actor interface.
+5. **Pattern**: A set of programming patterns and DSLs provided to users. The prominent one at this point is the Orchestration DSL allowing developers to describe their orchestration sequence in an extremely concise manner while running the whole orchestration asynchronously, thus largely simplifying code and reduces latency for the application.
 
-*Service*: A cube that exposes itself as a REST service allowing access to functionality provided by the squbs ecosystem.
+6. **TimeoutPolicy**: Asynchronous systems depend heavily on timeouts and fixed timeouts are never right. TimeoutPolicy allows users to set policy (like 2.5 sigma) instead of fixed timeout values and takes care of the heuristics by itself allowing systems to adapt to their operating conditions.
 
-*Message*: Typed, asynchronous messages sent between actors and cubes.
+7. **ActorRegistry**: A core lookup facility allowing actors of loosely-coupled modules to find each others, or even to model different services as actors.
 
-*Drone*: Actors in a cube are also called drones.
+8. **ActorMonitor**: An add-on operational module that uses JMX to report the stats and behavior of actors in the system. These stats can be seen by any JMX tooling
 
+9. **Pipeline**: An infrastructure allowing sequencing and plugging in of request/response filters. These are used, for instance, for security, rate limiting, logging, etc.
+Each of the components have virtually no dependency on each others. They are truly loosely coupled. Developers and organizations are free to pick and choose the components needed for their environment.
 
-##Problem
+##Getting Started
 
-Large code bases have a large set of very deep dependencies. These dependencies often conflict between each other making it a challenge to manage these large systems. The code and dependency complexity is also a major hindrance for code to quickly evolve according to business needs. Testing of these large and complex systems become harder as the system grows. Enterprise integration solutions are generally applied to break complex such large systems into smaller, loosely coupled components but the weight of their integration mechanism is often an overkill. squbs is an attempt to provide a high performance asynchronous infrastructure that is lightweight and lends itself to high performance interaction between these loosely coupled cubes as well as within them.
+The easiest way to getting started is to create a project from one of our templates. The followings are currently available templates:
 
-In addition to systematically breaking down code complexity, squbs' fully asynchronous system also lends itself to newer web services technologies such as request/response multiplexing, streaming services, and server-sent events.
+TODO: Reference to template projects
 
-
-#Why do we need squbs?
-
-Akka itself is a great system that enforces loose coupling. squbs is an attempt to add a modularity layer to Akka allowing actor libraries to be deployed as contained and isolated services. In addition, it also tries to provide implementations of common actor usage patterns allowing the developer to focus on the business logic instead of scopes and lifecycle management. It also provides for operationalization of the actor system for mission critical, fully monitored deployments.
-
-
-#Future topics
-
-* Hot upgrades of cubes while taking traffic
-
-* Capability-based dependencies (I need cubes that can do "something" for me - not I need cube "somebody")
-
-* Cube deployment database (I need to recall/upgrade all my cubes version x.y.z. Tell me where they are all deployed.)
-
-
-#Projects
-
-[squbs](https://github.corp.ebay.com/Squbs/squbs): The core infrastructure for squbs without the eBay operationalization (intended for open source)
-
-[rocksqubs](https://github.corp.ebay.com/Squbs/rocksqubs): The eBay operationalization layer, hardening squbs for handling billions of service requests a day
-
-[samples](https://github.corp.ebay.com/Squbs/squbs/tree/master/samples): Service and application sample cubes, messages, and services
-
-[sbt-ebay](https://github.corp.ebay.com/Squbs/sbt-ebay): SBT plugin for ebay PaaS integration and operationalization.
+##Next Steps
+TODO: Documentation Index.
