@@ -33,7 +33,7 @@ import scala.language.postfixOps
  * OrchestratorStress2Test simulates a real world ViewItem orchestration scenario which has smaller number of
  * callbacks and a large amount of allowed concurrency.
  */
-class OrchestratorStress2Test extends TestKit(ActorSystem("OrchestrationSpec"))
+class OrchestratorStress2Test extends TestKit(ActorSystem("OrchestrationStress2Test"))
 with ImplicitSender with FunSpecLike with Matchers {
 
   val ir = 500
