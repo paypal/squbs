@@ -1,5 +1,5 @@
 
-#Runtime Lifecycles & API
+#Runtime Lifecycle & API
 
 The runtime has the following lifecycle states:
 

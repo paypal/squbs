@@ -1,5 +1,5 @@
 
-#Messages
+#Message Guidelines
 
 Akka actors communicate via immutable messages. These can be defined anywhere in code. As squbs deals with messages
 communicated across cubes, such messages will have to be defined in a message project (or jar) that is a dependency

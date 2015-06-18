@@ -1,26 +1,26 @@
 /*
- * Licensed to Typesafe under one or more contributor license agreements.
- * See the AUTHORS file distributed with this work for
- * additional information regarding copyright ownership.
- * This file is licensed to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ *  Copyright 2015 PayPal
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
+
 package org.squbs.pattern.orchestration
 
 import akka.actor.Actor
 import akka.contrib.pattern.Aggregator
 
 import scala.concurrent.Future
+import scala.language.implicitConversions
 import scala.util.Try
 
 trait Orchestrator extends Aggregator { this: Actor =>
@@ -40,7 +40,7 @@ trait Orchestrator extends Aggregator { this: Actor =>
     import context.dispatcher
     future onComplete { self ! UniqueTryWrapper(nextId, _) }
     expectOnce {
-      case UniqueTryWrapper(`nextId`, t: Try[T]) => oPromise complete t
+      case UniqueTryWrapper(`nextId`, t: Try[_]) => oPromise complete t.asInstanceOf[Try[T]]
     }
     oPromise.future
   }

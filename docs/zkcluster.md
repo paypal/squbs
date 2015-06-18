@@ -1,6 +1,8 @@
+#Clustering squbs Services using ZooKeeper
+
 ##Overview
 
-zkcluster is an `akka` extension which leverages `zookeeper` to manage akka cluster & partitions.
+squbs is achieving clustering of services through the zkcluster module. zkcluster is an `akka` extension which leverages `zookeeper` to manage akka cluster & partitions.
 it's similar to `akka-cluster` module for the sake of leadership & membership management.
 it's richer as it provides partitioning support, and eliminates the need of `entry-nodes`
 

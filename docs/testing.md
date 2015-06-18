@@ -1,4 +1,4 @@
-#Testing
+#Testing squbs Applications
 All tests on squbs have been written using ScalaTest 2.x. Specs2 has not yet been tested.
 
 Depending on the test requirements, squbs provides two traits to help write test cases:
