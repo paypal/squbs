@@ -21,6 +21,7 @@ import akka.actor.Actor
 import akka.contrib.pattern.Aggregator
 
 import scala.concurrent.Future
+import scala.language.implicitConversions
 import scala.util.Try
 
 trait Orchestrator extends Aggregator { this: Actor =>
@@ -40,7 +41,7 @@ trait Orchestrator extends Aggregator { this: Actor =>
     import context.dispatcher
     future onComplete { self ! UniqueTryWrapper(nextId, _) }
     expectOnce {
-      case UniqueTryWrapper(`nextId`, t: Try[T]) => oPromise complete t
+      case UniqueTryWrapper(`nextId`, t: Try[_]) => oPromise complete t.asInstanceOf[Try[T]]
     }
     oPromise.future
   }

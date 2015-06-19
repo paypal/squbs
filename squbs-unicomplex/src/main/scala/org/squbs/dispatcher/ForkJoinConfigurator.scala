@@ -44,7 +44,8 @@ class ForkJoinConfigurator(config: Config, prerequisites: DispatcherPrerequisite
           def getMode: String = if (getAsyncMode) "Async" else "Sync"
         }
       import JMX._
-      register(pool, jmxPrefix + '.' + forkJoinStatsName + name)
+      val prefix = if (jmxPrefix.isEmpty || jmxPrefix.endsWith(".")) jmxPrefix else jmxPrefix + '.'
+      register(pool, prefix + forkJoinStatsName + name)
       pool
     }
 
