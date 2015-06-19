@@ -93,33 +93,33 @@ trait DummyService extends SimpleRoutingApp {
 
   val fullTeamBean = {
     val list = new util.ArrayList[EmployeeBean]()
-    list.add(new EmployeeBean(1, "Zhuchen", "Wang", 20, true))
-    list.add(new EmployeeBean(2, "Roy", "Zhou", 25, true))
-    list.add(new EmployeeBean(3, "Ping", "Zhao", 30, false))
-    list.add(new EmployeeBean(4, "Dennis", "Kuang", 35, false))
+    list.add(new EmployeeBean(1, "John", "Doe", 20, true))
+    list.add(new EmployeeBean(2, "Mike", "Moon", 25, true))
+    list.add(new EmployeeBean(3, "Jane", "Williams", 30, false))
+    list.add(new EmployeeBean(4, "Liz", "Taylor", 35, false))
 
-    new TeamBean("Scala Team", list)
+    new TeamBean("squbs Team", list)
   }
 
-  val fullTeam1 = new Team1("Scala Team", List[Employee1](
-    new Employee1(1, "Zhuchen", "Wang", 20, male = true),
-    new Employee1(2, "Roy", "Zhou", 25, male = true),
-    new Employee1(3, "Ping", "Zhao", 30, male = false),
-    new Employee1(4, "Dennis", "Kuang", 35, male = false)
+  val fullTeam1 = new Team1("squbs Team", List[Employee1](
+    new Employee1(1, "John", "Doe", 20, male = true),
+    new Employee1(2, "Mike", "Moon", 25, male = true),
+    new Employee1(3, "Jane", "Williams", 30, male = false),
+    new Employee1(4, "Liz", "Taylor", 35, male = false)
   ))
 
-  val fullTeam2 = new Team2("Scala Team", List[EmployeeBean](
-    new EmployeeBean(1, "Zhuchen", "Wang", 20, true),
-    new EmployeeBean(2, "Roy", "Zhou", 25, true),
-    new EmployeeBean(3, "Ping", "Zhao", 30, false),
-    new EmployeeBean(4, "Dennis", "Kuang", 35, false)
+  val fullTeam2 = new Team2("squbs Team", List[EmployeeBean](
+    new EmployeeBean(1, "John", "Doe", 20, true),
+    new EmployeeBean(2, "Mike", "Moon", 25, true),
+    new EmployeeBean(3, "Jane", "Williams", 30, false),
+    new EmployeeBean(4, "Liz", "Taylor", 35, false)
   ))
 
-  val fullTeam = Team("Scala Team", List[Employee](
-    Employee(1, "Zhuchen", "Wang", 20, male = true),
-    Employee(2, "Roy", "Zhou", 25, male = true),
-    Employee(3, "Ping", "Zhao", 30, male = false),
-    Employee(4, "Dennis", "Kuang", 35, male = false)
+  val fullTeam = Team("squbs Team", List[Employee](
+    Employee(1, "John", "Doe", 20, male = true),
+    Employee(2, "Mike", "Moon", 25, male = true),
+    Employee(3, "Jane", "Williams", 30, male = false),
+    Employee(4, "Liz", "Taylor", 35, male = false)
   ))
 
   val newTeamMember = Employee(5, "Jack", "Ripper", 35, male = true)
