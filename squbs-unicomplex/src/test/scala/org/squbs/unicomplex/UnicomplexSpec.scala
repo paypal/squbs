@@ -37,6 +37,7 @@ import spray.http._
 import spray.util.Utils
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.Try
 
 object UnicomplexSpec {
@@ -208,28 +209,29 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
     "check cube MXbean" in {
       import org.squbs.unicomplex.JMX._
-      val mbeanServer = ManagementFactory.getPlatformMBeanServer
+      val mBeanServer = ManagementFactory.getPlatformMBeanServer
       val cubesObjName = new ObjectName(prefix(system) + cubesName)
-      val attr = mbeanServer.getAttribute(cubesObjName, "Cubes")
-      attr shouldBe a [Array[javax.management.openmbean.CompositeData]]
-      // 6 cubes registered above.
+      val attr = mBeanServer.getAttribute(cubesObjName, "Cubes")
+      attr shouldBe a [Array[Any]]
       val attrs = attr.asInstanceOf[Array[_]]
+
+      // 6 cubes registered above.
       attrs should have size 6
-      forAll (attrs) ( _ shouldBe a [javax.management.openmbean.CompositeData] )
+      all (attrs) shouldBe a [javax.management.openmbean.CompositeData]
     }
 
     "check cube state MXbean" in {
       import org.squbs.unicomplex.JMX._
       val cubeName = "DummyCube"
-      val mbeanServer = ManagementFactory.getPlatformMBeanServer
+      val mBeanServer = ManagementFactory.getPlatformMBeanServer
       val cubesObjName = new ObjectName(prefix(system) + cubeStateName + cubeName)
-      val name = mbeanServer.getAttribute(cubesObjName, "Name")
+      val name = mBeanServer.getAttribute(cubesObjName, "Name")
       name should be (cubeName)
 
-      val cubeState = mbeanServer.getAttribute(cubesObjName, "CubeState")
+      val cubeState = mBeanServer.getAttribute(cubesObjName, "CubeState")
       cubeState should be ("Active")
 
-      val WellKnownActors = mbeanServer.getAttribute(cubesObjName, "WellKnownActors").asInstanceOf[String]
+      val WellKnownActors = mBeanServer.getAttribute(cubesObjName, "WellKnownActors").asInstanceOf[String]
       println(WellKnownActors)
       WellKnownActors should include ("Actor[akka://unicomplexSpec/user/DummyCube/Prepender#")
       WellKnownActors should include ("Actor[akka://unicomplexSpec/user/DummyCube/Appender#")
@@ -237,22 +239,27 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
     "check listener MXbean" in {
       import org.squbs.unicomplex.JMX._
-      val mbeanServer = ManagementFactory.getPlatformMBeanServer
+      val mBeanServer = ManagementFactory.getPlatformMBeanServer
       val listenersObjName = new ObjectName(prefix(system) + listenersName)
-      val listeners = mbeanServer.getAttribute(listenersObjName, "Listeners")
-      listeners shouldBe a [Array[javax.management.openmbean.CompositeData]]
+      val ls = mBeanServer.getAttribute(listenersObjName, "Listeners")
+      ls shouldBe a [Array[Any]]
+      val listeners = ls.asInstanceOf[Array[_]]
+      all (listeners) shouldBe a [javax.management.openmbean.CompositeData]
+
       // 6 services registered on one listener
-      listeners.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 6
+      listeners should have size 6
 
     }
 
     "check extension MBean" in {
       import org.squbs.unicomplex.JMX._
-      val mbeanServer = ManagementFactory.getPlatformMBeanServer
+      val mBeanServer = ManagementFactory.getPlatformMBeanServer
       val extensionObjName = new ObjectName(prefix(system) + extensionsName)
-      val extensions = mbeanServer.getAttribute(extensionObjName, "Extensions")
-      extensions shouldBe a [Array[javax.management.openmbean.CompositeData]]
-      extensions.asInstanceOf[Array[javax.management.openmbean.CompositeData]] should have size 2
+      val xs = mBeanServer.getAttribute(extensionObjName, "Extensions")
+      xs shouldBe a [Array[Any]]
+      val extensions = xs.asInstanceOf[Array[_]]
+      all (extensions) shouldBe a [javax.management.openmbean.CompositeData]
+      extensions should have size 2
     }
 
     "preInit, init and postInit all extensions" in {

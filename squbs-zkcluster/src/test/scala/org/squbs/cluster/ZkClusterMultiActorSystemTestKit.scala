@@ -22,6 +22,7 @@ import java.net.ServerSocket
 import akka.actor.{PoisonPill, Terminated, ActorSelection, ActorSystem}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
+import org.apache.zookeeper.server.quorum.QuorumPeerMain
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
@@ -104,6 +105,15 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
 object ZkClusterMultiActorSystemTestKit {
   lazy val now = System.nanoTime
 
+  (new Thread() {
+    override def run = {
+      QuorumPeerMain.main(Array[String](this.getClass.getClassLoader.getResource("zoo.cfg").getFile))
+      println("Zookeeper started")
+    }
+  }).start
+
+  Thread.sleep(5000)
+
   private def nextPort = {
     val s = new ServerSocket(0)
     try {
@@ -160,8 +170,7 @@ object ZkClusterMultiActorSystemTestKit {
   lazy val zkConfig = ConfigFactory.parseString(
     s"""
       |zkCluster {
-      |  connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-596c.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
-      |  //connectionString = "127.0.0.1:2181"
+      |  connectionString = "127.0.0.1:8085"
       |  namespace = "zkclustersystest-$now"
       |  segments = 1
       |}

@@ -31,6 +31,7 @@ import org.squbs.unicomplex.dummyextensions.DummyExtension
 import spray.util.Utils
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.Try
 
 object BadUnicomplexBootSpec {
@@ -137,7 +138,8 @@ with AsyncAssertions {
       val mbeanServer = ManagementFactory.getPlatformMBeanServer
       val cubesObjName = new ObjectName(prefix(system) + cubesName)
       val attr = mbeanServer.getAttribute(cubesObjName, "Cubes")
-      attr shouldBe a[Array[javax.management.openmbean.CompositeData]]
+      attr shouldBe a [Array[Any]]
+      all (attr.asInstanceOf[Array[Any]]) shouldBe a [javax.management.openmbean.CompositeData]
       // 5 cubes registered above.
       val cAttr = attr.asInstanceOf[Array[_]]
       forAll (cAttr) (_ shouldBe a [javax.management.openmbean.CompositeData])

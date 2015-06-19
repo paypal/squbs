@@ -25,8 +25,9 @@ import org.squbs.testkit.stress._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
 
-class OrchestratorStressTest extends TestKit(ActorSystem("OrchestrationSpec"))
+class OrchestratorStressTest extends TestKit(ActorSystem("OrchestrationStressTest"))
 with ImplicitSender with FunSpecLike with Matchers {
 
   val ir = 500
