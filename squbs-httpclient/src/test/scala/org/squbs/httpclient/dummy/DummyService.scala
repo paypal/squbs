@@ -19,6 +19,8 @@ package org.squbs.httpclient.dummy
 
 import java.util
 
+import org.json4s.CustomSerializer
+import org.json4s.JsonAST._
 import org.squbs.httpclient.japi.{TeamBean, EmployeeBean}
 import org.squbs.httpclient.json.Json4jJacksonProtocol
 import spray.routing.SimpleRoutingApp
@@ -29,9 +31,50 @@ import spray.http._
 import spray.http.HttpHeaders.RawHeader
 import spray.util.Utils._
 
+
+//case class reference case class
 case class Employee(id: Long, firstName: String, lastName: String, age: Int, male: Boolean)
 
 case class Team(description: String, members: List[Employee])
+
+//non case class with accessor
+class Employee1(val id: Long, val firstName: String, val lastName: String, val age: Int, val male: Boolean){
+  override def equals(obj : Any) : Boolean  = {
+    obj match {
+      case t : Employee1 =>
+        t.id == id && t.firstName == firstName && t.lastName == lastName && t.age == age && t.male == male
+      case _ => false
+    }
+  }
+}
+
+class Team1(val description: String, val members: List[Employee1]){
+  override def equals(obj : Any) : Boolean  = {
+    obj match {
+      case t : Team1 =>
+        t.description == description && t.members == members
+      case _ => false
+    }
+  }
+}
+
+object EmployeeBeanSerializer extends CustomSerializer[EmployeeBean](format => ( {
+  case JObject(JField("id", JInt(i)) :: JField("firstName", JString(f)) :: JField("lastName", JString(l)) :: JField("age", JInt(a)) :: JField("male", JBool(m)) :: Nil) =>
+    new EmployeeBean(i.longValue, f, l, a.intValue(), m)
+}, {
+  case x: EmployeeBean =>
+    JObject(
+      JField("id", JInt(BigInt(x.getId))) ::
+        JField("firstName", JString(x.getFirstName)) ::
+        JField("lastName", JString(x.getLastName)) ::
+        JField("age", JInt(x.getAge)) ::
+        JField("male", JBool(x.isMale)) ::
+        Nil)
+}
+  ))
+
+//scala class reference java class
+class Team2(val description: String, val members: List[EmployeeBean])
 
 object DummyService {
 
@@ -56,6 +99,20 @@ trait DummyService extends SimpleRoutingApp {
 
     new TeamBean("Scala Team", list)
   }
+
+  val fullTeam1 = new Team1("Scala Team", List[Employee1](
+    new Employee1(1, "Zhuchen", "Wang", 20, male = true),
+    new Employee1(2, "Roy", "Zhou", 25, male = true),
+    new Employee1(3, "Ping", "Zhao", 30, male = false),
+    new Employee1(4, "Dennis", "Kuang", 35, male = false)
+  ))
+
+  val fullTeam2 = new Team2("Scala Team", List[EmployeeBean](
+    new EmployeeBean(1, "Zhuchen", "Wang", 20, true),
+    new EmployeeBean(2, "Roy", "Zhou", 25, true),
+    new EmployeeBean(3, "Ping", "Zhao", 30, false),
+    new EmployeeBean(4, "Dennis", "Kuang", 35, false)
+  ))
 
   val fullTeam = Team("Scala Team", List[Employee](
     Employee(1, "Zhuchen", "Wang", 20, male = true),
@@ -84,7 +141,8 @@ trait DummyService extends SimpleRoutingApp {
     newTeamMember
   ))
 
-  import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
+  import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
+  import Json4jJacksonProtocol.toResponseMarshallable
   //  import scala.concurrent.ExecutionContext.Implicits.global
   import DummyService._
 
@@ -124,27 +182,26 @@ trait DummyService extends SimpleRoutingApp {
         path("viewj") {
           (get | head | options | post) {
             respondWithMediaType(MediaTypes.`application/json`)
-            headerValueByName("req1-name") {
-              value =>
-                respondWithHeader(RawHeader("res-req1-name", "res-" + value)) {
-                  complete {
-                    fullTeamBean
-                  }
-                }
-            } ~
-              headerValueByName("req2-name") {
-                value =>
-                  respondWithHeader(RawHeader("res-req2-name", "res-" + value)){
-                    complete {
-                      fullTeamBean
-                    }
-                  }
-
-              } ~
               complete {
-                import Json4jJacksonProtocol._
+                //import Json4jJacksonProtocol.toResponseMarshallable
                 fullTeamBean
               }
+          }
+        } ~
+        path("view1") {
+          (get | head | options | post) {
+            respondWithMediaType(MediaTypes.`application/json`)
+            complete {
+              fullTeam1
+            }
+          }
+        } ~
+        path("view2") {
+          (get | head | options | post) {
+            respondWithMediaType(MediaTypes.`application/json`)
+            complete {
+              fullTeam2
+            }
           }
         } ~
         path("stop") {

@@ -13,8 +13,8 @@ import spray.httpx.unmarshalling._
  */
 class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
 
-  import org.squbs.httpclient.HttpClient._
-
+  import org.squbs.httpclient.json.Json4jJacksonProtocol.classToFromResponseUnmarshaller
+  import org.squbs.httpclient.json.Json4jJacksonProtocol.optionToMarshaller
 
   def name = delegate.name
 

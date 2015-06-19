@@ -23,13 +23,25 @@ public class EmployeeBean {
         this.male = male1;
     }
 
-//    public String getFirstName() {
-//        return firstName;
-//    }
-//
-//    public String getLastName() {
-//        return lastName;
-//    }
+    public long getId(){
+        return this.id;
+    }
+
+    public int getAge(){
+        return this.age;
+    }
+
+    public boolean isMale(){
+        return this.male;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
 
     public String toString() {
         StringBuilder sb = new StringBuilder();

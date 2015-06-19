@@ -68,18 +68,6 @@ trait HttpClientPathBuilder {
 
 object HttpClientPathBuilder extends HttpClientPathBuilder
 
-object HttpClient {
-
-  implicit def toMarshaller[T <: AnyRef](data : Option[T]) : Marshaller[T] = {
-    Json4sJacksonNoTypeHintsProtocol.json4sMarshaller[T]
-  }
-
-  implicit def toFromResponseUnmarshaller[R](clazz: Class[R]): FromResponseUnmarshaller[R] = {
-    fromResponseUnmarshaller(fromMessageUnmarshaller(Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller[R](ManifestFactory.classType(clazz))))
-  }
-
-}
-
 case class HttpClient(name: String,
                       env: Environment = Default,
                       status: Status.Status = Status.UP,
