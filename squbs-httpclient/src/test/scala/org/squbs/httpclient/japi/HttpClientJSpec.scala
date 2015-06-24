@@ -25,6 +25,7 @@ import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import org.squbs.httpclient._
+import org.squbs.httpclient.json.{Json4jJacksonProtocol, Json4sJacksonNoTypeHintsProtocol}
 import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpHeader, StatusCodes}
 
@@ -40,6 +41,7 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
 
 
   override def beforeAll() {
+    Json4sJacksonNoTypeHintsProtocol.registerSerializer(EmployeeBeanSerializer)
     EndpointRegistry(system).register(DummyServiceEndpointResolver)
     startDummyService(system)
   }
@@ -58,6 +60,40 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     result.entity.data should not be empty
     result.entity.data.asString should be (fullTeamJson)
   }
+
+  "HttpClient with correct Endpoint calling raw.get with normal class" should "get the correct response" in {
+    //val response = HttpClientFactory.get("DummyService").raw.get("/view1")
+    val response = HttpClientJ.rawGet("DummyService", system, "/view1")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.entity should not be empty
+    result.entity.data should not be empty
+    result.entity.data.asString should be (fullTeamJson)
+  }
+
+  "HttpClient with correct Endpoint calling raw.get with custom serializer" should "get the correct response" in {
+    //val response = HttpClientFactory.get("DummyService").raw.get("/view2")
+    val response = HttpClientJ.rawGet("DummyService", system, "/view2")
+    val result = Await.result(response, 5 seconds)
+    result.status should be (StatusCodes.OK)
+    result.entity should not be empty
+    result.entity.data should not be empty
+    result.entity.data.asString should be (fullTeamJson)
+  }
+
+
+  "HttpClient with correct Endpoint calling raw.get with java bean" should "get the correct response" in {
+    //val response = HttpClientFactory.get("DummyService").raw.get("/viewj")
+    val response = HttpClientJ.rawGet("DummyService", system, "/viewj")
+    val result = Await.result(response, 3 seconds)
+    result.status should be (StatusCodes.OK)
+    result.entity should not be empty
+    result.entity.data should not be empty
+    result.entity.data.asString should be (fullTeamJson)
+    println(result.entity.data.asString)
+
+  }
+
 
   "HttpClient with correct Endpoint calling raw.get and pass requestSettings" should "get the correct response" in {
     val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), 5 seconds)
@@ -100,6 +136,26 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
     result.unmarshalTo[Team] should be (Success(fullTeam))
   }
+
+  "HttpClient with correct Endpoint calling raw.get and unmarshall object with java bean" should "get the correct response" in {
+    //val response = HttpClientFactory.get("DummyService").raw.get("/viewj")
+    val response = HttpClientJ.rawGet("DummyService",system, "/viewj")
+    val result = Await.result(response, 3 seconds)
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    import Json4jJacksonProtocol.classToFromResponseUnmarshaller
+    result.unmarshalTo(classOf[TeamBean]) should be (Success(fullTeamBean))
+  }
+
+  "HttpClient with correct Endpoint calling raw.get and unmarshall object with normal scala class" should "get the correct response" in {
+    //val response = HttpClientFactory.get("DummyService").raw.get("/view1")
+    val response = HttpClientJ.rawGet("DummyService",system, "/view1")
+    val result = Await.result(response, 3 seconds)
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    import Json4jJacksonProtocol.classToFromResponseUnmarshaller
+    result.unmarshalTo(classOf[Team1]) should be (Success(fullTeam1))
+
+  }
+
 
   "HttpClient with correct Endpoint calling get" should "get the correct response" in {
     //val response = HttpClientFactory.get("DummyService").get[Team]("/view")
