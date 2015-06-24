@@ -25,7 +25,7 @@ import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import org.squbs.httpclient._
-import org.squbs.httpclient.json.{Json4jJacksonProtocol, Json4sJacksonNoTypeHintsProtocol}
+import org.squbs.httpclient.json.{JsonProtocol, Json4sJacksonNoTypeHintsProtocol}
 import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpHeader, StatusCodes}
 
@@ -37,7 +37,6 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
 
   implicit val timeout: Timeout = 3 seconds
-  import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
 
   override def beforeAll() {
@@ -134,6 +133,7 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     val response = HttpClientJ.rawGet("DummyService",system, "/view")
     val result = Await.result(response, 3 seconds)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     result.unmarshalTo[Team] should be (Success(fullTeam))
   }
 
@@ -142,7 +142,12 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     val response = HttpClientJ.rawGet("DummyService",system, "/viewj")
     val result = Await.result(response, 3 seconds)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
-    import Json4jJacksonProtocol.classToFromResponseUnmarshaller
+
+
+    import JsonProtocol.manifestToUnmarshaller
+    result.unmarshalTo[TeamBean] should be (Success(fullTeamBean))
+
+    import JsonProtocol.classToFromResponseUnmarshaller
     result.unmarshalTo(classOf[TeamBean]) should be (Success(fullTeamBean))
   }
 
@@ -151,8 +156,12 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     val response = HttpClientJ.rawGet("DummyService",system, "/view1")
     val result = Await.result(response, 3 seconds)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
-    import Json4jJacksonProtocol.classToFromResponseUnmarshaller
+
+    import JsonProtocol.classToFromResponseUnmarshaller
     result.unmarshalTo(classOf[Team1]) should be (Success(fullTeam1))
+
+    import JsonProtocol.typeTagToUnmarshaller
+    result.unmarshalTo[Team1] should be (Success(fullTeam1))
 
   }
 
@@ -193,6 +202,7 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     val response = HttpClientJ.rawOptions("DummyService", system, "/view")
     val result = Await.result(response, 3 seconds)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     result.unmarshalTo[Team] should be (Success(fullTeam))
   }
 
@@ -211,6 +221,7 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     val response = HttpClientJ.rawDelete("DummyService", system , "/del/4")
     val result = Await.result(response, 3 seconds)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     result.unmarshalTo[Team] should be (Success(fullTeamWithDel))
   }
 
@@ -236,6 +247,7 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     val response = HttpClientJ.rawPost("DummyService", system, "/add", Some(newTeamMember))
     val result = Await.result(response, 3 seconds)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     result.unmarshalTo[Team] should be (Success(fullTeamWithAdd))
   }
 
@@ -261,6 +273,7 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     val response = HttpClientJ.rawPut("DummyService", system, "/add", Some(newTeamMember))
     val result = Await.result(response, 3 seconds)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     result.unmarshalTo[Team] should be (Success(fullTeamWithAdd))
   }
 
@@ -324,6 +337,7 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.OK)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     result.unmarshalTo[String] shouldBe 'failure
   }
 
@@ -333,6 +347,7 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     val result = Await.result(response, 3 seconds)
     result.status should be (StatusCodes.NotFound)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     result.unmarshalTo[Team] shouldBe 'failure
   }
 

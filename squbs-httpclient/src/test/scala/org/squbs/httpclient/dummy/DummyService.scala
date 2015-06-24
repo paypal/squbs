@@ -22,7 +22,7 @@ import java.util
 import org.json4s.CustomSerializer
 import org.json4s.JsonAST._
 import org.squbs.httpclient.japi.{TeamBean, EmployeeBean}
-import org.squbs.httpclient.json.Json4jJacksonProtocol
+import org.squbs.httpclient.json.JsonProtocol
 import spray.routing.SimpleRoutingApp
 import akka.actor.ActorSystem
 import scala.util.{Failure, Success}
@@ -142,8 +142,11 @@ trait DummyService extends SimpleRoutingApp {
     newTeamMember
   ))
 
-  import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
-  import Json4jJacksonProtocol.toResponseMarshallable
+  //import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
+  import JsonProtocol.manifestToUnmarshaller
+  import JsonProtocol.manifestToMarshaller
+
+  //import JsonProtocol.toResponseMarshallable
   //  import scala.concurrent.ExecutionContext.Implicits.global
   import DummyService._
 
@@ -184,7 +187,6 @@ trait DummyService extends SimpleRoutingApp {
           (get | head | options | post) {
             respondWithMediaType(MediaTypes.`application/json`)
               complete {
-                //import Json4jJacksonProtocol.toResponseMarshallable
                 fullTeamBean
               }
           }
