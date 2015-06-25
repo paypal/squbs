@@ -1,5 +1,6 @@
 package org.squbs.httpclient.japi;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -14,6 +15,13 @@ public class TeamBean {
     //must have a default one for unmarshalling
     public TeamBean(){
 
+    }
+
+    public TeamBean addMember(EmployeeBean employee){
+        List<EmployeeBean> all = new ArrayList<EmployeeBean>();
+        all.addAll(members);
+        all.add(employee);
+        return new TeamBean(description, all);
     }
 
     public TeamBean(String description1, List<EmployeeBean> members1) {

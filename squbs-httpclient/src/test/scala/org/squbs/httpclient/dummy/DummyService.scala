@@ -123,6 +123,7 @@ trait DummyService extends SimpleRoutingApp {
   ))
 
   val newTeamMember = Employee(5, "Jack", "Ripper", 35, male = true)
+  val newTeamMemberBean = new EmployeeBean(5, "Jack", "Ripper", 35, true)
 
   val fullTeamJson = "{\"description\":\"squbs Team\",\"members\":[{\"id\":1,\"firstName\":\"John\",\"lastName\":\"Doe\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Mike\",\"lastName\":\"Moon\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Liz\",\"lastName\":\"Taylor\",\"age\":35,\"male\":false}]}"
   val fullTeamWithDelJson = "{\"description\":\"squbs Team\",\"members\":[{\"id\":1,\"firstName\":\"John\",\"lastName\":\"Doe\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Mike\",\"lastName\":\"Moon\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false}]}"
@@ -141,6 +142,9 @@ trait DummyService extends SimpleRoutingApp {
     Employee(4, "Liz", "Taylor", 35, male = false),
     newTeamMember
   ))
+
+  val fullTeamBeanWithAdd = fullTeamBean.addMember(newTeamMemberBean)
+
 
   //import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
   import JsonProtocol.manifestToUnmarshaller
@@ -231,6 +235,17 @@ trait DummyService extends SimpleRoutingApp {
                 respondWithMediaType(MediaTypes.`application/json`)
                 complete {
                   Team(fullTeam.description, fullTeam.members :+ employee)
+                }
+            }
+          }
+        } ~
+        path("addj") {
+          (post | put) {
+            entity[EmployeeBean](as[EmployeeBean]) {
+              employee: EmployeeBean =>
+                respondWithMediaType(MediaTypes.`application/json`)
+                complete {
+                  fullTeamBean.addMember(employee)
                 }
             }
           }

@@ -24,7 +24,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
-import org.squbs.httpclient.japi.TeamBean
+import org.squbs.httpclient.japi.{EmployeeBean, TeamBean}
 import org.squbs.httpclient.json.{Json4sJacksonNoTypeHintsProtocol, JsonProtocol}
 import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpHeader, HttpResponse, StatusCodes}
@@ -240,11 +240,31 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     result.unmarshalTo[Team] should be (Success(fullTeamWithAdd))
   }
 
+  "HttpClient with correct Endpoint calling raw.post and unmarshall object for java bean" should "get the correct response" in {
+    import JsonProtocol.manifestToMarshaller
+    val response = HttpClientFactory.get("DummyService").raw.post[EmployeeBean]("/addj", Some(newTeamMemberBean))
+    val result = Await.result(response, 3 seconds)
+
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    import JsonProtocol.manifestToUnmarshaller
+    result.unmarshalTo[TeamBean] should be (Success(fullTeamBeanWithAdd))
+  }
+
   "HttpClient with correct Endpoint calling post" should "get the correct response" in {
     import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
     val response = HttpClientFactory.get("DummyService").post[Employee, Team]("/add", Some(newTeamMember))
     val result = Await.result(response, 3 seconds)
     result should be (fullTeamWithAdd)
+  }
+
+  "HttpClient with correct Endpoint calling post for java bean" should "get the correct response" in {
+    import JsonProtocol.manifestToMarshaller
+    import JsonProtocol.manifestToUnmarshaller
+    //import JsonProtocol.typeTagToMarshaller
+    //import JsonProtocol.typeTagToUnmarshaller
+    val response = HttpClientFactory.get("DummyService").post[EmployeeBean, TeamBean]("/addj", Some(newTeamMemberBean))
+    val result = Await.result(response, 3 seconds)
+    result should be (fullTeamBeanWithAdd)
   }
 
   "HttpClient with correct Endpoint calling raw.put" should "get the correct response" in {

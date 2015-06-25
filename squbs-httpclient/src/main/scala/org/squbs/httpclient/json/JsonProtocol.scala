@@ -35,6 +35,12 @@ import scala.reflect.runtime.universe._
     else
       Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
 
+  implicit def classToMarshaller[T <: AnyRef](clazz : Class[T]): Marshaller[T] =
+    if (isJavaClass(clazz))
+      JacksonProtocol.jacksonMarshaller
+    else
+      Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
+
   implicit def objectToMarshaller[T <: AnyRef](obj: T): Marshaller[T] =
     if (isJavaClass(obj))
       JacksonProtocol.jacksonMarshaller

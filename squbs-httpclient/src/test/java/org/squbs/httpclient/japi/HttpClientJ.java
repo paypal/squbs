@@ -6,6 +6,8 @@ import org.squbs.httpclient.RequestSettings;
 import scala.Option;
 import scala.concurrent.Future;
 import spray.http.HttpResponse;
+import spray.httpx.marshalling.Marshaller;
+import spray.httpx.unmarshalling.Deserializer;
 
 /**
  * Created by lma on 6/5/2015.
@@ -78,6 +80,13 @@ public class HttpClientJ {
         return client.post(uri, data, respType);
 
     }
+
+
+    public static <T,R> Future<R> post(String clientName, ActorSystem system, String uri, Option<T> data, Marshaller<T> marshaller, Deserializer<HttpResponse, R> unmarshaller) {
+        HttpClient client = HttpClientFactory.get(clientName, system);
+        return client.post(uri, data, marshaller, unmarshaller);
+    }
+
 
     public static <T,R> Future<R> put(String clientName, ActorSystem system, String uri, Option<T> data, Class<R> respType) {
         HttpClient client = HttpClientFactory.get(clientName, system);

@@ -251,12 +251,40 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
     result.unmarshalTo[Team] should be (Success(fullTeamWithAdd))
   }
 
+  "HttpClient with correct Endpoint calling raw.post and unmarshall object for java bean" should "get the correct response" in {
+    //import JsonProtocol.manifestToMarshaller
+    //val response = HttpClientFactory.get("DummyService").raw.post[EmployeeBean]("/addj", Some(newTeamMemberBean))
+    val response = HttpClientJ.rawPost("DummyService", system, "/addj", Some(newTeamMemberBean))
+    val result = Await.result(response, 3 seconds)
+
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+    import JsonProtocol.manifestToUnmarshaller
+    result.unmarshalTo[TeamBean] should be (Success(fullTeamBeanWithAdd))
+  }
+
   "HttpClient with correct Endpoint calling post" should "get the correct response" in {
     //val response = HttpClientFactory.get("DummyService").post[Employee, Team]("/add", Some(newTeamMember))
     val response = HttpClientJ.post("DummyService",system, "/add", Some(newTeamMember), classOf[Team])
     val result = Await.result(response, 3 seconds)
     result should be (fullTeamWithAdd)
   }
+
+  "HttpClient with correct Endpoint calling post for java bean" should "get the correct response" in {
+    //val response = HttpClientFactory.get("DummyService").post[EmployeeBean, TeamBean]("/addj", Some(newTeamMemberBean))
+    val response = HttpClientJ.post("DummyService",system, "/addj", Some(newTeamMemberBean), classOf[TeamBean])
+    val result = Await.result(response, 3 seconds)
+    result should be (fullTeamBeanWithAdd)
+  }
+
+  "HttpClient with correct Endpoint calling post for java bean with explicit marshaller/unmarshaller" should "get the correct response" in {
+    //val response = HttpClientFactory.get("DummyService").post[EmployeeBean, TeamBean]("/addj", Some(newTeamMemberBean))
+    import JsonProtocol.classToFromResponseUnmarshaller
+    import JsonProtocol.classToMarshaller
+    val response = HttpClientJ.post("DummyService",system, "/addj", Some(newTeamMemberBean), classOf[EmployeeBean], classOf[TeamBean])
+    val result = Await.result(response, 3 seconds)
+    result should be (fullTeamBeanWithAdd)
+  }
+
 
   "HttpClient with correct Endpoint calling raw.put" should "get the correct response" in {
     //val response = HttpClientFactory.get("DummyService").raw.put[Employee]("/add", Some(newTeamMember))
