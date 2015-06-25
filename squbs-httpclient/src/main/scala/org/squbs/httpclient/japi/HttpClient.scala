@@ -1,9 +1,12 @@
 package org.squbs.httpclient.japi
 
+import java.util.Optional
+
 import akka.actor.ActorSystem
 import akka.util.Timeout
 import org.squbs.httpclient._
 import org.squbs.httpclient.env.{Default, Environment}
+import org.squbs.httpclient.json.JsonProtocol
 import org.squbs.proxy.SimplePipelineConfig
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling._
@@ -13,8 +16,10 @@ import spray.httpx.unmarshalling._
  */
 class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
 
-  import org.squbs.httpclient.json.JsonProtocol.classToFromResponseUnmarshaller
-  import org.squbs.httpclient.json.JsonProtocol.optionToMarshaller
+  import JsonProtocol.optionToMarshaller
+  import JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
+
+  import scala.compat.java8.OptionConverters._
 
   def name = delegate.name
 
@@ -26,8 +31,8 @@ class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
     new HttpClient(delegate.withSettings(settings))
   }
 
-  def withPipeline(pipeline: Option[SimplePipelineConfig]): HttpClient = {
-    new HttpClient(delegate.withPipeline(pipeline))
+  def withPipeline(pipeline: Optional[SimplePipelineConfig]): HttpClient = {
+    new HttpClient(delegate.withPipeline(pipeline.asScala))
   }
 
   def markDown = delegate.markDown
@@ -37,6 +42,7 @@ class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
   def readyFuture = delegate.readyFuture
 
   def endpoint = delegate.endpoint
+
 
   def get[R](uri: String, clazz: Class[R]) = delegate.get(uri)(unmarshaller = clazz)
 
@@ -71,6 +77,7 @@ class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
 
   def options[R](uri: String, reqSettings: RequestSettings, timeout: Timeout, unmarshaller: FromResponseUnmarshaller[R]) = delegate.options(uri, reqSettings)(timeout, unmarshaller)
 
+
   def delete[R](uri: String, clazz: Class[R]) = delegate.delete(uri)(unmarshaller = clazz)
 
   def delete[R](uri: String, reqSettings: RequestSettings, clazz: Class[R]) = delegate.delete(uri, reqSettings)(unmarshaller = clazz)
@@ -88,38 +95,38 @@ class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
   def delete[R](uri: String, reqSettings: RequestSettings, timeout: Timeout, unmarshaller: FromResponseUnmarshaller[R]) = delegate.delete(uri, reqSettings)(timeout, unmarshaller)
 
 
-  def post[T <: AnyRef, R](uri: String, content: Option[T], clazz: Class[R]) = delegate.post(uri, content)(marshaller = content, unmarshaller = clazz)
+  def post[T <: AnyRef, R](uri: String, content: Optional[T], clazz: Class[R]) = delegate.post(uri, content.asScala)(marshaller = content.asScala, unmarshaller = clazz)
 
-  def post[T <: AnyRef, R](uri: String, content: Option[T], reqSettings: RequestSettings, clazz: Class[R]) = delegate.post(uri, content, reqSettings)(marshaller = content, unmarshaller = clazz)
+  def post[T <: AnyRef, R](uri: String, content: Optional[T], reqSettings: RequestSettings, clazz: Class[R]) = delegate.post(uri, content.asScala, reqSettings)(marshaller = content.asScala, unmarshaller = clazz)
 
-  def post[T <: AnyRef, R](uri: String, content: Option[T], timeout: Timeout, clazz: Class[R]) = delegate.post(uri, content)(timeout, marshaller = content, unmarshaller = clazz)
+  def post[T <: AnyRef, R](uri: String, content: Optional[T], timeout: Timeout, clazz: Class[R]) = delegate.post(uri, content.asScala)(timeout, marshaller = content.asScala, unmarshaller = clazz)
 
-  def post[T <: AnyRef, R](uri: String, content: Option[T], reqSettings: RequestSettings, timeout: Timeout, clazz: Class[R]) = delegate.post(uri, content, reqSettings)(timeout, content, clazz)
+  def post[T <: AnyRef, R](uri: String, content: Optional[T], reqSettings: RequestSettings, timeout: Timeout, clazz: Class[R]) = delegate.post(uri, content.asScala, reqSettings)(timeout, content.asScala, clazz)
 
-  def post[T <: AnyRef, R](uri: String, content: Option[T], marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.post(uri, content)(marshaller = marshaller, unmarshaller = unmarshaller)
+  def post[T <: AnyRef, R](uri: String, content: Optional[T], marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.post(uri, content.asScala)(marshaller = marshaller, unmarshaller = unmarshaller)
 
-  def post[T <: AnyRef, R](uri: String, content: Option[T], reqSettings: RequestSettings, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.post(uri, content, reqSettings)(marshaller = marshaller, unmarshaller = unmarshaller)
+  def post[T <: AnyRef, R](uri: String, content: Optional[T], reqSettings: RequestSettings, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.post(uri, content.asScala, reqSettings)(marshaller = marshaller, unmarshaller = unmarshaller)
 
-  def post[T <: AnyRef, R](uri: String, content: Option[T], timeout: Timeout, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.post(uri, content)(timeout, marshaller, unmarshaller)
+  def post[T <: AnyRef, R](uri: String, content: Optional[T], timeout: Timeout, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.post(uri, content.asScala)(timeout, marshaller, unmarshaller)
 
-  def post[T <: AnyRef, R](uri: String, content: Option[T], reqSettings: RequestSettings, timeout: Timeout, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.post(uri, content, reqSettings)(timeout, marshaller, unmarshaller)
+  def post[T <: AnyRef, R](uri: String, content: Optional[T], reqSettings: RequestSettings, timeout: Timeout, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.post(uri, content.asScala, reqSettings)(timeout, marshaller, unmarshaller)
 
 
-  def put[T <: AnyRef, R](uri: String, content: Option[T], clazz: Class[R]) = delegate.put(uri, content)(marshaller = content, unmarshaller = clazz)
+  def put[T <: AnyRef, R](uri: String, content: Optional[T], clazz: Class[R]) = delegate.put(uri, content.asScala)(marshaller = content.asScala, unmarshaller = clazz)
 
-  def put[T <: AnyRef, R](uri: String, content: Option[T], reqSettings: RequestSettings, clazz: Class[R]) = delegate.put(uri, content, reqSettings)(marshaller = content, unmarshaller = clazz)
+  def put[T <: AnyRef, R](uri: String, content: Optional[T], reqSettings: RequestSettings, clazz: Class[R]) = delegate.put(uri, content.asScala, reqSettings)(marshaller = content.asScala, unmarshaller = clazz)
 
-  def put[T <: AnyRef, R](uri: String, content: Option[T], timeout: Timeout, clazz: Class[R]) = delegate.put(uri, content)(timeout, marshaller = content, unmarshaller = clazz)
+  def put[T <: AnyRef, R](uri: String, content: Optional[T], timeout: Timeout, clazz: Class[R]) = delegate.put(uri, content.asScala)(timeout, marshaller = content.asScala, unmarshaller = clazz)
 
-  def put[T <: AnyRef, R](uri: String, content: Option[T], reqSettings: RequestSettings, timeout: Timeout, clazz: Class[R]) = delegate.put(uri, content, reqSettings)(timeout, content, clazz)
+  def put[T <: AnyRef, R](uri: String, content: Optional[T], reqSettings: RequestSettings, timeout: Timeout, clazz: Class[R]) = delegate.put(uri, content.asScala, reqSettings)(timeout, content.asScala, clazz)
 
-  def put[T <: AnyRef, R](uri: String, content: Option[T], marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.put(uri, content)(marshaller = marshaller, unmarshaller = unmarshaller)
+  def put[T <: AnyRef, R](uri: String, content: Optional[T], marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.put(uri, content.asScala)(marshaller = marshaller, unmarshaller = unmarshaller)
 
-  def put[T <: AnyRef, R](uri: String, content: Option[T], reqSettings: RequestSettings, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.put(uri, content, reqSettings)(marshaller = marshaller, unmarshaller = unmarshaller)
+  def put[T <: AnyRef, R](uri: String, content: Optional[T], reqSettings: RequestSettings, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.put(uri, content.asScala, reqSettings)(marshaller = marshaller, unmarshaller = unmarshaller)
 
-  def put[T <: AnyRef, R](uri: String, content: Option[T], timeout: Timeout, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.put(uri, content)(timeout, marshaller, unmarshaller)
+  def put[T <: AnyRef, R](uri: String, content: Optional[T], timeout: Timeout, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.put(uri, content.asScala)(timeout, marshaller, unmarshaller)
 
-  def put[T <: AnyRef, R](uri: String, content: Option[T], reqSettings: RequestSettings, timeout: Timeout, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.put(uri, content, reqSettings)(timeout, marshaller, unmarshaller)
+  def put[T <: AnyRef, R](uri: String, content: Optional[T], reqSettings: RequestSettings, timeout: Timeout, marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]) = delegate.put(uri, content.asScala, reqSettings)(timeout, marshaller, unmarshaller)
 
 
   def raw = new RawHttpClient(delegate.raw)
@@ -134,29 +141,29 @@ class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
 
     def get(uri: String, reqSettings: RequestSettings, timeout: Timeout) = rawDelegate.get(uri, reqSettings)(timeout)
 
-    def post[T <: AnyRef](uri: String, content: Option[T]) = rawDelegate.post(uri, content)(marshaller = content)
+    def post[T <: AnyRef](uri: String, content: Optional[T]) = rawDelegate.post(uri, content.asScala)(marshaller = content.asScala)
 
-    def post[T <: AnyRef](uri: String, content: Option[T], reqSettings: RequestSettings) = rawDelegate.post(uri, content, reqSettings)(marshaller = content)
+    def post[T <: AnyRef](uri: String, content: Optional[T], reqSettings: RequestSettings) = rawDelegate.post(uri, content.asScala, reqSettings)(marshaller = content.asScala)
 
-    def post[T <: AnyRef](uri: String, content: Option[T], timeout: Timeout) = rawDelegate.post(uri, content)(timeout, content)
+    def post[T <: AnyRef](uri: String, content: Optional[T], timeout: Timeout) = rawDelegate.post(uri, content.asScala)(timeout, content.asScala)
 
-    def post[T <: AnyRef](uri: String, content: Option[T], reqSettings: RequestSettings, marshaller: Marshaller[T]) = rawDelegate.post(uri, content, reqSettings)(marshaller = marshaller)
+    def post[T <: AnyRef](uri: String, content: Optional[T], reqSettings: RequestSettings, marshaller: Marshaller[T]) = rawDelegate.post(uri, content.asScala, reqSettings)(marshaller = marshaller)
 
-    def post[T <: AnyRef](uri: String, content: Option[T], timeout: Timeout, marshaller: Marshaller[T]) = rawDelegate.post(uri, content)(timeout, marshaller)
+    def post[T <: AnyRef](uri: String, content: Optional[T], timeout: Timeout, marshaller: Marshaller[T]) = rawDelegate.post(uri, content.asScala)(timeout, marshaller)
 
-    def post[T <: AnyRef](uri: String, content: Option[T], reqSettings: RequestSettings, timeout: Timeout, marshaller: Marshaller[T]) = rawDelegate.post(uri, content, reqSettings)(timeout, marshaller)
+    def post[T <: AnyRef](uri: String, content: Optional[T], reqSettings: RequestSettings, timeout: Timeout, marshaller: Marshaller[T]) = rawDelegate.post(uri, content.asScala, reqSettings)(timeout, marshaller)
 
-    def put[T <: AnyRef](uri: String, content: Option[T]) = rawDelegate.put(uri, content)(marshaller = content)
+    def put[T <: AnyRef](uri: String, content: Optional[T]) = rawDelegate.put(uri, content.asScala)(marshaller = content.asScala)
 
-    def put[T <: AnyRef](uri: String, content: Option[T], reqSettings: RequestSettings) = rawDelegate.put(uri, content, reqSettings)(marshaller = content)
+    def put[T <: AnyRef](uri: String, content: Optional[T], reqSettings: RequestSettings) = rawDelegate.put(uri, content.asScala, reqSettings)(marshaller = content.asScala)
 
-    def put[T <: AnyRef](uri: String, content: Option[T], timeout: Timeout) = rawDelegate.put(uri, content)(timeout, content)
+    def put[T <: AnyRef](uri: String, content: Optional[T], timeout: Timeout) = rawDelegate.put(uri, content.asScala)(timeout, content.asScala)
 
-    def put[T <: AnyRef](uri: String, content: Option[T], reqSettings: RequestSettings, marshaller: Marshaller[T]) = rawDelegate.put(uri, content, reqSettings)(marshaller = marshaller)
+    def put[T <: AnyRef](uri: String, content: Optional[T], reqSettings: RequestSettings, marshaller: Marshaller[T]) = rawDelegate.put(uri, content.asScala, reqSettings)(marshaller = marshaller)
 
-    def put[T <: AnyRef](uri: String, content: Option[T], timeout: Timeout, marshaller: Marshaller[T]) = rawDelegate.put(uri, content)(timeout, marshaller)
+    def put[T <: AnyRef](uri: String, content: Optional[T], timeout: Timeout, marshaller: Marshaller[T]) = rawDelegate.put(uri, content.asScala)(timeout, marshaller)
 
-    def put[T <: AnyRef](uri: String, content: Option[T], reqSettings: RequestSettings, timeout: Timeout, marshaller: Marshaller[T]) = rawDelegate.put(uri, content, reqSettings)(timeout, marshaller)
+    def put[T <: AnyRef](uri: String, content: Optional[T], reqSettings: RequestSettings, timeout: Timeout, marshaller: Marshaller[T]) = rawDelegate.put(uri, content.asScala, reqSettings)(timeout, marshaller)
 
     def head(uri: String) = rawDelegate.head(uri)
 

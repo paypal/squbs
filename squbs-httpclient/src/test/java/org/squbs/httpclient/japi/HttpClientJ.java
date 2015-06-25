@@ -1,13 +1,13 @@
 package org.squbs.httpclient.japi;
 
 import akka.actor.ActorSystem;
-import org.squbs.httpclient.japi.HttpClientFactory;
 import org.squbs.httpclient.RequestSettings;
-import scala.Option;
 import scala.concurrent.Future;
 import spray.http.HttpResponse;
 import spray.httpx.marshalling.Marshaller;
 import spray.httpx.unmarshalling.Deserializer;
+
+import java.util.Optional;
 
 /**
  * Created by lma on 6/5/2015.
@@ -24,19 +24,19 @@ public class HttpClientJ {
         return client.raw().get(uri, reqSetting);
     }
 
-    public static <T> Future<HttpResponse> rawPost(String clientName, ActorSystem system, String uri, Option<T> data, RequestSettings reqSetting) {
+    public static <T> Future<HttpResponse> rawPost(String clientName, ActorSystem system, String uri, Optional<T> data, RequestSettings reqSetting) {
         HttpClient client = HttpClientFactory.get(clientName, system);
         return client.raw().post(uri, data, reqSetting);
 
     }
 
-    public static <T> Future<HttpResponse> rawPost(String clientName, ActorSystem system, String uri, Option<T> data) {
+    public static <T> Future<HttpResponse> rawPost(String clientName, ActorSystem system, String uri, Optional<T> data) {
         HttpClient client = HttpClientFactory.get(clientName, system);
         return client.raw().post(uri, data);
 
     }
 
-    public static <T> Future<HttpResponse> rawPut(String clientName, ActorSystem system, String uri, Option<T> data) {
+    public static <T> Future<HttpResponse> rawPut(String clientName, ActorSystem system, String uri, Optional<T> data) {
         HttpClient client = HttpClientFactory.get(clientName, system);
         return client.raw().put(uri, data);
 
@@ -75,23 +75,22 @@ public class HttpClientJ {
 
     }
 
-    public static <T,R> Future<R> post(String clientName, ActorSystem system, String uri, Option<T> data, Class<R> respType) {
+    public static <T, R> Future<R> post(String clientName, ActorSystem system, String uri, Optional<T> data, Class<R> respType) {
         HttpClient client = HttpClientFactory.get(clientName, system);
         return client.post(uri, data, respType);
 
     }
 
 
-    public static <T,R> Future<R> post(String clientName, ActorSystem system, String uri, Option<T> data, Marshaller<T> marshaller, Deserializer<HttpResponse, R> unmarshaller) {
+    public static <T, R> Future<R> post(String clientName, ActorSystem system, String uri, Optional<T> data, Marshaller<T> marshaller, Deserializer<HttpResponse, R> unmarshaller) {
         HttpClient client = HttpClientFactory.get(clientName, system);
         return client.post(uri, data, marshaller, unmarshaller);
     }
 
 
-    public static <T,R> Future<R> put(String clientName, ActorSystem system, String uri, Option<T> data, Class<R> respType) {
+    public static <T, R> Future<R> put(String clientName, ActorSystem system, String uri, Optional<T> data, Class<R> respType) {
         HttpClient client = HttpClientFactory.get(clientName, system);
         return client.put(uri, data, respType);
-
     }
 
 

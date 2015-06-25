@@ -137,10 +137,10 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     val result = Await.result(response, 3 seconds)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
 
-    import JsonProtocol.typeTagToUnmarshaller
+    import JsonProtocol.TypeTagSupport.typeTagToUnmarshaller
     result.unmarshalTo[TeamBean] should be (Success(fullTeamBean))
 
-    import JsonProtocol.classToFromResponseUnmarshaller
+    import JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
     result.unmarshalTo(classOf[TeamBean]) should be (Success(fullTeamBean))
   }
 
@@ -149,10 +149,10 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     val result = Await.result(response, 3 seconds)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
 
-    import JsonProtocol.classToFromResponseUnmarshaller
+    import JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
     result.unmarshalTo(classOf[Team1]) should be (Success(fullTeam1))
 
-    import JsonProtocol.manifestToUnmarshaller
+    import JsonProtocol.ManifestSupport.manifestToUnmarshaller
     result.unmarshalTo[Team1] should be (Success(fullTeam1))
 
   }
@@ -241,12 +241,11 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   }
 
   "HttpClient with correct Endpoint calling raw.post and unmarshall object for java bean" should "get the correct response" in {
-    import JsonProtocol.manifestToMarshaller
+    import JsonProtocol.ManifestSupport._
     val response = HttpClientFactory.get("DummyService").raw.post[EmployeeBean]("/addj", Some(newTeamMemberBean))
     val result = Await.result(response, 3 seconds)
 
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
-    import JsonProtocol.manifestToUnmarshaller
     result.unmarshalTo[TeamBean] should be (Success(fullTeamBeanWithAdd))
   }
 
@@ -258,8 +257,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   }
 
   "HttpClient with correct Endpoint calling post for java bean" should "get the correct response" in {
-    import JsonProtocol.manifestToMarshaller
-    import JsonProtocol.manifestToUnmarshaller
+    import JsonProtocol.ManifestSupport._
     //import JsonProtocol.typeTagToMarshaller
     //import JsonProtocol.typeTagToUnmarshaller
     val response = HttpClientFactory.get("DummyService").post[EmployeeBean, TeamBean]("/addj", Some(newTeamMemberBean))

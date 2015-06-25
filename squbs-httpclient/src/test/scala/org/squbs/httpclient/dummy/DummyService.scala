@@ -147,8 +147,7 @@ trait DummyService extends SimpleRoutingApp {
 
 
   //import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
-  import JsonProtocol.manifestToUnmarshaller
-  import JsonProtocol.manifestToMarshaller
+  import JsonProtocol.ManifestSupport._
 
   //import JsonProtocol.toResponseMarshallable
   //  import scala.concurrent.ExecutionContext.Implicits.global
