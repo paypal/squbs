@@ -24,7 +24,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
-import org.squbs.httpclient.japi.{EmployeeBean, TeamBean}
+import org.squbs.httpclient.japi.{TeamBeanWithCaseClassMember, EmployeeBean, TeamBean}
 import org.squbs.httpclient.json.{Json4sJacksonNoTypeHintsProtocol, JsonProtocol}
 import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpHeader, HttpResponse, StatusCodes}
@@ -71,6 +71,15 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
 
   "HttpClient with correct Endpoint calling raw.get with custom serializer" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").raw.get("/view2")
+    val result = Await.result(response, 5 seconds)
+    result.status should be (StatusCodes.OK)
+    result.entity should not be empty
+    result.entity.data should not be empty
+    result.entity.data.asString should be (fullTeamJson)
+  }
+
+  "HttpClient with correct Endpoint calling raw.get with java bean using case class" should "get the correct response" in {
+    val response = HttpClientFactory.get("DummyService").raw.get("/view3")
     val result = Await.result(response, 5 seconds)
     result.status should be (StatusCodes.OK)
     result.entity should not be empty
@@ -142,6 +151,18 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
 
     import JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
     result.unmarshalTo(classOf[TeamBean]) should be (Success(fullTeamBean))
+  }
+
+  "HttpClient with correct Endpoint calling raw.get and unmarshall object with java bean using case class" should "get the correct response" in {
+    val response = HttpClientFactory.get("DummyService").raw.get("/view3")
+    val result = Await.result(response, 3 seconds)
+    import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+
+    import JsonProtocol.TypeTagSupport.typeTagToUnmarshaller
+    result.unmarshalTo[TeamBeanWithCaseClassMember] should be (Success(fullTeam3))
+
+    import JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
+    result.unmarshalTo(classOf[TeamBeanWithCaseClassMember]) should be (Success(fullTeam3))
   }
 
   "HttpClient with correct Endpoint calling raw.get and unmarshall object with normal scala class" should "get the correct response" in {

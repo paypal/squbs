@@ -3,6 +3,7 @@ package org.squbs.httpclient.json
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.PropertyAccessor
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import spray.http.{ContentTypes, HttpCharsets, HttpEntity, MediaTypes}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
@@ -12,7 +13,9 @@ import spray.httpx.unmarshalling.Unmarshaller
  */
 object JacksonProtocol {
 
-  val defaultMapper = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
+  val defaultMapper = new ObjectMapper()
+    .setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
+    .registerModule(DefaultScalaModule)
 
   private def marshall(obj: AnyRef): String = {
     defaultMapper.writeValueAsString(obj)

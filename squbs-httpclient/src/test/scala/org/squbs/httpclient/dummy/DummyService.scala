@@ -21,7 +21,7 @@ import java.util
 
 import org.json4s.CustomSerializer
 import org.json4s.JsonAST._
-import org.squbs.httpclient.japi.{TeamBean, EmployeeBean}
+import org.squbs.httpclient.japi.{TeamBeanWithCaseClassMember, TeamBean, EmployeeBean}
 import org.squbs.httpclient.json.JsonProtocol
 import spray.routing.SimpleRoutingApp
 import akka.actor.ActorSystem
@@ -108,11 +108,20 @@ trait DummyService extends SimpleRoutingApp {
     new Employee1(4, "Liz", "Taylor", 35, male = false)
   ))
 
+  //scala class use java bean
   val fullTeam2 = new Team2("squbs Team", List[EmployeeBean](
     new EmployeeBean(1, "John", "Doe", 20, true),
     new EmployeeBean(2, "Mike", "Moon", 25, true),
     new EmployeeBean(3, "Jane", "Williams", 30, false),
     new EmployeeBean(4, "Liz", "Taylor", 35, false)
+  ))
+
+  import scala.collection.JavaConversions._
+  val fullTeam3 = new TeamBeanWithCaseClassMember("squbs Team", List[Employee](
+    Employee(1, "John", "Doe", 20, true),
+    Employee(2, "Mike", "Moon", 25, true),
+    Employee(3, "Jane", "Williams", 30, false),
+    Employee(4, "Liz", "Taylor", 35, false)
   ))
 
   val fullTeam = Team("squbs Team", List[Employee](
@@ -207,6 +216,14 @@ trait DummyService extends SimpleRoutingApp {
             respondWithMediaType(MediaTypes.`application/json`)
             complete {
               fullTeam2
+            }
+          }
+        } ~
+        path("view3") {
+          (get | head | options | post) {
+            respondWithMediaType(MediaTypes.`application/json`)
+            complete {
+              fullTeam3
             }
           }
         } ~
