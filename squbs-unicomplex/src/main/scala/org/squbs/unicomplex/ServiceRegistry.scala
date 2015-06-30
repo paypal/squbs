@@ -194,7 +194,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
       case e: Exception =>
         log.error(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender().path}")
-        Stop//Escalate
+        Escalate
     }
 
   def actorRefFactory = context
