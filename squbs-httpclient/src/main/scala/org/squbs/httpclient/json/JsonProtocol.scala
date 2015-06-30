@@ -17,12 +17,15 @@ object JsonProtocol {
 
   object TypeTagSupport {
 
-    implicit def typeTagToMarshaller[T <: AnyRef : TypeTag]: Marshaller[T] =
-      if (typeOf[T].typeSymbol.isJava)
-        JacksonProtocol.jacksonMarshaller
+    implicit def typeTagToMarshaller[T <: AnyRef : TypeTag]: Marshaller[T] = {
+      if (typeOf[T].typeSymbol.isJava) {
+        val evidence = implicitly[TypeTag[T]]
+        val clazz = evidence.mirror.runtimeClass(evidence.tpe).asInstanceOf[Class[T]]
+        JacksonProtocol.jacksonMarshaller(clazz)
+      }
       else
         Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
-
+    }
 
     implicit def typeTagToUnmarshaller[R](implicit evidence: TypeTag[R]): Unmarshaller[R] = {
       if (typeOf[R].typeSymbol.isJava) {
@@ -35,16 +38,20 @@ object JsonProtocol {
 
   object ManifestSupport {
 
-    implicit def manifestToMarshaller[T <: AnyRef : Manifest]: Marshaller[T] =
-      if (typeOf[T].typeSymbol.isJava)
-        JacksonProtocol.jacksonMarshaller
+    implicit def manifestToMarshaller[T <: AnyRef : Manifest]: Marshaller[T] = {
+      val clazz = implicitly[Manifest[T]].runtimeClass.asInstanceOf[Class[T]]
+      if (isJavaClass(clazz))
+        JacksonProtocol.jacksonMarshaller(clazz)
       else
         Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
+    }
 
     implicit def manifestToUnmarshaller[R: Manifest]: Unmarshaller[R] = {
       val clazz = implicitly[Manifest[R]].runtimeClass.asInstanceOf[Class[R]]
-      if (isJavaClass(clazz)) JacksonProtocol.jacksonUnmarshaller(clazz)
-      else Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller[R]
+      if (isJavaClass(clazz))
+        JacksonProtocol.jacksonUnmarshaller(clazz)
+      else
+        Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller[R]
     }
 
   }
@@ -54,7 +61,7 @@ object JsonProtocol {
 
     implicit def classToMarshaller[T <: AnyRef](clazz: Class[T]): Marshaller[T] =
       if (isJavaClass(clazz))
-        JacksonProtocol.jacksonMarshaller
+        JacksonProtocol.jacksonMarshaller(clazz)
       else
         Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
 
@@ -77,12 +84,13 @@ object JsonProtocol {
     }
   }
 
-  implicit def objectToMarshaller[T <: AnyRef](obj: T): Marshaller[T] =
-    if (isJavaClass(obj))
-      JacksonProtocol.jacksonMarshaller
+  implicit def objectToMarshaller[T <: AnyRef](obj: T): Marshaller[T] = {
+    val clazz = obj.getClass.asInstanceOf[Class[T]]
+    if (isJavaClass(clazz))
+      JacksonProtocol.jacksonMarshaller(clazz)
     else
       Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
-
+  }
 
   //  implicit def toResponseMarshallable[T <: AnyRef](obj: T): ToResponseMarshallable = {
   //    isMarshallable(obj)(objectToMarshaller(obj))

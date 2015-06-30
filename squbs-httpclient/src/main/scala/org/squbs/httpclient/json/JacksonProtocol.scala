@@ -13,24 +13,34 @@ import spray.httpx.unmarshalling.Unmarshaller
  */
 object JacksonProtocol {
 
+  //key = class name
+  var mappers = Map[String, ObjectMapper]()
+
+  //register a specific mapper
+  def registerMapper(clazz: Class[_], mapper: ObjectMapper) = {
+    synchronized {
+      mappers = mappers + ((clazz.getName, mapper))
+    }
+  }
+
+  //default mapper relies on getters
   val defaultMapper = new ObjectMapper()
-    .setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
+    //.setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
     .registerModule(DefaultScalaModule)
 
-  private def marshall(obj: AnyRef): String = {
-    defaultMapper.writeValueAsString(obj)
+  private def mapper(clazz: Class[_]): ObjectMapper = {
+    mappers.get(clazz.getName).getOrElse(defaultMapper)
   }
-  
-  implicit def jacksonMarshaller[T <: AnyRef] =
-    Marshaller.delegate[T, String](ContentTypes.`application/json`)(marshall(_))
 
+  implicit def jacksonMarshaller[T <: AnyRef](clazz: Class[T]) =
+    Marshaller.delegate[T, String](ContentTypes.`application/json`)(mapper(clazz).writeValueAsString(_))
 
-  implicit def jacksonUnmarshaller[T](clazz: Class[T]) : Unmarshaller[T] = {
+  implicit def jacksonUnmarshaller[T](clazz: Class[T]): Unmarshaller[T] = {
     Unmarshaller[T](MediaTypes.`application/json`) {
       case x: HttpEntity.NonEmpty ⇒
         try {
           val input = x.asString(defaultCharset = HttpCharsets.`UTF-8`)
-          defaultMapper.readValue(input, clazz)
+          mapper(clazz).readValue(input, clazz)
         } catch {
           case t: Throwable =>
             //t.printStackTrace()

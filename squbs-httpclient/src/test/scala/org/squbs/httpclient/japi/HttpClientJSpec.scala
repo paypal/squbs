@@ -22,12 +22,16 @@ import java.util.Optional
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import akka.util.Timeout
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
+import com.fasterxml.jackson.annotation.PropertyAccessor
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import org.squbs.httpclient._
-import org.squbs.httpclient.json.{JsonProtocol, Json4sJacksonNoTypeHintsProtocol}
+import org.squbs.httpclient.json.{JacksonProtocol, JsonProtocol, Json4sJacksonNoTypeHintsProtocol}
 import org.squbs.proxy.SimplePipelineConfig
 import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpHeader, StatusCodes}
@@ -44,6 +48,8 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
 
   override def beforeAll() {
     Json4sJacksonNoTypeHintsProtocol.registerSerializer(EmployeeBeanSerializer)
+    val mapper = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY).registerModule(DefaultScalaModule)
+    JacksonProtocol.registerMapper(classOf[TeamBean], mapper)
     EndpointRegistry(system).register(DummyServiceEndpointResolver)
     startDummyService(system)
   }

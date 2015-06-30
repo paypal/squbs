@@ -15,11 +15,27 @@ public class TeamBeanWithCaseClassMember {
     //private Map<String, String> nameMap;
 
     //must have a default one for unmarshalling
-    public TeamBeanWithCaseClassMember(){
+    public TeamBeanWithCaseClassMember() {
 
     }
 
-    public TeamBeanWithCaseClassMember addMember(Employee employee){
+//    public void setDescription(String desc) {
+//        this.description = desc;
+//    }
+//
+//    public void setMembers(List<Employee> mbs) {
+//        this.members = mbs;
+//    }
+
+    public String getDescription() {
+        return this.description;
+    }
+
+    public List<Employee> getMembers() {
+        return this.members;
+    }
+
+    public TeamBeanWithCaseClassMember addMember(Employee employee) {
         List<Employee> all = new ArrayList<Employee>();
         all.addAll(members);
         all.add(employee);
