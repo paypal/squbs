@@ -19,25 +19,23 @@ package org.squbs.unicomplex
 
 import javax.net.ssl.SSLContext
 
-import akka.actor.SupervisorStrategy.Stop
+import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.agent.Agent
 import akka.event.LoggingAdapter
 import akka.io.IO
 import com.typesafe.config.Config
+import org.squbs.unicomplex.ConfigUtil._
 import spray.can.Http
 import spray.can.server.ServerSettings
-import spray.http.HttpHeaders.RawHeader
 import spray.http.StatusCodes.NotFound
 import spray.http._
 import spray.io.ServerSSLEngineProvider
-import spray.routing.Route
-import spray.routing._
+import spray.routing.{Route, _}
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
-import ConfigUtil._
 
 case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorWrapper)
 
