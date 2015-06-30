@@ -20,11 +20,13 @@ package org.squbs.pipeline
 import akka.actor._
 import spray.http._
 
+import scala.collection.JavaConversions._
 
 case class RequestContext(request: HttpRequest,
-													isChunkRequest: Boolean = false,
-													response: ProxyResponse = ResponseNotReady,
-													attributes: Map[String, Any] = Map.empty) { //Store any other data
+                          isChunkRequest: Boolean = false,
+                          response: ProxyResponse = ResponseNotReady,
+                          attributes: Map[String, Any] = Map.empty) {
+  //Store any other data
   def attribute[T](key: String): Option[T] = {
     attributes.get(key) match {
       case None => None
@@ -45,14 +47,28 @@ case class RequestContext(request: HttpRequest,
     this.copy(attributes = this.attributes ++ attributes)
   }
 
+  /*
+  Java API
+   */
+  def withAttributes(attributes: java.util.List[(String, Any)]): RequestContext = {
+    +>(attributes: _*)
+  }
+
   //remove some context attributes
-  def ->(attributeKeys : String*) : RequestContext = {
+  def ->(attributeKeys: String*): RequestContext = {
     this.copy(attributes = this.attributes -- attributeKeys)
   }
 
-  def responseReady : Boolean = response match {
-    case nr : NormalResponse => true
-    case er : ExceptionalResponse => true
+    /*
+  Java API
+   */
+  def removeAttributes(attributeKeys: java.util.List[String]): RequestContext = {
+    ->(attributeKeys: _*)
+  }
+
+  def responseReady: Boolean = response match {
+    case nr: NormalResponse => true
+    case er: ExceptionalResponse => true
     case _ => false
   }
 
@@ -68,6 +84,18 @@ case class RequestContext(request: HttpRequest,
     }
   }
 
+  def addResponseHeader(header: HttpHeader): RequestContext = {
+    addResponseHeaders(header)
+  }
+
+  def addRequestHeaders(headers: HttpHeader*): RequestContext = {
+    copy(request = request.copy(headers = request.headers ++ headers))
+  }
+
+  def addRequestHeader(header: HttpHeader): RequestContext = {
+    copy(request = request.copy(headers = request.headers :+ header))
+  }
+
 }
 
 // $COVERAGE-OFF$
@@ -75,38 +103,39 @@ sealed trait ProxyResponse
 
 object ProxyResponse {
 
-	implicit class PipeCopyHelper(response: ProxyResponse) {
-		def +(header: HttpHeader): ProxyResponse = {
-			response match {
-				case n@NormalResponse(resp) =>
-					n.update(resp.copy(headers = header :: resp.headers))
-				case e: ExceptionalResponse =>
-					e.copy(response = e.response.copy(headers = header :: e.response.headers))
-				case other => other
-			}
-		}
+  implicit class PipeCopyHelper(response: ProxyResponse) {
+    def +(header: HttpHeader): ProxyResponse = {
+      response match {
+        case n@NormalResponse(resp) =>
+          n.update(resp.copy(headers = header :: resp.headers))
+        case e: ExceptionalResponse =>
+          e.copy(response = e.response.copy(headers = header :: e.response.headers))
+        case other => other
+      }
+    }
 
-		def -(header: HttpHeader): ProxyResponse = {
-			response match {
-				case n@NormalResponse(resp) =>
-					val originHeaders = resp.headers.groupBy[Boolean](_.name == header.name)
-					n.update(resp.copy(headers = originHeaders.get(false).getOrElse(List.empty)))
-				case e: ExceptionalResponse =>
-					val originHeaders = e.response.headers.groupBy[Boolean](_.name == header.name)
-					e.copy(response = e.response.copy(headers = originHeaders.get(false).getOrElse(List.empty)))
-				case other => other
-			}
-		}
-	}
+    def -(header: HttpHeader): ProxyResponse = {
+      response match {
+        case n@NormalResponse(resp) =>
+          val originHeaders = resp.headers.groupBy[Boolean](_.name == header.name)
+          n.update(resp.copy(headers = originHeaders.get(false).getOrElse(List.empty)))
+        case e: ExceptionalResponse =>
+          val originHeaders = e.response.headers.groupBy[Boolean](_.name == header.name)
+          e.copy(response = e.response.copy(headers = originHeaders.get(false).getOrElse(List.empty)))
+        case other => other
+      }
+    }
+  }
 
 }
 
 object ResponseNotReady extends ProxyResponse
+
 // $COVERAGE-ON$
 
 case class ExceptionalResponse(response: HttpResponse = ExceptionalResponse.defaultErrorResponse,
-															 cause: Option[Throwable] = None,
-															 original: Option[NormalResponse] = None) extends ProxyResponse
+                               cause: Option[Throwable] = None,
+                               original: Option[NormalResponse] = None) extends ProxyResponse
 
 object ExceptionalResponse {
 
@@ -134,6 +163,7 @@ sealed trait NormalResponse extends ProxyResponse {
 
   def update(newData: HttpResponsePart): NormalResponse
 }
+
 // $COVERAGE-ON$
 
 sealed abstract class BaseNormalResponse(data: HttpResponsePart) extends NormalResponse {
@@ -154,8 +184,8 @@ private case class DirectResponse(data: HttpResponsePart) extends BaseNormalResp
 }
 
 private case class ConfirmedResponse(data: HttpResponsePart,
-																		 ack: Any,
-																		 source: ActorRef) extends BaseNormalResponse(data) {
+                                     ack: Any,
+                                     source: ActorRef) extends BaseNormalResponse(data) {
   override def responseMessage: HttpMessagePartWrapper = Confirmed(data, AckInfo(ack, source))
 
   def update(newData: HttpResponsePart): NormalResponse = copy(validateUpdate(newData))
