@@ -10,6 +10,7 @@ import java.util.List;
  */
 public class TeamBeanWithCaseClassMember {
 
+    private String secretField = "mimic";
     private String description;
     private List<Employee> members;
     //private Map<String, String> nameMap;
