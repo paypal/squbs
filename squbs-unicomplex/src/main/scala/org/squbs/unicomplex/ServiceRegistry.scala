@@ -19,25 +19,23 @@ package org.squbs.unicomplex
 
 import javax.net.ssl.SSLContext
 
-import akka.actor.SupervisorStrategy.Stop
+import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.agent.Agent
 import akka.event.LoggingAdapter
 import akka.io.IO
 import com.typesafe.config.Config
+import org.squbs.unicomplex.ConfigUtil._
 import spray.can.Http
 import spray.can.server.ServerSettings
-import spray.http.HttpHeaders.RawHeader
 import spray.http.StatusCodes.NotFound
 import spray.http._
 import spray.io.ServerSSLEngineProvider
-import spray.routing.Route
-import spray.routing._
+import spray.routing.{Route, _}
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
-import ConfigUtil._
 
 case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorWrapper)
 
@@ -194,12 +192,10 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
       case e: Exception =>
         log.error(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender().path}")
-        Stop//Escalate
+        Escalate
     }
 
   def actorRefFactory = context
-
-  val matchContext = separateOnSlashes(webContext)
 
   val routeDef =
     try {
@@ -221,9 +217,16 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
   implicit val rejectionHandler:RejectionHandler = routeDef.rejectionHandler.getOrElse(PartialFunction.empty[List[Rejection], Route])
   implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.getOrElse(PartialFunction.empty[Throwable, Route])
 
+  lazy val route = if (webContext.nonEmpty) {
+    pathPrefix(separateOnSlashes(webContext)) {routeDef.route}
+  } else {
+    // don't append pathPrefix if webContext is empty, won't be null due to the top check
+    routeDef.route
+  }
+
   def receive = {
     case request =>
-      runRoute(pathPrefix(matchContext) { routeDef.route }).apply(request)
+      runRoute(route).apply(request)
   }
 }
 
