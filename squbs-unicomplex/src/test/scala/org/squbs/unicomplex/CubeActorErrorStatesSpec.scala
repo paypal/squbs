@@ -17,7 +17,11 @@
  */
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
+import javax.management.ObjectName
+import javax.management.openmbean.{CompositeData, TabularDataSupport}
+
+import akka.actor.Actor.Receive
+import akka.actor.{Actor, ActorSystem}
 import akka.io.IO
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
@@ -31,7 +35,7 @@ import spray.util.Utils
 
 import scala.concurrent.duration._
 
-object RootCtxRouteSpec{
+object CubeActorErrorStatesSpec{
   /*
   cube-name = org.squbs.unicomplex.test.RootRoute
   cube-version = "0.0.1"
@@ -42,13 +46,14 @@ object RootCtxRouteSpec{
       }
   ]
    */
-  val classPaths = Array(getClass.getClassLoader.getResource("classpaths/RootCtxRoute").getPath)
+  val classPaths = Array(getClass.getClassLoader.getResource("classpaths/CubeActorErrorStates").getPath)
 
   val (_, port) = Utils.temporaryServerHostnameAndPort()
 
   val config = ConfigFactory.parseString(
     s"""
        |default-listener.bind-port = $port
+       |${JMX.prefixConfig} = true
     """.stripMargin
   )
 
@@ -58,8 +63,8 @@ object RootCtxRouteSpec{
     .initExtensions.start()
 }
 
-class RootCtxRouteSpec extends TestKit(
-  RootCtxRouteSpec.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
+class CubeActorErrorStatesSpec extends TestKit(
+  CubeActorErrorStatesSpec.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
   implicit val timeout: akka.util.Timeout = 10 seconds
 
   val port = system.settings.config getInt "default-listener.bind-port"
@@ -71,17 +76,31 @@ class RootCtxRouteSpec extends TestKit(
   }
 
   "Route" should "handle request with empty web-context" in {
-    IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/ping"))
-    within(timeout.duration) { 
-      val response = expectMsgType[HttpResponse]
-      response.status should be(StatusCodes.OK)
-      response.entity.asString should be("pong")
-    }
+    IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/test2?msg=1"))
+    Thread.sleep(100)
+    IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/test1?msg=1"))
+    Thread.sleep(100)
+    IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/test1?msg=2"))
+    Thread.sleep(1000) // wait the agent get refreshed
+    import org.squbs.unicomplex.JMX._
+    val errorStates = get(new ObjectName(prefix(system) + cubeStateName + "CubeActorErrorStates"), "ActorErrorStates").asInstanceOf[Array[CompositeData]]
+//    val state = errorStates.get("akka://squbs/user/CubeActorErrorStates/$b")
+//    val state = errorStates.values()
+    errorStates.size should be(2)
+    val state1 = errorStates.find(_.get("actorPath").equals("/user/CubeActorErrorStates/$a")).get
+    state1.get("errorCount") should be(2)
+    state1.get("latestException").asInstanceOf[String] should include ("test1:2")
+    val state2 = errorStates.find(_.get("actorPath").equals("/user/CubeActorErrorStates/$b")).get
+    state2.get("errorCount") should be(1)
+    state2.get("latestException").asInstanceOf[String] should include ("test2:1")
   }
 }
 
-class RootRoute extends RouteDefinition {
-  override def route: Route = path("ping") {
-    complete{"pong"}
+class CubeActorTest extends Actor {
+  override def receive: Receive = {
+    case r:HttpRequest =>
+      val msg = r.uri.query.get("msg").getOrElse("")
+      throw new RuntimeException(s"${r.uri.path}:$msg")
   }
 }
+
