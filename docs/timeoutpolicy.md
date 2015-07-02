@@ -1,5 +1,6 @@
-#TimeoutPolicy
-The TimeoutPolicy was designed for two purpose:
+#Timeout Policy
+
+The Timeout Policy was designed for two purpose:
 1. Use different timeout value if you're in debug mode.
 2. Provide a heuristics-based timeout strategy.
 

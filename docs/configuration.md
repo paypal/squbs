@@ -1,4 +1,4 @@
-#Configuration
+#Configuration Reference
 
 The followings lists the squbs configuration as defined in `reference.conf`:
 

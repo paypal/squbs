@@ -1,6 +1,9 @@
+
+#The ActorRegistry
+
 ##Overview
 
-Actor registry provides squbs applications an easy way to send/receive message to squbs well-known actors. 
+The actor registry provides squbs applications an easy way to send/receive message to squbs well-known actors. 
 
 * Well-Known actors 
 * ActorLookup APIs to send/receive message to squbs well-known actors
@@ -16,6 +19,7 @@ Squbs well know actor is defined at squbs-action section of Meta-INF/squbs-meta.
 
 
 Sample:
+
 ```
 cube-name = org.squbs.TestCube
 cube-version = "0.0.5"
@@ -40,6 +44,7 @@ squbs-actors = [
 ##ActorLookup API
 
 * Send message (!/?/tell/ask) to an actor which registered its request message class type as "TestRequest"
+
 ```
   implicit val system : ActorSystem = ...
   ActorLookup ! TestRequest(...)  			
@@ -48,6 +53,9 @@ squbs-actors = [
 
 * Send message (!/?/tell/ask) to an actor which registered its request message class type as "TestRequest", and response message class type as "TestResponse"
 ```
+[remote "oldrepo"]
+	url = git@github.scm.corp.ebay.com:Raptor/squbs.git
+	fetch = +refs/heads/*:refs/remotes/oldrepo/*
   implicit val system : ActorSystem = ...
   ActorLookup[TestResponse] ! TestRequest(...) 	
   
@@ -99,7 +107,7 @@ squbs-actors = [
 
 ##ActorRegistry Actor
 
-* Initialized at Unicomplex boot time, it collects each cube’s well-known actor information based on each cubes Meta-INF/squbs-meta.conf file
+* Initialized at Unicomplex boot time, it collects each cube's well-known actor information based on each cubes Meta-INF/squbs-meta.conf file
 * There is JMX Bean created for each well-known actor((org.squbs.unicomplex:type=ActorRegistry,name=%actorPath)
 
 

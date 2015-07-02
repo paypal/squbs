@@ -1,8 +1,11 @@
+#Monitoring Actors at Runtime
+
 ##Overview
 
 Monitoring status of each actor under actor system 
 
 * Each actor has a corresponding JMXBean(org.squbs.unicomplex:type=ActorMonitor,name=%actorPath) to expose the actor information:
+
 ```
  trait ActorMonitorMXBean {
   def getActor: String
@@ -17,6 +20,7 @@ Monitoring status of each actor under actor system
 
 
 * A JMX Bean(org.squbs.unicomplex:type=ActorMonitor) to expose the configuration of Actor Monitor
+
 ```
  trait ActorMonitorConfigMXBean {
   def getCount : Int				//Count of JMX bean has been created 

@@ -1,13 +1,10 @@
 squbs 
 
-Original Author
+Original Authors
 ----------------
-eBay Software Foundation
-(c) 2014 
+eBay
+(c) 2015
 
-Maintainer
-----------
-
-TypeSafe
-https://typesafe.com/
+PayPal
+(c) 2015
 
