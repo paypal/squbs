@@ -623,7 +623,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         }
       } catch {
         case t: Throwable =>
-          log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
+          log.error(t, "Cube {} proxy with name of {} initialized failed.", name, proxyName)
           val hostActor = context.actorOf(props, name) // disable proxy
           initMap += hostActor -> Some(Failure(t))
           (hostActor, SimpleActor(hostActor))

@@ -266,7 +266,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
       d
     } catch {
       case e: Exception =>
-        log.error(s"Error instantiating route from ${clazz.getName}: $e", e)
+        log.error(e, s"Error instantiating route from {}: {}", clazz.getName, e)
         context.parent ! Initialized(Failure(e))
         context.stop(self)
         null
