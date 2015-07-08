@@ -49,6 +49,10 @@ object RootCtxRouteSpec{
   val config = ConfigFactory.parseString(
     s"""
        |default-listener.bind-port = $port
+       |squbs {
+       |  actorsystem-name = rootCtxRouteSpec
+       |  ${JMX.prefixConfig} = true
+       |}
     """.stripMargin
   )
 
