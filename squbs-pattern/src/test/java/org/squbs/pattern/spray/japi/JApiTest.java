@@ -18,13 +18,67 @@
 package org.squbs.pattern.spray.japi;
 
 import org.junit.Test;
+import scala.collection.immutable.List$;
 import spray.http.*;
+import spray.http.parser.HttpParser;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import static org.junit.Assert.*;
 
 public class JApiTest {
+
+    @Test
+    public void testHttpEntity() {
+        HttpEntity entity = HttpEntityFactory.create("test");
+        assertEquals(entity, HttpEntity$.MODULE$.apply("test"));
+
+        entity = HttpEntityFactory.create("abcdefg".getBytes());
+        assertEquals(entity, HttpEntity$.MODULE$.apply("abcdefg".getBytes()));
+
+        entity = HttpEntityFactory.create(ContentTypes.application$divjson(), "abc");
+        assertEquals(entity, HttpEntity$.MODULE$.apply(ContentTypes.application$divjson(), "abc"));
+
+        entity = HttpEntityFactory.create(ContentTypes.application$divjson(), "abc".getBytes());
+        assertEquals(entity, HttpEntity$.MODULE$.apply(ContentTypes.application$divjson(), "abc".getBytes()));
+
+    }
+
+    @Test
+    public void testChunkedMessageEnd() {
+
+        ChunkedMessageEnd end = ChunkedMessageEndFactory.create();
+        assertEquals(end, ChunkedMessageEnd$.MODULE$);
+
+        end = ChunkedMessageEndFactory.create("abc");
+        assertEquals(end, new ChunkedMessageEnd("abc", ChunkedMessageEnd$.MODULE$.copy$default$2()));
+
+        end = ChunkedMessageEndFactory.create(Arrays.asList(HttpHeaderFactory.create("Content-type", "application/json")));
+        assertEquals(end, ChunkedMessageEnd$.MODULE$.apply("", List$.MODULE$.empty().$colon$colon(HttpHeaderFactory.create("Content-type", "application/json"))));
+
+        end = ChunkedMessageEndFactory.create("abc", Arrays.asList(HttpHeaderFactory.create("Content-type", "application/json")));
+        assertEquals(end, ChunkedMessageEnd$.MODULE$.apply("abc", List$.MODULE$.empty().$colon$colon(HttpHeaderFactory.create("Content-type", "application/json"))));
+
+    }
+
+    @Test
+    public void testMessageChunk() {
+        MessageChunk chunk = MessageChunkFactory.create("abc");
+        assertEquals(chunk, MessageChunk.apply("abc"));
+
+        chunk = MessageChunkFactory.create("abc", HttpParser.getCharset("UTF-8"));
+        assertEquals(chunk, MessageChunk.apply("abc", HttpCharsets.UTF$minus8()));
+
+        chunk = MessageChunkFactory.create("abc", "def");
+        assertEquals(chunk, MessageChunk.apply("abc", "def"));
+
+        chunk = MessageChunkFactory.create("abc", HttpParser.getCharset("UTF-8"), "def");
+        assertEquals(chunk, MessageChunk.apply("abc", HttpParser.getCharset("UTF-8"), "def"));
+
+        chunk = MessageChunkFactory.create("abc".getBytes());
+        assertEquals(chunk, MessageChunk.apply("abc".getBytes()));
+    }
 
     @Test
     public void testContentType() throws Exception {
@@ -69,16 +123,16 @@ public class JApiTest {
 
         HttpResponse normalResponse = new HttpResponseBuilder().entity("abc").build();
         assertEquals("abc", normalResponse.entity().asString());
-        assertEquals(ContentTypeFactory.create("text/plain; charset=UTF-8"), ((HttpEntity.NonEmpty)normalResponse.entity()).contentType());
+        assertEquals(ContentTypeFactory.create("text/plain; charset=UTF-8"), ((HttpEntity.NonEmpty) normalResponse.entity()).contentType());
 
         HttpResponse streamResponse = new HttpResponseBuilder().entity("abc".getBytes()).build();
         assertEquals("abc", streamResponse.entity().asString());
-        assertEquals(ContentTypeFactory.create("application/octet-stream"), ((HttpEntity.NonEmpty)streamResponse.entity()).contentType());
+        assertEquals(ContentTypeFactory.create("application/octet-stream"), ((HttpEntity.NonEmpty) streamResponse.entity()).contentType());
 
         ContentType contentType = ContentTypeFactory.create("application/json");
         HttpResponse withContentType = new HttpResponseBuilder().entity(contentType, "{'a':1}").build();
         assertEquals("{'a':1}", withContentType.entity().asString());
-        assertEquals(contentType, ((HttpEntity.NonEmpty)withContentType.entity()).contentType());
+        assertEquals(contentType, ((HttpEntity.NonEmpty) withContentType.entity()).contentType());
 
         ArrayList<HttpHeader> httpHeaders = new ArrayList<>();
         httpHeaders.add(HttpHeaderFactory.create("x-abc", "def"));
