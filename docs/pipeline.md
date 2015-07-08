@@ -1,4 +1,4 @@
-#Proxy Of Squbs Service
+#Request/Response Pipeline Proxy
 
 ### Overview
 Sometimes, we may have common biz logic across different squbs-services.

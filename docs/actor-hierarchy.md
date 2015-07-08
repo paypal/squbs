@@ -1,5 +1,5 @@
 
-#Actor Hierarchy
+#Unicomplex Actor Hierarchy
 
 ![image](img/squbs-actor-hierarchy.png)
 
