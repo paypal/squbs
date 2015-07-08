@@ -250,8 +250,6 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 
   def actorRefFactory = context
 
-  val matchContext = separateOnSlashes(webContext)
-
   val routeDef =
     try {
       val d = RouteDefinition.startRoutes {
@@ -274,9 +272,15 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
   implicit val exceptionHandler: ExceptionHandler =
     routeDef.exceptionHandler getOrElse PartialFunction.empty[Throwable, Route]
 
+  lazy val route = if (webContext.nonEmpty) {
+    pathPrefix(separateOnSlashes(webContext)) {routeDef.route}
+  } else {
+    // don't append pathPrefix if webContext is empty, won't be null due to the top check
+    routeDef.route
+  }
   def receive = {
     case request =>
-      runRoute(pathPrefix(matchContext) { routeDef.route }).apply(request)
+      runRoute(route).apply(request)
   }
 }
 
