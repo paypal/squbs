@@ -15,7 +15,8 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-routing" % sprayV,
   "io.spray" %% "spray-testkit" % sprayV % "test",
   "io.spray" %% "spray-client"  % sprayV % "test",
-  "io.spray" %% "spray-json"    % "1.3.0" % "test"
+  "io.spray" %% "spray-json"    % "1.3.0" % "test",
+  "ch.qos.logback" % "logback-classic" % "1.0.11" % "test"
 )
 
 findbugsSettings

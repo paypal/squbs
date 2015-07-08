@@ -18,28 +18,26 @@ package org.squbs.unicomplex
 
 import javax.net.ssl.SSLContext
 
-import akka.actor.SupervisorStrategy.Stop
+import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.agent.Agent
 import akka.event.LoggingAdapter
 import akka.io.IO
 import com.typesafe.config.Config
+import org.squbs.unicomplex.ConfigUtil._
 import spray.can.Http
 import spray.can.server.ServerSettings
-import spray.http.HttpHeaders.RawHeader
 import spray.http.StatusCodes.NotFound
 import spray.http.Uri.Path
 import spray.http._
 import spray.io.ServerSSLEngineProvider
-import spray.routing.Route
-import spray.routing._
+import spray.routing.{Route, _}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
-import ConfigUtil._
 
 case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorWrapper)
 
@@ -91,21 +89,28 @@ object RegisterContext {
 
 }
 
+case class SqubsRawHeader(name: String, value: String, lowercaseName: String) extends HttpHeader {
+  def render[R <: Rendering](r: R): r.type = r ~~ name ~~ ':' ~~ ' ' ~~ value
+}
+
+
 object WebContextHeader {
   val name = classOf[WebContextHeader].getName
+  val lowerName = name.toLowerCase
 
   def apply(webCtx: String) = new WebContextHeader(webCtx)
 }
 
-class WebContextHeader(webCtx: String) extends RawHeader(WebContextHeader.name, webCtx)
+class WebContextHeader(webCtx: String) extends SqubsRawHeader(WebContextHeader.name, webCtx, WebContextHeader.lowerName)
 
 object LocalPortHeader {
   val name: String = classOf[LocalPortHeader].getName
+  val lowerName = name.toLowerCase
 
   def apply(port: Int) = new LocalPortHeader(port)
 }
 
-class LocalPortHeader(port: Int) extends RawHeader(LocalPortHeader.name, port.toString)
+class LocalPortHeader(port: Int) extends SqubsRawHeader(LocalPortHeader.name, port.toString, LocalPortHeader.lowerName)
 
 class ServiceRegistry(log: LoggingAdapter) {
 
@@ -244,12 +249,10 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
       case e: Exception =>
         log.error(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender().path}")
-        Stop //Escalate
+        Escalate
     }
 
   def actorRefFactory = context
-
-  val matchContext = separateOnSlashes(webContext)
 
   val routeDef =
     try {
@@ -262,20 +265,26 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
       d
     } catch {
       case e: Exception =>
-        log.error(s"Error instantiating route from ${clazz.getName}: $e", e)
+        log.error(e, s"Error instantiating route from {}: {}", clazz.getName, e)
         context.parent ! Initialized(Failure(e))
         context.stop(self)
         null
     }
 
-  implicit val rejectionHandler: RejectionHandler =
-    routeDef.rejectionHandler getOrElse PartialFunction.empty[List[Rejection], Route]
-  implicit val exceptionHandler: ExceptionHandler =
-    routeDef.exceptionHandler getOrElse PartialFunction.empty[Throwable, Route]
+  
+  implicit val rejectionHandler:RejectionHandler = routeDef.rejectionHandler.getOrElse(PartialFunction.empty[List[Rejection], Route])
+  implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.getOrElse(PartialFunction.empty[Throwable, Route])
+
+  lazy val route = if (webContext.nonEmpty) {
+    pathPrefix(separateOnSlashes(webContext)) {routeDef.route}
+  } else {
+    // don't append pathPrefix if webContext is empty, won't be null due to the top check
+    routeDef.route
+  }
 
   def receive = {
     case request =>
-      runRoute(pathPrefix(matchContext) { routeDef.route }).apply(request)
+      runRoute(route).apply(request)
   }
 }
 

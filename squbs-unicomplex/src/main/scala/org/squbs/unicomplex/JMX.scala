@@ -105,6 +105,11 @@ case class ExtensionInfo @ConstructorProperties(Array("cube", "phase", "error"))
                                           @BeanProperty phase: String,
                                           @BeanProperty error: String)
 
+case class ActorErrorState @ConstructorProperties(Array("actorPath", "errorCount", "latestException"))(
+                                          @BeanProperty actorPath: String,
+                                          @BeanProperty errorCount: Int,
+                                          @BeanProperty latestException: String)
+
 // $COVERAGE-ON$
                                           
 @MXBean
@@ -141,6 +146,7 @@ trait CubeStateMXBean {
   def getName: String
   def getCubeState: String
   def getWellKnownActors : String
+  def getActorErrorStates: util.List[ActorErrorState]
 }
 
 @MXBean

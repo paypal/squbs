@@ -17,6 +17,7 @@
 package org.squbs.unicomplex
 
 
+import java.io.{PrintWriter, StringWriter}
 import java.util
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
@@ -539,9 +540,10 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 }
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
-
+  import collection.JavaConversions._
   val cubeName = self.path.name
   val pipelineManager = PipelineManager(context.system)
+  val actorErrorStatesAgent = Agent[Map[String, ActorErrorState]](Map())
 
   class CubeStateBean extends CubeStateMXBean {
 
@@ -551,6 +553,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     override def getWellKnownActors: String = context.children.mkString(",")
 
+    override def getActorErrorStates: util.List[ActorErrorState] = actorErrorStatesAgent().values.toList
   }
 
   override def preStart() {
@@ -568,7 +571,18 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
       case e: Exception =>
-        log.warning(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender().path}")
+        val actorPath = sender().path.toStringWithoutAddress
+        log.warning(s"Received ${e.getClass.getName} with message ${e.getMessage} from $actorPath")
+        actorErrorStatesAgent.send{states =>
+          val stringWriter = new StringWriter()
+          e.printStackTrace(new PrintWriter(stringWriter))
+          val stackTrace = stringWriter.toString
+          val state = states.get(actorPath) match {
+            case Some(s) => s.copy(errorCount = s.errorCount + 1, latestException = stackTrace)
+            case _ => ActorErrorState(actorPath, 1, stackTrace)
+          }
+          states + (actorPath -> state)
+        }
         Restart
     }
 
@@ -608,7 +622,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         }
       } catch {
         case t: Throwable =>
-          log.error(s"Cube $name proxy with name of $proxyName initialized failed.", t)
+          log.error(t, "Cube {} proxy with name of {} initialized failed.", name, proxyName)
           val hostActor = context.actorOf(props, name) // disable proxy
           initMap += hostActor -> Some(Failure(t))
           (hostActor, SimpleActor(hostActor))
