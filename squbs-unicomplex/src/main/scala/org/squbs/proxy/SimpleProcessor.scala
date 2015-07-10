@@ -95,7 +95,7 @@ object SimplePipelineConfig extends LazyLogging {
    * Java API
    */
   def create(reqPipe: java.util.List[_ <: Handler], respPipe: java.util.List[_ <: Handler]): SimplePipelineConfig = {
-    import scala.collection.JavaConversions._;
+    import scala.collection.JavaConversions._
     SimplePipelineConfig(reqPipe, respPipe)
   }
 
