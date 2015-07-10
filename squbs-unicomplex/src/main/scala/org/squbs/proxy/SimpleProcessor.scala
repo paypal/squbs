@@ -84,5 +84,21 @@ object SimplePipelineConfig extends LazyLogging {
     }
   }
 
+  /**
+   * Java API
+   */
+  def create(config: Config)(implicit actorRefFactory: ActorRefFactory): SimplePipelineConfig = {
+    apply(config)
+  }
+
+  /**
+   * Java API
+   */
+  def create(reqPipe: java.util.List[_ <: Handler], respPipe: java.util.List[_ <: Handler]): SimplePipelineConfig = {
+    import scala.collection.JavaConversions._;
+    SimplePipelineConfig(reqPipe, respPipe)
+  }
+
+
   val empty = SimplePipelineConfig(Seq.empty, Seq.empty)
 }
