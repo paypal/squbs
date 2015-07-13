@@ -1,4 +1,3 @@
-import de.johoop.findbugs4sbt.FindBugs._
 import Versions._
 
 name := "squbs-actorregistry"
@@ -11,10 +10,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-agent" % akkaV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test"
 )
-
-findbugsSettings
-
-findbugsExcludeFilters := Some(scala.xml.XML.loadFile (baseDirectory.value / "findbugsExclude.xml"))
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 

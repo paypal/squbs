@@ -1,4 +1,4 @@
-import de.johoop.findbugs4sbt.FindBugs._
+
 import Versions._
 
 name := "squbs-testkit"
@@ -13,10 +13,6 @@ libraryDependencies ++= Seq(
   "com.novocode" % "junit-interface" % "0.11" % "test->default"
 )
 
-findbugsSettings
-
-
 org.scalastyle.sbt.ScalastylePlugin.Settings
-
 
 instrumentSettings

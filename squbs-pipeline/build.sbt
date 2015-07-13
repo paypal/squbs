@@ -1,4 +1,3 @@
-import de.johoop.findbugs4sbt.FindBugs._
 import Versions._
 
 name := "squbs-pipeline"
@@ -17,10 +16,6 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-client"  % sprayV % "test",
   "io.spray" %% "spray-json"    % "1.3.0" % "test"
 )
-
-findbugsSettings
-
-findbugsExcludeFilters := Some(scala.xml.XML.loadFile (baseDirectory.value / "findbugsExclude.xml"))
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 

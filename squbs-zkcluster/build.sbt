@@ -1,5 +1,3 @@
-import de.johoop.findbugs4sbt.FindBugs._
-
 name := "squbs-zkcluster"
 
 val akkaV = "2.3.10"
@@ -19,10 +17,6 @@ libraryDependencies ++= Seq(
   "org.mockito" % "mockito-core" % "1.9.5" % "test",
   "org.apache.zookeeper" % "zookeeper" % "3.4.6" % "test"
 )
-
-findbugsSettings
-
-findbugsExcludeFilters := Some(scala.xml.XML.loadFile (baseDirectory.value / "findbugsExclude.xml"))
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 

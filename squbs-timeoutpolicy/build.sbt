@@ -1,4 +1,3 @@
-import de.johoop.findbugs4sbt.FindBugs._
 import Versions._
 
 name := "squbs-timeoutpolicy"
@@ -10,10 +9,6 @@ libraryDependencies ++= Seq(
   "org.apache.commons"         %  "commons-math3"       % "3.3"   % "test->*",
   "org.scala-lang.modules"     %% "scala-java8-compat"  % "0.4.0" % "test"
 )
-
-findbugsSettings
-
-// findbugsExcludeFilters := Some(scala.xml.XML.loadFile (baseDirectory.value / "findbugsExclude.xml"))
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 

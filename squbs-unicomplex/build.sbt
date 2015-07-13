@@ -1,4 +1,3 @@
-import de.johoop.findbugs4sbt.FindBugs._
 import Versions._
 
 name := "squbs-unicomplex"
@@ -18,10 +17,6 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-json"    % "1.3.0" % "test",
   "ch.qos.logback" % "logback-classic" % "1.0.11" % "test"
 )
-
-findbugsSettings
-
-findbugsExcludeFilters := Some(scala.xml.XML.loadFile (baseDirectory.value / "findbugsExclude.xml"))
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 

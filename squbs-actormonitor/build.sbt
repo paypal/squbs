@@ -1,4 +1,3 @@
-import de.johoop.findbugs4sbt.FindBugs._
 import Versions._
 
 name := "squbs-actormonitor"
@@ -11,10 +10,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0"
 )
-
-findbugsSettings
-
-findbugsExcludeFilters := Some(scala.xml.XML.loadFile (baseDirectory.value / "findbugsExclude.xml"))
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
