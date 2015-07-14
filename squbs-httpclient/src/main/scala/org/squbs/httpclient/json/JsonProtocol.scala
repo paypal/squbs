@@ -17,7 +17,7 @@
  */
 package org.squbs.httpclient.json
 
-import spray.httpx.marshalling.Marshaller
+import spray.httpx.marshalling.{ToResponseMarshaller, Marshaller, ToResponseMarshallable}
 import spray.httpx.unmarshalling.UnmarshallerLifting._
 import spray.httpx.unmarshalling._
 
@@ -109,10 +109,16 @@ object JsonProtocol {
       Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
   }
 
-  //  implicit def toResponseMarshallable[T <: AnyRef](obj: T): ToResponseMarshallable = {
-  //    isMarshallable(obj)(objectToMarshaller(obj))
-  //  }
-  //
+  /*
+  For java cases
+   */
+  implicit def toResponseMarshallable[T <: AnyRef](obj: T): ToResponseMarshallable = {
+    ToResponseMarshallable.isMarshallable(obj)(objectToMarshaller(obj))
+  }
+
+  implicit def toResponseMarshaller[T <: AnyRef](obj: T): ToResponseMarshaller[T] = {
+    objectToMarshaller(obj)
+  }
 
 
 }
