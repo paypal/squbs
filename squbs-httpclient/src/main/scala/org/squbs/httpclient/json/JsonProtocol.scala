@@ -109,16 +109,9 @@ object JsonProtocol {
       Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
   }
 
-  /*
-  For java cases
-   */
-  implicit def toResponseMarshallable[T <: AnyRef](obj: T): ToResponseMarshallable = {
-    ToResponseMarshallable.isMarshallable(obj)(objectToMarshaller(obj))
-  }
-
-  implicit def toResponseMarshaller[T <: AnyRef](obj: T): ToResponseMarshaller[T] = {
-    objectToMarshaller(obj)
-  }
+//  implicit def toResponseMarshallable[T <: AnyRef](obj: T): ToResponseMarshallable = {
+//    ToResponseMarshallable.isMarshallable(obj)(objectToMarshaller(obj))
+//  }
 
 
 }
