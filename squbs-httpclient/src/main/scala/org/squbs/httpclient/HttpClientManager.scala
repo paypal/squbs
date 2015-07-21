@@ -123,7 +123,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
 
   private def verifyUri(client: HttpClient, uri: String) = {
     val baseUri = Uri(client.endpoint.uri)
-    val basePath = baseUri.path.toString()
+    val basePath = baseUri.path.toString
     var trimBasePath = basePath
     if (trimBasePath != "" && trimBasePath.charAt(0) == '/') {
       trimBasePath = trimBasePath.substring(1)
@@ -176,16 +176,20 @@ class HttpClientCallerActor(svcName: String, env: Environment) extends Actor wit
       httpMethod match {
         case HttpMethods.GET =>
           get(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome()
+//          context.unbecome
+          context stop self
         case HttpMethods.DELETE =>
           delete(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome()
+//          context.unbecome
+          context stop self
         case HttpMethods.HEAD =>
           head(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome()
+//          context.unbecome
+          context stop self
         case HttpMethods.OPTIONS =>
           options(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome()
+//          context.unbecome
+          context stop self
       }
   }
 
@@ -202,10 +206,12 @@ class HttpClientCallerActor(svcName: String, env: Environment) extends Actor wit
       httpMethod match {
         case HttpMethods.POST =>
           post[T](client, connector, uri, content, reqSettings).pipeTo(actorRef)
-          context.unbecome()
+//          context.unbecome
+          context stop self
         case HttpMethods.PUT =>
           put[T](client, connector, uri, content, reqSettings).pipeTo(actorRef)
-          context.unbecome()
+//          context.unbecome
+          context stop self
       }
   }
 }
@@ -214,7 +220,7 @@ class HttpClientActor(svcName: String, env: Environment) extends Actor with Http
 
   import org.squbs.httpclient.HttpClientActorMessage._
 
-  private[HttpClientActor] val httpClientCallerActor = context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env))
+//  private[HttpClientActor] val httpClientCallerActor = context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env))
 
   implicit val ec = context.dispatcher
 
@@ -224,17 +230,17 @@ class HttpClientActor(svcName: String, env: Environment) extends Actor with Http
 
   override def receive: Actor.Receive = {
     case msg: HttpClientActorMessage.Get =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case msg: HttpClientActorMessage.Delete =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case msg: HttpClientActorMessage.Head =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case msg: HttpClientActorMessage.Options =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case msg@ HttpClientActorMessage.Put(uri, content, reqSettings, json4sSupport) =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case msg@ HttpClientActorMessage.Post(uri, content, reqSettings, json4sSupport) =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case MarkDown =>
       HttpClientManager(system).httpClientMap.put((client.name, client.env),
         client.copy(status = Status.DOWN)(actorCreator = (_) => Future.successful(self))
@@ -263,7 +269,7 @@ class HttpClientActor(svcName: String, env: Environment) extends Actor with Http
       )
       sender ! self
     case Close =>
-      context.stop(httpClientCallerActor)
+//      context.stop(httpClientCallerActor)
       context.stop(self)
       HttpClientManager(system).httpClientMap.remove((client.name, client.env))
       sender ! CloseSuccess
@@ -282,7 +288,7 @@ class HttpClientManager extends Actor {
     case client @ Get(name, env) =>
       HttpClientManager(system).httpClientMap.get((name, env)) match {
         case Some(httpClient) =>
-          httpClient.fActorRef.pipeTo(sender())
+          httpClient.fActorRef.pipeTo(sender)
         case None    =>
           val httpClient = HttpClient(name, env)()
           HttpClientManager(system).httpClientMap.put((name, env), httpClient)
@@ -297,7 +303,7 @@ class HttpClientManager extends Actor {
           sender ! HttpClientNotExistException(name, env)
       }
     case DeleteAll =>
-      HttpClientManager(system).httpClientMap.clear()
+      HttpClientManager(system).httpClientMap.clear
       sender ! DeleteAllSuccess
     case GetAll =>
       sender ! HttpClientManager(system).httpClientMap
