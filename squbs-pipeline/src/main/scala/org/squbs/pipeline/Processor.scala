@@ -106,6 +106,12 @@ trait Processor {
 
 }
 
+/**
+ * For java
+ */
+abstract class AbstractProcessor extends Processor
+
+
 trait ProcessorFactory {
   def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor]
 }

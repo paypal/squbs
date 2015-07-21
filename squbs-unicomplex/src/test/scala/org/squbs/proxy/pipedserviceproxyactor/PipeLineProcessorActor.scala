@@ -72,7 +72,10 @@ class confhandler3 extends Handler with HandlerFactory{
 		Future {
 			val resp = (reqCtx.response, reqCtx.attribute[String]("confhandler2")) match {
 				case (NormalResponse(rp), Some(v)) =>
-					val httpresp = rp.copy(headers = HttpHeaders.RawHeader("confhandler3", "dummy") :: HttpHeaders.RawHeader("confhandler2", v) :: rp.headers)
+          val attrHeaders = reqCtx.attributes.map{
+            entry =>  HttpHeaders.RawHeader(entry._1 , entry._2.toString)
+          }
+					val httpresp = rp.copy(headers = HttpHeaders.RawHeader("confhandler3", "dummy") :: HttpHeaders.RawHeader("confhandler2", v) :: rp.headers ++ attrHeaders)
 					reqCtx.response.asInstanceOf[NormalResponse].update(httpresp)
 				case (NormalResponse(rp), None) =>
 					val httpresp = rp.copy(headers = HttpHeaders.RawHeader("confhandler3", "dummy") :: rp.headers)

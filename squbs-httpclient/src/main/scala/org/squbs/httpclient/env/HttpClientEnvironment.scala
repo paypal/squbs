@@ -26,20 +26,37 @@ abstract class Environment {
   def lowercaseName: String = name.toLowerCase
 }
 
-case object Default extends Environment{
+case object Default extends Environment {
   override val name: String = "DEFAULT"
+
+  /*
+  java api
+   */
+  val value = this
 }
 
 case object QA extends Environment {
   override val name: String = "QA"
+  /*
+  java api
+ */
+  val value = this
 }
 
 case object DEV extends Environment {
   override val name: String = "DEV"
+  /*
+  java api
+ */
+  val value = this
 }
 
 case object PROD extends Environment {
   override val name: String = "PROD"
+  /*
+  java api
+ */
+  val value = this
 }
 
 case class RawEnv(name: String) extends Environment
