@@ -53,6 +53,8 @@ Users could register multiple `EndpointResolver`s with the `EndpointRegistry` pe
 
 The following is an example of an EndpointResolver:
 
+**Scala**
+
 ```scala
 
 object DummyLocalhostResolver extends EndpointResolver {
@@ -67,6 +69,8 @@ object DummyLocalhostResolver extends EndpointResolver {
 }
 
 ```
+
+**Java**
 
 ```java
 
