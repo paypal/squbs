@@ -91,11 +91,22 @@ public class DummyLocalhostResolver extends AbstractEndpointResolver{
 ```
 After defining the resolver, simply register the resolver with the EndpointRegistry:
 
+**Scala**
+
 ```scala
 
 EndpointRegistry(actorSystem).register(DummyLocalhostResolver)
 
 ```
+**Java**
+
+```java
+
+EndpointRegistryExtension registry = (EndpointRegistryExtension) EndpointRegistry.get(actorSystem); 
+registry.register(new DummyLocalhostResolver());
+        
+```
+
 
 ### EnvironmentRegistry
 
