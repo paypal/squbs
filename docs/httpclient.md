@@ -444,11 +444,17 @@ val result: Try[T] = httpResponse.unmarshalTo[T] //T is the unmarshall object
 
 #### Get HttpClient
 
+**Scala**
+
 ```scala
 
 val client: HttpClient = HttpClientFactory.get(name: String, env: Environment = Default)
 
 ```
+**Java**
+
+Use HttpClientFactory in japi package.
+
 - name(Mandatory): Service Name
 - env(Optional): Service Call Environment, by default is Default
 
