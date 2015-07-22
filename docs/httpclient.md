@@ -114,24 +114,55 @@ The `EnvironmentRegistry` is used to resolve 'Default' environment to a particul
 
 The following shows an example of an EnvironmentResolver:
 
+**Scala**
+
 ```scala
 
 object DummyPriorityEnvironmentResolver extends EnvironmentResolver {
 
-  override def resolve(svcName: String): Option[Environment] = svcName match {
-    case "abc" => Some(QA)
-    case _ => None
+  override def resolve(svcName: String): Environment = svcName match {
+    case "abc" => QA
+    case _ => Default
   }
 
   override def name: String = "DummyPriorityEnvironmentResolver"
 }
 
 ``` 
+
+**Java**
+
+```java
+public class DummyPriorityEnvironmentResolver implements EnvironmentResolver {
+    @Override
+    public String name() {
+        return "DummyPriorityEnvironmentResolver";
+    }
+
+    @Override
+    public Environment resolve(String svcName) {
+        if("abc".equals(svcName)) return QA.value();
+        else return Default.value();
+    }
+}
+
+```
+
 And here is how to register an EnvironmentResolver:
+
+**Scala**
 
 ```scala
 
 EnvironmentRegistry(actorSystem).register(DummyPriorityEnvironmentResolver)
+
+```
+
+**Java**
+
+```java
+EnvironmentRegistryExtension registry = (EnvironmentRegistryExtension)EnvironmentRegistry.get(actorSystem);
+registry.register(new DummyPriorityEnvironmentResolver());
 
 ```
 
