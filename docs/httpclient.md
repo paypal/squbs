@@ -621,6 +621,11 @@ Json4s Native Support:
 - Json4sNativeFullTypeHintsProtocol (FullTypeHints, user need to implement the trait)
 - Json4sNativeCustomProtocol (Customized, user need to implement the trait)
 
+### Jackson Marshalling/Unmarshalling
+
+Squbs HttpClient provides JacksonProtocol to support Java Bean Marshalling/Unmarshalling, in case the payload is not a case class.
+
+
 ### HttpClientJMXBean
 
 HttpClientInfo:
