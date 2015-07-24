@@ -101,7 +101,7 @@ object UnicomplexBoot extends LazyLogging {
   private[unicomplex] def scan(jarNames: Seq[String])(boot: UnicomplexBoot): UnicomplexBoot = {
     val configEntries = jarNames map readConfigs
     val jarConfigs = jarNames zip configEntries collect { case (jar, Some(cfg)) => (jar, cfg) }
-    resolveCubes(jarConfigs, boot)
+    resolveCubes(jarConfigs, boot.copy(jarNames = jarNames))
   }
 
   private[unicomplex] def scanResources(resources: Seq[URL])(boot: UnicomplexBoot): UnicomplexBoot = {
@@ -125,8 +125,7 @@ object UnicomplexBoot extends LazyLogging {
     // Read listener and alias information.
     val (activeAliases, activeListeners, missingAliases) = findListeners(boot.config, cubeList)
     missingAliases foreach { name => logger.warn(s"Requested listener $name not found!") }
-    boot.copy(cubes = cubeList, jarConfigs = jarConfigs, jarNames = jarConfigs map (_._1),
-      listeners = activeListeners, listenerAliases = activeAliases)
+    boot.copy(cubes = cubeList, jarConfigs = jarConfigs, listeners = activeListeners, listenerAliases = activeAliases)
   }
 
   private[this] def readConfigs(jarName: String): Option[Config] = {
