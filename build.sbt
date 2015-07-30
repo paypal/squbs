@@ -45,3 +45,5 @@ lazy val `squbs-actorregistry` = project dependsOn `squbs-unicomplex`
 lazy val `squbs-actormonitor` = project dependsOn `squbs-unicomplex`
 
 lazy val `squbs-timeoutpolicy` = project
+
+sbtrelease.ReleasePlugin.releaseSettings
