@@ -48,8 +48,7 @@ lazy val `squbs-actormonitor` = project dependsOn `squbs-unicomplex`
 
 lazy val `squbs-timeoutpolicy` = project
 
-//ReleasePlugin.releaseSettings
-
+releaseTagName := s"RELEASE-${(version in ThisBuild).value}"
 
 releaseProcess := Seq[ReleaseStep](
   checkSnapshotDependencies,              // : ReleaseStep
