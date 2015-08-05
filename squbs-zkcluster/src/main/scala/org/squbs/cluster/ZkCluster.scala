@@ -16,6 +16,7 @@
 
 package org.squbs.cluster
 
+import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor._
@@ -134,5 +135,5 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with La
     )(system)
   }
   private[cluster] def external(system:ExtendedActorSystem):Address =
-    Address("akka.tcp", system.name, ConfigUtil.ipv4, system.provider.getDefaultAddress.port.getOrElse(8086))
+    Address("akka.tcp", system.name, InetAddress.getLocalHost.getHostAddress, system.provider.getDefaultAddress.port.getOrElse(8086))
 }
