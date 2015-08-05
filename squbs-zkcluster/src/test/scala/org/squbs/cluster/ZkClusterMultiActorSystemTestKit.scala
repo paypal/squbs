@@ -1,6 +1,6 @@
 package org.squbs.cluster
 
-import java.net.ServerSocket
+import java.net.{InetAddress, ServerSocket}
 
 import akka.actor.{PoisonPill, Terminated, ActorSelection, ActorSystem}
 import akka.testkit.TestKit
@@ -114,7 +114,7 @@ object ZkClusterMultiActorSystemTestKit {
        |    enabled-transports = ["akka.remote.netty.tcp"]
        |    netty.tcp {
        |      port = $nextPort
-       |      hostname = ${ConfigUtil.ipv4}
+       |      hostname = ${InetAddress.getLocalHost.getHostAddress}
        |      server-socket-worker-pool {
        |        pool-size-min = 2
        |        pool-size-max = 4

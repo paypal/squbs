@@ -164,11 +164,6 @@ package object cluster {
 //    members.toSeq
 //  }
 
-  private[cluster] def myAddress = InetAddress.getLocalHost.getCanonicalHostName match {
-    case "localhost" => ConfigUtil.ipv4
-    case h:String => h
-  }
-
   def keyToPath(name:String):String = URLEncoder.encode(name, "utf-8")
 
   def pathToKey(name:String):String = URLDecoder.decode(name, "utf-8")
