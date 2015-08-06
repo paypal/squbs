@@ -1,6 +1,6 @@
-scalaVersion in ThisBuild := "2.11.6"
+import ReleaseTransformations._
 
-version in ThisBuild := "0.6.5-SNAPSHOT"
+scalaVersion in ThisBuild := "2.11.6"
 
 organization in ThisBuild := "org.squbs"
 
@@ -47,3 +47,18 @@ lazy val `squbs-actorregistry` = project dependsOn `squbs-unicomplex`
 lazy val `squbs-actormonitor` = project dependsOn `squbs-unicomplex`
 
 lazy val `squbs-timeoutpolicy` = project
+
+releaseTagName := s"RELEASE-${(version in ThisBuild).value}"
+
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,              // : ReleaseStep
+  inquireVersions,                        // : ReleaseStep
+  //runTest,                                // : ReleaseStep
+  setReleaseVersion,                      // : ReleaseStep
+  commitReleaseVersion,                   // : ReleaseStep, performs the initial git checks
+  tagRelease,                             // : ReleaseStep
+  //publishArtifacts,                       // : ReleaseStep, checks whether `publishTo` is properly set up
+  setNextVersion,                         // : ReleaseStep
+  commitNextVersion,                      // : ReleaseStep
+  pushChanges                             // : ReleaseStep, also checks that an upstream branch is properly configured
+)

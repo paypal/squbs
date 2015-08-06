@@ -178,16 +178,20 @@ class HttpClientCallerActor(svcName: String, env: Environment) extends Actor wit
       httpMethod match {
         case HttpMethods.GET =>
           get(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome
+//          context.unbecome
+          context stop self
         case HttpMethods.DELETE =>
           delete(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome
+//          context.unbecome
+          context stop self
         case HttpMethods.HEAD =>
           head(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome
+//          context.unbecome
+          context stop self
         case HttpMethods.OPTIONS =>
           options(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-          context.unbecome
+//          context.unbecome
+          context stop self
       }
   }
 
@@ -204,10 +208,12 @@ class HttpClientCallerActor(svcName: String, env: Environment) extends Actor wit
       httpMethod match {
         case HttpMethods.POST =>
           post[T](client, connector, uri, content, reqSettings).pipeTo(actorRef)
-          context.unbecome
+//          context.unbecome
+          context stop self
         case HttpMethods.PUT =>
           put[T](client, connector, uri, content, reqSettings).pipeTo(actorRef)
-          context.unbecome
+//          context.unbecome
+          context stop self
       }
   }
 }
@@ -216,7 +222,7 @@ class HttpClientActor(svcName: String, env: Environment) extends Actor with Http
 
   import org.squbs.httpclient.HttpClientActorMessage._
 
-  private[HttpClientActor] val httpClientCallerActor = context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env))
+//  private[HttpClientActor] val httpClientCallerActor = context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env))
 
   implicit val ec = context.dispatcher
 
@@ -226,17 +232,17 @@ class HttpClientActor(svcName: String, env: Environment) extends Actor with Http
 
   override def receive: Actor.Receive = {
     case msg: HttpClientActorMessage.Get =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case msg: HttpClientActorMessage.Delete =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case msg: HttpClientActorMessage.Head =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case msg: HttpClientActorMessage.Options =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case msg@ HttpClientActorMessage.Put(uri, content, reqSettings, json4sSupport) =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case msg@ HttpClientActorMessage.Post(uri, content, reqSettings, json4sSupport) =>
-      httpClientCallerActor.forward(msg)
+      context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env)).forward(msg)
     case MarkDown =>
       HttpClientManager(system).httpClientMap.put((client.name, client.env),
         client.copy(status = Status.DOWN)(actorCreator = (_) => Future.successful(self))
@@ -265,7 +271,7 @@ class HttpClientActor(svcName: String, env: Environment) extends Actor with Http
       )
       sender ! self
     case Close =>
-      context.stop(httpClientCallerActor)
+//      context.stop(httpClientCallerActor)
       context.stop(self)
       HttpClientManager(system).httpClientMap.remove((client.name, client.env))
       sender ! CloseSuccess
