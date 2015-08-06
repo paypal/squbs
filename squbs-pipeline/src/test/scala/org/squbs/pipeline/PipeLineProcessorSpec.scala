@@ -296,7 +296,7 @@ class ExceptionProcessor(errorAt: List[String]) extends Processor {
 
 object DummyProcessor extends Processor {
 
-  implicit class attr2method(ctx: RequestContext) {
+  implicit class attr2method(val ctx: RequestContext) extends AnyVal {
     def +>(name: String, value: String): RequestContext = {
       ctx.copy(attributes = ctx.attributes + (name -> value))
     }

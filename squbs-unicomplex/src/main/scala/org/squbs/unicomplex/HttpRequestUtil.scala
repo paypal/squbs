@@ -20,7 +20,7 @@ import spray.http.HttpRequest
 
 object HttpRequestUtil {
 
-  implicit class HttpRequestAdapter(request: HttpRequest) {
+  implicit class HttpRequestAdapter(val request: HttpRequest) extends AnyVal {
 
     def getWebContext: Option[String] = {
       request.headers.find(_.isInstanceOf[WebContextHeader]) match {

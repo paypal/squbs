@@ -102,7 +102,7 @@ sealed trait ProxyResponse
 
 object ProxyResponse {
 
-  implicit class PipeCopyHelper(response: ProxyResponse) {
+  implicit class PipeCopyHelper(val response: ProxyResponse) extends AnyVal {
     def +(header: HttpHeader): ProxyResponse = {
       response match {
         case n@NormalResponse(resp) =>
