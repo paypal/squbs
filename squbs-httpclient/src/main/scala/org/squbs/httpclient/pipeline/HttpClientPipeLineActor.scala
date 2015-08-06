@@ -19,20 +19,17 @@ package org.squbs.httpclient.pipeline
 import akka.actor._
 import akka.pattern.pipe
 import org.squbs.httpclient.endpoint.Endpoint
-import org.squbs.pipeline.{PipelineProcessorActor, RequestContext}
-import org.squbs.proxy.{PipelineResolverRegistry, SimplePipelineConfig}
+import org.squbs.pipeline.{PipelineProcessorActor, Processor, RequestContext}
 import spray.client.pipelining.SendReceive
 import spray.http._
 
-class HttpClientPipelineActor(clientName: String, endpoint: Endpoint, pipelineConf: SimplePipelineConfig, target: SendReceive) extends Actor with ActorLogging {
-
-  val pipeplineResolverRegistry = PipelineResolverRegistry(context.system)
+class HttpClientPipelineActor(clientName: String, endpoint: Endpoint, pipelineProcessor: Option[Processor], target: SendReceive) extends Actor with ActorLogging {
 
   override def receive = {
     case request: HttpRequest =>
       val responder = sender()
       val targetAgent = context.actorOf(Props(classOf[HttpClientPipelineTargetActor], target))
-      pipeplineResolverRegistry.getResolver(clientName).getOrElse(pipeplineResolverRegistry.default).resolve(pipelineConf) match {
+      pipelineProcessor match {
         case None => targetAgent tell(request, responder)
         case Some(proc) =>
           val pipeproxy = context.actorOf(Props(classOf[PipelineProcessorActor], targetAgent, responder, proc))

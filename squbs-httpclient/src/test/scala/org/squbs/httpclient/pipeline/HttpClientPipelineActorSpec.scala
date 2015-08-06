@@ -23,7 +23,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.httpclient.HttpClientTestKit
 import org.squbs.httpclient.dummy.DummyService
 import org.squbs.httpclient.endpoint.Endpoint
-import org.squbs.proxy.SimplePipelineConfig
+import org.squbs.proxy.{SimplePipelineResolver, SimplePipelineConfig}
 import spray.http._
 
 import scala.concurrent.duration._
@@ -36,7 +36,7 @@ class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelin
   implicit val timeout: Timeout = 10 seconds
 
   val endpoint = Endpoint(DummyService.dummyServiceEndpoint)
-  val config = SimplePipelineConfig.empty
+  val processor = SimplePipelineResolver.resolve(SimplePipelineConfig.empty)
   val pipeline = spray.client.pipelining.sendReceive
 
   override def beforeAll() {
@@ -48,14 +48,14 @@ class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelin
   }
 
   "HttpClientPipelineActor" should "forward HttpRequest" in {
-    val actor = system.actorOf(Props(classOf[HttpClientPipelineActor], "name1", endpoint, config, pipeline))
+    val actor = system.actorOf(Props(classOf[HttpClientPipelineActor], "name1", endpoint, processor, pipeline))
     actor ! HttpRequest(uri = s"${DummyService.dummyServiceEndpoint}/view")
     expectMsgType[HttpResponse](timeout.duration).status should be (StatusCodes.OK)
     system stop actor
   }
 
   "HttpClientPipelineActor" should "forward chunked request" in {
-    val actor = system.actorOf(Props(classOf[HttpClientPipelineActor], "name2", endpoint,config, pipeline))
+    val actor = system.actorOf(Props(classOf[HttpClientPipelineActor], "name2", endpoint, processor, pipeline))
     val request = HttpRequest(
       HttpMethods.POST,
       s"${DummyService.dummyServiceEndpoint}/add",

@@ -24,8 +24,8 @@ import akka.util.Timeout
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.httpclient._
 import org.squbs.httpclient.endpoint.Endpoint
-import org.squbs.httpclient.pipeline.impl.RequestUpdateHeaderHandler
-import org.squbs.proxy.SimplePipelineConfig
+import org.squbs.httpclient.pipeline.impl.RequestUpdateHeadersHandler
+import org.squbs.proxy.{PipelineResolverRegistry, SimplePipelineConfig}
 import spray.can.Http
 import spray.http.{HttpRequest, HttpResponse, Uri}
 import spray.httpx.unmarshalling._
@@ -94,12 +94,15 @@ trait PipelineManager extends LazyLogging {
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
     val updatedPipeConfig = reqSettings.headers.isEmpty match {
       case false  =>
-        val requestPipelines = pipeConfig.reqPipe ++ reqSettings.headers.map(new RequestUpdateHeaderHandler(_))
+        val requestPipelines = pipeConfig.reqPipe :+ new RequestUpdateHeadersHandler(reqSettings.headers)
         pipeConfig.copy(reqPipe = requestPipelines)
       case true => pipeConfig
     }
-		val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.name, client.endpoint,
-      updatedPipeConfig, pipeline))
+
+    val pipeplineResolverRegistry = PipelineResolverRegistry(system)
+    val processor = PipelineResolverRegistry(system).getResolver(client.name).getOrElse(pipeplineResolverRegistry.default).resolve(updatedPipeConfig)
+
+    val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.name, client.endpoint, processor, pipeline))
     Try{
       client.status match {
         case Status.DOWN =>

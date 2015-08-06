@@ -5,3 +5,6 @@ addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.4.0")
 addSbtPlugin("io.spray" % "sbt-boilerplate" % "0.5.9")
 
 addSbtPlugin("com.sksamuel.scapegoat" %% "sbt-scapegoat" % "1.0.0")
+
+addSbtPlugin("com.github.gseitz" % "sbt-release" % "0.8.4")
+

@@ -69,4 +69,22 @@ class RequestHeaderHandlerSpec extends TestKit(ActorSystem("RequestHeaderHandler
     updateHttpRequest.headers should have size 1
     updateHttpRequest.headers.head shouldBe httpHeader2
   }
+
+  "RequestUpdateHeadersHandler" should "support to update HttpHeader in HttpRequest" in {
+    val httpHeader1 = RawHeader("name1", "value1")
+    val httpHeader2 = RawHeader("name2", "value2")
+    val httpHeader1New = RawHeader("name1", "value11")
+    val httpHeader3 = RawHeader("name3", "value3")
+    val httpRequest = HttpRequest(headers = List[HttpHeader](httpHeader1, httpHeader2))
+    val handler = new RequestUpdateHeadersHandler(List[HttpHeader](httpHeader1New, httpHeader3))
+
+    val agentActor = system.actorOf(Props(classOf[HandlerAgentActor], handler))
+
+    agentActor ! RequestContext(httpRequest)
+    val updateHttpRequest = expectMsgType[RequestContext].request
+    updateHttpRequest.headers should have size 3
+    updateHttpRequest.headers.find(_.name == "name1").get.value should be("value11")
+    updateHttpRequest.headers.find(_.name == "name2").get.value should be("value2")
+    updateHttpRequest.headers.find(_.name == "name3").get.value should be("value3")
+  }
 }
