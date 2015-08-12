@@ -1,0 +1,15 @@
+language: scala
+scala:
+ - 2.11.6
+jdk:
+ - oraclejdk8
+env:
+ global:
+  - TRAVIS_JDK_VERSION=oraclejdk8
+script:
+  - sbt clean update compile test
+after_success:
+ - >
+  test "${TRAVIS_PULL_REQUEST}" = 'false' &&
+  test "${TRAVIS_JDK_VERSION}" = 'oraclejdk8' &&
+  sbt 'set credentials += Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", System.getenv("SONATYPE_USER"), System.getenv("SONATYPE_PASS"))' publish
