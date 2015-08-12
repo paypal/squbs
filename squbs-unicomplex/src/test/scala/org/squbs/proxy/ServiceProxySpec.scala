@@ -87,6 +87,13 @@ object ServiceProxySpec {
       |    }
       |}
       |
+      |confpipe {
+      |    type = squbs.pipe
+      |    pipeline = {
+      |      inbound = [confhandler1, javaReqHandler, confhandler2, confhandlerempty]
+      |      outbound = [javaRespHandler, confhandler3]
+      |    }
+      |}
       |
       |javaReqHandler {
       |    type = pipeline.handler
@@ -239,6 +246,16 @@ with AsyncAssertions {
 					w.dismiss()
 			}
 			w.await()
+
+      system.actorSelection("/user/PipedServiceProxyActor/pipedserviceproxyactor3-PipelineProcessorActor-handler").resolveOne().onComplete {
+        result =>
+          w {
+            assert(result.isSuccess)
+          }
+          w.dismiss()
+      }
+      w.await()
+
     }
 
 
@@ -246,7 +263,7 @@ with AsyncAssertions {
       val services = boot.cubes flatMap {
         cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty)
       }
-      assert(services.size == 5)
+      assert(services.size == 6)
 
       IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/serviceproxyroute/msg/hello"))
       within(timeout.duration) {
@@ -284,7 +301,34 @@ with AsyncAssertions {
         response.headers.find(h => h.name.equals("dummyRespHeader2")) should be(None)
       }
 
-      val confreq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor2/msg/hello"))
+      var confreq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor2/msg/hello"))
+
+      IO(Http) ! confreq
+      within(timeout.duration) {
+        val response = expectMsgType[HttpResponse]
+        response.status shouldBe StatusCodes.OK
+        response.entity.asString shouldBe "Found conf handler"
+        val header1 = response.headers.find(h => h.name == "found")
+        header1 should not be None
+        header1.get.value shouldBe "true"
+        val header2 = response.headers.find(h => h.name == "confhandler2")
+        header2 should not be None
+        header2.get.value shouldBe "PayPal"
+        val header3 = response.headers.find(h => h.name == "confhandler3")
+        header3 should not be None
+        header3.get.value shouldBe "dummy"
+        val header4 = response.headers.find(h => h.name == "JavaRequestHandler")
+        header4 should not be None
+        header4.get.value shouldBe "JavaRequestHandler"
+        val header5 = response.headers.find(h => h.name == "JavaResponseHandler")
+        header5 should not be None
+        header5.get.value shouldBe "JavaResponseHandler"
+        val header6 = response.headers.find(h => h.name == "someAttr")
+        header6 should not be None
+        header6.get.value shouldBe "[AttrValue]"
+      }
+
+      confreq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor3/msg/hello"))
 
       IO(Http) ! confreq
       within(timeout.duration) {

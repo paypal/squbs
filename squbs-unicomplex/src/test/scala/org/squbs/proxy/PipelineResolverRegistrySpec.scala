@@ -18,7 +18,7 @@ package org.squbs.proxy
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{FlatSpecLike, Matchers}
 import org.squbs.pipeline.Processor
 
@@ -32,12 +32,12 @@ class PipelineResolverRegistrySpec extends TestKit(ActorSystem("PipelineResolver
 
 
   "PipelineResolverRegistry" should "work" in {
-    registry.default should be(SimplePipelineResolver)
+    registry.default should be(SimplePipelineResolver.INSTANCE)
 
     registry.getResolver("abc") should be(None)
 
     registry.register("abc", new PipelineResolver {
-      override def resolve(config: SimplePipelineConfig): Option[Processor] = ???
+      override def resolve(config: SimplePipelineConfig, setting: Option[Config]): Option[Processor] = ???
     })
 
     Thread.sleep(500)

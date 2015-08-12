@@ -21,14 +21,14 @@ import javax.net.ssl.SSLContext
 
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import org.squbs.proxy.SimplePipelineConfig
+import org.squbs.proxy.{PipelineSetting, SimplePipelineConfig}
 import spray.can.Http.ClientConnectionType
 import spray.can.client.HostConnectorSettings
 import spray.http.{HttpHeader, HttpResponse}
 
 import scala.concurrent.duration._
 
-case class Configuration(pipeline: Option[SimplePipelineConfig] = None, settings: Settings = Settings())
+case class Configuration(pipeline: Option[PipelineSetting] = None, settings: Settings = Settings())
 
 case class Settings(hostSettings: HostConnectorSettings = Configuration.defaultHostSettings,
                     connectionType: ClientConnectionType = ClientConnectionType.AutoProxied,
@@ -42,9 +42,9 @@ object Configuration {
 
   val defaultRequestSettings = RequestSettings()
 
-  private [httpclient] def requestTimeout(c: Configuration): Long = requestTimeout(c.settings.hostSettings)
+  private[httpclient] def requestTimeout(c: Configuration): Long = requestTimeout(c.settings.hostSettings)
 
-  private [httpclient] def requestTimeout(s: HostConnectorSettings):Long = s.connectionSettings.requestTimeout.toMillis
+  private[httpclient] def requestTimeout(s: HostConnectorSettings): Long = s.connectionSettings.requestTimeout.toMillis
 
   def defaultRequestSettings(endpointConfig: Configuration, config: Option[Configuration]) = {
     config match {
@@ -52,7 +52,16 @@ object Configuration {
       case Some(conf) => RequestSettings(timeout = Timeout(requestTimeout(conf), TimeUnit.MILLISECONDS))
     }
   }
+
   val defaultFutureTimeout: Timeout = 2 seconds
+
+  implicit def pipelineConfigToSetting(pipelineConfig : SimplePipelineConfig) : PipelineSetting = PipelineSetting(config = Option(pipelineConfig))
+
+  implicit def optionPipelineConfigToOptionSetting(pipelineConfig : Option[SimplePipelineConfig]) : Option[PipelineSetting] = Some(PipelineSetting(config = pipelineConfig))
+
+  def apply(pipelineConfig: Option[SimplePipelineConfig]) = new Configuration(pipelineConfig)
+
+
 
 }
 
@@ -62,6 +71,7 @@ case class CircuitBreakerSettings(maxFailures: Int = 5,
                                   lastDuration: FiniteDuration = 60 seconds,
                                   fallbackHttpResponse: Option[HttpResponse] = None)
 
-import Configuration._
+import org.squbs.httpclient.Configuration._
+
 case class RequestSettings(headers: List[HttpHeader] = List.empty[HttpHeader],
                            timeout: Timeout = Timeout(requestTimeout(defaultHostSettings), TimeUnit.MILLISECONDS))

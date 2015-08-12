@@ -16,7 +16,8 @@
 
 package org.squbs.httpclient.endpoint
 
-import akka.actor.{ExtensionId, Extension, ExtendedActorSystem}
+import akka.actor.{ActorSystem, ExtensionId, Extension, ExtendedActorSystem}
+import org.squbs.proxy.{PipelineRegistry, PipelineSetting}
 
 import scala.collection.mutable.ListBuffer
 import org.squbs.httpclient.env.{Default, Environment}
@@ -38,6 +39,14 @@ trait EndpointResolver {
   def name: String
 
   def resolve(svcName: String, env: Environment = Default): Option[Endpoint]
+}
+
+abstract class PipelineAwareEndpointResolver(system : ActorSystem) extends EndpointResolver {
+
+  protected def getPipelineSetting(name : String) : Option[PipelineSetting] = {
+    PipelineRegistry(system).get(name)(system)
+  }
+
 }
 
 class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension with LazyLogging {

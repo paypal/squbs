@@ -36,7 +36,7 @@ class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelin
   implicit val timeout: Timeout = 10 seconds
 
   val endpoint = Endpoint(DummyService.dummyServiceEndpoint)
-  val processor = SimplePipelineResolver.resolve(SimplePipelineConfig.empty)
+  val processor = SimplePipelineResolver.INSTANCE.resolve(SimplePipelineConfig.empty)
   val pipeline = spray.client.pipelining.sendReceive
 
   override def beforeAll() {

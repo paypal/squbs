@@ -24,7 +24,7 @@ import akka.util.Timeout
 import org.squbs.httpclient._
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.json.JsonProtocol
-import org.squbs.proxy.SimplePipelineConfig
+import org.squbs.proxy.{PipelineSetting, SimplePipelineConfig}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling._
 
@@ -48,8 +48,13 @@ class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
     new HttpClient(delegate.withSettings(settings))
   }
 
+  @deprecated
   def withPipeline(pipeline: Optional[SimplePipelineConfig]): HttpClient = {
     new HttpClient(delegate.withPipeline(pipeline.asScala))
+  }
+
+  def withPipelineSetting(pipeline: Optional[PipelineSetting]): HttpClient = {
+    new HttpClient(delegate.withPipelineSetting(pipeline.asScala))
   }
 
   def markDown = delegate.markDown

@@ -16,7 +16,7 @@
 package org.squbs.httpclient
 
 import java.beans.ConstructorProperties
-import org.squbs.proxy.SimplePipelineConfig
+import org.squbs.proxy.{PipelineSetting, SimplePipelineConfig}
 import org.squbs.unicomplex.JMX
 
 import scala.beans.BeanProperty
@@ -104,7 +104,7 @@ case class HttpClientBean(system: ActorSystem) extends HttpClientMXBean {
     val endpoint = httpClient.endpoint.uri
     val status = httpClient.status.toString
     val configuration = httpClient.endpoint.config
-    val pipelines = configuration.pipeline.getOrElse(SimplePipelineConfig.empty)
+    val pipelines = configuration.pipeline.getOrElse(PipelineSetting.empty).pipelineConfig
     val requestPipelines = pipelines.reqPipe.map(_.getClass.getName).foldLeft[String](""){
       (result, each) => if (result == "") each else result + "=>" + each
     }

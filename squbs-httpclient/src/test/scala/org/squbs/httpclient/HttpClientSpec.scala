@@ -29,6 +29,7 @@ import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import org.squbs.httpclient.japi.{TeamBeanWithCaseClassMember, EmployeeBean, TeamBean}
 import org.squbs.httpclient.json.{JacksonProtocol, Json4sJacksonNoTypeHintsProtocol, JsonProtocol}
+import org.squbs.proxy.PipelineSetting
 import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpHeader, HttpResponse, StatusCodes}
 
@@ -344,11 +345,22 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   }
 
   "HttpClient update pipeline" should "get the correct behaviour" in {
+    import Configuration._
     val httpClient = HttpClientFactory.get("DummyService")
     val pipeline = Some(DummyRequestPipeline)
+    val pipelineSetting : Option[PipelineSetting] = pipeline
     val updatedHttpClient = httpClient.withPipeline(pipeline)
     EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
-    updatedHttpClient.endpoint.config.pipeline should be (pipeline)
+    updatedHttpClient.endpoint.config.pipeline should be (pipelineSetting)
+  }
+
+  "HttpClient update pipeline setting" should "get the correct behaviour" in {
+    import Configuration._
+    val httpClient = HttpClientFactory.get("DummyService")
+    val pipelineSetting : Option[PipelineSetting] = Some(DummyRequestPipeline)
+    val updatedHttpClient = httpClient.withPipelineSetting(pipelineSetting)
+    EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
+    updatedHttpClient.endpoint.config.pipeline should be (pipelineSetting)
   }
 
   "HttpClient with the correct endpoint sleep 10s" should "restablish the connection and get response" in {

@@ -27,12 +27,14 @@ import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.pipeline.HttpClientUnmarshal
+import org.squbs.proxy.PipelineSetting
 import spray.http.{HttpResponse, StatusCodes}
 import spray.httpx.SprayJsonSupport
 import spray.json.{RootJsonFormat, DefaultJsonProtocol}
 
 import scala.collection.concurrent.TrieMap
 import scala.util.Success
+import Configuration._
 
 class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")) with FlatSpecLike
     with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll with DummyService{
@@ -143,11 +145,12 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
 
   "HttpClientActor send UpdatePipeline message" should "get the correct response" in {
     val httpClientActorRef = createHttpClient("DummyService")
-    httpClientActorRef ! HttpClientActorMessage.UpdatePipeline(Some(DummyRequestPipeline))
+    val pipelineSetting : Option[PipelineSetting] = Some(DummyRequestPipeline)
+    httpClientActorRef ! HttpClientActorMessage.UpdatePipeline(pipelineSetting)
     expectMsgType[ActorRef]
     val clientMap = HttpClientManager(system).httpClientMap
     clientMap should have size 1
-    clientMap(("DummyService", Default)).endpoint.config.pipeline should be (Some(DummyRequestPipeline))
+    clientMap(("DummyService", Default)).endpoint.config.pipeline should be (pipelineSetting)
     deleteHttpClient("DummyService")
   }
 

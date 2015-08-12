@@ -25,7 +25,7 @@ import org.squbs.httpclient.endpoint.EndpointRegistry
 import org.squbs.httpclient.env.{Default, Environment, EnvironmentRegistry}
 import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
 import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
-import org.squbs.proxy.SimplePipelineConfig
+import org.squbs.proxy.{PipelineSetting, SimplePipelineConfig}
 import spray.http.{HttpResponse, Uri}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.UnmarshallerLifting._
@@ -175,10 +175,15 @@ case class HttpClient(name: String,
     )
   }
 
+  @deprecated
   def withPipeline(pipeline: Option[SimplePipelineConfig]): HttpClient = {
+    withPipelineSetting(Some(PipelineSetting(config = pipeline)))
+  }
+
+  def withPipelineSetting(pipelineSetting: Option[PipelineSetting]): HttpClient = {
     implicit val timeout = defaultFutureTimeout
-    HttpClient(name, env, status, Some(config.getOrElse(Configuration()).copy(pipeline = pipeline)))(
-      (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdatePipeline(pipeline)).mapTo[ActorRef]}
+    HttpClient(name, env, status, Some(config.getOrElse(Configuration()).copy(pipeline = pipelineSetting)))(
+      (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdatePipeline(pipelineSetting)).mapTo[ActorRef]}
     )
   }
 

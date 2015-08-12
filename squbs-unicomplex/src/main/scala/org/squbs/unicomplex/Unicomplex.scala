@@ -29,7 +29,7 @@ import akka.pattern._
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
 import org.squbs.pipeline.{Processor, PipelineManager}
-import org.squbs.proxy.CubeProxyActor
+import org.squbs.proxy.{SimplePipelineConfig, SimplePipelineResolver, PipelineRegistry, CubeProxyActor}
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import spray.can.Http
 
@@ -543,6 +543,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   import collection.JavaConversions._
   val cubeName = self.path.name
   val pipelineManager = PipelineManager(context.system)
+  val pipelineRegistry = PipelineRegistry(context.system)
   val actorErrorStatesAgent = Agent[Map[String, ActorErrorState]](Map())
 
   class CubeStateBean extends CubeStateMXBean {
@@ -611,8 +612,12 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       val (cubeActor, serviceActor) = try {
         proxyName.fold(pipelineManager.default) {
           case "" => None
-          case other => pipelineManager.get(other)
-        } match {
+          case other =>
+            pipelineRegistry.get(other) match {
+              case Some(setting) => setting.resolver.getOrElse(SimplePipelineResolver.INSTANCE).resolve(setting.config.getOrElse(SimplePipelineConfig.empty), setting.setting)
+              case None => pipelineManager.get(other)
+            }
+          } match {
           case None =>
             val hostActor = context.actorOf(props, name) // disable proxy
             (hostActor, SimpleActor(hostActor))

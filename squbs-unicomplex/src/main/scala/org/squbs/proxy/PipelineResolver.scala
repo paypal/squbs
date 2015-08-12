@@ -16,16 +16,25 @@
 
 package org.squbs.proxy
 
+import com.typesafe.config.Config
 import org.squbs.pipeline.Processor
 
 trait PipelineResolver {
 
-  def resolve(config: SimplePipelineConfig): Option[Processor]
+  def resolve(config: SimplePipelineConfig, setting: Option[Config]): Option[Processor]
 }
 
-object SimplePipelineResolver extends PipelineResolver {
-  override def resolve(config: SimplePipelineConfig): Option[Processor] = {
+object SimplePipelineResolver {
+  val INSTANCE = new SimplePipelineResolver
+}
+
+class SimplePipelineResolver extends PipelineResolver {
+  override def resolve(config: SimplePipelineConfig, setting: Option[Config]): Option[Processor] = {
     if (SimplePipelineConfig.empty.equals(config)) None
     else Some(SimpleProcessor(config))
+  }
+
+  def resolve(config: SimplePipelineConfig): Option[Processor] = {
+    resolve(config, None)
   }
 }

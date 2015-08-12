@@ -21,7 +21,7 @@ import akka.agent.Agent
 
 class PipelineResolverRegistry(entries: Agent[Map[String, PipelineResolver]]) extends Extension {
 
-  var default: PipelineResolver = SimplePipelineResolver
+  var default: PipelineResolver = SimplePipelineResolver.INSTANCE
 
   def registerDefault(resolver: PipelineResolver) = default = resolver
 
