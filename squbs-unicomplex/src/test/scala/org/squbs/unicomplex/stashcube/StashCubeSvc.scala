@@ -18,7 +18,8 @@ package org.squbs.unicomplex.stashcube
 
 import akka.actor.{Actor, Stash}
 import spray.http.HttpMethods._
-import spray.http.{HttpRequest, HttpResponse}
+import spray.http.StatusCodes._
+import spray.http.{HttpEntity, HttpRequest, HttpResponse}
 
 import scala.collection.mutable.ListBuffer
 
@@ -29,9 +30,13 @@ class StashCubeSvc extends Actor with Stash {
 	override def receive = {
 		case req: HttpRequest if req.method == POST =>
 			stash()
+			val resp = HttpResponse(status = Accepted, entity = HttpEntity("Stashed away!"))
+      sender() ! resp
 		case req: HttpRequest if req.method == PUT =>
 			context.become(report)
-			unstashAll()
+      val resp = HttpResponse(status = Created, entity = HttpEntity("Un-stashed"))
+      sender() ! resp
+      unstashAll()
 		case req: HttpRequest if req.method == GET =>
 			val resp = HttpResponse(entity = msgList.toSeq.toString())
 			sender() ! resp
