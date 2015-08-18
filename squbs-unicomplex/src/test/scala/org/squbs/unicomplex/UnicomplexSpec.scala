@@ -178,6 +178,11 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       }
 
       IO(Http) ! HttpRequest(HttpMethods.POST, Uri(s"http://127.0.0.1:$port/withstash/"), entity = HttpEntity("request message"))
+      within(timeout.duration) {
+        val resp0 = expectMsgType[HttpResponse]
+        resp0.status shouldBe StatusCodes.Accepted
+      }
+
       IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/withstash/"))
 			within(timeout.duration) {
         val resp1 = expectMsgType[HttpResponse]
@@ -186,11 +191,16 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       }
 
       IO(Http) ! HttpRequest(HttpMethods.PUT, Uri(s"http://127.0.0.1:$port/withstash/"))
+      within(timeout.duration) {
+        val resp0 = expectMsgType[HttpResponse]
+        resp0.status shouldBe StatusCodes.Created
+      }
+
       IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/withstash/"))
 			within(timeout.duration) {
 				val resp2 = expectMsgType[HttpResponse]
 				resp2.status shouldBe StatusCodes.OK
-				resp2.entity.asString shouldBe Seq("request message").toString
+				resp2.entity.asString shouldBe Seq("request message").toString // This line fails inconsistently.
 			}
     }
 
