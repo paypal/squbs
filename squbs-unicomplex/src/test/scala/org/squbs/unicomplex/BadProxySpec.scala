@@ -17,7 +17,7 @@
  */
 package org.squbs.unicomplex
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, Matchers, SequentialNestedSuiteExecution, WordSpecLike}
@@ -63,7 +63,7 @@ with WordSpecLike with Matchers with BeforeAndAfterAll with SequentialNestedSuit
       println(uniActor)
       Unicomplex(system).uniActor ! ReportStatus
 
-      val (state, _, _) = expectMsgType[(LifecycleState, _, _)]
+      val StatusReport(state, _, _) = expectMsgType[StatusReport]
 
       if (Seq(Active, Stopped, Failed) contains state) return
     }
@@ -87,8 +87,7 @@ with WordSpecLike with Matchers with BeforeAndAfterAll with SequentialNestedSuit
 
     "get cube init reports" in {
       Unicomplex(system).uniActor ! ReportStatus
-      val (systemState, cubes, _) =
-        expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])], Seq[Extension])]
+      val StatusReport(systemState, cubes, _) = expectMsgType[StatusReport]
       systemState should be(Failed)
 
       val initFailReport = cubes.values.find(_._1.info.name == "UndefinedProxyRoute").flatMap(_._2)
