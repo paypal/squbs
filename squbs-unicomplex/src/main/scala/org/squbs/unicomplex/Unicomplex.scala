@@ -92,15 +92,16 @@ private[unicomplex] case class  StartCubeActor(props: Props, name: String = "", 
 private[unicomplex] case class  StartCubeService(webContext: String, listeners: Seq[String], props: Props,
                                                  name: String = "", proxyName : Option[String] = None, initRequired: Boolean = false)
 private[unicomplex] case object CheckInitStatus
-private[unicomplex] case class  InitReports(state: LifecycleState, reports: Map[ActorRef, Option[InitReport]])
 private[unicomplex] case object Started
 private[unicomplex] case object Activate
 private[unicomplex] case object ShutdownTimedOut
-private[unicomplex] case class Cube(name: String, fullName: String, version: String, jarPath: String)
-private[unicomplex] case class CubeRegistration(info: Cube, cubeSupervisor: ActorRef)
-private[unicomplex] case class Extension(info: Cube, extLifecycle: Option[ExtensionLifecycle],
+
+case class Cube(name: String, fullName: String, version: String, jarPath: String)
+case class InitReports(state: LifecycleState, reports: Map[ActorRef, Option[InitReport]])
+case class CubeRegistration(info: Cube, cubeSupervisor: ActorRef)
+case class Extension(info: Cube, extLifecycle: Option[ExtensionLifecycle],
                                          exceptions: Seq[(String, Throwable)])
-private[unicomplex] case class Extensions(extensions: Seq[Extension])
+case class Extensions(extensions: Seq[Extension])
 
 
 sealed trait LifecycleState
@@ -114,6 +115,8 @@ case object Stopped extends LifecycleState
 case class Initialized(report: InitReport)
 case object Ack
 case object ReportStatus
+case class StatusReport(state: LifecycleState, cubes: Map[ActorRef, (CubeRegistration, Option[InitReports])],
+                        extensions: Seq[Extension])
 case class Timestamp(nanos: Long, millis: Long)
 case object SystemState
 case object LifecycleTimesRequest
@@ -421,7 +424,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     case ReportStatus => // Status report request from admin tooling
       if (systemState == Active) // Stable state.
-        sender ! (systemState, cubes, extensions)
+        sender ! StatusReport(systemState, cubes, extensions)
       else {
         val requester = sender()
         var pendingCubes = cubes collect {
@@ -438,7 +441,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
             updateCubes(ir)
             pendingCubes = pendingCubes.filter(_ != sender)
             if (pendingCubes.isEmpty) {
-              requester ! (systemState, cubes, extensions)
+              requester ! StatusReport(systemState, cubes, extensions)
               unstashAll()
               context.unbecome()
             }
