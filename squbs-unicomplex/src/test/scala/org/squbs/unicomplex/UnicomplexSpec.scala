@@ -262,7 +262,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
     "ReportStatus" in {
       Unicomplex(system).uniActor ! ReportStatus
       expectMsgPF(){
-        case (state, b, exts) =>
+        case StatusReport(state, _, _) =>
           state should be(Active)
       }
     }

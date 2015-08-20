@@ -17,7 +17,7 @@
  */
 package org.squbs.unicomplex
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
@@ -87,37 +87,35 @@ class MultipleUnicomplexTest extends TestKit(MultipleUnicomplexTest.boot.actorSy
 
     "get cube init reports" in {
       Unicomplex(sys1).uniActor ! ReportStatus
-      val (systemState, cubes, _) =
-        expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])], Seq[Extension])]
+      val StatusReport(systemState, cubes, _) = expectMsgType[StatusReport]
       systemState should be(Failed)
       val cubeAReport = cubes.values.find(_._1.info.name == "CubeA").flatMap(_._2)
-      cubeAReport should not be (None)
+      cubeAReport should not be None
       assert(cubeAReport.get.state == Active)
       val cubeBReport = cubes.values.find(_._1.info.name == "CubeB").flatMap(_._2)
-      cubeBReport should not be (None)
+      cubeBReport should not be None
       cubeBReport.get.state should be(Active)
       val initFailReport = cubes.values.find(_._1.info.name == "InitFail").flatMap(_._2)
-      initFailReport should not be (None)
+      initFailReport should not be None
       initFailReport.get.state should be(Failed)
       val initBlockReport = cubes.values.find(_._1.info.name == "InitBlock").flatMap(_._2)
-      initBlockReport should not be (None)
+      initBlockReport should not be None
       initBlockReport.get.state should be(Initializing)
 
       Unicomplex(sys2).uniActor ! ReportStatus
-      val (systemState2, cubes2, _) =
-        expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])], Seq[Extension])]
+      val StatusReport(systemState2, cubes2, _) = expectMsgType[StatusReport]
       systemState2 should be(Failed)
       val cubeAReport2 = cubes2.values.find(_._1.info.name == "CubeA").flatMap(_._2)
-      cubeAReport2 should not be (None)
+      cubeAReport2 should not be None
       assert(cubeAReport2.get.state == Active)
       val cubeBReport2 = cubes2.values.find(_._1.info.name == "CubeB").flatMap(_._2)
-      cubeBReport2 should not be (None)
+      cubeBReport2 should not be None
       cubeBReport2.get.state should be(Active)
       val initFailReport2 = cubes.values.find(_._1.info.name == "InitFail").flatMap(_._2)
-      initFailReport2 should not be (None)
+      initFailReport2 should not be None
       initFailReport2.get.state should be(Failed)
       val initBlockReport2 = cubes.values.find(_._1.info.name == "InitBlock").flatMap(_._2)
-      initBlockReport2 should not be (None)
+      initBlockReport2 should not be None
       initBlockReport2.get.state should be(Initializing)
     }
   }
