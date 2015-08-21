@@ -12,7 +12,7 @@ The examples below show how each of the TestKit traits can be used.
 ##SimpleTestKit examples:
 You can use SimpleTestKit by just extending the test case from it. squbs is going to be started and stopped automatically. Tests can run in parallel but only one squbs instance is allowed inside a forked VM.
 
-```
+```scala
 package com.myorg.mypkg
 import org.scalatest.{FunSpecLike, Matchers}
 
@@ -30,7 +30,7 @@ class ActorCalLogTest extends SqubsTestKit with FunSpecLike with Matchers {
 
 CustomTestKit is a more elaborate example allowing/requiring the developer to provide a configuration. Then use that configuration to boot the Unicomplex. Please see [Bootstrapping squbs](bootstrap.md) for more information on booting the Unicomplex.
 
-```
+```scala
 package com.myorg.mypkg
 
 import akka.actor.{ActorRef, Props}
@@ -76,4 +76,54 @@ class MyTest extends CustomTestKit(MyTest.boot)
   // Write your tests here.      
 }
 
+```
+
+##Testing Spray Routes using Spray TestKit
+
+As you specify routes in squbs by extending the `RouteDefinition` trait which squbs will compose with actors behind
+the scenes, it can be difficult to construct routes for use with the Spray TestKit test DSL. `TestRoute` is provided
+for constructing and obtaining routes from the RouteDefinition. To use it, just pass the `RouteDefinition` as a type
+parameter to `TestRoute`. This will obtain you a fully configured and functional route for the test DSL as can be seen
+in the example below.
+
+Specifying the `RouteDefinition`
+
+```scala
+package com.myorg.mypkg
+
+import org.squbs.unicomplex.RouteDefinition
+import spray.routing.Directives._
+
+class MyRoute extends RouteDefinition {
+
+  val route =
+    path("ping") {
+      get {
+        complete {
+          "pong"
+        }
+      }
+    }
+}
+```
+
+Implementing the test, obtaining route from `TestRoute[MyRoute]`:
+
+```scala
+package com.myorg.mypkg
+
+import org.scalatest.{Matchers, FlatSpecLike}
+import org.squbs.testkit.TestRoute
+import spray.testkit.ScalatestRouteTest
+
+class MyRouteTest extends FlatSpecLike with Matchers with ScalatestRouteTest {
+
+  val route = TestRoute[MyRoute]
+
+  it should "return pong on a ping" in {
+    Get("/ping") ~> route ~> check {
+      responseAs[String] should be ("pong")
+    }
+  }
+}
 ```
