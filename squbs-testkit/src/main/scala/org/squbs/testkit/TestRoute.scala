@@ -37,14 +37,14 @@ object TestRoute {
    */
   def apply[T <: RouteDefinition: ClassTag](implicit system: ActorSystem): Route = {
     val clazz = implicitly[ClassTag[T]].runtimeClass
-    implicit val actorContext = TestActorRef[EmptyActor].underlyingActor.context
+    implicit val actorContext = TestActorRef[TestRouteActor].underlyingActor.context
     val routeDef = RouteDefinition.startRoutes{
       clazz.asSubclass(classOf[RouteDefinition]).newInstance()
     }
     routeDef.route
   }
 
-  private class EmptyActor extends Actor {
+  private class TestRouteActor extends Actor {
     def receive = {
       case _ =>
     }
