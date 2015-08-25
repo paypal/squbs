@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.concurrent.timeout
+package org.squbs.pattern.timeoutpolicy
 
 import scala.concurrent.duration.FiniteDuration
 import scala.math._
