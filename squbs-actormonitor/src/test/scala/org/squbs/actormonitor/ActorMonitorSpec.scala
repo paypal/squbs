@@ -22,6 +22,7 @@ import javax.management.ObjectName
 import akka.actor._
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
+import akka.pattern.ask
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest._
@@ -31,6 +32,7 @@ import org.squbs.unicomplex.JMX._
 import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
 import spray.util.Utils
 
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 
@@ -59,16 +61,6 @@ object ActorMonitorSpec extends LazyLogging {
     .scanComponents(classPaths)
     .initExtensions.start()
 
-
-  var originalNum = getActorMonitorConfigBean("Count").toString.toInt
-  Thread.sleep(2000)
-  while(originalNum < 12){
-    Thread.sleep(2000)
-    originalNum = getActorMonitorConfigBean("Count").toString.toInt
-    Thread.sleep(2000)
-  }
-
-
  def getActorMonitorBean(actorName: String, att: String) =
     try {
       ManagementFactory.getPlatformMBeanServer.getAttribute(getObjName(actorName), att).asInstanceOf[String]
@@ -94,10 +86,28 @@ object ActorMonitorSpec extends LazyLogging {
 
 class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with ImplicitSender
                              with WordSpecLike with Matchers with BeforeAndAfterAll
-                             with AsyncAssertions {
+                             with AsyncAssertions with LazyLogging {
 
   implicit val timeout: akka.util.Timeout = Timeout(1 seconds)
   implicit val ec = system.dispatcher
+
+  override def beforeAll() {
+    // Make sure all actors are indeed alive.
+    val idFuture1 = (system.actorSelection("/user/TestCube/TestActor") ? Identify(None)).mapTo[ActorIdentity]
+    val idFuture2 = (system.actorSelection("/user/TestCube/TestActorWithRoute") ? Identify(None)).mapTo[ActorIdentity]
+    val idFuture3 = (system.actorSelection("/user/TestCube/TestActorWithRoute/$a") ? Identify(None)).mapTo[ActorIdentity]
+    val idFuture4 = (system.actorSelection("/user/TestCube/TestActor1") ? Identify(None)).mapTo[ActorIdentity]
+    val futures = Future.sequence(Seq(idFuture1, idFuture2, idFuture3, idFuture4))
+    val idList = Await.result(futures, 2 seconds)
+    idList foreach {
+      case ActorIdentity(_, Some(actor)) => logger.info(s"beforeAll identity: $actor")
+      case other => logger.warn(s"beforeAll invalid identity: $other")
+    }
+
+    import ActorMonitorSpec._
+    val cfgBeanCount = getActorMonitorConfigBean("Count").toString.toInt
+    cfgBeanCount should be > 11
+  }
 
 
   override def afterAll() {
