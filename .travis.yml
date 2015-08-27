@@ -7,15 +7,7 @@ env:
  global:
   - TRAVIS_JDK_VERSION=oraclejdk8Thx!
 script:
-  - sbt "project squbs-pipeline" clean coverage test
-  - sbt "project squbs-unicomplex" clean coverage test
-  - sbt "project squbs-testkit" clean coverage test
-  - sbt "project squbs-httpclient" clean coverage test
-  - sbt "project squbs-actorregistry" clean coverage test
-  - sbt "project squbs-actormonitor" clean coverage test
-  - sbt "project squbs-timeoutpolicy" clean coverage test
-  - sbt "project squbs-zkcluster" clean coverage test
-  - sbt "project squbs-pattern" clean coverage test
+  - sbt "< sbt-commands.txt"
   - sbt coverageReport
   - sbt coverageAggregate
   - sbt codacyCoverage

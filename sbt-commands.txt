@@ -1,0 +1,19 @@
+clean
+project squbs-pipeline
+;coverage;test
+project squbs-unicomplex
+;coverage;test
+project squbs-testkit
+;coverage;test
+project squbs-httpclient
+;coverage;test
+project squbs-actorregistry
+;coverage;test
+project squbs-actormonitor
+;coverage;test
+project squbs-timeoutpolicy
+;coverage;test
+project squbs-zkcluster
+;coverage;test
+project squbs-pattern
+;coverage;test
