@@ -1,18 +1,20 @@
+
+
 scalaVersion in ThisBuild := "2.11.6"
 
 organization in ThisBuild := "org.squbs"
 
 publishArtifact := false
 
-addCommandAlias("coverage", "scoverage:test")
+org.scalastyle.sbt.ScalastylePlugin.Settings
 
-ScoverageKeys.minimumCoverage in ThisBuild := 70
+coverageEnabled in ThisBuild := true
 
-ScoverageKeys.failOnMinimumCoverage in ThisBuild := true
+coverageMinimum in ThisBuild := 70.0
+
+coverageFailOnMinimum in ThisBuild := true
 
 fork in ThisBuild := true
-
-parallelExecution in ScoverageTest in ThisBuild := false
 
 parallelExecution in ThisBuild := false
 
