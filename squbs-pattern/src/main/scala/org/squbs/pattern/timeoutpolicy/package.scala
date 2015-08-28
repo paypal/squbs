@@ -14,9 +14,9 @@
  *  limitations under the License.
  */
 
-package org.squbs.concurrent
+package org.squbs.pattern
 
-package object timeout {
+package object timeoutpolicy {
 
   val fixedRule = FixedTimeoutRule
 
