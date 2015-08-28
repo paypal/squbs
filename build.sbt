@@ -46,8 +46,6 @@ lazy val `squbs-actorregistry` = project dependsOn `squbs-unicomplex`
 
 lazy val `squbs-actormonitor` = project dependsOn `squbs-unicomplex`
 
-lazy val `squbs-timeoutpolicy` = project
-
 publishTo in ThisBuild := {
   val nexus = "https://oss.sonatype.org/"
   if (version.value.trim.endsWith("SNAPSHOT"))
