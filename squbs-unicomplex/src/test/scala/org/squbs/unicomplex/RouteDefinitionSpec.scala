@@ -23,14 +23,12 @@ import akka.actor.ActorSystem
 import akka.io.IO
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import spray.can.Http
 import spray.http._
-import spray.routing._
-import Directives._
+import spray.routing.Directives._
 import spray.util.Utils
-import concurrent.duration._
 
 import scala.util.Try
 
@@ -92,7 +90,7 @@ class RouteDefinitionSpec extends TestKit(
   implicit val timeout: akka.util.Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
       akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
-    } getOrElse (10 seconds)
+    } getOrElse Timeouts.askTimeout
 
   val port = system.settings.config getInt "default-listener.bind-port"
 

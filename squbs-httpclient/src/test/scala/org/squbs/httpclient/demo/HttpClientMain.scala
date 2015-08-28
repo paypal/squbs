@@ -16,15 +16,15 @@
 
 package org.squbs.httpclient.demo
 
-import akka.actor.{ActorRef, Actor, Props, ActorSystem}
-import akka.util.Timeout
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import org.squbs.httpclient._
-import org.squbs.httpclient.endpoint.EndpointRegistry
-import spray.http.{HttpResponse, StatusCodes}
-import scala.util.{Failure, Success}
 import org.squbs.httpclient.dummy.GoogleAPI.{Elevation, GoogleApiResult, GoogleMapAPIEndpointResolver}
+import org.squbs.httpclient.endpoint.EndpointRegistry
 import org.squbs.httpclient.pipeline.HttpClientUnmarshal
-import scala.concurrent.duration._
+import org.squbs.testkit.Timeouts._
+import spray.http.{HttpResponse, StatusCodes}
+
+import scala.util.{Failure, Success}
 
 /**
  * Traditional API using get
@@ -32,7 +32,6 @@ import scala.concurrent.duration._
 object HttpClientDemo1 extends App with HttpClientTestKit {
 
   implicit val system = ActorSystem("HttpClientDemo1")
-  implicit val timeout: Timeout = 3 seconds
   import system.dispatcher
   EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
 
@@ -54,7 +53,6 @@ object HttpClientDemo1 extends App with HttpClientTestKit {
 object HttpClientDemo4 extends App with HttpClientTestKit {
 
   implicit val system = ActorSystem("HttpClientDemo4")
-  implicit val timeout: Timeout = 3 seconds
   import system.dispatcher
   EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
@@ -76,11 +74,10 @@ object HttpClientDemo4 extends App with HttpClientTestKit {
 object HttpClientDemo2 extends App with HttpClientTestKit{
 
   implicit val system = ActorSystem("HttpClientDemo2")
-  implicit val timeout: Timeout = 3 seconds
   import system.dispatcher
   EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
-  import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
   import HttpClientUnmarshal._
+  import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
   val response = HttpClientFactory.get("googlemap").raw.
     get("api/elevation/json?locations=27.988056,86.925278&sensor=false")
@@ -109,7 +106,6 @@ object HttpClientDemo2 extends App with HttpClientTestKit{
 object HttpClientDemo3 extends App with HttpClientTestKit {
 
   implicit val system = ActorSystem("HttpClientDemo3")
-  implicit val timeout: Timeout = 3 seconds
 
   EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
 

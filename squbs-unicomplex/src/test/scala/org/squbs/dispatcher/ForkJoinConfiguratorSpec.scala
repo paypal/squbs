@@ -27,12 +27,11 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.AsyncAssertions
 import org.scalatest.{BeforeAndAfterAll, Inspectors, Matchers, WordSpecLike}
 import org.squbs.lifecycle.GracefulStop
-import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
+import org.squbs.unicomplex.{JMX, Timeouts, Unicomplex, UnicomplexBoot}
 import spray.can.Http
 import spray.http._
 import spray.util.Utils
 
-import scala.concurrent.duration._
 import scala.util.Try
 
 object ForkJoinConfiguratorSpec {
@@ -75,7 +74,7 @@ object ForkJoinConfiguratorSpec {
   implicit val akkaTimeout: Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
       akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
-    } getOrElse (10 seconds)
+    } getOrElse Timeouts.askTimeout
 
 
   val boot = UnicomplexBoot(config)

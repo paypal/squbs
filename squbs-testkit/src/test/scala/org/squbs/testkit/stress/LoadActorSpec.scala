@@ -19,7 +19,8 @@ package org.squbs.testkit.stress
 import akka.actor._
 import akka.testkit.{ImplicitSender, TestKit}
 import org.scalatest.{FunSpecLike, Matchers}
-import org.squbs.testkit.{TestPong, TestPing}
+import org.squbs.testkit.{Timeouts, TestPong, TestPing}
+import Timeouts._
 
 import scala.concurrent.duration._
 
@@ -43,7 +44,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     var responseCount = 0l
 
     for (i <- 0 to 1) {
-      fishForMessage(warmUp + steady + (20 seconds)) {
+      fishForMessage(warmUp + steady + awaitMax) {
         case LoadStats(tps) =>
           println(s"Achieved $tps TPS")
           println(s"Response count in steady state: $responseCount")
@@ -83,7 +84,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     var responseCount = 0l
 
     for (i <- 0 to 1) {
-      fishForMessage(warmUp + steady + (20 seconds)) {
+      fishForMessage(warmUp + steady + awaitMax) {
         case LoadStats(tps) =>
           println(s"Achieved $tps TPS")
           println(s"Response count in steady state: $responseCount")
