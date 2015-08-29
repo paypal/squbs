@@ -22,6 +22,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
+import org.squbs.testkit.Timeouts._
 import org.squbs.unicomplex.Unicomplex
 
 class SimpleTestKitSpec extends SimpleTestKit
@@ -29,11 +30,9 @@ with ImplicitSender with FlatSpecLike with Matchers with Eventually {
 
   override implicit val patienceConfig = new PatienceConfig(timeout = Span(3, Seconds))
 
-  import scala.concurrent.duration._
-
   it should "return a Pong on a Ping" in {
     system.actorOf(Props[TestActor]) ! TestPing
-    receiveOne(10 seconds) should be (TestPong)
+    receiveOne(awaitMax) should be (TestPong)
   }
 
   override protected def afterAll() {

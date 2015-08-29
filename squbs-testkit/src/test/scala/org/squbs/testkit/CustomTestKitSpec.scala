@@ -18,12 +18,13 @@ package org.squbs.testkit
 
 import java.io.File
 
-import akka.actor.{Props, Actor}
+import akka.actor.{Actor, Props}
 import akka.testkit.ImplicitSender
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{FlatSpecLike, Matchers}
+import org.squbs.testkit.Timeouts._
 import org.squbs.unicomplex.{JMX, RouteDefinition, UnicomplexBoot}
 import spray.client.pipelining._
 import spray.http.StatusCodes
@@ -38,17 +39,16 @@ with ImplicitSender with FlatSpecLike with Matchers with Eventually {
   override implicit val patienceConfig = new PatienceConfig(timeout = Span(3, Seconds))
 
   import system.dispatcher
-  import scala.concurrent.duration._
 
   it should "return OK" in {
     val pipeline = sendReceive
-    val result = Await.result(pipeline(Get(s"http://127.0.0.1:${CustomTestKitSpec.port}/test")), 20 second)
+    val result = Await.result(pipeline(Get(s"http://127.0.0.1:${CustomTestKitSpec.port}/test")), awaitMax)
     result.entity.asString should include ("success")
   }
 
   it should "return a Pong on a Ping" in {
     system.actorOf(Props[TestActor]) ! TestPing
-    receiveOne(10 seconds) should be (TestPong)
+    receiveOne(awaitMax) should be (TestPong)
   }
 }
 

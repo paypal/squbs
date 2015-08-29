@@ -23,14 +23,13 @@ import org.apache.curator.framework.CuratorFrameworkFactory
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.zookeeper.CreateMode
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpecLike, Matchers}
-
-import scala.concurrent.duration._
+import org.squbs.testkit.Timeouts._
 
 class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitTest") with LazyLogging
   with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with BeforeAndAfterEach {
   import org.squbs.cluster.ZkClusterMultiActorSystemTestKit._
   
-  override val timeout: FiniteDuration = 30 seconds
+  override val timeout = awaitMax
   
   override val clusterSize: Int = 6
   

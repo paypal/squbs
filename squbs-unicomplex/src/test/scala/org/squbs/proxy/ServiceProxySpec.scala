@@ -27,13 +27,12 @@ import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
-import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
+import org.squbs.unicomplex.{JMX, Timeouts, Unicomplex, UnicomplexBoot}
 import spray.can.Http
 import spray.client.pipelining._
 import spray.http.{HttpRequest, HttpResponse, _}
 import spray.util._
 
-import scala.concurrent.duration._
 import scala.util.Try
 
 object ServiceProxySpec {
@@ -154,7 +153,7 @@ with AsyncAssertions {
     Try(System.getProperty("test.timeout").toLong) map {
       millis =>
         akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
-    } getOrElse (10 seconds)
+    } getOrElse Timeouts.askTimeout
 
   val port = system.settings.config getInt "default-listener.bind-port"
 

@@ -19,12 +19,12 @@ package org.squbs.cluster
 import akka.testkit.ImplicitSender
 import akka.util.ByteString
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpecLike, Matchers}
-import scala.concurrent.duration._
+import org.squbs.testkit.Timeouts._
 
 class ZkClusterNormalTest extends ZkClusterMultiActorSystemTestKit("ZkClusterNormalTest")
   with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with BeforeAndAfterEach {
   
-  val timeout = 30 seconds
+  val timeout = awaitMax
   
   val clusterSize = 6
   

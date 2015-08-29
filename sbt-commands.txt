@@ -11,8 +11,6 @@ project squbs-actorregistry
 ;coverage;test
 project squbs-actormonitor
 ;coverage;test
-project squbs-timeoutpolicy
-;coverage;test
 project squbs-zkcluster
 ;coverage;test
 project squbs-pattern
