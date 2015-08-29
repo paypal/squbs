@@ -16,8 +16,6 @@
 
 package org.squbs.unicomplex
 
-import java.io.File
-
 import akka.actor.ActorSystem
 import org.squbs.lifecycle.GracefulStop
 
@@ -29,7 +27,7 @@ object Bootstrap extends App {
   // Note, the config directories may change during extension init. It is important to re-read the full config
   // for the actor system start.
   UnicomplexBoot { (name, config) => ActorSystem(name, config) }
-    .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
+    .scanResources()
     .initExtensions
     .stopJVMOnExit
     .start()

@@ -16,8 +16,6 @@
 
 package org.squbs.testkit
 
-import java.io.File
-
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
@@ -27,11 +25,11 @@ import org.squbs.unicomplex.UnicomplexBoot
 object SimpleTestKit {
 
   val testConfFile = Option(getClass.getResource("/test.conf")) orElse Option(getClass.getResource("/default-test.conf"))
-  val testConfig = testConfFile map ConfigFactory.parseURL getOrElse null
+  val testConfig = (testConfFile map ConfigFactory.parseURL) orNull
 
   val boot = UnicomplexBoot(testConfig)
               .createUsing { (name, config) => ActorSystem(name, testConfig) } // Use the test config instead.
-              .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
+              .scanResources()
               .initExtensions
   boot.start()
 
