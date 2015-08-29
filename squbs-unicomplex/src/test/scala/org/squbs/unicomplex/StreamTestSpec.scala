@@ -34,7 +34,6 @@ import spray.client.pipelining._
 import spray.http._
 import spray.util._
 
-import scala.concurrent.duration._
 import scala.util.Try
 
 object StreamTestSpec {
@@ -70,7 +69,7 @@ class StreamTestSpec extends TestKit(StreamTestSpec.boot.actorSystem) with Impli
   implicit val timeout: akka.util.Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
       akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
-    } getOrElse (120 seconds)
+    } getOrElse Timeouts.askTimeout
 
   val port = system.settings.config getInt "default-listener.bind-port"
 

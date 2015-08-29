@@ -27,11 +27,7 @@ case class RequestContext(request: HttpRequest,
                           attributes: Map[String, Any] = Map.empty) {
   //Store any other data
   def attribute[T](key: String): Option[T] = {
-    attributes.get(key) match {
-      case None => None
-      case Some(null) => None
-      case Some(value) => Some(value.asInstanceOf[T])
-    }
+    attributes.get(key) flatMap (v => Option(v).asInstanceOf[Option[T]])
   }
 
   def payload = {

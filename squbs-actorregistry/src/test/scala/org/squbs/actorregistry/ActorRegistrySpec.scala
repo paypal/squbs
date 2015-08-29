@@ -21,7 +21,6 @@ import javax.management.ObjectName
 
 import akka.actor._
 import akka.testkit.{ImplicitSender, TestKit}
-import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
@@ -80,7 +79,7 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
                              with WordSpecLike with Matchers with BeforeAndAfterAll
                              with AsyncAssertions {
 
-  implicit val timeout: akka.util.Timeout = Timeout(1 seconds)
+  import org.squbs.testkit.Timeouts._
   implicit val ec = system.dispatcher
 
 
@@ -92,7 +91,7 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
 
     "1) check ActorRegistry" in {
       system.actorSelection("/user/ActorRegistryCube/ActorRegistry") ! Identify("test")
-      receiveOne(timeout.duration) should matchPattern { case ActorIdentity(_, Some(_)) => }
+      receiveOne(awaitMax) should matchPattern { case ActorIdentity(_, Some(_)) => }
     }
 
     "1.1) check ActorRegistryConfigBean " in {
@@ -102,7 +101,7 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
 
     "2) check TestActor" in {
       system.actorSelection("/user/TestCube/TestActor") ! Identify("test")
-      receiveOne(timeout.duration) should matchPattern { case ActorIdentity(_, Some(_)) => }
+      receiveOne(awaitMax) should matchPattern { case ActorIdentity(_, Some(_)) => }
     }
 
     "3) check ActorRegistryBean" in {
@@ -112,29 +111,29 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
 
     "4.1) ActorLookup ! TestRequest(...)" in {
       ActorLookup ! TestRequest("ActorLookup")
-      receiveOne(timeout.duration) should matchPattern { case TestResponse("ActorLookup") => }
+      receiveOne(awaitMax) should matchPattern { case TestResponse("ActorLookup") => }
     }
 
     "4.2) ActorLookup ? TestRequest(...)" in {
       val f = ActorLookup ? TestRequest("ActorLookup")
-      Try(Await.result(f, timeout.duration)) should matchPattern { case Success(TestResponse("ActorLookup")) => }
+      Try(Await.result(f, awaitMax)) should matchPattern { case Success(TestResponse("ActorLookup")) => }
     }
 
     "5) ActorLookup() ! TestRequest(...)" in {
       ActorLookup() ! TestRequest("ActorLookup")
-      receiveOne(timeout.duration) should matchPattern { case TestResponse("ActorLookup") => }
+      receiveOne(awaitMax) should matchPattern { case TestResponse("ActorLookup") => }
     }
 
     "5.1) ActorLookup().resolveOne" in {
       val vFuture = ActorLookup().resolveOne(FiniteDuration(100, MILLISECONDS))
-      Try(Await.result(vFuture, timeout.duration)) should matchPattern {
+      Try(Await.result(vFuture, awaitMax)) should matchPattern {
         case Failure(org.squbs.actorregistry.ActorNotFound(ActorLookup(None,None,None))) =>
       }
     }
 
     "5.2) ActorLookup('TestActor').resolveOne" in {
-      val vFuture = ActorLookup("TestActor").resolveOne(FiniteDuration(100, MILLISECONDS))
-      Try(Await.result(vFuture, timeout.duration)) should matchPattern {
+      val vFuture = ActorLookup("TestActor").resolveOne(awaitMax)
+      Try(Await.result(vFuture, awaitMax)) should matchPattern {
         case Success(actor: ActorRef) if actor.path.name === "TestActor" =>
       }
     }
@@ -142,7 +141,7 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
     "5.3) new ActorLookup(requestClass=Some(Class[TestRequest])).resolveOne" in {
       val l= new ActorLookup(requestClass=Some(classOf[TestRequest]))
       val vFuture = l.resolveOne(FiniteDuration(100, MILLISECONDS))
-      Try(Await.result(vFuture, timeout.duration)) should matchPattern {
+      Try(Await.result(vFuture, awaitMax)) should matchPattern {
         case Success(actor: ActorRef) if actor.path.name === "TestActor" =>
       }
     }
@@ -150,82 +149,83 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
 
     "6.0) ActorLookup[TestResponse].resolveOne" in {
       val vFuture = ActorLookup[TestResponse].resolveOne
-      Try(Await.result(vFuture, timeout.duration)) should matchPattern {
+      Try(Await.result(vFuture, awaitMax)) should matchPattern {
         case Success(actor: ActorRef) if actor.path.name === "TestActor" =>
       }
     }
 
     "6.1) ActorLookup[TestResponse] ! TestRequest(...)" in {
       ActorLookup[TestResponse] ! TestRequest("ActorLookup[TestResponse]")
-      receiveOne(timeout.duration) should matchPattern { case TestResponse("ActorLookup[TestResponse]") => }
+      receiveOne(awaitMax) should matchPattern { case TestResponse("ActorLookup[TestResponse]") => }
     }
 
     "6.2) ActorLookup[TestResponse] ? TestRequest(...)" in {
       val f = ActorLookup[TestResponse] ? TestRequest("ActorLookup[TestResponse]")
-      Try(Await.result(f, timeout.duration)) should matchPattern {
+      Try(Await.result(f, awaitMax)) should matchPattern {
         case Success(TestResponse("ActorLookup[TestResponse]")) =>
       }
      }
 
     "7) ActorLookup('TestActor') ! TestRequest(...)" in {
       ActorLookup("TestActor") ! TestRequest("ActorLookup('TestActor')")
-      receiveOne(timeout.duration) should matchPattern { case TestResponse("ActorLookup('TestActor')") => }
+      receiveOne(awaitMax) should matchPattern { case TestResponse("ActorLookup('TestActor')") => }
     }
 
     "8) ActorLookup[TestResponse]('TestActor') ! TestRequest(...)" in {
       ActorLookup[TestResponse]("TestActor") ! TestRequest("ActorLookup[TestResponse]('TestActor')")
-      receiveOne(timeout.duration) should matchPattern {
+      receiveOne(awaitMax) should matchPattern {
         case TestResponse("ActorLookup[TestResponse]('TestActor')") =>
       }
     }
 
     "9) ActorLookup[TestResponse] ! Identify" in {
       ActorLookup[TestResponse] ! Identify(3)
-      receiveOne(timeout.duration) should matchPattern {
+      receiveOne(awaitMax) should matchPattern {
         case ActorIdentity(3, Some(actor: ActorRef)) if actor.path.name === "TestActor" =>
       }
     }
 
     "10) ActorLookup[TestResponse] ! TestRequest" in {
       ActorLookup[TestResponse] ! TestRequest
-      receiveOne(timeout.duration) should be (TestResponse)
+      receiveOne(awaitMax) should be (TestResponse)
     }
 
     "11) ActorLookup[TestResponse] ! TestRequest" in {
       ActorLookup[TestResponse] ! TestRequest
-      receiveOne(timeout.duration) should be (TestResponse)
+      receiveOne(awaitMax) should be (TestResponse)
     }
 
     "12) ActorLookup[String] ! NotExist " in {
       ActorLookup[String] ! "NotExist"
-      receiveOne(timeout.duration) shouldBe an [ActorNotFound]
+      receiveOne(awaitMax) shouldBe an [ActorNotFound]
     }
 
     "13) ActorLookup('TestActor1') ! TestRequest1" in {
       val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
       before should not be empty
       ActorLookup[String]("TestActor1") ! TestRequest1("13")
-      receiveOne(timeout.duration) shouldBe an [ActorNotFound]
+      receiveOne(awaitMax) shouldBe an [ActorNotFound]
     }
 
     "14) ActorLookup[String]('TestActor1') ! TestRequest1" in {
       val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
       before should not be empty
       ActorLookup("TestActor1") ! TestRequest1("13")
-      receiveOne(timeout.duration) should matchPattern { case TestResponse("13") => }
+      receiveOne(awaitMax) should matchPattern { case TestResponse("13") => }
     }
 
     "15) ActorLookup ! PoisonPill" in {
       val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
       before should not be empty
       ActorLookup("TestActor1") ! PoisonPill
-      receiveOne(timeout.duration)
+
+      receiveOne(awaitMax)
       ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList") shouldBe empty
     }
 
     "16) kill ActorRegistry" in {
       system.actorSelection("/user/ActorRegistryCube/ActorRegistry") ! PoisonPill
-      receiveOne(timeout.duration)
+      receiveOne(awaitMax)
       ManagementFactory.getPlatformMBeanServer.queryNames(ActorRegistrySpec.getObjName("*"), null) shouldBe empty
     }
   }

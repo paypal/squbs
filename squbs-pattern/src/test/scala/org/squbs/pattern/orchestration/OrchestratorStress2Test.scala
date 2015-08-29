@@ -19,9 +19,9 @@ package org.squbs.pattern.orchestration
 import akka.actor._
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
-import akka.util.Timeout
 import org.scalatest.{FunSpecLike, Matchers}
 import org.squbs.testkit.SlowTest
+import org.squbs.testkit.Timeouts._
 import org.squbs.testkit.stress._
 
 import scala.concurrent.duration._
@@ -54,7 +54,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     var sumFinishCount = 0l
 
     for (i <- 0 to 1) {
-      fishForMessage(warmUp + steady + (20 seconds)) {
+      fishForMessage(warmUp + steady + awaitMax) {
         case LoadStats(tps) =>
           println(s"Achieved $tps TPS")
           println(s"Avg time to finish: ${sumFinishTime / (1000000d * sumFinishCount)} ms")
@@ -98,7 +98,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     var sumFinishCount = 0l
 
     for (i <- 0 to 1) {
-      fishForMessage(warmUp + steady + (20 seconds)) {
+      fishForMessage(warmUp + steady + awaitMax) {
         case LoadStats(tps) =>
           println(s"Achieved $tps TPS")
           println(s"Avg submit time: ${sumSubmitTime / (1000000d * sumSubmitCount)} ms")
@@ -149,7 +149,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     var sumFinishCount = 0l
 
     for (i <- 0 to 1) {
-      fishForMessage(warmUp + steady + (20 seconds)) {
+      fishForMessage(warmUp + steady + awaitMax) {
         case LoadStats(tps) =>
           println(s"Achieved $tps TPS")
           println(s"Avg submit time: ${sumSubmitTime / (1000000d * sumSubmitCount)} ms")
@@ -369,7 +369,6 @@ class TestAsk2Orchestrator extends Actor with Orchestrator with ActorLogging {
 
     def loadResponse(delay: FiniteDuration): OFuture[Long] = {
       import context.dispatcher
-      implicit val timeout = Timeout(60 seconds)
       (service ? ServiceRequest(nextMessageId, delay)).mapTo[ServiceResponse] map (_.id)
     }
 
