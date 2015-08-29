@@ -88,28 +88,28 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
                cycleMin: FiniteDuration = 0 seconds,
                cycleMean: FiniteDuration = 1 seconds,
                cycleMax: FiniteDuration = 5 seconds): () => FiniteDuration = {
-    var mean = cycleMean.toNanos
-    var shift = 0L
 
-    if (!truncate) {
-      shift = cycleMin.toNanos
-      mean = mean - shift
-    }
+    val (shift, mean) =
+      if (!truncate) {
+        val shift1 = cycleMin.toNanos
+        val mean1 = cycleMean.toNanos - shift1
+        (shift1, mean1)
+      } else (0L, cycleMean.toNanos)
 
     () => {
-      var delay = 0L
-      if (cycleMean.toNanos > 0) {
-        var x = Random.nextDouble()
-        if (x == 0) {
-          x = 1e-20d
-        }
-        delay = shift + (mean * -Math.log(x)).toLong
-        if (delay < cycleMin.toNanos) {
-          delay = cycleMin.toNanos
-        } else if (delay > cycleMax.toNanos) {
-          delay = cycleMax.toNanos
-        }
-      }
+      val delay =
+        if (cycleMean.toNanos > 0) {
+          val x = {
+            val ix = Random.nextDouble()
+            if (ix == 0d) Double.MinPositiveValue else ix
+          }
+          val iDelay = shift + (mean * -Math.log(x)).toLong
+          if (iDelay < cycleMin.toNanos)
+            cycleMin.toNanos
+          else if (iDelay > cycleMax.toNanos)
+            cycleMax.toNanos
+          else iDelay
+        } else 0L
       delay nanoseconds
     }
   }

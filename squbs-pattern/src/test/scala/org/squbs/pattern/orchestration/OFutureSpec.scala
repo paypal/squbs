@@ -153,7 +153,6 @@ class OFutureSpec extends FunSpec with Matchers {
     val r0 = OFuture.failed[String](o) recoverWith {
       case _ if false == true => OFuture.successful("yay")
     }
-    r0 shouldNot be(null)
     r0.isCompleted should equal(true)
     r0.value should equal(Some(Failure(o)))
 
@@ -245,7 +244,7 @@ class OFutureSpec extends FunSpec with Matchers {
       idx => OFuture.successful(idx)
     }
     val folded = futures.foldLeft(OFuture.successful(0)) {
-      case (fr, fa) => for (r <- fr; a <- fa) yield (r + a)
+      case (fr, fa) => for (r <- fr; a <- fa) yield r + a
     }
 
     folded.value should equal(Some(Success(45)))
@@ -281,7 +280,7 @@ class OFutureSpec extends FunSpec with Matchers {
 
   it("should support reduce function") {
 
-    val futures = (0 to 9) map {OFuture.successful(_)}
+    val futures = (0 to 9) map (OFuture.successful)
     val reduced = OFuture.reduce(futures)(_ + _)
 
     reduced.value should equal(Some(Success(45)))
@@ -366,8 +365,8 @@ class OFutureSpec extends FunSpec with Matchers {
 
 
   it("should support functions: failed ,apply ,foreach, transform") {
-    var p = OPromise[String]()
-    var f = p.future
+    val p = OPromise[String]()
+    val f = p.future
 
     val func : Try[Throwable] => String = {
       case Success(v) => v.getMessage
@@ -387,21 +386,21 @@ class OFutureSpec extends FunSpec with Matchers {
     transFuture.value.get should be(Success("abcdef"))
 
     f.failed.value.map(func).get should be ("Future.failed not completed with a throwable.")
-    f() should be("abc")
+    f() should be ("abc")
 
 
-    p = OPromise[String]()
-    f = p.future
+    val p1 = OPromise[String]()
+    val f1 = p1.future
 
     the[NoSuchElementException] thrownBy {
-      f()
-    } should have message("Future not completed.")
+      f1()
+    } should have message "Future not completed."
 
-    p.failure(new RuntimeException("BadMan"))
+    p1.failure(new RuntimeException("BadMan"))
 
     result = "aaa"
-    f.foreach {
-      a => result =a.toUpperCase
+    f1.foreach {
+      a => result = a.toUpperCase
     }
     result should be("aaa")
 

@@ -62,13 +62,7 @@ object ActorRegistrySpec {
 
 
   def getActorRegistryBean(actorName: String, att: String) =
-    try {
-      ManagementFactory.getPlatformMBeanServer.getAttribute(
-        getObjName(actorName), att)
-    } catch {
-      case e: Exception =>
-        null
-    }
+    Try { ManagementFactory.getPlatformMBeanServer.getAttribute(getObjName(actorName), att) } .toOption
 
   def getObjName(name: String) = new ObjectName(prefix(boot.actorSystem) + ActorRegistryBean.Pattern + name)
 
@@ -112,7 +106,7 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
     }
 
     "3) check ActorRegistryBean" in {
-      ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor", "ActorMessageTypeList") should not be null
+      ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor", "ActorMessageTypeList") should not be empty
     }
 
 
@@ -209,24 +203,24 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
 
     "13) ActorLookup('TestActor1') ! TestRequest1" in {
       val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
-      assert(before != null)
+      before should not be empty
       ActorLookup[String]("TestActor1") ! TestRequest1("13")
       receiveOne(timeout.duration) shouldBe an [ActorNotFound]
     }
 
     "14) ActorLookup[String]('TestActor1') ! TestRequest1" in {
       val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
-      assert(before != null)
+      before should not be empty
       ActorLookup("TestActor1") ! TestRequest1("13")
       receiveOne(timeout.duration) should matchPattern { case TestResponse("13") => }
     }
 
     "15) ActorLookup ! PoisonPill" in {
       val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
-      assert(before != null)
+      before should not be empty
       ActorLookup("TestActor1") ! PoisonPill
       receiveOne(timeout.duration)
-      ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList") should be (null)
+      ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList") shouldBe empty
     }
 
     "16) kill ActorRegistry" in {

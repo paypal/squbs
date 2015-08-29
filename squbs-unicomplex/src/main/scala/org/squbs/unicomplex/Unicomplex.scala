@@ -28,8 +28,8 @@ import akka.agent.Agent
 import akka.pattern._
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
-import org.squbs.pipeline.{Processor, PipelineManager}
-import org.squbs.proxy.{SimplePipelineConfig, SimplePipelineResolver, PipelineRegistry, CubeProxyActor}
+import org.squbs.pipeline.PipelineManager
+import org.squbs.proxy.{CubeProxyActor, PipelineRegistry, SimplePipelineConfig, SimplePipelineResolver}
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import spray.can.Http
 
@@ -216,7 +216,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       import scala.collection.JavaConversions._
       extensions map { e =>
         val (phase, ex) = e.exceptions.headOption map {
-          case (phase, exception) => (phase, exception.toString())
+          case (iPhase, exception) => (iPhase, exception.toString)
         } getOrElse (("", ""))
         ExtensionInfo(e.info.name, phase, ex)
       }
@@ -478,7 +478,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       if (systemState != Failed) log.warning("Some cubes failed to initialize. Marking system state as Failed")
       Failed
     }
-    else if (serviceListeners.values exists (_ == None)) {
+    else if (serviceListeners.values exists (_.isEmpty)) {
       if (systemState != Failed) log.warning("Some listeners failed to initialize. Marking system state as Failed")
       Failed
     }
@@ -676,7 +676,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
           }
 
           // Check that all is initialized and whether it is all good.
-          if (!(initMap exists (_._2 == None))) {
+          if (!(initMap exists (_._2.isEmpty))) {
             val finalMap = (initMap mapValues (_.get)).toMap
             if (finalMap.exists(_._2.isFailure)) cubeState = Failed else cubeState = Active
             Unicomplex() ! InitReports(cubeState, initMap.toMap)
