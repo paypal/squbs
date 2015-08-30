@@ -66,13 +66,10 @@ object ActorRegistrySpec {
   def getObjName(name: String) = new ObjectName(prefix(boot.actorSystem) + ActorRegistryBean.Pattern + name)
 
   def getActorRegistryConfigBean(att: String) =
-    try {
+    Try {
       val o = new ObjectName(prefix(boot.actorSystem) + "org.squbs.unicomplex:type=ActorRegistry")
       ManagementFactory.getPlatformMBeanServer.getAttribute(o, att).asInstanceOf[Int]
-    } catch {
-      case e: Exception =>
-        null
-    }
+    } .toOption
 }
 
 class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with ImplicitSender
@@ -95,8 +92,8 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
     }
 
     "1.1) check ActorRegistryConfigBean " in {
-      ActorRegistrySpec.getActorRegistryConfigBean("Count") should be (2)
-      ActorRegistrySpec.getActorRegistryConfigBean("Timeout") should be (1000)
+      ActorRegistrySpec.getActorRegistryConfigBean("Count") should be (Some(2))
+      ActorRegistrySpec.getActorRegistryConfigBean("Timeout") should be (Some(1000))
     }
 
     "2) check TestActor" in {
@@ -218,15 +215,16 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
       val before = ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList")
       before should not be empty
       ActorLookup("TestActor1") ! PoisonPill
-
-      receiveOne(awaitMax)
-      ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList") shouldBe empty
+      awaitAssert(
+        ActorRegistrySpec.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList") shouldBe 'empty,
+        max = awaitMax)
     }
 
     "16) kill ActorRegistry" in {
       system.actorSelection("/user/ActorRegistryCube/ActorRegistry") ! PoisonPill
-      receiveOne(awaitMax)
-      ManagementFactory.getPlatformMBeanServer.queryNames(ActorRegistrySpec.getObjName("*"), null) shouldBe empty
+      awaitAssert(
+        ManagementFactory.getPlatformMBeanServer.queryNames(ActorRegistrySpec.getObjName("*"), null) shouldBe 'empty,
+        max = awaitMax)
     }
   }
 }

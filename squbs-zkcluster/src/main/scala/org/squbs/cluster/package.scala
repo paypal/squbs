@@ -16,7 +16,7 @@
 
 package org.squbs
 
-import java.net.{InetAddress, URLDecoder, URLEncoder}
+import java.net.{URLDecoder, URLEncoder}
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 
@@ -121,15 +121,8 @@ package object cluster {
 
   implicit class ByteConversions(val bytes: Array[Byte]) extends AnyVal {
 
-    def toAddress: Option[Address] = {
-      bytes match {
-        case null => None
-        case _ if bytes.length == 0 => None
-        case _ =>
-          val uri = new String(bytes, UTF_8)
-          Some(AddressFromURIString(uri))
-      }
-    }
+    def toAddress: Option[Address] =
+      Option(bytes) flatMap (b => if (b.length <= 0) None else Some(AddressFromURIString(new String(b, UTF_8))))
 
     def toInt: Int = ByteBuffer.wrap(bytes).getInt
 

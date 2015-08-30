@@ -30,13 +30,13 @@ import org.squbs.unicomplex.UnicomplexBoot;
 import java.util.HashMap;
 import java.util.Map;
 
-public class CustomTestkitTest {
+public class CustomTestKitTest {
     static CustomTestKit customTestKit;
 
     @BeforeClass
     public static void beforeAll() {
         Map<String, Object> configMap = new HashMap<>();
-        configMap.put("squbs.actorsystem-name", "myTest");
+        configMap.put("squbs.actorsystem-name", "CustomTestKitTest");
         configMap.put("squbs.external-config-dir", "actorCalLogTestConfig");
 
         Config testConfig = ConfigFactory.parseMap(configMap);

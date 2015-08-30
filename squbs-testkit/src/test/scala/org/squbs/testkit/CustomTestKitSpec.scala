@@ -60,7 +60,7 @@ object CustomTestKitSpec {
 
   val testConfig = ConfigFactory.parseMap(
     Map(
-      "squbs.actorsystem-name" -> "myTest",
+      "squbs.actorsystem-name" -> "CustomTestKitSpec",
       "squbs.external-config-dir" -> "actorCalLogTestConfig",
       "default-listener.bind-port" -> Int.box(port),
       "squbs." + JMX.prefixConfig -> Boolean.box(true)

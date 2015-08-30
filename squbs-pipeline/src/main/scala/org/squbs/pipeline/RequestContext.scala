@@ -139,7 +139,7 @@ object ExceptionalResponse {
   def apply(t: Throwable): ExceptionalResponse = apply(t, None)
 
   def apply(t: Throwable, originalResp: Option[NormalResponse]): ExceptionalResponse = {
-    val message = Option(t.getMessage) getOrElse "Service Error!"
+    val message = Option(t.getMessage) flatMap { m => if (m == "") None else Some(m) } getOrElse "Service Error!"
     ExceptionalResponse(HttpResponse(status = StatusCodes.InternalServerError, entity = message),
                         cause = Option(t), original = originalResp)
   }
