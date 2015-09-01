@@ -22,7 +22,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{FlatSpecLike, Matchers}
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future}
 
 class PipelineManagerSpec extends TestKit(ActorSystem("PipelineManagerSpec", ConfigFactory.parseString(
   """
@@ -37,7 +37,7 @@ class PipelineManagerSpec extends TestKit(ActorSystem("PipelineManagerSpec", Con
     |  proxy2{
     |    type = squbs.proxy
     |    aliases = [ccc,ddd]
-    |    processorFactory = org.squbs.pipeline.TestProcessorFactory2
+    |    factory = org.squbs.pipeline.TestProcessorFactory2
     |  }
     |
     |  proxy3{
@@ -52,39 +52,124 @@ class PipelineManagerSpec extends TestKit(ActorSystem("PipelineManagerSpec", Con
     |    processorFactory = org.squbs.pipeline.TestProcessorFactory4
     |  }
     |
+    |     pipe1{
+    |        type = squbs.proxy
+    |        aliases = [111,222]
+    |        factory = org.squbs.pipeline.TestResolver1
+    |        settings = {
+    |          inbound = [handler1, handler2]
+    |          outbound = [handler3, handler4]
+    |        }
+    |      }
+    |
+    |      pipe2{
+    |        type = squbs.proxy
+    |        aliases = [333,444]
+    |        factory = org.squbs.pipeline.TestResolver2
+    |      }
+    |
+    |      pipe3{
+    |        type = squbs.proxy
+    |        factory = org.squbs.pipeline.TestResolver3
+    |        settings = {
+    |        }
+    |      }
+    |
+    |      pipe4{
+    |        type = squbs.proxy
+    |        factory = org.squbs.pipeline.TestResolver4
+    |      }
+    |
+    |      handler1{
+    |        type = pipeline.handler
+    |        factory = org.squbs.pipeline.TestHandlerFactory
+    |      }
+    |
+    |      handler2{
+    |        type = pipeline.handler
+    |        factory = org.squbs.pipeline.TestHandlerFactory
+    |      }
+    |
+    |      handler3{
+    |        type = pipeline.handler
+    |        factory = org.squbs.pipeline.TestHandlerFactory
+    |      }
+    |
+    |      handler4{
+    |        type = pipeline.handler
+    |        factory = org.squbs.pipeline.TestHandlerFactory
+    |      }
     |
   """.stripMargin))) with FlatSpecLike with Matchers {
 
   val manager = PipelineManager(system)
 
-  "PipelineManager" should "work" in {
+  "PipelineManager getProcessor" should "work" in {
 
-    manager.get("proxy1") should not be (None)
-    manager.get("proxy2") should be(None)
+    manager.getProcessor("proxy1") should not be (None)
+    manager.getProcessor("proxy2") should be(None)
     Thread.sleep(500)
-    manager.get("proxy1") should not be (None)
-    manager.get("aaa") should not be (None)
-    manager.get("bbb") should not be (None)
-    manager.get("proxy2") should be(None)
-    manager.get("ccc") should be(None)
-    manager.get("ddd") should be(None)
+    manager.getProcessor("proxy1") should not be (None)
+    manager.getProcessor("aaa") should not be (None)
+    manager.getProcessor("bbb") should not be (None)
+    manager.getProcessor("proxy2") should be(None)
+    manager.getProcessor("ccc") should be(None)
+    manager.getProcessor("ddd") should be(None)
 
-    import Tracking._
+    import org.squbs.pipeline.Tracking._
 
     buffer.size should be(4)
 
     the[ClassNotFoundException] thrownBy {
-      manager.get("proxy3")
+      manager.getProcessor("proxy3")
     } should have message "org.squbs.pipeline.TestProcessorFactory3"
 
 
-    the[ClassCastException] thrownBy {
-      manager.get("proxy4")
-    } should have message "org.squbs.pipeline.TestProcessorFactory4 cannot be cast to org.squbs.pipeline.ProcessorFactory"
+    the[IllegalArgumentException] thrownBy {
+      manager.getProcessor("proxy4")
+    } should have message "Unsupported processor factory: org.squbs.pipeline.TestProcessorFactory4"
 
     the[IllegalArgumentException] thrownBy {
-      manager.get("proxy5")
-    } should have message "No registered squbs.proxy found with name of proxy5"
+      manager.getProcessor("proxy5")
+    } should have message "No registered squbs.proxy found with name: proxy5"
+
+  }
+
+  "PipelineManager getPipelineSetting" should "work" in {
+
+    val pipe = manager.getPipelineSetting("pipe1")
+    pipe should not be (None)
+    pipe.get.factory.isInstanceOf[TestResolver1] should be(true)
+    pipe.get.config.get.reqPipe.size should be(2)
+    pipe.get.config.get.reqPipe(1).isInstanceOf[TestHandlerFactory] should be(true)
+    pipe.get.config.get.respPipe.size should be(2)
+
+    manager.getPipelineSetting("pipe2") should not be (None)
+    Thread.sleep(500)
+    manager.getPipelineSetting("pipe1") should not be (None)
+    manager.getPipelineSetting("111") should not be (None)
+    manager.getPipelineSetting("222") should not be (None)
+    manager.getPipelineSetting("333") should not be (None)
+    manager.getPipelineSetting("444") should not be (None)
+
+
+    the[ClassNotFoundException] thrownBy {
+      manager.getPipelineSetting("pipe3")
+    } should have message "org.squbs.pipeline.TestResolver3"
+
+
+    the[IllegalArgumentException] thrownBy {
+      manager.getPipelineSetting("pipe4")
+    } should have message "Unsupported processor factory: org.squbs.pipeline.TestResolver4"
+
+
+    the[IllegalArgumentException] thrownBy {
+      manager.getPipelineSetting("pipe5")
+    } should have message "No registered pipeline found with name: pipe5"
+
+    the[IllegalArgumentException] thrownBy {
+      manager.getPipelineSetting("proxy1")
+    } should have message "squbs.proxy found with name of proxy1, but the factory should implement PipelineProcessorFactory"
 
   }
 
@@ -117,7 +202,7 @@ class TestProcessorFactory1 extends ProcessorFactory {
 
 class TestProcessorFactory2 extends ProcessorFactory {
 
-  import Tracking._
+  import org.squbs.pipeline.Tracking._
 
   buffer += "TestProcessorFactory2.init"
 
@@ -128,6 +213,22 @@ class TestProcessorFactory2 extends ProcessorFactory {
 }
 
 class TestProcessorFactory4
+
+class TestResolver1 extends PipelineProcessorFactory {
+  def create(config: SimplePipelineConfig, setting: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = ???
+}
+
+class TestResolver2 extends PipelineProcessorFactory {
+  def create(config: SimplePipelineConfig, setting: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = ???
+}
+
+class TestResolver4
+
+class TestHandlerFactory extends HandlerFactory with Handler {
+  override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = Some(this)
+
+  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = ???
+}
 
 
 

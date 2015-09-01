@@ -27,7 +27,7 @@ import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.pipeline.HttpClientUnmarshal
-import org.squbs.proxy.PipelineSetting
+import org.squbs.pipeline.PipelineSetting
 import spray.http.{HttpResponse, StatusCodes}
 import spray.httpx.SprayJsonSupport
 import spray.json.{RootJsonFormat, DefaultJsonProtocol}

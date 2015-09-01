@@ -22,7 +22,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.httpclient.HttpClientTestKit
 import org.squbs.httpclient.dummy.DummyService
 import org.squbs.httpclient.endpoint.Endpoint
-import org.squbs.proxy.{SimplePipelineConfig, SimplePipelineResolver}
+import org.squbs.pipeline.{SimplePipelineConfig, SimplePipelineResolver}
 import org.squbs.testkit.Timeouts._
 import spray.http._
 

@@ -28,7 +28,7 @@ import org.squbs.httpclient.dummy._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
 import org.squbs.httpclient.japi.{EmployeeBean, TeamBean, TeamBeanWithCaseClassMember}
 import org.squbs.httpclient.json.{JacksonProtocol, Json4sJacksonNoTypeHintsProtocol, JsonProtocol}
-import org.squbs.proxy.PipelineSetting
+import org.squbs.pipeline.PipelineSetting
 import org.squbs.testkit.Timeouts._
 import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpHeader, HttpResponse, StatusCodes}

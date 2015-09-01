@@ -17,7 +17,7 @@
 package org.squbs.httpclient.endpoint
 
 import akka.actor.{ActorSystem, ExtensionId, Extension, ExtendedActorSystem}
-import org.squbs.proxy.{PipelineRegistry, PipelineSetting}
+import org.squbs.pipeline.{PipelineManager, PipelineSetting}
 
 import scala.collection.mutable.ListBuffer
 import org.squbs.httpclient.env.{Default, Environment}
@@ -35,16 +35,16 @@ object Endpoint {
 }
 
 trait EndpointResolver {
-  
+
   def name: String
 
   def resolve(svcName: String, env: Environment = Default): Option[Endpoint]
 }
 
-abstract class PipelineAwareEndpointResolver(system : ActorSystem) extends EndpointResolver {
+abstract class PipelineAwareEndpointResolver(system: ActorSystem) extends EndpointResolver {
 
-  protected def getPipelineSetting(name : String) : Option[PipelineSetting] = {
-    PipelineRegistry(system).get(name)(system)
+  protected def getPipelineSetting(name: String): Option[PipelineSetting] = {
+    PipelineManager(system).getPipelineSetting(name)(system)
   }
 
 }
@@ -75,12 +75,12 @@ class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension w
   }
 
   def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-    val resolvedEndpoint = endpointResolvers.foldLeft[Option[Endpoint]](None){
+    val resolvedEndpoint = endpointResolvers.foldLeft[Option[Endpoint]](None) {
       (endpoint: Option[Endpoint], resolver: EndpointResolver) =>
         endpoint match {
           case Some(_) =>
             endpoint
-          case None     =>
+          case None =>
             resolver.resolve(svcName, env)
         }
     }
@@ -99,7 +99,7 @@ class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension w
   }
 }
 
-object EndpointRegistry extends ExtensionId[EndpointRegistryExtension]{
+object EndpointRegistry extends ExtensionId[EndpointRegistryExtension] {
 
   override def createExtension(system: ExtendedActorSystem): EndpointRegistryExtension =
     new EndpointRegistryExtension(system)

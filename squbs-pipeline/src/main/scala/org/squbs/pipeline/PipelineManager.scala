@@ -25,46 +25,63 @@ import org.squbs.pipeline.ConfigHelper._
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-case class PipelineManager(configs: Map[String, ProxyConfig], processors: Agent[Map[String, Processor]]) extends Extension with LazyLogging {
+
+case class PipelineManager(configs: Map[String, RawPipelineSetting], pipelines: Agent[Map[String, Either[Processor, PipelineSetting]]]) extends Extension with LazyLogging {
 
   def default(implicit actorRefFactory: ActorRefFactory) = {
-    get("default-proxy")
+    getProcessor("default-proxy")
   }
 
-  def get(name: String)(implicit actorRefFactory: ActorRefFactory): Option[Processor] = {
-    processors().get(name) match {
+  def getProcessor(name: String)(implicit actorRefFactory: ActorRefFactory): Option[Processor] = {
+    get(name) match {
+      case Some(Left(v)) => Option(v)
+      case Some(Right(v)) => v.factory.create(v.pipelineConfig, v.setting)
+      case None if (name.equals("default-proxy")) => None
+      case None => throw new IllegalArgumentException(s"No registered squbs.proxy found with name: $name")
+    }
+  }
+
+  def getPipelineSetting(name: String)(implicit actorRefFactory: ActorRefFactory): Option[PipelineSetting] = {
+    get(name) match {
+      case Some(Right(v)) => Option(v)
+      case Some(Left(v)) => throw new IllegalArgumentException(s"squbs.proxy found with name of $name, but the factory should implement PipelineProcessorFactory")
+      case None => throw new IllegalArgumentException(s"No registered pipeline found with name: $name")
+    }
+
+  }
+
+  private def get(name: String)(implicit actorRefFactory: ActorRefFactory): Option[Either[Processor, PipelineSetting]] = {
+    pipelines().get(name) match {
       case None =>
         configs.get(name) match {
           case Some(cfg) =>
             try {
-              val processor = Class.forName(cfg.factoryClazz).newInstance().asInstanceOf[ProcessorFactory].create(cfg.settings)
-              processors.send {
+              val factoryInstance = Class.forName(cfg.factoryClass).newInstance()
+              val entry: Either[Processor, PipelineSetting] = factoryInstance match {
+                case f if f.isInstanceOf[PipelineProcessorFactory] =>
+                  val ppf = f.asInstanceOf[PipelineProcessorFactory]
+                  val pipelineConfig = cfg.settings.fold(SimplePipelineConfig.empty)(SimplePipelineConfig(_))
+                  Right(PipelineSetting(ppf, Option(pipelineConfig), cfg.settings))
+                case f if f.isInstanceOf[ProcessorFactory] =>
+                  val pf = f.asInstanceOf[ProcessorFactory]
+                  Left(pf.create(cfg.settings).getOrElse(null))
+                case f => throw new IllegalArgumentException(s"Unsupported processor factory: ${cfg.factoryClass}")
+              }
+              pipelines.send {
                 currentMap =>
                   currentMap.get(name) match {
                     case Some(ref) => currentMap
-                    case None =>
-                      val proc = processor.getOrElse(null)
-                      currentMap + (name -> proc) ++ cfg.aliases.map(_ -> proc)
+                    case None => currentMap + (name -> entry) ++ cfg.aliases.map(_ -> entry)
                   }
               }
-              processor
+              Option(entry)
             } catch {
               case t: Throwable =>
-                logger.error(s"Can't instantiate squbs.proxy with name of $name and factory class name of ${cfg.factoryClazz}", t)
+                logger.error(s"Can't instantiate squbs.proxy with name of $name and factory class name of ${cfg.factoryClass}", t)
                 throw t
             }
-          case None if (name.equals("default-proxy")) =>
-            processors.send {
-              currentMap =>
-                currentMap.get(name) match {
-                  case Some(ref) => currentMap
-                  case None => currentMap + (name -> null)
-                }
-            }
-            None
-          case _ => throw new IllegalArgumentException(s"No registered squbs.proxy found with name of $name")
+          case None => None
         }
-      case Some(null) => None
       case other => other
     }
 
@@ -72,10 +89,27 @@ case class PipelineManager(configs: Map[String, ProxyConfig], processors: Agent[
 
 }
 
-case class ProxyConfig(name: String,
-                       aliases: Seq[String],
-                       factoryClazz: String,
-                       settings: Option[Config])
+case class RawPipelineSetting(name: String,
+                              aliases: Seq[String],
+                              factoryClass: String,
+                              settings: Option[Config])
+
+case class PipelineSetting(factory: PipelineProcessorFactory = SimplePipelineResolver.INSTANCE,
+                           config: Option[SimplePipelineConfig] = None,
+                           setting: Option[Config] = None) {
+  def pipelineConfig: SimplePipelineConfig = config.getOrElse(SimplePipelineConfig.empty)
+
+}
+
+object PipelineSetting {
+
+  val default = PipelineSetting()
+
+  def apply(resolver: PipelineProcessorFactory, config: SimplePipelineConfig): PipelineSetting = PipelineSetting(resolver, Option(config))
+
+  def apply(resolver: PipelineProcessorFactory, config: SimplePipelineConfig, setting: Config): PipelineSetting = PipelineSetting(resolver, Option(config), Option(setting))
+}
+
 
 object PipelineManager extends ExtensionId[PipelineManager] with ExtensionIdProvider with LazyLogging {
 
@@ -89,18 +123,22 @@ object PipelineManager extends ExtensionId[PipelineManager] with ExtensionIdProv
       case (n, v: ConfigObject) if v.toConfig.getOptionalString("type") == Some("squbs.proxy") => (n, v.toConfig)
     }
     import system.dispatcher
-    PipelineManager(genConfigs(allMatches), Agent(Map.empty[String, Processor]))
+    PipelineManager(genConfigs(allMatches), Agent(Map.empty[String, Either[Processor, PipelineSetting]]))
   }
 
-  private def genConfigs(configs: Seq[(String, Config)]): Map[String, ProxyConfig] = {
-    val proxyMap = mutable.Map.empty[String, ProxyConfig]
+  private def genConfigs(configs: Seq[(String, Config)]): Map[String, RawPipelineSetting] = {
+    val proxyMap = mutable.Map.empty[String, RawPipelineSetting]
     configs.foreach {
       conf =>
         try {
           val subCfg = conf._2
           val key = conf._1
           val aliasNames = subCfg.getOptionalStringList("aliases") getOrElse Seq.empty[String]
-          val proxyConf = ProxyConfig(key, aliasNames, subCfg.getString("processorFactory"), subCfg.getOptionalConfig("settings"))
+          val factoryClass = subCfg.getOptionalString("processorFactory") match {
+            case Some(text) => text
+            case None => subCfg.getString("factory")
+          }
+          val proxyConf = RawPipelineSetting(key, aliasNames, factoryClass, subCfg.getOptionalConfig("settings"))
           key +: aliasNames foreach { name =>
             proxyMap.get(name) match {
               case None => proxyMap.put(name, proxyConf)
