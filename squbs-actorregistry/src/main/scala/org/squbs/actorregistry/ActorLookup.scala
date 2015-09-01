@@ -66,32 +66,39 @@ case class ActorNotFound(actorLookup: ActorLookup) extends RuntimeException("Act
 /**
  * Construct an [[org.squbs.actorregistry.ActorLookup]] from the requestClass, responseClass, actor name
  */
- private[actorregistry] case class ActorLookup(requestClass: Option[Class[_]] = None, responseClass: Option[Class[_]]=None, actorName: Option[String] = None) extends AskSupport{
+ private[actorregistry] case class ActorLookup(requestClass: Option[Class[_]] = None,
+                                               responseClass: Option[Class[_]] = None,
+                                               actorName: Option[String] = None) extends AskSupport{
 
   /**
-   * Squbs API: Send msg with tell pattern to a corresponding actor based if requestClass(msg's class type), responseClass, actorName matching with an entry at Actor registry
+   * Squbs API: Send msg with tell pattern to a corresponding actor based if requestClass(msg's class type),
+   * responseClass, actorName matching with an entry at Actor registry
    */
   def !(msg: Any)(implicit sender: ActorRef = Actor.noSender, system: ActorSystem) = tell(msg, sender)
 
   /**
-   * Squbs API: Send msg with ask pattern to a corresponding actor based if requestClass(msg's class type), responseClass, actorName matching with an entry at Actor registry
+   * Squbs API: Send msg with ask pattern to a corresponding actor based if requestClass(msg's class type),
+   * responseClass, actorName matching with an entry at Actor registry
    */
   def ?(message: Any)(implicit timeout: Timeout, system: ActorSystem): Future[Any] = ask(message)(timeout, system)
 
   /**
-   * Squbs API: Send msg with tell pattern to a corresponding actor based if requestClass(msg's class type), responseClass, actorName matching with an entry at Actor registry
+   * Squbs API: Send msg with tell pattern to a corresponding actor based if requestClass(msg's class type),
+   * responseClass, actorName matching with an entry at Actor registry
    */
   def tell(msg: Any, sender: ActorRef)(implicit system: ActorSystem) =
     system.actorSelection(ActorRegistry.path).tell(ActorLookupMessage(copy(requestClass= Some(msg.getClass)), msg), sender)
 
   /**
-   * Squbs API: Send msg with ask pattern to a corresponding actor based if requestClass(msg's class type), responseClass, actorName matching with an entry at Actor registry
+   * Squbs API: Send msg with ask pattern to a corresponding actor based if requestClass(msg's class type),
+   * responseClass, actorName matching with an entry at Actor registry
    */
   def ask(msg: Any)(implicit timeout: Timeout, system: ActorSystem ): Future[Any] =
     system.actorSelection(ActorRegistry.path).ask(ActorLookupMessage(copy(requestClass= Some(msg.getClass)), msg))
 
   /**
-   * Squbs API: return a ActorRef if there is requestClass(msg's class type), responseClass, actorName matching with an entry at Actor registry
+   * Squbs API: return a ActorRef if there is requestClass(msg's class type), responseClass, actorName matching
+   * with an entry at Actor registry
    */
   def resolveOne(timeout: FiniteDuration)(implicit system: ActorSystem): Future[ActorRef] = resolveOne()(timeout, system)
 
@@ -102,10 +109,10 @@ case class ActorNotFound(actorLookup: ActorLookup) extends RuntimeException("Act
         p.failure(org.squbs.actorregistry.ActorNotFound(this))
       case _ =>
         implicit val ec = system.dispatcher
-        val fu = system.actorSelection(ActorRegistry.path).ask(ActorLookupMessage(this, Identify("ActorLookup"))).onComplete {
-          case Success(ActorIdentity(_, Some(ref))) ⇒
+        system.actorSelection(ActorRegistry.path) ? ActorLookupMessage(this, Identify("ActorLookup")) onComplete {
+          case Success(ActorIdentity(_, Some(ref))) =>
             p.success(ref)
-          case x ⇒
+          case x =>
             p.failure(org.squbs.actorregistry.ActorNotFound(this))
         }
     }

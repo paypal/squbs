@@ -25,14 +25,15 @@ import ActorRegistryBean._
 import JMX._
 import collection.JavaConversions._
 
-private[actorregistry] case class StartActorRegister(cubeNameList: List[CubeActorInfo], timeout: Int)
-private[actorregistry] case class CubeActorInfo(actorPath: String ,messageTypeList : List[CubeActorMessageType])
-private[actorregistry] case class CubeActorMessageType(requestClassName: String=null, responseClassName: String=null)
+private[actorregistry] case class StartActorRegister(cubeNameList: Seq[CubeActorInfo], timeout: Int)
+private[actorregistry] case class CubeActorInfo(actorPath: String ,messageTypeList: Seq[CubeActorMessageType])
+private[actorregistry] case class CubeActorMessageType(requestClassName: Option[String] = None,
+                                                       responseClassName: Option[String] = None)
 private[actorregistry] case class ActorLookupMessage(actorLookup: ActorLookup, msg: Any)
 
 private[actorregistry] object ActorRegistry {
   val path = "/user/ActorRegistryCube/ActorRegistry"
-  val registry = mutable.HashMap.empty[ActorRef,List[CubeActorMessageType]]
+  val registry = mutable.HashMap.empty[ActorRef, Seq[CubeActorMessageType]]
   val configBean =  "org.squbs.unicomplex:type=ActorRegistry"
 
 }
@@ -42,7 +43,7 @@ private[actorregistry] class ActorRegistry extends Actor with Stash {
 
   override def postStop() {
     unregister(prefix + ActorRegistry.configBean)
-    totalBeans.foreach {unregister(_)}
+    totalBeans foreach unregister
   }
 
   import ActorRegistry._
@@ -73,15 +74,15 @@ private[actorregistry] class ActorRegistry extends Actor with Stash {
       context.become(startupReceive)
 
     case ActorLookupMessage(lookupObj, Identify("ActorLookup"))  =>
-      val result = processActorLookup(lookupObj).map(_._1).find(x=> true)
-      sender !  ActorIdentity("ActorLookup", result)
+      val result = processActorLookup(lookupObj).keys.headOption
+      sender() !  ActorIdentity("ActorLookup", result)
 
     case ActorLookupMessage(lookupObj, msg) =>
       processActorLookup(lookupObj) match {
-        case result if (result.isEmpty) =>
-          sender ! org.squbs.actorregistry.ActorNotFound(lookupObj)
+        case result if result.isEmpty =>
+          sender() ! org.squbs.actorregistry.ActorNotFound(lookupObj)
         case result =>
-          result foreach (_._1.tell(msg, sender))
+          result.keys foreach { _ tell (msg, sender()) }
       }
 
     case Terminated(actor) =>
@@ -89,17 +90,19 @@ private[actorregistry] class ActorRegistry extends Actor with Stash {
       unregisterBean(actor)
   }
 
-  def processActorLookup(lookupObj: ActorLookup) : Map[ActorRef, List[CubeActorMessageType]]= {
-    (lookupObj.requestClass.map(_.getCanonicalName), lookupObj.responseClass.map(_.getCanonicalName), lookupObj.actorName) match {
-      case (Some(requestClassName), Some("scala.runtime.Nothing$") | None, None) =>
+  def processActorLookup(lookupObj: ActorLookup) : Map[ActorRef, Seq[CubeActorMessageType]]= {
+    val requestClass = lookupObj.requestClass map (_.getCanonicalName)
+    val responseClass = lookupObj.responseClass map (_.getCanonicalName)
+    (requestClass, responseClass, lookupObj.actorName) match {
+      case (requestClassName, Some("scala.runtime.Nothing$") | None, None) =>
         registry.toMap.filter(_._2.exists(_.requestClassName == requestClassName))
       case (_,  Some("scala.runtime.Nothing$")| None , Some(actorName)) =>
         registry.toMap.filter(_._1.path.name == actorName)
-      case (_, Some(responseClassName), actorName) =>
+      case (_, responseClassName, actorName) =>
         registry.toMap.filter(x=>x._1.path.name == actorName.getOrElse(x._1.path.name))
         .filter(_._2.exists(_.responseClassName == responseClassName))
       case obj =>
-        Map.empty[ActorRef, List[CubeActorMessageType]]
+        Map.empty[ActorRef, Seq[CubeActorMessageType]]
     }
   }
 }

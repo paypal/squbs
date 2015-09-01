@@ -268,7 +268,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
         log.error(e, s"Error instantiating route from {}: {}", clazz.getName, e)
         context.parent ! Initialized(Failure(e))
         context.stop(self)
-        null
+        RouteDefinition.startRoutes(new RejectRoute)
     }
 
   
@@ -412,6 +412,12 @@ trait RouteDefinition {
   def rejectionHandler: Option[RejectionHandler] = None
 
   def exceptionHandler: Option[ExceptionHandler] = None
+}
+
+class RejectRoute extends RouteDefinition {
+
+  import spray.routing.directives.RouteDirectives.reject
+  val route: Route = reject
 }
 
 object WebContext {
