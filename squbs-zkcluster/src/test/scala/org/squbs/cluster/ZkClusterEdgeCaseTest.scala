@@ -18,14 +18,13 @@ package org.squbs.cluster
 
 import akka.testkit.ImplicitSender
 import akka.util.ByteString
-import org.scalatest.{BeforeAndAfterEach, BeforeAndAfterAll, Matchers, FlatSpecLike}
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.duration._
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpecLike, Matchers}
+import org.squbs.testkit.Timeouts._
 
 class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterEdgeCaseTest")
   with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with BeforeAndAfterEach {
   
-  override val timeout: FiniteDuration = 30 seconds
+  override val timeout = awaitMax
   
   override val clusterSize: Int = 3
   

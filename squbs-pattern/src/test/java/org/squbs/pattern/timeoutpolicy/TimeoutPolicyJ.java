@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.concurrent.timeout;
+package org.squbs.pattern.timeoutpolicy;
 
 import akka.actor.ActorSystem;
 import scala.concurrent.duration.FiniteDuration;
@@ -24,7 +24,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.squbs.concurrent.timeout.TimeoutPolicyType.*;
 import static scala.compat.java8.FutureConverters.fromExecutorService;
 
 public class TimeoutPolicyJ {
@@ -52,19 +51,19 @@ public class TimeoutPolicyJ {
         fixedTimeoutPolicy = TimeoutPolicyBuilder
                 .create(new FiniteDuration(INITIAL_TIMEOUT, MILLISECONDS), fromExecutorService(es))
                 .minSamples(1)
-                .rule(FIXED)
+                .rule(TimeoutPolicyType.FIXED)
                 .build();
         sigmaTimeoutPolicy = TimeoutPolicyBuilder
                 .create(new FiniteDuration(INITIAL_TIMEOUT, MILLISECONDS), system.dispatcher())
                 .minSamples(1)
                 .name("SIGMA")
-                .rule(3.0, SIGMA)
+                .rule(3.0, TimeoutPolicyType.SIGMA)
                 .build();
         percentileTimeoutPolicy = TimeoutPolicyBuilder
                 .create(new FiniteDuration(INITIAL_TIMEOUT, MILLISECONDS), system.dispatcher())
                 .minSamples(1)
                 .name("PERCENTILE")
-                .rule(95, PERCENTILE)
+                .rule(95, TimeoutPolicyType.PERCENTILE)
                 .build();
     }
 

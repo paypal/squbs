@@ -14,10 +14,15 @@
  *  limitations under the License.
  */
 
-package org.squbs.concurrent.timeout;
+package org.squbs.testkit
 
-public enum TimeoutPolicyType {
-    FIXED,
-    SIGMA,
-    PERCENTILE
+import akka.util.Timeout
+
+import scala.concurrent.duration._
+
+object Timeouts {
+
+  implicit val askTimeout = Timeout(30 seconds)
+
+  val awaitMax = 60 seconds
 }

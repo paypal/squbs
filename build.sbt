@@ -1,18 +1,20 @@
+
+
 scalaVersion in ThisBuild := "2.11.6"
 
 organization in ThisBuild := "org.squbs"
 
 publishArtifact := false
 
-addCommandAlias("coverage", "scoverage:test")
+org.scalastyle.sbt.ScalastylePlugin.Settings
 
-ScoverageKeys.minimumCoverage in ThisBuild := 70
+coverageEnabled in ThisBuild := true
 
-ScoverageKeys.failOnMinimumCoverage in ThisBuild := true
+coverageMinimum in ThisBuild := 70.0
+
+coverageFailOnMinimum in ThisBuild := true
 
 fork in ThisBuild := true
-
-parallelExecution in ScoverageTest in ThisBuild := false
 
 parallelExecution in ThisBuild := false
 
@@ -22,11 +24,11 @@ lazy val `squbs-pipeline` = project
 
 lazy val `squbs-unicomplex` = project dependsOn `squbs-pipeline`
 
-lazy val `squbs-zkcluster` = project
+lazy val `squbs-testkit` = project dependsOn `squbs-unicomplex`
+
+lazy val `squbs-zkcluster` = project dependsOn `squbs-testkit` % "test"
 
 lazy val `squbs-httpclient` = project dependsOn(`squbs-unicomplex`, `squbs-testkit` % "test")
-
-lazy val `squbs-testkit` = project dependsOn `squbs-unicomplex`
 
 // Add SlowTest configuration to squbs-pattern to run the long-running tests.
 // To run standard tests> test
@@ -40,11 +42,9 @@ lazy val `squbs-pattern` = (project dependsOn `squbs-testkit` % "test")
   .settings(inConfig(SlowTest)(Defaults.testTasks): _*)
   .settings(testOptions in SlowTest := Seq.empty)
 
-lazy val `squbs-actorregistry` = project dependsOn `squbs-unicomplex`
+lazy val `squbs-actorregistry` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
 
-lazy val `squbs-actormonitor` = project dependsOn `squbs-unicomplex`
-
-lazy val `squbs-timeoutpolicy` = project
+lazy val `squbs-actormonitor` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
 
 publishTo in ThisBuild := {
   val nexus = "https://oss.sonatype.org/"

@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.concurrent.timeout
+package org.squbs.pattern.timeoutpolicy
 
 import java.lang.management.ManagementFactory
 
@@ -38,7 +38,7 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
 
   private val agent = Agent(Metrics(name, initial, startOverCount))
 
-  private[timeout] def waitTime: FiniteDuration
+  private[timeoutpolicy] def waitTime: FiniteDuration
 
   /**
    * The TimeoutTransaction allows for demarcating a unit of execution where time is measured.
@@ -129,7 +129,7 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
    */
   def metrics = agent()
 
-  private[timeout] def update(time: Double, isTimeout: Boolean): Unit = agent send {
+  private[timeoutpolicy] def update(time: Double, isTimeout: Boolean): Unit = agent send {
     _.update(time, isTimeout)
   }
 }

@@ -25,7 +25,6 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import spray.util.Utils
 
-import scala.concurrent.duration._
 import scala.util.Try
 
 object StopAndStartCubeSpec {
@@ -61,7 +60,9 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
   implicit val timeout: akka.util.Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
       akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
-    } getOrElse (10 seconds)
+    } getOrElse Timeouts.askTimeout
+
+  import Timeouts.awaitMax
 
   val port = system.settings.config getInt "default-listener.bind-port"
 
@@ -73,11 +74,11 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   "Unicomplex" should "be able to stop a cube" in {
     Unicomplex(system).uniActor ! StopCube("DummyCube")
-    within(10 seconds) {
+    within(awaitMax) {
       expectMsg(Ack)
     }
     system.actorSelection("/user/DummyCube") ! Identify("hello")
-    within(10 seconds) {
+    within(awaitMax) {
       val id = expectMsgType[ActorIdentity]
       id.ref should be(None)
     }
@@ -90,11 +91,11 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   "Unicomplex" should "be able to start a cube" in {
     Unicomplex(system).uniActor ! StartCube("DummyCube")
-    within(10 seconds) {
+    within(awaitMax) {
       expectMsg(Ack)
     }
     system.actorSelection("/user/DummyCube") ! Identify("hello")
-    within(10 seconds) {
+    within(awaitMax) {
       val id = expectMsgType[ActorIdentity]
       id.ref should not be None
     }

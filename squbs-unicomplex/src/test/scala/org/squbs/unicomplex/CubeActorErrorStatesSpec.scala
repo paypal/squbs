@@ -18,9 +18,8 @@
 package org.squbs.unicomplex
 
 import javax.management.ObjectName
-import javax.management.openmbean.{CompositeData, TabularDataSupport}
+import javax.management.openmbean.CompositeData
 
-import akka.actor.Actor.Receive
 import akka.actor.{Actor, ActorSystem}
 import akka.io.IO
 import akka.testkit.{ImplicitSender, TestKit}
@@ -29,11 +28,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import spray.can.Http
 import spray.http._
-import spray.routing.Directives._
-import spray.routing.Route
 import spray.util.Utils
-
-import scala.concurrent.duration._
 
 object CubeActorErrorStatesSpec{
   /*
@@ -65,7 +60,6 @@ object CubeActorErrorStatesSpec{
 
 class CubeActorErrorStatesSpec extends TestKit(
   CubeActorErrorStatesSpec.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
-  implicit val timeout: akka.util.Timeout = 10 seconds
 
   val port = system.settings.config getInt "default-listener.bind-port"
 

@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.concurrent.timeout
+package org.squbs.pattern.timeoutpolicy
 
 import org.scalatest.{Matchers, FlatSpecLike}
 import concurrent.duration._

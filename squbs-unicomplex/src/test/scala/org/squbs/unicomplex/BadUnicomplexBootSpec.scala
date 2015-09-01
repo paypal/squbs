@@ -29,7 +29,6 @@ import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.dummyextensions.DummyExtension
 import spray.util.Utils
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
 
@@ -92,7 +91,7 @@ with AsyncAssertions {
     Try(System.getProperty("test.timeout").toLong) map {
       millis =>
         akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
-    } getOrElse (10 seconds)
+    } getOrElse Timeouts.askTimeout
 
   implicit val executionContext = system.dispatcher
 

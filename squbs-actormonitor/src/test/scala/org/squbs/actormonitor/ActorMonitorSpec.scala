@@ -20,8 +20,8 @@ import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 
 import akka.actor._
+import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
-import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest._
@@ -31,7 +31,7 @@ import org.squbs.unicomplex.JMX._
 import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
 import spray.util.Utils
 
-import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 
 object ActorMonitorSpec extends LazyLogging {
@@ -59,16 +59,6 @@ object ActorMonitorSpec extends LazyLogging {
     .scanComponents(classPaths)
     .initExtensions.start()
 
-
-  var originalNum = getActorMonitorConfigBean("Count").toString.toInt
-  Thread.sleep(2000)
-  while(originalNum < 12){
-    Thread.sleep(2000)
-    originalNum = getActorMonitorConfigBean("Count").toString.toInt
-    Thread.sleep(2000)
-  }
-
-
  def getActorMonitorBean(actorName: String, att: String) =
     try {
       ManagementFactory.getPlatformMBeanServer.getAttribute(getObjName(actorName), att).asInstanceOf[String]
@@ -94,10 +84,28 @@ object ActorMonitorSpec extends LazyLogging {
 
 class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with ImplicitSender
                              with WordSpecLike with Matchers with BeforeAndAfterAll
-                             with AsyncAssertions {
+                             with AsyncAssertions with LazyLogging {
 
-  implicit val timeout: akka.util.Timeout = Timeout(1 seconds)
+  import org.squbs.testkit.Timeouts._
   implicit val ec = system.dispatcher
+
+  override def beforeAll() {
+    // Make sure all actors are indeed alive.
+    val idFuture1 = (system.actorSelection("/user/TestCube/TestActor") ? Identify(None)).mapTo[ActorIdentity]
+    val idFuture2 = (system.actorSelection("/user/TestCube/TestActorWithRoute") ? Identify(None)).mapTo[ActorIdentity]
+    val idFuture3 = (system.actorSelection("/user/TestCube/TestActorWithRoute/$a") ? Identify(None)).mapTo[ActorIdentity]
+    val idFuture4 = (system.actorSelection("/user/TestCube/TestActor1") ? Identify(None)).mapTo[ActorIdentity]
+    val futures = Future.sequence(Seq(idFuture1, idFuture2, idFuture3, idFuture4))
+    val idList = Await.result(futures, awaitMax)
+    idList foreach {
+      case ActorIdentity(_, Some(actor)) => logger.info(s"beforeAll identity: $actor")
+      case other => logger.warn(s"beforeAll invalid identity: $other")
+    }
+
+    import ActorMonitorSpec._
+    val cfgBeanCount = getActorMonitorConfigBean("Count").toString.toInt
+    cfgBeanCount should be > 11
+  }
 
 
   override def afterAll() {
@@ -113,7 +121,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     "1.1) getActor of TestCube/TestActor" in {
       awaitAssert (
         ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Actor").
-          startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"), max= 5 seconds)
+          startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"), max = awaitMax)
     }
 
     "2.1) getClassName of TestCube/TestActor" in {
@@ -178,7 +186,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     "4.0) getActor of TestCube/TestActorWithRoute" in {
       awaitAssert (
         ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Actor")
-          .startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"), max = 6 seconds)
+          .startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"), max = awaitMax)
     }
 
     "4.1) getClassName of TestCube/TestActorWithRoute" in {
@@ -215,7 +223,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
       awaitAssert(
         ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Actor").
           startsWith("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#"),
-        max = 2 seconds)
+        max = awaitMax)
     }
 
     "5.1) getClassName of TestCube/TestActorWithRoute/$a" in {
@@ -246,17 +254,17 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     }
 
     "6.1) getBean after actor has been stop" in {
-      awaitAssert(ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") != null, max = 2 seconds)
+      awaitAssert(ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") != null, max = awaitMax)
 
 
       import ActorMonitorSpec._
       val originalNum = getActorMonitorConfigBean("Count").toString.toInt
 
       system.actorSelection("/user/TestCube/TestActor1") ! PoisonPill
-      receiveOne(2 seconds) match {
+      receiveOne(awaitMax) match {
         case msg =>
-          awaitAssert(ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") == null, max= 2 second)
-          awaitAssert(getActorMonitorConfigBean("Count") == originalNum - 1, max = 2 second )
+          awaitAssert(ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") == null, max= awaitMax)
+          awaitAssert(getActorMonitorConfigBean("Count") == originalNum - 1, max = awaitMax )
       }
     }
 

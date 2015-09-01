@@ -22,6 +22,7 @@ import org.json4s.CustomSerializer
 import org.json4s.JsonAST._
 import org.squbs.httpclient.japi.{TeamBeanWithCaseClassMember, TeamBean, EmployeeBean}
 import org.squbs.httpclient.json.JsonProtocol
+import org.squbs.testkit.Timeouts._
 import spray.routing.SimpleRoutingApp
 import akka.actor.ActorSystem
 import scala.util.{Failure, Success}
@@ -279,7 +280,7 @@ trait DummyService extends SimpleRoutingApp {
               }
             }
         }
-    }(system, null, bindingTimeout = 30 seconds).onComplete {
+    }(system, null, bindingTimeout = awaitMax).onComplete {
       case Success(b) =>
         println(s"Successfully bound to ${b.localAddress}")
       case Failure(ex) =>
