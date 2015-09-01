@@ -37,7 +37,7 @@ class SimpleProcessorSpec extends FlatSpecLike with Matchers {
         w {
           assert(result.isSuccess)
           result.get.attribute[String]("attr1") should be(Some("v1"))
-          result.get.response shouldBe a[NormalResponse]
+          result.get.response shouldBe a [NormalResponse]
         }
         w.dismiss()
     }

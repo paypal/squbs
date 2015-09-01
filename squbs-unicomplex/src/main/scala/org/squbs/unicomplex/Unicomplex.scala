@@ -674,7 +674,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
           }
 
           // Check that all is initialized and whether it is all good.
-          if (!(initMap exists (_._2 == None))) {
+          if (!(initMap exists (_._2.isEmpty))) {
             val finalMap = (initMap mapValues (_.get)).toMap
             if (finalMap.exists(_._2.isFailure)) cubeState = Failed else cubeState = Active
             Unicomplex() ! InitReports(cubeState, initMap.toMap)

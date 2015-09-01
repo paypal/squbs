@@ -88,7 +88,7 @@ class OFutureSpec extends FunSpec with Matchers {
       c <- async(7)            // returns "14"
     } yield b + "-" + c
 
-    future1 shouldNot be(null)
+    future1 should not be null
     future1.isCompleted should equal(true)
     future1.value should equal(Some(Success("10-14")))
 
@@ -98,7 +98,7 @@ class OFutureSpec extends FunSpec with Matchers {
       c <- OFuture.successful((7 * 2).toString)
     } yield b + "-" + c
 
-    future2 shouldNot be(null)
+    future2 should not be null
     future2.isCompleted should equal(true)
     future2.value match {
       case Some(Failure(ex)) => ex.getClass should equal(classOf[ClassCastException])
@@ -151,9 +151,8 @@ class OFutureSpec extends FunSpec with Matchers {
     val r = new IllegalStateException("recovered")
 
     val r0 = OFuture.failed[String](o) recoverWith {
-      case _ if false == true => OFuture.successful("yay")
+      case _ if false => OFuture.successful("yay")
     }
-    r0 shouldNot be(null)
     r0.isCompleted should equal(true)
     r0.value should equal(Some(Failure(o)))
 
@@ -245,7 +244,7 @@ class OFutureSpec extends FunSpec with Matchers {
       idx => OFuture.successful(idx)
     }
     val folded = futures.foldLeft(OFuture.successful(0)) {
-      case (fr, fa) => for (r <- fr; a <- fa) yield (r + a)
+      case (fr, fa) => for (r <- fr; a <- fa) yield r + a
     }
 
     folded.value should equal(Some(Success(45)))
@@ -281,7 +280,7 @@ class OFutureSpec extends FunSpec with Matchers {
 
   it("should support reduce function") {
 
-    val futures = (0 to 9) map {OFuture.successful(_)}
+    val futures = (0 to 9) map OFuture.successful
     val reduced = OFuture.reduce(futures)(_ + _)
 
     reduced.value should equal(Some(Success(45)))
@@ -366,8 +365,8 @@ class OFutureSpec extends FunSpec with Matchers {
 
 
   it("should support functions: failed ,apply ,foreach, transform") {
-    var p = OPromise[String]()
-    var f = p.future
+    val p = OPromise[String]()
+    val f = p.future
 
     val func : Try[Throwable] => String = {
       case Success(v) => v.getMessage
@@ -377,40 +376,40 @@ class OFutureSpec extends FunSpec with Matchers {
     p.success("abc")
 
 
-    var result : String = null
+    var result = ""
     f.foreach {
-      a => result =a.toUpperCase
+      a => result = a.toUpperCase
     }
     result should be("ABC")
 
     var transFuture = f.transform(s => s + "def", t => new IllegalArgumentException(t))
-    transFuture.value.get should be(Success("abcdef"))
+    transFuture.value.get should be (Success("abcdef"))
 
     f.failed.value.map(func).get should be ("Future.failed not completed with a throwable.")
-    f() should be("abc")
+    f() should be ("abc")
 
 
-    p = OPromise[String]()
-    f = p.future
+    val p1 = OPromise[String]()
+    val f1 = p1.future
 
     the[NoSuchElementException] thrownBy {
-      f()
-    } should have message("Future not completed.")
+      f1()
+    } should have message "Future not completed."
 
-    p.failure(new RuntimeException("BadMan"))
+    p1.failure(new RuntimeException("BadMan"))
 
     result = "aaa"
-    f.foreach {
-      a => result =a.toUpperCase
+    f1.foreach {
+      a => result = a.toUpperCase
     }
     result should be("aaa")
 
-    transFuture = f.transform(s => s + "def", t => new IllegalArgumentException(t))
+    transFuture = f1.transform(s => s + "def", t => new IllegalArgumentException(t))
     transFuture.value.get.failed.get shouldBe a[IllegalArgumentException]
     transFuture.value.get.failed.get.getCause shouldBe a[RuntimeException]
 
-    an [RuntimeException] should be thrownBy f()
-    f.failed.value.map(func).get should be ("BadMan")
+    a [RuntimeException] should be thrownBy f1()
+    f1.failed.value map func getOrElse "" should be ("BadMan")
 
   }
 

@@ -18,19 +18,19 @@ package org.squbs.httpclient.dummy
 
 import java.util
 
+import akka.actor.ActorSystem
 import org.json4s.CustomSerializer
 import org.json4s.JsonAST._
-import org.squbs.httpclient.japi.{TeamBeanWithCaseClassMember, TeamBean, EmployeeBean}
+import org.squbs.httpclient.japi.{EmployeeBean, TeamBean, TeamBeanWithCaseClassMember}
 import org.squbs.httpclient.json.JsonProtocol
-import org.squbs.testkit.Timeouts._
+import spray.http.HttpHeaders.RawHeader
+import spray.http._
 import spray.routing.SimpleRoutingApp
-import akka.actor.ActorSystem
-import scala.util.{Failure, Success}
+import spray.util.Utils._
+
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import spray.http._
-import spray.http.HttpHeaders.RawHeader
-import spray.util.Utils._
+import scala.util.{Failure, Success}
 
 
 //case class reference case class
@@ -61,7 +61,7 @@ class Team1(val description: String, val members: List[Employee1]){
 
 object EmployeeBeanSerializer extends CustomSerializer[EmployeeBean](format => ( {
   case JObject(JField("id", JInt(i)) :: JField("firstName", JString(f)) :: JField("lastName", JString(l)) :: JField("age", JInt(a)) :: JField("male", JBool(m)) :: Nil) =>
-    new EmployeeBean(i.longValue, f, l, a.intValue(), m)
+    new EmployeeBean(i.longValue(), f, l, a.intValue(), m)
 }, {
   case x: EmployeeBean =>
     JObject(
@@ -118,10 +118,10 @@ trait DummyService extends SimpleRoutingApp {
 
   import scala.collection.JavaConversions._
   val fullTeam3 = new TeamBeanWithCaseClassMember("squbs Team", List[Employee](
-    Employee(1, "John", "Doe", 20, true),
-    Employee(2, "Mike", "Moon", 25, true),
-    Employee(3, "Jane", "Williams", 30, false),
-    Employee(4, "Liz", "Taylor", 35, false)
+    Employee(1, "John", "Doe", 20, male = true),
+    Employee(2, "Mike", "Moon", 25, male = true),
+    Employee(3, "Jane", "Williams", 30, male = false),
+    Employee(4, "Liz", "Taylor", 35, male = false)
   ))
 
   val fullTeam = Team("squbs Team", List[Employee](
@@ -161,6 +161,7 @@ trait DummyService extends SimpleRoutingApp {
   //import JsonProtocol.toResponseMarshallable
   //  import scala.concurrent.ExecutionContext.Implicits.global
   import DummyService._
+  import org.squbs.testkit.Timeouts._
 
   def startDummyService(implicit system: ActorSystem, address: String = dummyServiceIpAddress, port: Int = dummyServicePort) {
     implicit val ec = system.dispatcher
@@ -280,7 +281,7 @@ trait DummyService extends SimpleRoutingApp {
               }
             }
         }
-    }(system, null, bindingTimeout = awaitMax).onComplete {
+    } onComplete {
       case Success(b) =>
         println(s"Successfully bound to ${b.localAddress}")
       case Failure(ex) =>

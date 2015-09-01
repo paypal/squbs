@@ -36,7 +36,7 @@ object ScanResourceSpec {
 
   val jmxPrefix = "ScanResourceSpec"
 
-  var config = ConfigFactory.parseString(
+  val config = ConfigFactory.parseString(
     s"""
        |squbs {
        |  actorsystem-name = scanResourceSpec
