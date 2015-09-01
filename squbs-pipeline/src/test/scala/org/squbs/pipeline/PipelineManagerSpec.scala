@@ -215,11 +215,11 @@ class TestProcessorFactory2 extends ProcessorFactory {
 class TestProcessorFactory4
 
 class TestResolver1 extends PipelineProcessorFactory {
-  def create(config: SimplePipelineConfig, setting: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = ???
+  def create(config: SimplePipelineConfig, setting: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = None
 }
 
 class TestResolver2 extends PipelineProcessorFactory {
-  def create(config: SimplePipelineConfig, setting: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = ???
+  def create(config: SimplePipelineConfig, setting: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = None
 }
 
 class TestResolver4
@@ -227,7 +227,7 @@ class TestResolver4
 class TestHandlerFactory extends HandlerFactory with Handler {
   override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = Some(this)
 
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = ???
+  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = Future.successful(reqCtx)
 }
 
 

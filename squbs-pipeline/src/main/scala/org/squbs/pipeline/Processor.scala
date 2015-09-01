@@ -210,10 +210,6 @@ class SimplePipelineResolver extends PipelineProcessorFactory {
     if (SimplePipelineConfig.empty.equals(config)) None
     else Some(SimpleProcessor(config))
   }
-
-  def resolve(config: SimplePipelineConfig): Option[Processor] = {
-    create(config, None)(null)
-  }
 }
 
 
