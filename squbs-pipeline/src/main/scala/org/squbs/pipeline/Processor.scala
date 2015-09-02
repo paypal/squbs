@@ -153,8 +153,8 @@ object SimplePipelineConfig extends LazyLogging {
   /**
    * Java API
    */
-  def create(config: Config)(implicit actorRefFactory: ActorRefFactory): SimplePipelineConfig = {
-    apply(config)
+  def create(config: Config, actorRefFactory: ActorRefFactory): SimplePipelineConfig = {
+    apply(config)(actorRefFactory)
   }
 
   /**
@@ -194,10 +194,7 @@ object SimpleProcessor {
 
 class SimpleProcessorFactory extends ProcessorFactory {
   def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = {
-    settings match {
-      case Some(conf) => Some(SimpleProcessor(SimplePipelineConfig(conf)))
-      case _ => None
-    }
+    settings.map(conf => SimpleProcessor(SimplePipelineConfig(conf)))
   }
 }
 

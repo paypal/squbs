@@ -219,7 +219,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       import scala.collection.JavaConversions._
       extensions map { e =>
         val (phase, ex) = e.exceptions.headOption map {
-          case (phase, exception) => (phase, exception.toString())
+          case (iphase, exception) => (iphase, exception.toString)
         } getOrElse (("", ""))
         ExtensionInfo(e.info.name, phase, ex)
       }

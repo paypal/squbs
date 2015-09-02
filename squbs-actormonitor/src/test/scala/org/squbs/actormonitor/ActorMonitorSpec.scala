@@ -95,9 +95,6 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
       case other => logger.warn(s"beforeAll invalid identity: $other")
     }
 
-    import ActorMonitorSpec._
-    val cfgBeanCount = getActorMonitorConfigBean("Count").getOrElse(-100)
-    cfgBeanCount should be > 11
   }
 
 
@@ -105,7 +102,12 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     Unicomplex(system).uniActor ! GracefulStop
   }
 
+
   "ActorMonitor" must {
+
+    "0.0) getActorMonitorConfigBean" in {
+      ActorMonitorSpec.getActorMonitorConfigBean("Count").getOrElse(-100) should be > 11
+    }
 
     "1.0) getMailBoxSize of unicomplex" in {
       ActorMonitorSpec.getActorMonitorBean("user/unicomplex", "MailBoxSize") should be (Some("0"))

@@ -58,13 +58,11 @@ case class PipelineManager(configs: Map[String, RawPipelineSetting], pipelines: 
             try {
               val factoryInstance = Class.forName(cfg.factoryClass).newInstance()
               val entry: Either[Processor, PipelineSetting] = factoryInstance match {
-                case f if f.isInstanceOf[PipelineProcessorFactory] =>
-                  val ppf = f.asInstanceOf[PipelineProcessorFactory]
+                case f : PipelineProcessorFactory =>
                   val pipelineConfig = cfg.settings.fold(SimplePipelineConfig.empty)(SimplePipelineConfig(_))
-                  Right(PipelineSetting(ppf, Option(pipelineConfig), cfg.settings))
-                case f if f.isInstanceOf[ProcessorFactory] =>
-                  val pf = f.asInstanceOf[ProcessorFactory]
-                  Left(pf.create(cfg.settings).getOrElse(null))
+                  Right(PipelineSetting(f, Option(pipelineConfig), cfg.settings))
+                case f : ProcessorFactory =>
+                  Left(f.create(cfg.settings).getOrElse(null))
                 case f => throw new IllegalArgumentException(s"Unsupported processor factory: ${cfg.factoryClass}")
               }
               pipelines.send {
