@@ -36,10 +36,10 @@ class OFutureSpec extends FunSpec with Matchers {
     val p = OPromise[String]()
     val f = p.future
 
-    var acks = Seq[Boolean]()
+    var ack = Seq[Boolean]()
 
     1 to accuracy foreach(_ => f.onSuccess({
-        case v:String => acks = acks :+ (Thread.currentThread == threadIdentity)
+        case v:String => ack = ack :+ (Thread.currentThread == threadIdentity)
         case _ => throw new IllegalStateException
       }))
 
@@ -47,7 +47,7 @@ class OFutureSpec extends FunSpec with Matchers {
 
     f.value should equal(Some(Success("value")))
 
-    acks should equal(Seq.fill[Boolean](accuracy)(true))
+    ack should equal(Seq.fill[Boolean](accuracy)(true))
   }
 
   it("should run failure callbacks in the same thread"){
@@ -58,10 +58,10 @@ class OFutureSpec extends FunSpec with Matchers {
     val p = OPromise[String]()
     val f = p.future
 
-    var acks = Seq[Boolean]()
+    var ack = Seq[Boolean]()
 
     1 to accuracy foreach(_ => f.onFailure({
-      case t:Throwable => acks = acks :+ (Thread.currentThread == threadIdentity)
+      case t:Throwable => ack = ack :+ (Thread.currentThread == threadIdentity)
       case _ => throw new IllegalStateException
     }))
 
@@ -70,7 +70,7 @@ class OFutureSpec extends FunSpec with Matchers {
 
     f.value should equal(Some(Failure(cause)))
 
-    acks should equal(Seq.fill[Boolean](accuracy)(true))
+    ack should equal(Seq.fill[Boolean](accuracy)(true))
   }
 
   //now we borrow some test cases from: https://github.com/scala/scala/blob/master/test/files/jvm/future-spec/FutureTests.scala
@@ -162,11 +162,11 @@ class OFutureSpec extends FunSpec with Matchers {
     recovered.isCompleted should equal(true)
     recovered.value should equal(Some(Success("yay!")))
 
-    val refailed = OFuture.failed[String](o) recoverWith {
+    val reFailed = OFuture.failed[String](o) recoverWith {
       case _ => OFuture.failed[String](r)
     }
-    refailed.isCompleted should equal(true)
-    refailed.value should equal(Some(Failure(r)))
+    reFailed.isCompleted should equal(true)
+    reFailed.value should equal(Some(Failure(r)))
   }
 
   it("andThen should work as expected") {
@@ -317,50 +317,49 @@ class OFutureSpec extends FunSpec with Matchers {
   }
 
   it("should support functions: filter, collect, fallback") {
-    var p = OPromise[String]()
-    var f = p.future
+    val p = OPromise[String]()
+    val f = p.future
 
     p.success("abc")
 
-    var newFuture = f.filter(s => s.equals("abc"))
+    val newFuture = f.filter(s => s.equals("abc"))
     newFuture.value.get.get should be("abc")
-    newFuture = f.withFilter(s => s.equals("abc"))
-    newFuture.value.get.get should be("abc")
+    val newFuture2 = f.withFilter(s => s.equals("abc"))
+    newFuture2.value.get.get should be("abc")
 
-    newFuture = f.filter(s => s.equals("abcd"))
-    newFuture.value.get.failed.get shouldBe a[NoSuchElementException]
-    newFuture.value.get.failed.get.getMessage should be("Future.filter predicate is not satisfied")
+    val newFuture3 = f.filter(s => s.equals("abcd"))
+    newFuture3.value.get.failed.get shouldBe a[NoSuchElementException]
+    newFuture3.value.get.failed.get.getMessage should be("Future.filter predicate is not satisfied")
 
-    newFuture = f.collect{
+    val newFuture4 = f.collect{
       case "abc" => "OK"
     }
-    newFuture.value.get.get should be("OK")
-    newFuture = f.collect{
+    newFuture4.value.get.get should be("OK")
+    val newFuture5 = f.collect {
       case "abcd" => "OK"
     }
-    newFuture.value.get.failed.get shouldBe a[NoSuchElementException]
-    newFuture.value.get.failed.get.getMessage should be("Future.collect partial function is not defined at: abc")
+    newFuture5.value.get.failed.get shouldBe a[NoSuchElementException]
+    newFuture5.value.get.failed.get.getMessage should be("Future.collect partial function is not defined at: abc")
 
-    newFuture = f.fallbackTo(OFuture.successful("haha"))
-    newFuture.value.get.get should be("abc")
+    val newFuture6 = f.fallbackTo(OFuture.successful("haha"))
+    newFuture6.value.get.get should be("abc")
 
-    p = OPromise[String]()
-    f = p.future
+    val p2 = OPromise[String]()
+    val f2 = p2.future
 
-    p.failure(new RuntimeException("BadMan"))
-    newFuture = f.filter(s => s.equals("abc"))
-    newFuture.value.get.failed.get shouldBe a[RuntimeException]
-    newFuture.value.get.failed.get.getMessage should be("BadMan")
+    p2.failure(new RuntimeException("BadMan"))
+    val newFuture7 = f2.filter(s => s.equals("abc"))
+    newFuture7.value.get.failed.get shouldBe a[RuntimeException]
+    newFuture7.value.get.failed.get.getMessage should be("BadMan")
 
-    newFuture = f.collect{
+    val newFuture8 = f2.collect{
       case "abcd" => "OK"
     }
-    newFuture.value.get.failed.get shouldBe a[RuntimeException]
-    newFuture.value.get.failed.get.getMessage should be("BadMan")
+    newFuture8.value.get.failed.get shouldBe a[RuntimeException]
+    newFuture8.value.get.failed.get.getMessage should be("BadMan")
 
-    newFuture = f.fallbackTo(OFuture.successful("haha"))
-    newFuture.value.get.get should be("haha")
-
+    val newFuture9 = f2.fallbackTo(OFuture.successful("haha"))
+    newFuture9.value.get.get should be("haha")
   }
 
 
@@ -382,7 +381,7 @@ class OFutureSpec extends FunSpec with Matchers {
     }
     result should be("ABC")
 
-    var transFuture = f.transform(s => s + "def", t => new IllegalArgumentException(t))
+    val transFuture = f.transform(s => s + "def", t => new IllegalArgumentException(t))
     transFuture.value.get should be (Success("abcdef"))
 
     f.failed.value.map(func).get should be ("Future.failed not completed with a throwable.")
@@ -404,9 +403,9 @@ class OFutureSpec extends FunSpec with Matchers {
     }
     result should be("aaa")
 
-    transFuture = f1.transform(s => s + "def", t => new IllegalArgumentException(t))
-    transFuture.value.get.failed.get shouldBe a[IllegalArgumentException]
-    transFuture.value.get.failed.get.getCause shouldBe a[RuntimeException]
+    val transFuture1 = f1.transform(s => s + "def", t => new IllegalArgumentException(t))
+    transFuture1.value.get.failed.get shouldBe a[IllegalArgumentException]
+    transFuture1.value.get.failed.get.getCause shouldBe a[RuntimeException]
 
     a [RuntimeException] should be thrownBy f1()
     f1.failed.value map func getOrElse "" should be ("BadMan")
