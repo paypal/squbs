@@ -117,55 +117,55 @@ class RegisterContextSpec extends FlatSpecLike with Matchers {
   "merge" should "work" in {
     import RegisterContext._
 
-    var result = merge(Seq(), "abc", "old")
+    val result = merge(Seq(), "abc", "old")
     result should have size 1
     result(0)._2 should be ("old")
 
-    result = merge(result, "", "empty")
-    result should have size 2
-    result(0)._2 should be ("old")
-    result(1)._2 should be ("empty")
+    val result1 = merge(result, "", "empty")
+    result1 should have size 2
+    result1(0)._2 should be ("old")
+    result1(1)._2 should be ("empty")
 
 
-    result = merge(result, "abc/def", "abc/def")
-    result should have size 3
-    result(0)._2 should be ("abc/def")
-    result(1)._2 should be ("old")
-    result(2)._2 should be ("empty")
+    val result2 = merge(result1, "abc/def", "abc/def")
+    result2 should have size 3
+    result2(0)._2 should be ("abc/def")
+    result2(1)._2 should be ("old")
+    result2(2)._2 should be ("empty")
 
-    result = merge(result, "abc", "new")
-    result should have size 3
-    result(0)._2 should be ("abc/def")
-    result(1)._2 should be ("new")
-    result(2)._2 should be ("empty")
+    val result3 = merge(result2, "abc", "new")
+    result3 should have size 3
+    result3(0)._2 should be ("abc/def")
+    result3(1)._2 should be ("new")
+    result3(2)._2 should be ("empty")
 
-    var finding = result find {
+    val finding = result3 find {
       entry => pathMatch(Path("abc"), entry._1)
     }
     finding should not be None
     finding.get._2 should be ("new")
 
-    finding = result find {
+    val finding2 = result3 find {
       entry => pathMatch(Path("abc/def"), entry._1)
     }
-    finding should not be None
-    finding.get._2 should be ("abc/def")
+    finding2 should not be None
+    finding2.get._2 should be ("abc/def")
 
-    finding = result find {
+    val finding3 = result3 find {
       entry => pathMatch(Path("aabc/def"), entry._1)
     }
-    finding should not be None
-    finding.get._2 should be ("empty")
+    finding3 should not be None
+    finding3.get._2 should be ("empty")
 
-    finding = result find {
+    val finding4 = result3 find {
       entry => pathMatch(Path("abc/defg"), entry._1)
     }
-    finding should not be None
-    finding.get._2 should be ("new")
+    finding4 should not be None
+    finding4.get._2 should be ("new")
 
-    finding = result find {
+    val finding5 = result3 find {
       entry => pathMatch(Path("abcd/a"), entry._1) // abcd should not match either abc/def nor abc
     }
-    finding.get._2 should be ("empty")
+    finding5.get._2 should be ("empty")
   }
 }

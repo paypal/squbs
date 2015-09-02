@@ -17,6 +17,7 @@
 package org.squbs.unicomplex
 
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
@@ -141,9 +142,9 @@ class MultiListenerService extends RouteDefinition with Directives {
 }
 
 object MultiListenerService {
-  private var counter = 0
+  private val counter = new AtomicInteger(0)
 
-  def count = counter
+  def count = counter.get
 
-  def inc(): Unit = counter = counter + 1
+  def inc() = counter.incrementAndGet()
 }
