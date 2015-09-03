@@ -492,9 +492,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     else Active
   }
 
-  def pendingServiceStarts =
-    if (servicesStarted && !listenersBound) true
-    else false
+  def pendingServiceStarts = servicesStarted && !listenersBound
 
   def updateSystemState(state: LifecycleState) {
     if (state != systemState) {
