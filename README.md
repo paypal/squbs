@@ -1,8 +1,9 @@
 #squbs
 
-[![Join the chat at https://gitter.im/paypal/squbs](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/paypal/squbs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
-[![Build Status](https://travis-ci.org/az-qbradley/squbs.svg?branch=master)](https://travis-ci.org/az-qbradley/squbs)
+[![Join the chat at https://gitter.im/paypal/squbs](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/paypal/squbs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
+[![Build Status](https://travis-ci.org/az-qbradley/squbs.svg?branch=master)](https://travis-ci.org/az-qbradley/squbs) 
+[![Codacy Badge](https://api.codacy.com/project/badge/57368c396cb649c590e4ba678675e55c)](https://www.codacy.com/app/akara-sucharitakul/squbs) 
+[![License](http://img.shields.io/:license-Apache%202-red.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt) 
 
 squbs (pronounced "skewbs")is a software container and a suite of components enabling standardization and operationalization of Akka and Spray applications/services in a large scale, managed, cloud environment. It standardizes how Akka/Spray applications are deployed in different environments and how they are hooked up to the operational environments of large, internet-scale organizations.
 
