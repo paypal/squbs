@@ -301,9 +301,9 @@ with AsyncAssertions {
         response.headers.find(h => h.name.equals("dummyRespHeader2")) should be(None)
       }
 
-      var confreq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor2/msg/hello"))
+      val confReq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor2/msg/hello"))
 
-      IO(Http) ! confreq
+      IO(Http) ! confReq
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status shouldBe StatusCodes.OK
@@ -328,9 +328,9 @@ with AsyncAssertions {
         header6.get.value shouldBe "[AttrValue]"
       }
 
-      confreq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor3/msg/hello"))
+      val confReq2 = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor3/msg/hello"))
 
-      IO(Http) ! confreq
+      IO(Http) ! confReq2
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status shouldBe StatusCodes.OK
