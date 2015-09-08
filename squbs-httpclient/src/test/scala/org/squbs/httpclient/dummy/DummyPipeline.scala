@@ -17,7 +17,7 @@
 package org.squbs.httpclient.dummy
 
 import org.squbs.httpclient.pipeline.impl.{RequestAddHeaderHandler, ResponseAddHeaderHandler}
-import org.squbs.proxy.SimplePipelineConfig
+import org.squbs.pipeline.SimplePipelineConfig
 import spray.http.HttpHeaders.RawHeader
 
 object DummyRequestPipeline extends SimplePipelineConfig(
