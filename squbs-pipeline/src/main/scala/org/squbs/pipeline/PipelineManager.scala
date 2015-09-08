@@ -26,14 +26,14 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 
 
-case class PipelineManager(configs: Map[String, RawPipelineSetting], pipelines: Agent[Map[String, Either[Processor, PipelineSetting]]]) extends Extension with LazyLogging {
+case class PipelineManager(configs: Map[String, RawPipelineSetting], pipelines: Agent[Map[String, Either[Option[Processor], PipelineSetting]]]) extends Extension with LazyLogging {
 
   def default(implicit actorRefFactory: ActorRefFactory) : Option[Processor] = getProcessor("default-proxy")
 
 
   def getProcessor(name: String)(implicit actorRefFactory: ActorRefFactory): Option[Processor] = {
     get(name) match {
-      case Some(Left(v)) => Option(v)
+      case Some(Left(v)) => v
       case Some(Right(v)) => v.factory.create(v.pipelineConfig, v.setting)
       case None if (name.equals("default-proxy")) => None
       case None => throw new IllegalArgumentException(s"No registered squbs.proxy found with name: $name")
@@ -49,19 +49,19 @@ case class PipelineManager(configs: Map[String, RawPipelineSetting], pipelines: 
 
   }
 
-  private def get(name: String)(implicit actorRefFactory: ActorRefFactory): Option[Either[Processor, PipelineSetting]] = {
+  private def get(name: String)(implicit actorRefFactory: ActorRefFactory): Option[Either[Option[Processor], PipelineSetting]] = {
     pipelines().get(name) match {
       case None =>
         configs.get(name) match {
           case Some(cfg) =>
             try {
               val factoryInstance = Class.forName(cfg.factoryClass).newInstance()
-              val entry: Either[Processor, PipelineSetting] = factoryInstance match {
+              val entry: Either[Option[Processor], PipelineSetting] = factoryInstance match {
                 case f : PipelineProcessorFactory =>
                   val pipelineConfig = cfg.settings.fold(SimplePipelineConfig.empty)(SimplePipelineConfig(_))
                   Right(PipelineSetting(f, Option(pipelineConfig), cfg.settings))
                 case f : ProcessorFactory =>
-                  Left(f.create(cfg.settings).getOrElse(null))
+                  Left(f.create(cfg.settings))
                 case f => throw new IllegalArgumentException(s"Unsupported processor factory: ${cfg.factoryClass}")
               }
               pipelines.send {
@@ -120,7 +120,7 @@ object PipelineManager extends ExtensionId[PipelineManager] with ExtensionIdProv
       case (n, v: ConfigObject) if v.toConfig.getOptionalString("type") == Some("squbs.proxy") => (n, v.toConfig)
     }
     import system.dispatcher
-    PipelineManager(genConfigs(allMatches), Agent(Map.empty[String, Either[Processor, PipelineSetting]]))
+    PipelineManager(genConfigs(allMatches), Agent(Map.empty[String, Either[Option[Processor], PipelineSetting]]))
   }
 
   private def genConfigs(configs: Seq[(String, Config)]): Map[String, RawPipelineSetting] = {
