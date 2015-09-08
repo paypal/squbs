@@ -21,7 +21,7 @@ import javax.net.ssl.SSLContext
 
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import org.squbs.proxy.{PipelineSetting, SimplePipelineConfig}
+import org.squbs.pipeline.{PipelineSetting, SimplePipelineConfig}
 import spray.can.Http.ClientConnectionType
 import spray.can.client.HostConnectorSettings
 import spray.http.{HttpHeader, HttpResponse}

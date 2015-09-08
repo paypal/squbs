@@ -79,7 +79,7 @@ object ServiceProxySpec {
       |
       |confproxy {
       |    type = squbs.proxy
-      |    processorFactory = org.squbs.proxy.SimpleProcessorFactory
+      |    processorFactory = org.squbs.pipeline.SimpleProcessorFactory
       |    settings = {
       |      inbound = [confhandler1, javaReqHandler, confhandler2, confhandlerempty]
       |      outbound = [javaRespHandler, confhandler3]
@@ -87,8 +87,9 @@ object ServiceProxySpec {
       |}
       |
       |confpipe {
-      |    type = squbs.pipe
-      |    pipeline = {
+      |    type = squbs.proxy
+      |    factory = org.squbs.pipeline.SimpleProcessorFactory
+      |    settings = {
       |      inbound = [confhandler1, javaReqHandler, confhandler2, confhandlerempty]
       |      outbound = [javaRespHandler, confhandler3]
       |    }

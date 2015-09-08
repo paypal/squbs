@@ -22,7 +22,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.httpclient.HttpClientTestKit
 import org.squbs.httpclient.dummy.DummyService
 import org.squbs.httpclient.endpoint.Endpoint
-import org.squbs.proxy.{SimplePipelineConfig, SimplePipelineResolver}
+import org.squbs.pipeline.{SimplePipelineConfig, SimplePipelineResolver}
 import org.squbs.testkit.Timeouts._
 import spray.http._
 
@@ -34,7 +34,7 @@ class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelin
   import system.dispatcher
 
   val endpoint = Endpoint(DummyService.dummyServiceEndpoint)
-  val processor = SimplePipelineResolver.INSTANCE.resolve(SimplePipelineConfig.empty)
+  val processor = SimplePipelineResolver.create(SimplePipelineConfig.empty, None)
   val pipeline = spray.client.pipelining.sendReceive
 
   override def beforeAll() {

@@ -23,8 +23,7 @@ import akka.actor.ActorSystem
 import akka.util.Timeout
 import org.squbs.httpclient._
 import org.squbs.httpclient.env.{Default, Environment}
-import org.squbs.httpclient.json.JsonProtocol
-import org.squbs.proxy.{PipelineSetting, SimplePipelineConfig}
+import org.squbs.pipeline.{PipelineSetting, SimplePipelineConfig}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling._
 
@@ -33,10 +32,10 @@ import spray.httpx.unmarshalling._
  */
 class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
 
-  import JsonProtocol.optionToMarshaller
-  import JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
+  import org.squbs.httpclient.json.JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
+  import org.squbs.httpclient.json.JsonProtocol.optionToMarshaller
 
-  import scala.compat.java8.OptionConverters._
+import scala.compat.java8.OptionConverters._
 
   def name = delegate.name
 
