@@ -34,7 +34,7 @@ class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelin
   import system.dispatcher
 
   val endpoint = Endpoint(DummyService.dummyServiceEndpoint)
-  val processor = SimplePipelineResolver.INSTANCE.create(SimplePipelineConfig.empty, None)
+  val processor = SimplePipelineResolver.create(SimplePipelineConfig.empty, None)
   val pipeline = spray.client.pipelining.sendReceive
 
   override def beforeAll() {

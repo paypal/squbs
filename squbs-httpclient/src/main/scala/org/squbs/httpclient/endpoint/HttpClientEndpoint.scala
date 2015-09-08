@@ -43,9 +43,7 @@ trait EndpointResolver {
 
 abstract class PipelineAwareEndpointResolver(system: ActorSystem) extends EndpointResolver {
 
-  protected def getPipelineSetting(name: String): Option[PipelineSetting] = {
-    PipelineManager(system).getPipelineSetting(name)(system)
-  }
+  protected def getPipelineSetting(name: String): Option[PipelineSetting] = PipelineManager(system).getPipelineSetting(name)(system)
 
 }
 

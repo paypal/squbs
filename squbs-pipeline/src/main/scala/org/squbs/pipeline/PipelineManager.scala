@@ -28,9 +28,8 @@ import scala.collection.mutable
 
 case class PipelineManager(configs: Map[String, RawPipelineSetting], pipelines: Agent[Map[String, Either[Processor, PipelineSetting]]]) extends Extension with LazyLogging {
 
-  def default(implicit actorRefFactory: ActorRefFactory) = {
-    getProcessor("default-proxy")
-  }
+  def default(implicit actorRefFactory: ActorRefFactory) : Option[Processor] = getProcessor("default-proxy")
+
 
   def getProcessor(name: String)(implicit actorRefFactory: ActorRefFactory): Option[Processor] = {
     get(name) match {
@@ -92,7 +91,7 @@ case class RawPipelineSetting(name: String,
                               factoryClass: String,
                               settings: Option[Config])
 
-case class PipelineSetting(factory: PipelineProcessorFactory = SimplePipelineResolver.INSTANCE,
+case class PipelineSetting(factory: PipelineProcessorFactory = SimplePipelineResolver,
                            config: Option[SimplePipelineConfig] = None,
                            setting: Option[Config] = None) {
   def pipelineConfig: SimplePipelineConfig = config.getOrElse(SimplePipelineConfig.empty)
@@ -139,7 +138,7 @@ object PipelineManager extends ExtensionId[PipelineManager] with ExtensionIdProv
           val proxyConf = RawPipelineSetting(key, aliasNames, factoryClass, subCfg.getOptionalConfig("settings"))
           key +: aliasNames foreach { name =>
             proxyMap.get(name) match {
-              case None => proxyMap.put(name, proxyConf)
+              case None => proxyMap += (name -> proxyConf)
               case Some(value) => throw new IllegalArgumentException("Proxy name is already used by proxy: " + value.name)
             }
           }

@@ -198,9 +198,7 @@ class SimpleProcessorFactory extends ProcessorFactory {
   }
 }
 
-object SimplePipelineResolver {
-  val INSTANCE = new SimplePipelineResolver
-}
+object SimplePipelineResolver extends SimplePipelineResolver
 
 class SimplePipelineResolver extends PipelineProcessorFactory {
   def create(config: SimplePipelineConfig, setting: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = {
