@@ -25,7 +25,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.squbs.httpclient._
 import org.squbs.httpclient.endpoint.Endpoint
 import org.squbs.httpclient.pipeline.impl.RequestUpdateHeadersHandler
-import org.squbs.proxy.{PipelineSetting, PipelineResolverRegistry, SimplePipelineConfig}
+import org.squbs.pipeline.PipelineSetting
 import spray.can.Http
 import spray.http.{HttpRequest, HttpResponse, Uri}
 import spray.httpx.unmarshalling._
@@ -88,7 +88,7 @@ trait PipelineManager extends LazyLogging {
   def invokeToHttpResponseWithoutSetup(client: HttpClient, reqSettings: RequestSettings, actorRef: ActorRef)
                                       (implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
     implicit val ec = system.dispatcher
-    val pipelineSetting = client.endpoint.config.pipeline.getOrElse(PipelineSetting.empty)
+    val pipelineSetting = client.endpoint.config.pipeline.getOrElse(PipelineSetting.default)
     val pipeConfig = pipelineSetting.pipelineConfig
     implicit val timeout: Timeout =
       client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
@@ -100,19 +100,15 @@ trait PipelineManager extends LazyLogging {
       case true => pipeConfig
     }
 
-    val resolver = pipelineSetting.resolver.getOrElse {
-      val pipeplineResolverRegistry = PipelineResolverRegistry(system)
-      PipelineResolverRegistry(system).getResolver(client.name).getOrElse(pipeplineResolverRegistry.default)
-    }
-    val processor = resolver.resolve(updatedPipeConfig, pipelineSetting.setting)
+    val processor = pipelineSetting.factory.create(updatedPipeConfig, pipelineSetting.setting)
 
     val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.name, client.endpoint, processor, pipeline))
-    Try{
+    Try {
       client.status match {
         case Status.DOWN =>
           throw HttpClientMarkDownException(client.name, client.env)
         case _ =>
-					r: HttpRequest => (pipelineActor ? r).mapTo[HttpResponse]
+          r: HttpRequest => (pipelineActor ? r).mapTo[HttpResponse]
       }
     }
   }

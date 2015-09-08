@@ -16,18 +16,19 @@
 package org.squbs.httpclient
 
 import java.beans.ConstructorProperties
-import org.squbs.proxy.{PipelineSetting, SimplePipelineConfig}
-import org.squbs.unicomplex.JMX
-
-import scala.beans.BeanProperty
-import javax.management.{ObjectName, MXBean}
-import org.squbs.httpclient.endpoint.{EndpointResolver, EndpointRegistry}
-import spray.can.Http.ClientConnectionType.{Proxied, AutoProxied, Direct}
 import java.util
-import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
-import scala.collection.JavaConversions._
+import javax.management.{MXBean, ObjectName}
+
 import akka.actor.ActorSystem
 import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
+import org.squbs.httpclient.endpoint.{EndpointRegistry, EndpointResolver}
+import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
+import org.squbs.pipeline.PipelineSetting
+import org.squbs.unicomplex.JMX
+import spray.can.Http.ClientConnectionType.{AutoProxied, Direct, Proxied}
+
+import scala.beans.BeanProperty
+import scala.collection.JavaConversions._
 
 object HttpClientJMX {
 
@@ -104,7 +105,7 @@ case class HttpClientBean(system: ActorSystem) extends HttpClientMXBean {
     val endpoint = httpClient.endpoint.uri
     val status = httpClient.status.toString
     val configuration = httpClient.endpoint.config
-    val pipelines = configuration.pipeline.getOrElse(PipelineSetting.empty).pipelineConfig
+    val pipelines = configuration.pipeline.getOrElse(PipelineSetting.default).pipelineConfig
     val requestPipelines = pipelines.reqPipe.map(_.getClass.getName).foldLeft[String](""){
       (result, each) => if (result == "") each else result + "=>" + each
     }
