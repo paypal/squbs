@@ -28,7 +28,7 @@ Then you can get different timeout when you're in debug mode(which is 1000 secon
 
 Add the following dependency to your build.sbt or scala build file:
 
-"org.squbs" %% "squbs-timeoutpolicy" % squbsVersion
+"org.squbs" %% "squbs-pattern" % squbsVersion
 
 ##Heuristics-based TimeoutPolicy
 The default timeout policy is fixed, which means you'll always get the initial value in regular mode and the debug value in debug mode, while we also provided a heuristics-based timeout policy.

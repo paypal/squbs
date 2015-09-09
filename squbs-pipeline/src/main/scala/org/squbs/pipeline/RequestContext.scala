@@ -27,11 +27,7 @@ case class RequestContext(request: HttpRequest,
                           attributes: Map[String, Any] = Map.empty) {
   //Store any other data
   def attribute[T](key: String): Option[T] = {
-    attributes.get(key) match {
-      case None => None
-      case Some(null) => None
-      case Some(value) => Some(value.asInstanceOf[T])
-    }
+    attributes.get(key) flatMap (v => Option(v).asInstanceOf[Option[T]])
   }
 
   def payload = {
@@ -117,10 +113,10 @@ object ProxyResponse {
       response match {
         case n@NormalResponse(resp) =>
           val originHeaders = resp.headers.groupBy[Boolean](_.name == header.name)
-          n.update(resp.copy(headers = originHeaders.get(false).getOrElse(List.empty)))
+          n.update(resp.copy(headers = originHeaders.getOrElse(false, List.empty)))
         case e: ExceptionalResponse =>
           val originHeaders = e.response.headers.groupBy[Boolean](_.name == header.name)
-          e.copy(response = e.response.copy(headers = originHeaders.get(false).getOrElse(List.empty)))
+          e.copy(response = e.response.copy(headers = originHeaders.getOrElse(false, List.empty)))
         case other => other
       }
     }
@@ -143,12 +139,9 @@ object ExceptionalResponse {
   def apply(t: Throwable): ExceptionalResponse = apply(t, None)
 
   def apply(t: Throwable, originalResp: Option[NormalResponse]): ExceptionalResponse = {
-    val message = t.getMessage match {
-      case null | "" => "Service Error!"
-      case other => other
-    }
-
-    ExceptionalResponse(HttpResponse(status = StatusCodes.InternalServerError, entity = message), cause = Option(t), original = originalResp)
+    val message = Option(t.getMessage) flatMap { m => if (m == "") None else Some(m) } getOrElse "Service Error!"
+    ExceptionalResponse(HttpResponse(status = StatusCodes.InternalServerError, entity = message),
+                        cause = Option(t), original = originalResp)
   }
 }
 

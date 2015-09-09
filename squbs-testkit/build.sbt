@@ -15,5 +15,3 @@ libraryDependencies ++= Seq(
 )
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
-
-instrumentSettings

@@ -19,9 +19,9 @@ package org.squbs.pattern.orchestration
 import akka.actor._
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
-import akka.util.Timeout
 import org.scalatest.{FunSpecLike, Matchers}
 import org.squbs.testkit.SlowTest
+import org.squbs.testkit.Timeouts._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -63,7 +63,7 @@ with ImplicitSender with FunSpecLike with Matchers {
 
       // Check for the future of finish message
       val finishedF = expectMsgType[Future[FinishedOrchestration]]
-      val finished = Await.result(finishedF, 10 seconds)
+      val finished = Await.result(finishedF, awaitMax)
       val finishTime = finished.timeNs / 1000l
       println(s"Orchestration took $finishTime microseconds.")
       finishTime should be > 230000l // 23 orchestrations with 10 millisecond delay each + 22 Future resolutions
@@ -343,7 +343,6 @@ class TestAskOrchestrator extends Actor with Orchestrator with ActorLogging {
 
     def loadResponse(delay: FiniteDuration): OFuture[Long] = {
       import context.dispatcher
-      implicit val timeout = Timeout(60 seconds)
       (service ? ServiceRequest(nextMessageId, delay)).mapTo[ServiceResponse] map (_.id)
     }
 

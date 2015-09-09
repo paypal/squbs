@@ -16,7 +16,7 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
@@ -64,7 +64,7 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
 				
 			Unicomplex(system).uniActor ! ReportStatus
 
-			val (state, _, _) = expectMsgType[(LifecycleState, _, _)]
+			val StatusReport(state, _, _) = expectMsgType[StatusReport]
 
 			if ((Seq[LifecycleState](Active, Stopped, Failed) indexOf state) >= 0) {
 				return
@@ -104,8 +104,7 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
 
 		"get cube init reports" in {
 			Unicomplex(system).uniActor ! ReportStatus
-			val (systemState, cubes, extensions) =
-        expectMsgType[(LifecycleState, Map[ActorRef, (CubeRegistration, Option[InitReports])], Seq[Extension])]
+			val StatusReport(systemState, cubes, extensions) = expectMsgType[StatusReport]
 			systemState should be(Failed)
 
 			val cubeAReport = cubes.values.find(_._1.info.name == "CubeA").flatMap(_._2)
@@ -134,7 +133,7 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
       extensionFailedReportB.get.exceptions should have size 1
       extensionFailedReportB.get.exceptions map (_._1) should contain ("postInit")
 
-      val extensionFailedReportC = extensions find (_.extLifecycle == None)
+      val extensionFailedReportC = extensions find (_.extLifecycle.isEmpty)
       extensionFailedReportC should not be None
       extensionFailedReportC.get.exceptions should have size 1
       extensionFailedReportC.get.exceptions map (_._1) should contain ("load")

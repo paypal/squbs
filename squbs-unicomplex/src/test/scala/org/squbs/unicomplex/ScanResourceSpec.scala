@@ -28,7 +28,6 @@ import org.scalatest.{BeforeAndAfterAll, Inspectors, Matchers, WordSpecLike}
 import org.squbs.lifecycle.GracefulStop
 import spray.util.Utils
 
-import scala.concurrent.duration._
 import scala.util.Try
 
 object ScanResourceSpec {
@@ -37,7 +36,7 @@ object ScanResourceSpec {
 
   val jmxPrefix = "ScanResourceSpec"
 
-  var config = ConfigFactory.parseString(
+  val config = ConfigFactory.parseString(
     s"""
        |squbs {
        |  actorsystem-name = scanResourceSpec
@@ -50,7 +49,7 @@ object ScanResourceSpec {
   implicit val akkaTimeout: Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
       akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
-    } getOrElse (10 seconds)
+    } getOrElse Timeouts.askTimeout
 
   val boot = UnicomplexBoot(config)
     .createUsing {(name, config) => ActorSystem(name, config)}

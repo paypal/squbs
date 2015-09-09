@@ -16,13 +16,13 @@
 
 package org.squbs.httpclient
 
-import org.squbs.httpclient.endpoint.EndpointRegistry
-import org.squbs.httpclient.env.EnvironmentRegistry
 import akka.actor.ActorSystem
 import akka.io.IO
-import spray.can.Http
 import akka.pattern._
-import scala.concurrent.duration._
+import org.squbs.httpclient.endpoint.EndpointRegistry
+import org.squbs.httpclient.env.EnvironmentRegistry
+import org.squbs.testkit.Timeouts._
+import spray.can.Http
 import spray.util._
 
 trait HttpClientTestKit {
@@ -36,7 +36,7 @@ trait HttpClientTestKit {
   }
 
   def shutdownActorSystem() = {
-    IO(Http).ask(Http.CloseAll)(30.seconds).await
+    IO(Http).ask(Http.CloseAll)(awaitMax).await
     system.shutdown()
   }
 }
