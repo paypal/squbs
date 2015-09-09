@@ -22,6 +22,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.dummyfailedextensions.{DummyFailedExtensionA, DummyFailedExtensionB}
+import Timeouts._
 
 object SystemStatusTest {
 
@@ -64,7 +65,7 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
 				
 			Unicomplex(system).uniActor ! ReportStatus
 
-			val StatusReport(state, _, _) = expectMsgType[StatusReport]
+			val StatusReport(state, _, _) = expectMsgType[StatusReport](awaitMax)
 
 			if ((Seq[LifecycleState](Active, Stopped, Failed) indexOf state) >= 0) {
 				return

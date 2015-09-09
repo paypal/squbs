@@ -94,10 +94,6 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
       case ActorIdentity(_, Some(actor)) => logger.info(s"beforeAll identity: $actor")
       case other => logger.warn(s"beforeAll invalid identity: $other")
     }
-
-    import ActorMonitorSpec._
-    val cfgBeanCount = getActorMonitorConfigBean("Count").getOrElse(-100)
-    cfgBeanCount should be > 11
   }
 
 
@@ -106,6 +102,32 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
   }
 
   "ActorMonitor" must {
+
+    "0.0) Register all necessary base actors and have an up-to-date count" in {
+      awaitAssert({
+        import ActorMonitorSpec._
+        getActorMonitorBean("system", "Actor") should be (Some("Actor[akka://ActorMonitorSpec/system]"))
+        getActorMonitorBean("user", "Actor") should be (Some("Actor[akka://ActorMonitorSpec/user]"))
+        getActorMonitorBean("system/deadLetterListener", "Actor")
+          .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/system/deadLetterListener#")
+        getActorMonitorBean("user/unicomplex", "Actor")
+          .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/user/unicomplex#")
+        getActorMonitorBean("user/ActorMonitorCube", "Actor")
+          .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/user/ActorMonitorCube#")
+        /*
+        Note: The following actor beans are just checked in the other tests below, no need to repeat:
+        1. user/TestCube
+        2. user/TestCube/TestActor
+        3. user/TestCube/TestActorWithRoute
+        4. user/TestCube/TestActorWithRoute/$a
+        5. user/TestCube/TestActor1
+        We just check the count to make sure we have adequate beans registered.
+         */
+
+        val cfgBeanCount = getActorMonitorConfigBean("Count").getOrElse(-100)
+        cfgBeanCount should be >= 10
+      }, max = awaitMax)
+    }
 
     "1.0) getMailBoxSize of unicomplex" in {
       ActorMonitorSpec.getActorMonitorBean("user/unicomplex", "MailBoxSize") should be (Some("0"))
