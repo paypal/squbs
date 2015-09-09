@@ -57,7 +57,7 @@ class HttpResponseBuilder {
   }
 
   def header(header: HttpHeader): HttpResponseBuilder = {
-    assert(header != null, "header can't be null")
+    require(header != null, "header can't be null")
     this.headers += header
     this
   }

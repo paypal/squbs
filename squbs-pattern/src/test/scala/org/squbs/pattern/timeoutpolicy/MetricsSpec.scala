@@ -22,42 +22,42 @@ import concurrent.duration._
 class MetricsSpec extends FlatSpecLike with Matchers{
 
   "Metrics" should "start over on totalCount exceed startOverCount" in {
-    var metrics = Metrics(None, 2 seconds, 3)
-    metrics = metrics.update(3.millis.toNanos, false)
-    metrics = metrics.update(4.millis.toNanos, true)
-    metrics = metrics.update(4.millis.toNanos, true)
-    metrics.totalCount shouldBe(3)
+    val metrics = Metrics(None, 2 seconds, 3)
+    val metrics2 = metrics.update(3.millis.toNanos, isTimeout = false)
+    val metrics3 = metrics2.update(4.millis.toNanos, isTimeout = true)
+    val metrics4 = metrics3.update(4.millis.toNanos, isTimeout = true)
+    metrics4.totalCount shouldBe 3
 
     // exceed start over Count
-    metrics = metrics.update(3.millis.toNanos, false)
-    metrics.totalCount should be(1)
-    metrics.totalTime should be(3.millis.toNanos)
-    metrics.timeoutCount should be(0)
-    metrics.sumSquares should be(0.0)
+    val metrics5 = metrics4.update (3.millis.toNanos, isTimeout = false)
+    metrics5.totalCount should be (1)
+    metrics5.totalTime should be (3.millis.toNanos)
+    metrics5.timeoutCount should be (0)
+    metrics5.sumSquares should be (0.0)
   }
 
   "Metrics" should "be reset correctly" in {
-    var metrics = Metrics(None, 2 seconds, 3)
-    metrics = metrics.update(3.millis.toNanos, false)
-    metrics = metrics.update(4.millis.toNanos, true)
-    metrics = metrics.update(4.millis.toNanos, true)
-    metrics.totalCount shouldBe(3)
+    val metrics = Metrics(None, 2 seconds, 3)
+    val metrics2 = metrics.update(3.millis.toNanos, isTimeout = false)
+    val metrics3 = metrics2.update(4.millis.toNanos, isTimeout = true)
+    val metrics4 = metrics3.update(4.millis.toNanos, isTimeout = true)
+    metrics4.totalCount shouldBe 3
 
     // reset
-    metrics = metrics.reset()
-    metrics.totalCount should be(0)
-    metrics.initial should be(2 seconds)
-    metrics.startOverCount should be(3)
-    metrics.sumSquares should be(0.0)
-    metrics.timeoutCount should be(0)
-    metrics.totalTime should be(0)
+    val metrics5 = metrics4.reset()
+    metrics5.totalCount should be (0)
+    metrics5.initial should be (2 seconds)
+    metrics5.startOverCount should be (3)
+    metrics5.sumSquares should be (0.0)
+    metrics5.timeoutCount should be (0)
+    metrics5.totalTime should be (0)
 
-    metrics = metrics.reset(Some(3 seconds), 4)
-    metrics.totalCount should be(0)
-    metrics.initial should be(3 seconds)
-    metrics.startOverCount should be(4)
-    metrics.sumSquares should be(0.0)
-    metrics.timeoutCount should be(0)
-    metrics.totalTime should be(0)
+    val metrics6 = metrics5.reset(Some(3 seconds), 4)
+    metrics6.totalCount should be (0)
+    metrics6.initial should be (3 seconds)
+    metrics6.startOverCount should be (4)
+    metrics6.sumSquares should be (0.0)
+    metrics6.timeoutCount should be (0)
+    metrics6.totalTime should be (0)
   }
 }

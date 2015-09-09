@@ -16,18 +16,14 @@
 
 package org.squbs.httpclient
 
-import akka.testkit.TestKit
-import akka.util.Timeout
-import org.scalatest._
 import akka.actor.ActorSystem
-import org.squbs.httpclient.endpoint.EndpointRegistry
+import akka.testkit.TestKit
+import org.scalatest._
 import org.squbs.httpclient.dummy.DummyServiceEndpointResolver
-import scala.concurrent.duration._
+import org.squbs.httpclient.endpoint.EndpointRegistry
 
 class HttpClientCircuitBreakerSpec extends TestKit(ActorSystem("HttpClientCircuitBreakerSpec")) with FlatSpecLike
 with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAfterAll with BeforeAndAfterEach{
-
-  implicit val timeout: Timeout = 3 seconds
 
   override def beforeEach() {
     EndpointRegistry(system).register(DummyServiceEndpointResolver)

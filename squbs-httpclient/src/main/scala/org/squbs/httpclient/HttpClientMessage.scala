@@ -17,7 +17,7 @@ package org.squbs.httpclient
 
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
-import org.squbs.proxy.{PipelineSetting, SimplePipelineConfig}
+import org.squbs.pipeline.PipelineSetting
 import spray.httpx.marshalling.Marshaller
 
 object HttpClientManagerMessage {

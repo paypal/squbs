@@ -17,25 +17,23 @@ package org.squbs.httpclient
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import akka.util.Timeout
 import org.scalatest._
+import org.squbs.httpclient.Configuration._
 import org.squbs.httpclient.dummy.DummyService._
-import org.squbs.httpclient.dummy.{DummyService, DummyProdEnvironmentResolver, DummyRequestResponsePipeline, DummyServiceEndpointResolver}
+import org.squbs.httpclient.dummy.{DummyProdEnvironmentResolver, DummyRequestResponsePipeline, DummyService, DummyServiceEndpointResolver}
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolver}
 import org.squbs.httpclient.env._
+import org.squbs.testkit.Timeouts._
 import spray.can.Http.ClientConnectionType.Proxied
 import spray.can.client.{ClientConnectionSettings, HostConnectorSettings}
+import spray.http.{HttpResponse, StatusCodes}
 
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Await}
+import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
-import spray.http.{HttpResponse, StatusCodes}
-import Configuration._
 
 class HttpClientJMXSpec extends TestKit(ActorSystem("HttpClientJMXSpec")) with FlatSpecLike with Matchers
 with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndAfterAll{
-
-  implicit val timeout: Timeout = 30 seconds
 
   override def beforeEach() = {
     EndpointRegistry(system).register(new EndpointResolver {
@@ -59,9 +57,9 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
 
   "HttpClient with svcName" should "show up the correct value of HttpClientBean" in {
     val httpClient1 = HttpClientFactory.get("hello1")
-    Await.result(httpClient1.readyFuture, timeout.duration)
+    Await.result(httpClient1.readyFuture, awaitMax)
     val httpClient2 = HttpClientFactory.get("hello2")
-    Await.result(httpClient2.readyFuture, timeout.duration)
+    Await.result(httpClient2.readyFuture, awaitMax)
     HttpClientBean(system).getHttpClientInfo should have size 2
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello1") should be (HttpClientInfo("hello1", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello2") should be (HttpClientInfo("hello2", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
@@ -69,9 +67,9 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
 
   "HttpClient with pipeline" should "show up the correct value of HttpClientBean" in {
     val httpClient1 = HttpClientFactory.get("hello3").withConfig(Configuration().copy(pipeline = Some(DummyRequestResponsePipeline)))
-    Await.result(httpClient1.readyFuture, timeout.duration)
+    Await.result(httpClient1.readyFuture, awaitMax)
     val httpClient2 = HttpClientFactory.get("hello4")
-    Await.result(httpClient2.readyFuture, timeout.duration)
+    Await.result(httpClient2.readyFuture, awaitMax)
     HttpClientBean(system).getHttpClientInfo should have size 2
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello3") should be (HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler","org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler"))
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello4") should be (HttpClientInfo("hello4", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
@@ -79,9 +77,9 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
 
   "HttpClient with configuration" should "show up the correct value of HttpClientBean" in {
     val httpClient = HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(hostSettings = HostConnectorSettings(10 ,10, 10, pipelining = true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80))))
-    Await.result(httpClient.readyFuture, timeout.duration)
+    Await.result(httpClient.readyFuture, awaitMax)
     val markDownStatus = HttpClientFactory.get("hello6").markDown
-    Await.result(markDownStatus, timeout.duration)
+    Await.result(markDownStatus, awaitMax)
     HttpClientBean(system).getHttpClientInfo should have size 2
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello5") should be (HttpClientInfo("hello5", "default", "http://www.ebay.com", "UP", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
     findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello6") should be (HttpClientInfo("hello6", "default", "http://www.ebay.com", "DOWN", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
@@ -108,7 +106,7 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
     CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo should have size 0
     EndpointRegistry(system).register(DummyServiceEndpointResolver)
     val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/view")
-    val result = Await.result(response, timeout.duration)
+    val result = Await.result(response, awaitMax)
     result.status should be (StatusCodes.OK)
     CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo should have size 1
     val cbInfo = CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.get(0)

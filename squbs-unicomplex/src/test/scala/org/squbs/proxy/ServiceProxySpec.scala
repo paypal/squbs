@@ -27,13 +27,12 @@ import org.scalatest._
 import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
-import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
+import org.squbs.unicomplex.{JMX, Timeouts, Unicomplex, UnicomplexBoot}
 import spray.can.Http
 import spray.client.pipelining._
 import spray.http.{HttpRequest, HttpResponse, _}
 import spray.util._
 
-import scala.concurrent.duration._
 import scala.util.Try
 
 object ServiceProxySpec {
@@ -80,7 +79,7 @@ object ServiceProxySpec {
       |
       |confproxy {
       |    type = squbs.proxy
-      |    processorFactory = org.squbs.proxy.SimpleProcessorFactory
+      |    processorFactory = org.squbs.pipeline.SimpleProcessorFactory
       |    settings = {
       |      inbound = [confhandler1, javaReqHandler, confhandler2, confhandlerempty]
       |      outbound = [javaRespHandler, confhandler3]
@@ -88,8 +87,9 @@ object ServiceProxySpec {
       |}
       |
       |confpipe {
-      |    type = squbs.pipe
-      |    pipeline = {
+      |    type = squbs.proxy
+      |    factory = org.squbs.pipeline.SimpleProcessorFactory
+      |    settings = {
       |      inbound = [confhandler1, javaReqHandler, confhandler2, confhandlerempty]
       |      outbound = [javaRespHandler, confhandler3]
       |    }
@@ -154,7 +154,7 @@ with AsyncAssertions {
     Try(System.getProperty("test.timeout").toLong) map {
       millis =>
         akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
-    } getOrElse (10 seconds)
+    } getOrElse Timeouts.askTimeout
 
   val port = system.settings.config getInt "default-listener.bind-port"
 
@@ -301,9 +301,9 @@ with AsyncAssertions {
         response.headers.find(h => h.name.equals("dummyRespHeader2")) should be(None)
       }
 
-      var confreq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor2/msg/hello"))
+      val confReq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor2/msg/hello"))
 
-      IO(Http) ! confreq
+      IO(Http) ! confReq
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status shouldBe StatusCodes.OK
@@ -328,9 +328,9 @@ with AsyncAssertions {
         header6.get.value shouldBe "[AttrValue]"
       }
 
-      confreq = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor3/msg/hello"))
+      val confReq2 = HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pipedserviceproxyactor3/msg/hello"))
 
-      IO(Http) ! confreq
+      IO(Http) ! confReq2
       within(timeout.duration) {
         val response = expectMsgType[HttpResponse]
         response.status shouldBe StatusCodes.OK

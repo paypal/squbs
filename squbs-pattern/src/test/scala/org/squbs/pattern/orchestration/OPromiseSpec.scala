@@ -29,12 +29,12 @@ class OPromiseSpec extends FunSpec with Matchers {
 
       val p = OPromise[String]()
 
-      p shouldNot be(null)
-      p.future shouldNot be(null)
-      p.isCompleted should be(false)
+      p should not be null
+      p.future should not be null
+      p should not be 'completed
 
-      p.success("value") should be theSameInstanceAs(p)
-      p.isCompleted should be(true)
+      p.success("value") should be theSameInstanceAs p
+      p shouldBe 'completed
       p.future.value should equal(Some(Success("value")))
     }
 
@@ -42,7 +42,7 @@ class OPromiseSpec extends FunSpec with Matchers {
 
       val p = OPromise[String]()
 
-      p.success("value") should be theSameInstanceAs(p)
+      p.success("value") should be theSameInstanceAs p
 
       intercept[IllegalStateException]{
         p.success("value-twice")
@@ -52,11 +52,11 @@ class OPromiseSpec extends FunSpec with Matchers {
     it("should be able to resolved as failure") {
 
       val p = OPromise[String]()
-      p.isCompleted should be(false)
+      p should not be 'completed
 
       val cause: IllegalArgumentException = new IllegalArgumentException("string cannot be null")
       p.failure(cause)
-      p.isCompleted should be(true)
+      p shouldBe 'completed
       p.future.value should equal(Some(Failure(cause)))
     }
 
@@ -65,15 +65,15 @@ class OPromiseSpec extends FunSpec with Matchers {
       val p = OPromise[String]()
       val other = OPromise[String]()
 
-      p.isCompleted should be(false)
-      other.isCompleted should be(false)
+      p should not be 'completed
+      other should not be 'completed
 
       p.completeWith(other.future)
 
       other.complete(Success("value"))
-      other.isCompleted should be(true)
+      other shouldBe 'completed
 
-      p.isCompleted should be(true)
+      p shouldBe 'completed
       p.future.value should equal(Some(Success("value")))
     }
 
@@ -82,7 +82,7 @@ class OPromiseSpec extends FunSpec with Matchers {
       val cause = new IllegalArgumentException("already failed")
       val failure = OPromise.failed[String](cause)
 
-      failure shouldNot be(null)
+      failure should not be null
       failure.isCompleted should equal(true)
       failure.future.value should equal(Some(Failure(cause)))
 
@@ -99,7 +99,7 @@ class OPromiseSpec extends FunSpec with Matchers {
 
       val success = OPromise.successful("value")
 
-      success shouldNot be(null)
+      success should not be null
       success.isCompleted should equal(true)
       success.future.value should equal(Some(Success("value")))
 

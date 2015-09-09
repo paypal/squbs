@@ -14,12 +14,11 @@
  *  limitations under the License.
  */
 
-package org.squbs.proxy
+package org.squbs.pipeline
 
 import akka.actor.ActorContext
 import org.scalatest.concurrent.AsyncAssertions.Waiter
 import org.scalatest.{FlatSpecLike, Matchers}
-import org.squbs.pipeline.{Handler, NormalResponse, RequestContext}
 import spray.http.{HttpRequest, HttpResponse}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -38,7 +37,7 @@ class SimpleProcessorSpec extends FlatSpecLike with Matchers {
         w {
           assert(result.isSuccess)
           result.get.attribute[String]("attr1") should be(Some("v1"))
-          result.get.response shouldBe a[NormalResponse]
+          result.get.response shouldBe a [NormalResponse]
         }
         w.dismiss()
     }

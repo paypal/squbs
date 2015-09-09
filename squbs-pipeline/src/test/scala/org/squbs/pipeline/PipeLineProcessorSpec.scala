@@ -27,10 +27,10 @@ import spray.http._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 
-class PipeineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys"))
+class PipeLineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys"))
 with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
-  override def afterAll {
+  override def afterAll() {
     system.shutdown()
   }
 
@@ -68,15 +68,15 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
     val resp = expectMsgType[HttpResponse]
     resp.status should be(StatusCodes.InternalServerError)
-    resp.headers.find(_.name.equals("inbound")).get.value should be("go")
-    resp.headers.find(_.name.equals("outbound")).get.value should be("go")
-    resp.headers.find(_.name.equals("postoutbound")).get.value should be("go")
+    resp.headers find (_.name == "inbound") should matchPattern { case Some(h: HttpHeader) if h.value == "go" => }
+    resp.headers find (_.name == "outbound") should matchPattern { case Some(h: HttpHeader) if h.value == "go" => }
+    resp.headers find (_.name == "postoutbound") should matchPattern { case Some(h: HttpHeader) if h.value == "go" => }
   }
 
 
   "PipelineProcessor" should "return error if response in ctx didn't set correctly" in {
     val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/error"))
-    val ctx = RequestContext(request, false, null)
+    val ctx = RequestContext(request, isChunkRequest = false)
     val processor = DummyProcessorFactory.create(None).get
     val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], Actor.noSender, self, processor))
     processorActor ! ctx
@@ -202,9 +202,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val ctx = RequestContext(request)
     val ex = new RuntimeException("test")
     val result = processor.onRequestError(ctx, ex)
-    result.response.isInstanceOf[ExceptionalResponse] should be(true)
-    result.response.asInstanceOf[ExceptionalResponse].cause should be(Some(ex))
-
+    result.response should matchPattern { case r: ExceptionalResponse if r.cause.contains(ex) => }
   }
 
   "Processor" should "handle response exception correctly" in {
@@ -213,24 +211,21 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val ctx = RequestContext(request)
     val ex = new RuntimeException("test")
     val result = processor.onResponseError(ctx, ex)
-    result.response.isInstanceOf[ExceptionalResponse] should be(true)
-    result.response.asInstanceOf[ExceptionalResponse].cause should be(Some(ex))
-    result.response.asInstanceOf[ExceptionalResponse].original should be(None)
+    result.response should matchPattern { case r: ExceptionalResponse if r.cause.contains(ex) && r.original.isEmpty =>}
   }
 
   "Processor" should "handle response exception with normal response correctly" in {
     val processor = DummyProcessorFactory.create(None).get
     val request = HttpRequest(HttpMethods.PUT, Uri("http://localhost:9900/hello"))
     val response = DirectResponse(HttpResponse())
-    val ctx = RequestContext(request, false, response)
+    val ctx = RequestContext(request, isChunkRequest = false, response)
 
     val ex = new RuntimeException("test")
     val result = processor.onResponseError(ctx, ex)
-    result.response.isInstanceOf[ExceptionalResponse] should be(true)
-    result.response.asInstanceOf[ExceptionalResponse].cause should be(Some(ex))
-    result.response.asInstanceOf[ExceptionalResponse].original should be(Some(response))
+    result.response should matchPattern {
+      case r: ExceptionalResponse if r.cause.contains(ex) && r.original.contains(response) =>
+    }
   }
-
 }
 
 case object DummyACK
@@ -256,7 +251,7 @@ class DummyTarget extends Actor {
       sender() ! Confirmed(ChunkedResponseStart(HttpResponse(StatusCodes.OK, entity = "DummyConfirmedStart")), DummyACK)
 
     case DummyACK =>
-      if (msgCache.size > 0) {
+      if (msgCache.nonEmpty) {
         sender() ! Confirmed(msgCache.remove(0), DummyACK)
       } else {
         sender() ! ChunkedMessageEnd()

@@ -43,12 +43,12 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
   import zkCluster._
   
   private[this] implicit val log = logger
-  private[this] var zkLeaderLatch: LeaderLatch = null
+  private[this] var zkLeaderLatch: Option[LeaderLatch] = None
   private[this] val stopped = new AtomicBoolean(false)
   
   def initialize() = {
     //watch over leader changes
-    val leader = zkClientWithNs.getData.usingWatcher(new CuratorWatcher {
+    val leader = Option(zkClientWithNs.getData.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
         log.debug("[membership] leader watch event:{} when stopped:{}", event, stopped.toString)
         if(!stopped.get) {
@@ -61,7 +61,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
           }
         }
       }
-    }).forPath("/leader")
+    }).forPath("/leader"))
 
     //watch over my self
     val me = guarantee(s"/members/${keyToPath(zkAddress.toString)}", Some(Array[Byte]()), CreateMode.EPHEMERAL)
@@ -105,30 +105,33 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
     }
 
     refresh(members)
-    if (leader != null) zkClusterActor ! ZkLeaderElected(leader.toAddress)
+    leader foreach { l => zkClusterActor ! ZkLeaderElected(l.toAddress) }
   }
   
   override def postStop() = {
     //stop the leader latch to quit the competition
     stopped set true
-    if (zkLeaderLatch != null) zkLeaderLatch.close()
+    zkLeaderLatch foreach (_.close())
+    zkLeaderLatch = None
   }
   
   def receive: Actor.Receive = {
     case ZkClientUpdated(updated) =>
       // differentiate first connected to ZK or reconnect after connection lost
-      if (zkLeaderLatch != null) zkLeaderLatch.close()
-      zkLeaderLatch = new LeaderLatch(zkClientWithNs, "/leadership")
-      zkLeaderLatch.start()
+      zkLeaderLatch foreach (_.close())
+      zkLeaderLatch = Some(new LeaderLatch(zkClientWithNs, "/leadership"))
+      zkLeaderLatch foreach (_.start())
       initialize()
     case ZkAcquireLeadership =>
       //repeatedly enroll in the leadership competition once the last attempt fails
       val oneSecond = 1.second
-      zkLeaderLatch.await(oneSecond.length, oneSecond.unit) match {
-        case true =>
-          log.info("[membership] leadership acquired @ {}", zkAddress)
-          guarantee("/leader", Some(zkAddress))
-        case false =>
+      zkLeaderLatch foreach {
+        _.await(oneSecond.length, oneSecond.unit) match {
+          case true =>
+            log.info("[membership] leadership acquired @ {}", zkAddress)
+            guarantee("/leader", Some(zkAddress))
+          case false =>
+        }
       }
   }
 }

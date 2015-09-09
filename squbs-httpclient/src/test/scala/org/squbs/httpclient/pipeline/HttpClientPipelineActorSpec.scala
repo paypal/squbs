@@ -18,25 +18,23 @@ package org.squbs.httpclient.pipeline
 
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
-import akka.util.Timeout
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.httpclient.HttpClientTestKit
 import org.squbs.httpclient.dummy.DummyService
 import org.squbs.httpclient.endpoint.Endpoint
-import org.squbs.proxy.{SimplePipelineResolver, SimplePipelineConfig}
+import org.squbs.pipeline.{SimplePipelineConfig, SimplePipelineResolver}
+import org.squbs.testkit.Timeouts._
 import spray.http._
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelineActorSpec"))
   with ImplicitSender with FlatSpecLike with Matchers with HttpClientTestKit with DummyService with BeforeAndAfterAll {
 
   import system.dispatcher
-  implicit val timeout: Timeout = 10 seconds
 
   val endpoint = Endpoint(DummyService.dummyServiceEndpoint)
-  val processor = SimplePipelineResolver.INSTANCE.resolve(SimplePipelineConfig.empty)
+  val processor = SimplePipelineResolver.create(SimplePipelineConfig.empty, None)
   val pipeline = spray.client.pipelining.sendReceive
 
   override def beforeAll() {
@@ -50,7 +48,7 @@ class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelin
   "HttpClientPipelineActor" should "forward HttpRequest" in {
     val actor = system.actorOf(Props(classOf[HttpClientPipelineActor], "name1", endpoint, processor, pipeline))
     actor ! HttpRequest(uri = s"${DummyService.dummyServiceEndpoint}/view")
-    expectMsgType[HttpResponse](timeout.duration).status should be (StatusCodes.OK)
+    expectMsgType[HttpResponse](awaitMax).status should be (StatusCodes.OK)
     system stop actor
   }
 
@@ -62,7 +60,7 @@ class HttpClientPipelineActorSpec extends TestKit(ActorSystem("HttpClientPipelin
       entity = HttpEntity("{\"id\":1,\"firstName\":\"John\",\"lastName\":\"Doe\",\"age\":20,\"male\":true}")
     )
     request.asPartStream(16) foreach {actor ! _}
-    expectMsgType[HttpResponse](timeout.duration).status should be (StatusCodes.InternalServerError)
+    expectMsgType[HttpResponse](awaitMax).status should be (StatusCodes.InternalServerError)
     system stop actor
   }
 }

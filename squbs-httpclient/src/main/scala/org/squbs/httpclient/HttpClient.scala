@@ -23,17 +23,14 @@ import org.squbs.httpclient.Configuration._
 import org.squbs.httpclient.HttpClientActorMessage.{MarkDownSuccess, MarkUpSuccess}
 import org.squbs.httpclient.endpoint.EndpointRegistry
 import org.squbs.httpclient.env.{Default, Environment, EnvironmentRegistry}
-import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
 import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
-import org.squbs.proxy.{PipelineSetting, SimplePipelineConfig}
+import org.squbs.pipeline.{PipelineSetting, SimplePipelineConfig}
 import spray.http.{HttpResponse, Uri}
 import spray.httpx.marshalling.Marshaller
-import spray.httpx.unmarshalling.UnmarshallerLifting._
 import spray.httpx.unmarshalling._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent._
-import scala.reflect.ManifestFactory
 
 object Status extends Enumeration {
   type Status = Value

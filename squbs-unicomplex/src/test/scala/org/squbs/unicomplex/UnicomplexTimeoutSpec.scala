@@ -30,7 +30,6 @@ import spray.can.Http
 import spray.http._
 import spray.util.Utils
 
-import scala.concurrent.duration._
 import scala.util.Try
 
 object UnicomplexTimeoutSpec {
@@ -70,7 +69,7 @@ class UnicomplexTimeoutSpec extends TestKit(UnicomplexTimeoutSpec.boot.actorSyst
   implicit val timeout: akka.util.Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
       akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
-    } getOrElse (10 seconds)
+    } getOrElse Timeouts.askTimeout
 
   val port = system.settings.config getInt "default-listener.bind-port"
 

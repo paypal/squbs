@@ -25,18 +25,18 @@ import scala.util.Try
 class TimeoutPolicySpec extends FlatSpecLike with Matchers{
 
   "TimeoutPolicy Object" should "works fine" in {
-    intercept[IllegalArgumentException](TimeoutPolicy(Some(""), null, null))
-    intercept[IllegalArgumentException](TimeoutPolicy(Some(""), 1 second, fixedRule, debug = null))
+    an [IllegalArgumentException] should be thrownBy TimeoutPolicy(Some(""), null, null)
+    an [IllegalArgumentException] should be thrownBy TimeoutPolicy(Some(""), 1 second, fixedRule, debug = null)
 
     val preLength = TimeoutPolicy.policyMetrics.size
     val policy = TimeoutPolicy(None, 1 second, fixedRule)
 
     TimeoutPolicy.policyMetrics.size should be(preLength)
-    policy.isInstanceOf[FixedTimeoutPolicy] should be(true)
+    policy shouldBe a [FixedTimeoutPolicy]
 
     val sigmaPolicy = TimeoutPolicy(Some("test"), 1 seconds, 2 sigma, minSamples = 1)
 
-    TimeoutPolicy.policyMetrics.get("test") shouldNot be (None)
+    TimeoutPolicy.policyMetrics.get("test") should not be None
   }
 
   "Run FixedTimeoutPolicy in function" should "work" in {
