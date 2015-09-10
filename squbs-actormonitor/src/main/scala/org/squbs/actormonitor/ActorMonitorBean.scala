@@ -22,6 +22,9 @@ import javax.management.MXBean
 import akka.actor.{ActorContext, ActorRef, Props}
 import org.squbs.unicomplex.JMX._
 
+import scala.annotation.tailrec
+import scala.util.{Failure, Success, Try}
+
 
 private[actormonitor] object ActorMonitorBean {
   val Pattern = "org.squbs.unicomplex:type=ActorMonitor,name="
@@ -32,7 +35,8 @@ private[actormonitor] object ActorMonitorBean {
       register(new ActorMonitorBean(actor), objName(actor))
   }
 
-  def totalBeans(implicit context: ActorContext) = ManagementFactory.getPlatformMBeanServer.queryNames(prefix + Total, null)
+  def totalBeans(implicit context: ActorContext) =
+    ManagementFactory.getPlatformMBeanServer.queryNames(prefix + Total, null)
 
   def unregisterBean(actor: ActorRef) (implicit context: ActorContext) = unregister(objName(actor))
 
@@ -41,31 +45,31 @@ private[actormonitor] object ActorMonitorBean {
 
   }
 
-  def getDescendant(actor: ActorRef) = getPrivateValue(actor, List("children")).map(_.asInstanceOf[Iterable[ActorRef]]).map(_.toList).getOrElse(List.empty[ActorRef])
+  def getDescendant(actor: ActorRef) =
+    getPrivateValue(actor, Seq("children")).map(_.asInstanceOf[Iterable[ActorRef]].toSeq).getOrElse(Seq.empty[ActorRef])
 
-  def getPrivateValue(obj: Any, methods: List[String]): Option[Any] =
-    try {
-      methods.isEmpty match {
-        case true => Some(obj)
-        case false =>
-          val m = try {
-            val clazz = obj.getClass
-            clazz.getDeclaredMethod(methods.head)
-          } catch {
-            case e: Exception =>
-              val clazz = obj.getClass.getSuperclass
-              clazz.getDeclaredMethod(methods.head)
+  @tailrec
+  def getPrivateValue(obj: Any, methods: Seq[String]): Option[Any] =
+    methods.headOption match {
+      case None => Some(obj)
+      case Some(methodName) =>
+        Try {
+          val clazz = obj.getClass
+          clazz.getDeclaredMethod(methodName)
+        } recoverWith {
+          case e: Exception => Try {
+            val clazz = obj.getClass.getSuperclass
+            clazz.getDeclaredMethod(methodName)
           }
-          m.setAccessible(true)
-          val nextObj = m.invoke(obj)
-          getPrivateValue(nextObj, methods.tail)
-      }
-    } catch {
-      case e: Exception =>
-        None
+        } map { method =>
+          method.setAccessible(true)
+          method.invoke(obj)
+        } match {
+          case Failure(_) => None
+          case Success(nextObj) => getPrivateValue(nextObj, methods.tail)
+        }
     }
 }
-
 
 @MXBean
 private[actormonitor] trait ActorMonitorMXBean {
@@ -78,7 +82,8 @@ private[actormonitor] trait ActorMonitorMXBean {
   def getMailBoxSize : String
 }
 
-private[actormonitor] class ActorMonitorBean(actor: ActorRef)(implicit monitorConfig: ActorMonitorConfig) extends ActorMonitorMXBean {
+private[actormonitor] class ActorMonitorBean(actor: ActorRef)(implicit monitorConfig: ActorMonitorConfig)
+    extends ActorMonitorMXBean {
   import ActorMonitorBean._
 
   def getActor = actor.toString()
@@ -98,17 +103,17 @@ private[actormonitor] class ActorMonitorBean(actor: ActorRef)(implicit monitorCo
   def getMailBoxSize =
     actor.getClass.getName match {
       case "akka.actor.RepointableActorRef" =>
-        getPrivateValue(actor, List("underlying", "numberOfMessages")).map(_.toString).getOrElse("N/A")
+        getPrivateValue(actor, Seq("underlying", "numberOfMessages")).map(_.toString).getOrElse("N/A")
       case clazz =>
-        getPrivateValue(actor, List("actorCell", "numberOfMessages")).map(_.toString).getOrElse("N/A")
+        getPrivateValue(actor, Seq("actorCell", "numberOfMessages")).map(_.toString).getOrElse("N/A")
   }
 
   lazy val props : Option[Props] =
     actor.getClass.getName match {
       case "akka.actor.LocalActorRef" =>
-        getPrivateValue(actor, List("actorCell","props")).map(_.asInstanceOf[Props])
+        getPrivateValue(actor, Seq("actorCell","props")).map(_.asInstanceOf[Props])
       case "akka.routing.RoutedActorRef" | "akka.actor.RepointableActorRef"=>
-        getPrivateValue(actor, List("props")).map(_.asInstanceOf[Props])
+        getPrivateValue(actor, Seq("props")).map(_.asInstanceOf[Props])
       case c =>
         None
     }
@@ -121,7 +126,9 @@ private[actormonitor] trait ActorMonitorConfigMXBean {
   def getMaxChildrenDisplay: Int
 }
 
-private[actormonitor] class ActorMonitorConfigBean(config: ActorMonitorConfig, monitorActor: ActorRef, implicit val context: ActorContext) extends ActorMonitorConfigMXBean {
+private[actormonitor] class ActorMonitorConfigBean(config: ActorMonitorConfig, monitorActor: ActorRef,
+                                                   implicit val context: ActorContext)
+    extends ActorMonitorConfigMXBean {
   def getCount : Int = ActorMonitorBean.totalBeans.size()
   def getMaxCount: Int = config.maxActorCount
   def getMaxChildrenDisplay: Int = {

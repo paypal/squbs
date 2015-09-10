@@ -24,6 +24,7 @@ import akka.util.Timeout
 import spray.httpx.marshalling.Marshaller
 import scala.collection.concurrent.TrieMap
 import scala.concurrent._
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.Try
 import scala.util.Failure
 import spray.http.HttpResponse
@@ -41,7 +42,8 @@ class HttpClientManagerExtension(system: ExtendedActorSystem) extends Extension 
 
 object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with ExtensionIdProvider {
 
-  override def createExtension(system: ExtendedActorSystem): HttpClientManagerExtension = new HttpClientManagerExtension(system)
+  override def createExtension(system: ExtendedActorSystem): HttpClientManagerExtension =
+    new HttpClientManagerExtension(system)
 
   override def lookup(): ExtensionId[_ <: Extension] = HttpClientManager
 }
@@ -58,7 +60,8 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
              pipeline: Try[HttpRequest => Future[HttpResponse]],
              httpRequest: HttpRequest)(implicit system: ActorSystem): Future[HttpResponse] = {
     implicit val ec = system.dispatcher
-    httpClientLogger.debug("HttpRequest headers:" + httpRequest.headers.foreach(header => println(s"${header.name}=${header.value},")))
+    httpClientLogger.debug("HttpRequest headers: " +
+      httpRequest.headers.map { h => h.name + '=' + h.value } .mkString(", "))
     pipeline match {
       case Success(res) =>
         withCircuitBreaker(client, res(httpRequest))
@@ -123,25 +126,27 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
 
   private def verifyUri(client: HttpClient, uri: String) = {
     val baseUri = Uri(client.endpoint.uri)
-    val basePath = baseUri.path.toString
-    var trimBasePath = basePath
-    if (trimBasePath != "" && trimBasePath.charAt(0) == '/') {
-      trimBasePath = trimBasePath.substring(1)
-    }
-    if (trimBasePath != "" && trimBasePath.charAt(trimBasePath.length - 1) == '/') {
-      trimBasePath = trimBasePath.substring(0, trimBasePath.length - 1)
-    }
-    (trimBasePath, uri.charAt(0)) match {
+    val path = baseUri.path.toString()
+    val pathLength = path.length
+    val trimmedPath =
+      if (pathLength > 0) {
+        val beginIdx = if (path.charAt(0) == '/') 1 else 0
+        val lastIdx = pathLength - 1
+        val endIdx = if (path.charAt(lastIdx) == '/') lastIdx else pathLength
+        if (endIdx > beginIdx) path.substring(beginIdx, endIdx) else ""
+      } else path
+
+    (trimmedPath, uri.charAt(0)) match {
       case ("", '/') => uri
-      case (_, '/')  => '/' + trimBasePath + uri
+      case (_, '/')  => '/' + trimmedPath + uri
       case ("", _)   => '/' + uri
-      case (_, _)    => '/' + trimBasePath + '/' + uri
+      case (_, _)    => '/' + trimmedPath + '/' + uri
     }
   }
-
 }
 
-class HttpClientCallerActor(svcName: String, env: Environment) extends Actor with HttpCallActorSupport with ActorLogging {
+class HttpClientCallerActor(svcName: String, env: Environment) extends Actor
+    with HttpCallActorSupport with ActorLogging {
 
   implicit val system = context.system
 
@@ -170,25 +175,29 @@ class HttpClientCallerActor(svcName: String, env: Environment) extends Actor wit
       context.become(receivePostConnection(HttpMethods.POST, uri, content, reqSettings, client, sender(), marshaller))
   }
 
-  def receiveGetConnection(httpMethod: HttpMethod, uri: String, reqSettings: RequestSettings, httpClient: HttpClient, clientSender: ActorRef): Actor.Receive = {
+  implicit def toTimeout(d: Duration): Timeout = Timeout( d match {
+    case f: FiniteDuration => f
+    case Duration.Inf => Duration.fromNanos(Long.MaxValue)
+    case _ => Duration.Zero
+  })
+
+  def receiveGetConnection(httpMethod: HttpMethod, uri: String, reqSettings: RequestSettings, httpClient: HttpClient,
+                           clientSender: ActorRef): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
-      implicit val timeout: Timeout = httpClient.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
+      implicit val timeout: Timeout =
+        httpClient.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout
       httpMethod match {
         case HttpMethods.GET =>
           get(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-//          context.unbecome
           context stop self
         case HttpMethods.DELETE =>
           delete(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-//          context.unbecome
           context stop self
         case HttpMethods.HEAD =>
           head(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-//          context.unbecome
           context stop self
         case HttpMethods.OPTIONS =>
           options(httpClient, connector, uri, reqSettings).pipeTo(clientSender)
-//          context.unbecome
           context stop self
       }
   }
@@ -202,15 +211,13 @@ class HttpClientCallerActor(svcName: String, env: Environment) extends Actor wit
                                marshaller: Marshaller[T]): Actor.Receive = {
     case Http.HostConnectorInfo(connector, _) =>
       implicit val marshallerSupport = marshaller
-      implicit val timeout: Timeout = client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
+      implicit val timeout: Timeout = client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout
       httpMethod match {
         case HttpMethods.POST =>
           post[T](client, connector, uri, content, reqSettings).pipeTo(actorRef)
-//          context.unbecome
           context stop self
         case HttpMethods.PUT =>
           put[T](client, connector, uri, content, reqSettings).pipeTo(actorRef)
-//          context.unbecome
           context stop self
       }
   }
@@ -219,8 +226,6 @@ class HttpClientCallerActor(svcName: String, env: Environment) extends Actor wit
 class HttpClientActor(svcName: String, env: Environment) extends Actor with HttpCallActorSupport with ActorLogging {
 
   import org.squbs.httpclient.HttpClientActorMessage._
-
-//  private[HttpClientActor] val httpClientCallerActor = context.actorOf(Props(classOf[HttpClientCallerActor], svcName, env))
 
   implicit val ec = context.dispatcher
 
@@ -269,7 +274,6 @@ class HttpClientActor(svcName: String, env: Environment) extends Actor with Http
       )
       sender ! self
     case Close =>
-//      context.stop(httpClientCallerActor)
       context.stop(self)
       HttpClientManager(system).httpClientMap.remove((client.name, client.env))
       sender ! CloseSuccess
@@ -288,11 +292,11 @@ class HttpClientManager extends Actor {
     case client @ Get(name, env) =>
       HttpClientManager(system).httpClientMap.get((name, env)) match {
         case Some(httpClient) =>
-          httpClient.fActorRef.pipeTo(sender)
+          httpClient.fActorRef pipeTo sender()
         case None    =>
           val httpClient = HttpClient(name, env)()
           HttpClientManager(system).httpClientMap.put((name, env), httpClient)
-          httpClient.fActorRef pipeTo sender
+          httpClient.fActorRef pipeTo sender()
       }
     case Delete(name, env) =>
       HttpClientManager(system).httpClientMap.get((name, env)) match {
@@ -303,7 +307,7 @@ class HttpClientManager extends Actor {
           sender ! HttpClientNotExistException(name, env)
       }
     case DeleteAll =>
-      HttpClientManager(system).httpClientMap.clear
+      HttpClientManager(system).httpClientMap.clear()
       sender ! DeleteAllSuccess
     case GetAll =>
       sender ! HttpClientManager(system).httpClientMap

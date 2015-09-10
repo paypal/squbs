@@ -28,12 +28,13 @@ class SimpleServiceEndpointResolverSpec extends TestKit(ActorSystem("SimpleServi
 
   override def afterAll() = {
     clearHttpClient()
+    system.shutdown()
   }
 
   "SimpleServiceEndpointResolver" should "have the correct behaviour" in {
-    val simpleResolver = SimpleServiceEndpointResolver("simple", Map[String, Configuration](
-      "http://localhost:8080" -> Configuration(),
-      "https://localhost:8443" -> Configuration(settings = Settings(sslContext = Some(SSLContext.getDefault)))
+    val simpleResolver = SimpleServiceEndpointResolver("simple", Map(
+      "http://localhost:8080" -> Some(Configuration()),
+      "https://localhost:8443" -> Some(Configuration(settings = Settings(sslContext = Some(SSLContext.getDefault))))
     ))
     simpleResolver.name should be ("simple")
     EndpointRegistry(system).register(simpleResolver)
@@ -45,7 +46,7 @@ class SimpleServiceEndpointResolverSpec extends TestKit(ActorSystem("SimpleServi
   }
 
   "ExternalServiceEndpointResolver with null Configuration" should "not throw out exception" in {
-    val resolver = SimpleServiceEndpointResolver("external", Map("http://www.ebay.com" -> null))
+    val resolver = SimpleServiceEndpointResolver("external", Map("http://www.ebay.com" -> None))
     resolver.resolve("http://www.ebay.com") should be (Some(Endpoint("http://www.ebay.com")))
   }
 }

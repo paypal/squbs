@@ -20,18 +20,15 @@ import org.squbs.httpclient.env.Environment
 import org.squbs.httpclient.Configuration
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointResolver}
 
-case class SimpleServiceEndpointResolver(resolverName: String, serviceMap: Map[String, Configuration]) extends EndpointResolver{
+case class SimpleServiceEndpointResolver(resolverName: String, serviceMap: Map[String, Option[Configuration]])
+    extends EndpointResolver {
 
   serviceMap.foreach(service => Endpoint.check(service._1))
 
   override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
-    serviceMap.contains(svcName) match {
-      case true =>
-        val config = if (serviceMap.get(svcName) == Some(null)) Configuration()
-                     else serviceMap.getOrElse(svcName, Configuration())
-        Some(Endpoint(svcName, config))
-      case false =>
-        None
+    serviceMap.get(svcName) map {
+      case Some(config) => Endpoint(svcName, config)
+      case None => Endpoint(svcName, Configuration())
     }
   }
 

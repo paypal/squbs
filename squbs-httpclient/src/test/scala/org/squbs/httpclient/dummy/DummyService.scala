@@ -47,6 +47,9 @@ class Employee1(val id: Long, val firstName: String, val lastName: String, val a
       case _ => false
     }
   }
+
+  override def hashCode() =
+    id.hashCode() + firstName.hashCode() + lastName.hashCode() + age.hashCode() + male.hashCode()
 }
 
 class Team1(val description: String, val members: List[Employee1]){
@@ -57,10 +60,13 @@ class Team1(val description: String, val members: List[Employee1]){
       case _ => false
     }
   }
+
+  override def hashCode() = description.hashCode() + (members map (_.hashCode())).sum
 }
 
 object EmployeeBeanSerializer extends CustomSerializer[EmployeeBean](format => ( {
-  case JObject(JField("id", JInt(i)) :: JField("firstName", JString(f)) :: JField("lastName", JString(l)) :: JField("age", JInt(a)) :: JField("male", JBool(m)) :: Nil) =>
+  case JObject(JField("id", JInt(i)) :: JField("firstName", JString(f)) :: JField("lastName", JString(l)) :: JField(
+      "age", JInt(a)) :: JField("male", JBool(m)) :: Nil) =>
     new EmployeeBean(i.longValue(), f, l, a.intValue(), m)
 }, {
   case x: EmployeeBean =>
@@ -134,9 +140,18 @@ trait DummyService extends SimpleRoutingApp {
   val newTeamMember = Employee(5, "Jack", "Ripper", 35, male = true)
   val newTeamMemberBean = new EmployeeBean(5, "Jack", "Ripper", 35, true)
 
-  val fullTeamJson = "{\"description\":\"squbs Team\",\"members\":[{\"id\":1,\"firstName\":\"John\",\"lastName\":\"Doe\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Mike\",\"lastName\":\"Moon\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Liz\",\"lastName\":\"Taylor\",\"age\":35,\"male\":false}]}"
-  val fullTeamWithDelJson = "{\"description\":\"squbs Team\",\"members\":[{\"id\":1,\"firstName\":\"John\",\"lastName\":\"Doe\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Mike\",\"lastName\":\"Moon\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false}]}"
-  val fullTeamWithAddJson = "{\"description\":\"squbs Team\",\"members\":[{\"id\":1,\"firstName\":\"John\",\"lastName\":\"Doe\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Mike\",\"lastName\":\"Moon\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Liz\",\"lastName\":\"Taylor\",\"age\":35,\"male\":false},{\"id\":5,\"firstName\":\"Jack\",\"lastName\":\"Ripper\",\"age\":35,\"male\":true}]}"
+  val fullTeamJson = "{\"description\":\"squbs Team\",\"members\":[{\"id\":1,\"firstName\":\"John\"," +
+    "\"lastName\":\"Doe\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Mike\",\"lastName\":\"Moon\"," +
+    "\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false}," +
+    "{\"id\":4,\"firstName\":\"Liz\",\"lastName\":\"Taylor\",\"age\":35,\"male\":false}]}"
+  val fullTeamWithDelJson = "{\"description\":\"squbs Team\",\"members\":[{\"id\":1,\"firstName\":\"John\"," +
+    "\"lastName\":\"Doe\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Mike\",\"lastName\":\"Moon\"," +
+    "\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false}]}"
+  val fullTeamWithAddJson = "{\"description\":\"squbs Team\",\"members\":[{\"id\":1,\"firstName\":\"John\"," +
+    "\"lastName\":\"Doe\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Mike\",\"lastName\":\"Moon\"," +
+    "\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false}," +
+    "{\"id\":4,\"firstName\":\"Liz\",\"lastName\":\"Taylor\",\"age\":35,\"male\":false},{\"id\":5," +
+    "\"firstName\":\"Jack\",\"lastName\":\"Ripper\",\"age\":35,\"male\":true}]}"
 
   val fullTeamWithDel = Team("squbs Team", List[Employee](
     Employee(1, "John", "Doe", 20, male = true),
@@ -163,7 +178,8 @@ trait DummyService extends SimpleRoutingApp {
   import DummyService._
   import org.squbs.testkit.Timeouts._
 
-  def startDummyService(implicit system: ActorSystem, address: String = dummyServiceIpAddress, port: Int = dummyServicePort) {
+  def startDummyService(implicit system: ActorSystem, address: String = dummyServiceIpAddress,
+                        port: Int = dummyServicePort) {
     implicit val ec = system.dispatcher
     startServer(address, port = port) {
       pathSingleSlash {

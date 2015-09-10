@@ -54,9 +54,9 @@ class PipelineHandlerManagerSpec extends TestKit(ActorSystem("PipelineHandlerMan
 
   "PipelineHandlerManager" should "work" in {
 
-    manager.get("handler1") should not be (None)
-    manager.get("handler2") should be(None)
-    manager.get("handler2") should be(None)
+    manager.get("handler1") should not be None
+    manager.get("handler2") should be (None)
+    manager.get("handler2") should be (None)
 
     the[ClassNotFoundException] thrownBy {
       manager.get("handler3")
@@ -65,7 +65,7 @@ class PipelineHandlerManagerSpec extends TestKit(ActorSystem("PipelineHandlerMan
 
     the[ClassCastException] thrownBy {
       manager.get("handler4")
-    } should have message "org.squbs.pipeline.TestHandlerFactory4 cannot be cast to org.squbs.pipeline.HandlerFactory"
+    } should have message "class org.squbs.pipeline.TestHandlerFactory4"
 
     the[IllegalArgumentException] thrownBy {
       manager.get("handler5")
@@ -78,21 +78,19 @@ class PipelineHandlerManagerSpec extends TestKit(ActorSystem("PipelineHandlerMan
 class TestHandlerFactory1 extends HandlerFactory with Handler {
   println("init TestHandlerFactory1")
 
-  override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = {
-    return Some(this)
-  }
+  override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = Some(this)
 
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = ???
+  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+      Future[RequestContext] = Future.successful(reqCtx)
 }
 
 class TestHandlerFactory2 extends HandlerFactory with Handler {
   println("init TestHandlerFactory2")
 
-  override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = {
-    return None
-  }
+  override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = None
 
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = ???
+  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+      Future[RequestContext] = Future.successful(reqCtx)
 }
 
 class TestHandlerFactory4

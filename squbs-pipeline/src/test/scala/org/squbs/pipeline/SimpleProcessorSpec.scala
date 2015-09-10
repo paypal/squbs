@@ -16,14 +16,21 @@
 
 package org.squbs.pipeline
 
-import akka.actor.ActorContext
+import akka.actor.{Actor, ActorSystem, ActorContext}
+import akka.testkit.{TestActorRef, TestKit}
 import org.scalatest.concurrent.AsyncAssertions.Waiter
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import spray.http.{HttpRequest, HttpResponse}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class SimpleProcessorSpec extends FlatSpecLike with Matchers {
+
+class SimpleProcessorSpec extends TestKit(ActorSystem("SimpleProcessorSpec")) with FlatSpecLike
+    with Matchers with BeforeAndAfterAll {
+
+  val nullContext = TestActorRef[NullActor].underlyingActor.context
+
+  override def afterAll(): Unit = system.shutdown()
 
   implicit val execCtx = scala.concurrent.ExecutionContext.Implicits.global
   "Simple processor by pass handler" should "work" in {
@@ -32,7 +39,7 @@ class SimpleProcessorSpec extends FlatSpecLike with Matchers {
     val ctx = RequestContext(HttpRequest())
 
     val p1 = SimpleProcessor(SimplePipelineConfig(Seq(new Inbound2, new Inbound1), Seq.empty))
-    p1.inbound(ctx)(execCtx, null).onComplete {
+    p1.inbound(ctx)(execCtx, nullContext).onComplete {
       result =>
         w {
           assert(result.isSuccess)
@@ -44,7 +51,7 @@ class SimpleProcessorSpec extends FlatSpecLike with Matchers {
     w.await()
 
     val p2 = SimpleProcessor(SimplePipelineConfig(Seq(new Inbound1, new Inbound2), Seq.empty))
-    p2.inbound(ctx)(execCtx, null).onComplete {
+    p2.inbound(ctx)(execCtx, nullContext).onComplete {
       result =>
         w {
           assert(result.isSuccess)
@@ -58,13 +65,17 @@ class SimpleProcessorSpec extends FlatSpecLike with Matchers {
 }
 
 class Inbound1 extends Handler {
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext) =
     Future.successful(reqCtx.copy(response = NormalResponse(HttpResponse())))
-  }
 }
 
 class Inbound2 extends Handler {
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext) =
     Future.successful(reqCtx +> ("attr1" -> "v1"))
+}
+
+class NullActor extends Actor {
+  def receive = {
+    case _ =>
   }
 }
