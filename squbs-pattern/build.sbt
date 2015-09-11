@@ -3,7 +3,10 @@ import spray.boilerplate.BoilerplatePlugin.Boilerplate
 
 name := "squbs-pattern"
 
-testOptions in Test := Seq(Tests.Argument("-l", "org.squbs.testkit.tags.SlowTest"))
+testOptions in Test ++= Seq(
+  Tests.Argument(TestFrameworks.ScalaTest, "-l", "org.squbs.testkit.tags.SlowTest"),
+  Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
+)
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,

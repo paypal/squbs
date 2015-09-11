@@ -20,6 +20,8 @@ parallelExecution in ThisBuild := false
 
 updateOptions in ThisBuild := updateOptions.value.withCachedResolution(true)
 
+concurrentRestrictions in Global := Seq(Tags.limitAll(4))
+
 lazy val `squbs-pipeline` = project
 
 lazy val `squbs-unicomplex` = project dependsOn `squbs-pipeline`
@@ -41,6 +43,18 @@ lazy val `squbs-pattern` = (project dependsOn `squbs-testkit` % "test")
   .configs(SlowTest)
   .settings(inConfig(SlowTest)(Defaults.testTasks): _*)
   .settings(testOptions in SlowTest := Seq.empty)
+
+// Information for debugging tests and test launchers inside sbt.
+// val DebugTest = config("dtest") extend Test
+//
+//  lazy val myProj = project
+//  .configs(DebugTest).
+//  settings(inConfig(DebugTest)(Defaults.testSettings):_*).
+//  settings(
+//    fork in DebugTest := true,
+//    javaOptions in DebugTest += "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005",
+//    definedTests in DebugTest := (definedTests in Test).value
+//  )
 
 lazy val `squbs-actorregistry` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
 
