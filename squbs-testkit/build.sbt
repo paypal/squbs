@@ -13,4 +13,6 @@ libraryDependencies ++= Seq(
   "com.novocode" % "junit-interface" % "0.11" % "test->default"
 )
 
+testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
+
 org.scalastyle.sbt.ScalastylePlugin.Settings
