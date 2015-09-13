@@ -11,10 +11,10 @@ libraryDependencies ++= Seq(
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
   "io.spray" %% "spray-can"     % sprayV,
   "io.spray" %% "spray-http"    % sprayV,
-  "io.spray" %% "spray-routing" % sprayV,
+  "io.spray" %% "spray-routing-shapeless2" % sprayV,
   "io.spray" %% "spray-testkit" % sprayV % "test",
   "io.spray" %% "spray-client"  % sprayV % "test",
-  "io.spray" %% "spray-json"    % "1.3.0" % "test"
+  "io.spray" %% "spray-json"    % "1.3.2" % "test"
 )
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
