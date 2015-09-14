@@ -43,10 +43,9 @@ trait HttpClientPathBuilder {
     if (paramMap.isEmpty) {
       Uri(path).toString()
     } else {
-      var trimPath = path
-      if (path.length > 1 && path.charAt(path.length - 1) == '/'){
-        trimPath = path.substring(0, path.length - 1)
-      }
+      val trimPath =
+        if (path.length > 1 && path.charAt(path.length - 1) == '/') path.substring(0, path.length - 1)
+        else path
       val filteredParamMap = paramMap.filter{ pair =>
         pair._2.isInstanceOf[String] ||
         pair._2.isInstanceOf[Double] ||

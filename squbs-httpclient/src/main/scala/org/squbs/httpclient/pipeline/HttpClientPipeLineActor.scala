@@ -23,7 +23,8 @@ import org.squbs.pipeline.{PipelineProcessorActor, Processor, RequestContext}
 import spray.client.pipelining.SendReceive
 import spray.http._
 
-class HttpClientPipelineActor(clientName: String, endpoint: Endpoint, pipelineProcessor: Option[Processor], target: SendReceive) extends Actor with ActorLogging {
+class HttpClientPipelineActor(clientName: String, endpoint: Endpoint, pipelineProcessor: Option[Processor],
+                              target: SendReceive) extends Actor with ActorLogging {
 
   override def receive = {
     case request: HttpRequest =>
@@ -32,9 +33,9 @@ class HttpClientPipelineActor(clientName: String, endpoint: Endpoint, pipelinePr
       pipelineProcessor match {
         case None => targetAgent tell(request, responder)
         case Some(proc) =>
-          val pipeproxy = context.actorOf(Props(classOf[PipelineProcessorActor], targetAgent, responder, proc))
-          context.watch(pipeproxy)
-          pipeproxy ! RequestContext(request) +>(("HttpClient.name" -> clientName), ("HttpClient.Endpoint" -> endpoint))
+          val pipeProxy = context.actorOf(Props(classOf[PipelineProcessorActor], targetAgent, responder, proc))
+          context.watch(pipeProxy)
+          pipeProxy ! RequestContext(request) +> ("HttpClient.name" -> clientName, "HttpClient.Endpoint" -> endpoint)
       }
 
 
@@ -43,7 +44,8 @@ class HttpClientPipelineActor(clientName: String, endpoint: Endpoint, pipelinePr
       sender ! HttpResponse(StatusCodes.InternalServerError, HttpEntity("Chunked request is not supported yet"))
     //			val responder = sender()
     //			val targetAgent = context.actorOf(Props(classOf[HttpClientPipelineTargetActor], target))
-    //			val pipeproxy = context.actorOf(Props(classOf[PipelineProcessorActor], targetAgent, responder, SimpleProcessor(pipelineConf)))
+    //			val pipeproxy = context.actorOf(Props(classOf[PipelineProcessorActor], targetAgent, responder,
+    //                          SimpleProcessor(pipelineConf)))
     //			context.watch(pipeproxy)
     //			pipeproxy ! RequestContext(request.request, true) +> endpoint
 

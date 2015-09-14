@@ -106,15 +106,15 @@ class PipelineManagerSpec extends TestKit(ActorSystem("PipelineManagerSpec", Con
 
   "PipelineManager getProcessor" should "work" in {
 
-    manager.getProcessor("proxy1") should not be (None)
-    manager.getProcessor("proxy2") should be(None)
+    manager.getProcessor("proxy1") should not be None
+    manager.getProcessor("proxy2") should be (None)
     Thread.sleep(500)
-    manager.getProcessor("proxy1") should not be (None)
-    manager.getProcessor("aaa") should not be (None)
-    manager.getProcessor("bbb") should not be (None)
-    manager.getProcessor("proxy2") should be(None)
-    manager.getProcessor("ccc") should be(None)
-    manager.getProcessor("ddd") should be(None)
+    manager.getProcessor("proxy1") should not be None
+    manager.getProcessor("aaa") should not be None
+    manager.getProcessor("bbb") should not be None
+    manager.getProcessor("proxy2") should be (None)
+    manager.getProcessor("ccc") should be (None)
+    manager.getProcessor("ddd") should be (None)
 
     import org.squbs.pipeline.Tracking._
 
@@ -138,19 +138,19 @@ class PipelineManagerSpec extends TestKit(ActorSystem("PipelineManagerSpec", Con
   "PipelineManager getPipelineSetting" should "work" in {
 
     val pipe = manager.getPipelineSetting("pipe1")
-    pipe should not be (None)
-    pipe.get.factory.isInstanceOf[TestResolver1] should be(true)
-    pipe.get.config.get.reqPipe.size should be(2)
-    pipe.get.config.get.reqPipe(1).isInstanceOf[TestHandlerFactory] should be(true)
-    pipe.get.config.get.respPipe.size should be(2)
+    pipe should not be None
+    pipe.get.factory shouldBe a [TestResolver1]
+    pipe.get.config.get.reqPipe.size should be (2)
+    pipe.get.config.get.reqPipe(1) shouldBe a [TestHandlerFactory]
+    pipe.get.config.get.respPipe.size should be (2)
 
-    manager.getPipelineSetting("pipe2") should not be (None)
+    manager.getPipelineSetting("pipe2") should not be None
     Thread.sleep(500)
-    manager.getPipelineSetting("pipe1") should not be (None)
-    manager.getPipelineSetting("111") should not be (None)
-    manager.getPipelineSetting("222") should not be (None)
-    manager.getPipelineSetting("333") should not be (None)
-    manager.getPipelineSetting("444") should not be (None)
+    manager.getPipelineSetting("pipe1") should not be None
+    manager.getPipelineSetting("111") should not be None
+    manager.getPipelineSetting("222") should not be None
+    manager.getPipelineSetting("333") should not be None
+    manager.getPipelineSetting("444") should not be None
 
 
     the[ClassNotFoundException] thrownBy {
@@ -182,10 +182,12 @@ object Tracking {
 
 object TestProcessor extends Processor {
   //inbound processing
-  override def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = ???
+  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+      Future[RequestContext] = Future.successful(reqCtx)
 
   //outbound processing
-  override def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = ???
+  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+      Future[RequestContext] = Future.successful(reqCtx)
 }
 
 class TestProcessorFactory1 extends ProcessorFactory {
@@ -215,11 +217,13 @@ class TestProcessorFactory2 extends ProcessorFactory {
 class TestProcessorFactory4
 
 class TestResolver1 extends PipelineProcessorFactory {
-  def create(config: SimplePipelineConfig, setting: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = None
+  def create(config: SimplePipelineConfig, setting: Option[Config])(implicit actorRefFactory: ActorRefFactory):
+  Option[Processor] = None
 }
 
 class TestResolver2 extends PipelineProcessorFactory {
-  def create(config: SimplePipelineConfig, setting: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = None
+  def create(config: SimplePipelineConfig, setting: Option[Config])(implicit actorRefFactory: ActorRefFactory):
+  Option[Processor] = None
 }
 
 class TestResolver4
@@ -227,7 +231,8 @@ class TestResolver4
 class TestHandlerFactory extends HandlerFactory with Handler {
   override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = Some(this)
 
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = Future.successful(reqCtx)
+  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+  Future[RequestContext] = Future.successful(reqCtx)
 }
 
 
