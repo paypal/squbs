@@ -27,7 +27,7 @@ import org.squbs.httpclient.endpoint.Endpoint
 import org.squbs.httpclient.pipeline.impl.RequestUpdateHeadersHandler
 import org.squbs.pipeline.PipelineSetting
 import spray.can.Http
-import spray.http.{HttpRequest, HttpResponse, Uri}
+import spray.http.{HttpRequest, HttpResponse}
 import spray.httpx.unmarshalling._
 import spray.httpx.{PipelineException, UnsuccessfulResponseException}
 import spray.io.ClientSSLEngineProvider
@@ -67,7 +67,7 @@ trait PipelineManager extends LazyLogging {
     implicit val myClientEngineProvider = ClientSSLEngineProvider { engine =>
       engine
     }
-    val uri = Uri(client.endpoint.uri)
+    import client.endpoint.uri
     val host = uri.authority.host.toString
     val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
     val isSecure = uri.scheme.toLowerCase.equals("https")
@@ -114,7 +114,7 @@ trait PipelineManager extends LazyLogging {
   }
 
   implicit def endpointToUri(endpoint: Endpoint): String = {
-    val uri = Uri(endpoint.uri)
+    val uri = endpoint.uri
     val host = uri.authority.host.toString
     val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
     val isSecure = uri.scheme.toLowerCase.equals("https")

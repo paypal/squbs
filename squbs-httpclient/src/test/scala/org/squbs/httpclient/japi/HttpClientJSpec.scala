@@ -342,7 +342,7 @@ class HttpClientJSpec extends TestKit(ActorSystem("HttpClientJSpec")) with FlatS
   "HttpClient could use endpoint as service name directly without registering endpoint resolvers for " +
         "third party service call" should "get the correct response" in {
     //val response: Future[HttpResponse] = HttpClientFactory.get(dummyServiceEndpoint).raw.get("/view")
-    val response = HttpClientJ.rawGet(dummyServiceEndpoint, system, "/view")
+    val response = HttpClientJ.rawGet(dummyServiceEndpoint.toString(), system, "/view")
     val result = Await.result(response, awaitMax)
     result.status should be (StatusCodes.OK)
     result.entity should not be empty

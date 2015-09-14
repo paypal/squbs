@@ -16,22 +16,20 @@
 package org.squbs.httpclient
 
 import akka.actor._
-import spray.http._
-import spray.can.Http
 import akka.io.IO
 import akka.pattern._
 import akka.util.Timeout
+import org.squbs.httpclient.env.Environment
+import org.squbs.httpclient.pipeline.PipelineManager
+import spray.can.Http
+import spray.http.{HttpRequest, HttpResponse, _}
 import spray.httpx.marshalling.Marshaller
+
+import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.concurrent._
 import scala.concurrent.duration.{Duration, FiniteDuration}
-import scala.util.Try
-import scala.util.Failure
-import spray.http.HttpResponse
-import scala.util.Success
-import spray.http.HttpRequest
-import org.squbs.httpclient.env.Environment
-import org.squbs.httpclient.pipeline.PipelineManager
+import scala.util.{Failure, Success, Try}
 
 class HttpClientManagerExtension(system: ExtendedActorSystem) extends Extension {
 
@@ -46,6 +44,22 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
     new HttpClientManagerExtension(system)
 
   override def lookup(): ExtensionId[_ <: Extension] = HttpClientManager
+
+  implicit class RichPath(val path: Uri.Path) extends AnyVal {
+    import Uri.Path._
+
+    @tailrec
+    private def last(path: Uri.Path) : SlashOrEmpty = {
+      path match {
+        case s@Slash(Empty) => s
+        case Slash(p) => last(p)
+        case Segment(_, p) => last(p)
+        case Empty => Empty
+      }
+    }
+
+    def endsWithSlash: Boolean = last(path).isInstanceOf[Slash]
+  }
 }
 
 
@@ -76,72 +90,64 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
     }
   }
 
-  def get(client: HttpClient, actorRef: ActorRef, uri: String,
+  def get(client: HttpClient, actorRef: ActorRef, path: String,
           reqSettings: RequestSettings)
          (implicit system: ActorSystem): Future[HttpResponse] = {
-    val verifiedUri = verifyUri(client, uri)
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Get(verifiedUri))
+    val uri = makeFullUri(client, path)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Get(uri))
   }
 
-  def post[T: Marshaller](client: HttpClient, actorRef: ActorRef, uri: String, content: Option[T],
+  def post[T: Marshaller](client: HttpClient, actorRef: ActorRef, path: String, content: Option[T],
                           reqSettings: RequestSettings)
                          (implicit system: ActorSystem): Future[HttpResponse] = {
-    val verifiedUri = verifyUri(client, uri)
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Post(verifiedUri, content))
+    val uri = makeFullUri(client, path)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Post(uri, content))
   }
 
-  def put[T: Marshaller](client: HttpClient, actorRef: ActorRef, uri: String, content: Option[T],
+  def put[T: Marshaller](client: HttpClient, actorRef: ActorRef, path: String, content: Option[T],
                          reqSettings: RequestSettings)
                         (implicit system: ActorSystem): Future[HttpResponse] = {
-    val verifiedUri = verifyUri(client, uri)
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Put(verifiedUri, content))
+    val uri = makeFullUri(client, path)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Put(uri, content))
   }
 
-  def head(client: HttpClient, actorRef: ActorRef, uri: String,
+  def head(client: HttpClient, actorRef: ActorRef, path: String,
            reqSettings: RequestSettings)
           (implicit system: ActorSystem): Future[HttpResponse] = {
-    val verifiedUri = verifyUri(client, uri)
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Head(verifiedUri))
+    val uri = makeFullUri(client, path)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Head(uri))
   }
 
-  def delete(client: HttpClient, actorRef: ActorRef, uri: String,
+  def delete(client: HttpClient, actorRef: ActorRef, path: String,
              reqSettings: RequestSettings)
             (implicit system: ActorSystem): Future[HttpResponse] = {
-    val verifiedUri = verifyUri(client, uri)
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Delete(verifiedUri))
+    val uri = makeFullUri(client, path)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Delete(uri))
   }
 
-  def options(client: HttpClient, actorRef: ActorRef, uri: String,
+  def options(client: HttpClient, actorRef: ActorRef, path: String,
               reqSettings: RequestSettings)
              (implicit system: ActorSystem): Future[HttpResponse] = {
-    val verifiedUri = verifyUri(client, uri)
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + verifiedUri))
-    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Options(verifiedUri))
+    val uri = makeFullUri(client, path)
+    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), Options(uri))
   }
 
-  private def verifyUri(client: HttpClient, uri: String) = {
-    val baseUri = Uri(client.endpoint.uri)
-    val path = baseUri.path.toString()
-    val pathLength = path.length
-    val trimmedPath =
-      if (pathLength > 0) {
-        val beginIdx = if (path.charAt(0) == '/') 1 else 0
-        val lastIdx = pathLength - 1
-        val endIdx = if (path.charAt(lastIdx) == '/') lastIdx else pathLength
-        if (endIdx > beginIdx) path.substring(beginIdx, endIdx) else ""
-      } else path
-
-    (trimmedPath, uri.charAt(0)) match {
-      case ("", '/') => uri
-      case (_, '/')  => '/' + trimmedPath + uri
-      case ("", _)   => '/' + uri
-      case (_, _)    => '/' + trimmedPath + '/' + uri
+  private def makeFullUri(client: HttpClient, path: String): Uri = {
+    import HttpClientManager._
+    val basePath = client.endpoint.uri.path
+    val fullPath = (basePath.endsWithSlash, path.charAt(0) == '/') match {
+      case (false, false) => basePath + ('/' + path)
+      case (true, false)  => basePath + path
+      case (false, true)  => basePath + path
+      case (true, true)   => basePath + path.substring(1)
     }
+    Uri(path = fullPath)
   }
 }
 

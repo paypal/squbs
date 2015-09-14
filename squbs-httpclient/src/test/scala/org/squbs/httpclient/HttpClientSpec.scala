@@ -314,7 +314,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
 
   "HttpClient could use endpoint as service name directly without registering endpoint resolvers for " +
         "third party service call" should "get the correct response" in {
-    val response: Future[HttpResponse] = HttpClientFactory.get(dummyServiceEndpoint).raw.get("/view")
+    val response: Future[HttpResponse] = HttpClientFactory.get(dummyServiceEndpoint.toString()).raw.get("/view")
     val result = Await.result(response, awaitMax)
     result.status should be (StatusCodes.OK)
     result.entity should not be empty
@@ -344,7 +344,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     val httpClient = HttpClientFactory.get("DummyService")
     val pipeline = Some(DummyRequestPipeline)
     val pipelineSetting : Option[PipelineSetting] = pipeline
-    val updatedHttpClient = httpClient.withPipeline(pipeline)
+    val updatedHttpClient = httpClient.withPipelineSetting(Some(PipelineSetting(config = pipeline)))
     EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
     updatedHttpClient.endpoint.config.pipeline should be (pipelineSetting)
   }
