@@ -176,6 +176,14 @@ class PipelineManagerSpec extends TestKit(ActorSystem("PipelineManagerSpec", Con
 
   }
 
+  "PipelineSetting" should "work" in {
+
+    PipelineSetting.default should be(PipelineSetting())
+    PipelineSetting(SimplePipelineResolver, SimplePipelineConfig.empty) should be(PipelineSetting(SimplePipelineResolver, Some(SimplePipelineConfig.empty)))
+    PipelineSetting(SimplePipelineResolver, SimplePipelineConfig.empty, ConfigFactory.empty()) should be(PipelineSetting(SimplePipelineResolver, Some(SimplePipelineConfig.empty), Some(ConfigFactory.empty())))
+
+  }
+
 }
 
 object Tracking {

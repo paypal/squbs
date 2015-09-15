@@ -16,10 +16,19 @@
 
 package org.squbs.httpclient.japi
 
+
+import org.scalatest.{FlatSpecLike, Matchers}
+import org.squbs.httpclient.Configuration
 import org.squbs.httpclient.endpoint.Endpoint
 
-object EndpointFactory {
 
-  def create(uri: String) = Endpoint(uri)
+class SimpleProcessorSpec extends FlatSpecLike with Matchers {
 
+  "ConfigurationFactory" should "work" in {
+    ConfigurationFactory.create() should be(Configuration())
+  }
+
+  "EndpointFactory" should "work" in {
+    EndpointFactory.create("/test") should be(Endpoint("/test"))
+  }
 }

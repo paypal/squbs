@@ -19,6 +19,7 @@ package org.squbs.pipeline
 import akka.actor.{Actor, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import spray.http.HttpHeaders.RawHeader
 import spray.http._
 
 class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) with FlatSpecLike with Matchers with BeforeAndAfterAll {
@@ -45,6 +46,21 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
     ctx3.attributes.size should be(2)
     ctx3.attribute("key2") should be(Some(1))
     ctx3.attribute[Exception]("key3").get.getMessage should be("BadMan")
+
+  }
+
+  "RequestContext" should "handle headers correctly" in {
+    val ctx = RequestContext(HttpRequest())
+
+    val ctx1 = ctx.addRequestHeader(RawHeader("h11","v11"))
+    ctx1.request.headers.contains(RawHeader("h11","v11")) should be(true)
+
+    val ctx2 = ctx.addRequestHeaders(RawHeader("h11","v11"), RawHeader("h22","v22"))
+    ctx2.request.headers.contains(RawHeader("h11","v11")) should be(true)
+    ctx2.request.headers.contains(RawHeader("h22","v22")) should be(true)
+
+    val ctx3 = ctx.copy(response = NormalResponse(HttpResponse())).addResponseHeader(RawHeader("h33","v33"))
+    NormalResponse.unapply(ctx3.response.asInstanceOf[NormalResponse]).get.headers.contains(RawHeader("h33","v33")) should be (true)
 
   }
 

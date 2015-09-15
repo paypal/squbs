@@ -18,7 +18,7 @@ package org.squbs.pipeline
 
 import akka.actor._
 import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import spray.http.HttpHeaders.RawHeader
 import spray.http.Uri.Path
@@ -28,7 +28,17 @@ import Timeouts._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 
-class PipeLineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys"))
+class PipeLineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys", ConfigFactory.parseString(
+  """
+    |spray {
+    |  can {
+    |    client {
+    |      response-chunk-aggregation-limit = 0
+    |    }
+    |  }
+    |}
+    |
+  """.stripMargin)))
 with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   override def afterAll() {
@@ -69,9 +79,9 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
     val resp = expectMsgType[HttpResponse](awaitMax)
     resp.status should be(StatusCodes.InternalServerError)
-    resp.headers find (_.name == "inbound") should matchPattern { case Some(h: HttpHeader) if h.value == "go" => }
-    resp.headers find (_.name == "outbound") should matchPattern { case Some(h: HttpHeader) if h.value == "go" => }
-    resp.headers find (_.name == "postoutbound") should matchPattern { case Some(h: HttpHeader) if h.value == "go" => }
+    resp.headers find (_.name == "inbound") should matchPattern { case Some(h: HttpHeader) if h.value == "go" =>}
+    resp.headers find (_.name == "outbound") should matchPattern { case Some(h: HttpHeader) if h.value == "go" =>}
+    resp.headers find (_.name == "postoutbound") should matchPattern { case Some(h: HttpHeader) if h.value == "go" =>}
   }
 
 
@@ -133,25 +143,11 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     processorActor ! ctx
 
     val resp = expectMsgType[Confirmed](awaitMax)
-    target ! DummyACK
-    expectMsgType[Confirmed](awaitMax)
-    target ! DummyACK
+    resp.messagePart shouldBe a[ChunkedResponseStart]
+    val result = resp.messagePart.asInstanceOf[ChunkedResponseStart]
+    result.response.entity.data.toByteString.utf8String should be("DummyConfirmedStart")
 
-    expectMsgType[Confirmed](awaitMax)
-    target ! DummyACK
-
-    expectMsgType[Confirmed](awaitMax)
-    target ! DummyACK
-
-    expectMsgType[Confirmed](awaitMax)
-    target ! DummyACK
-
-    expectMsgType[Confirmed](awaitMax)
-    target ! DummyACK
-
-    expectMsgType[ChunkedMessageEnd](awaitMax)
-
-    val hs = resp.messagePart.asInstanceOf[ChunkedResponseStart].response.headers
+    val hs = result.response.headers
     val pre = hs.find(_.name == "inbound")
     pre should not be None
     pre.get.value shouldBe "go"
@@ -159,7 +155,28 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val post = hs.find(_.name == "outbound")
     post should not be None
     post.get.value shouldBe "go"
+
+    processorActor ! resp.sentAck
+    val resp1 = expectMsgType[Confirmed](awaitMax)
+    processorActor ! resp1.sentAck
+
+    val resp2 = expectMsgType[Confirmed](awaitMax)
+    processorActor ! resp2.sentAck
+
+    val resp3 = expectMsgType[Confirmed](awaitMax)
+    processorActor ! resp3.sentAck
+
+    val resp4 = expectMsgType[Confirmed](awaitMax)
+    processorActor ! resp4.sentAck
+
+    val resp5 = expectMsgType[Confirmed](awaitMax)
+    processorActor ! resp5.sentAck
+
+    expectMsgType[ChunkedMessageEnd](awaitMax)
+
+
   }
+
 
   "PipelineProcessorActor" should "handle exception from Processor correctly" in {
     val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/hello"))
@@ -203,7 +220,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val ctx = RequestContext(request)
     val ex = new RuntimeException("test")
     val result = processor.onRequestError(ctx, ex)
-    result.response should matchPattern { case r: ExceptionalResponse if r.cause.contains(ex) => }
+    result.response should matchPattern { case r: ExceptionalResponse if r.cause.contains(ex) =>}
   }
 
   "Processor" should "handle response exception correctly" in {
@@ -227,6 +244,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
       case r: ExceptionalResponse if r.cause.contains(ex) && r.original.contains(response) =>
     }
   }
+
 }
 
 case object DummyACK
