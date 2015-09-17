@@ -17,7 +17,6 @@
 package org.squbs.unicomplex
 
 import java.lang.management.ManagementFactory
-import java.util.concurrent.TimeUnit
 import javax.management.ObjectName
 
 import akka.actor.ActorSystem
@@ -28,9 +27,9 @@ import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.dummyextensions.DummyExtension
 import spray.util.Utils
+import Timeouts._
 
 import scala.language.postfixOps
-import scala.util.Try
 
 object BadUnicomplexBootSpec {
 
@@ -73,12 +72,11 @@ object BadUnicomplexBootSpec {
 
   val boot = UnicomplexBoot(config)
     .createUsing {
-    (name, config) => ActorSystem(name, config)
-  }
+      (name, config) => ActorSystem(name, config)
+    }
     .scanComponents(classPaths)
-    .initExtensions.start()
-
-
+    .initExtensions.start(startupTimeout)
+  // We know this test will never finish initializing. So don't waste time on timeouts.
 }
 
 class BadUnicomplexBootSpec extends TestKit(BadUnicomplexBootSpec.boot.actorSystem) with ImplicitSender
@@ -86,12 +84,6 @@ with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll
 with AsyncAssertions {
 
   import org.squbs.unicomplex.BadUnicomplexBootSpec._
-
-  implicit val timeout: akka.util.Timeout =
-    Try(System.getProperty("test.timeout").toLong) map {
-      millis =>
-        akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
-    } getOrElse Timeouts.askTimeout
 
   implicit val executionContext = system.dispatcher
 

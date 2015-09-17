@@ -18,7 +18,7 @@ package org.squbs.unicomplex
 
 import java.io.{File, FileInputStream, InputStreamReader, Reader}
 import java.net.URL
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{TimeoutException, TimeUnit}
 import java.util.jar.JarFile
 import java.util.{Timer, TimerTask}
 
@@ -37,6 +37,7 @@ import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 object UnicomplexBoot extends LazyLogging {
@@ -45,7 +46,7 @@ object UnicomplexBoot extends LazyLogging {
   final val extConfigNameKey = "squbs.external-config-files"
   final val actorSystemNameKey = "squbs.actorsystem-name"
 
-  val startupTimeout: Timeout =
+  val defaultStartupTimeout: Timeout =
     Try(System.getProperty("startup.timeout").toLong) map { millis =>
       akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
     } getOrElse (1 minute)
@@ -104,16 +105,17 @@ object UnicomplexBoot extends LazyLogging {
     resolveCubes(jarConfigs, boot.copy(jarNames = jarNames))
   }
 
-  private[unicomplex] def scanResources(resources: Seq[URL])(boot: UnicomplexBoot): UnicomplexBoot = {
-    val jarConfigs = resources map readConfigs collect { case Some(jarCfg) => jarCfg }
-    resolveCubes(jarConfigs, boot)
-  }
+  private[unicomplex] def scanResources(resources: Seq[URL], withClassPath: Boolean = true)(boot: UnicomplexBoot):
+      UnicomplexBoot = {
+    val cpResources: Seq[URL] =
+      if (withClassPath) {
+        val loader = getClass.getClassLoader
+        import scala.collection.JavaConversions._
+        Seq("conf", "json", "properties") flatMap { ext => loader.getResources(s"META-INF/squbs-meta.$ext") }
+      } else Seq.empty
 
-  private[unicomplex] def scanResources(boot: UnicomplexBoot): UnicomplexBoot = {
-    val loader = getClass.getClassLoader
-    import scala.collection.JavaConversions._
-    val resources = Seq("conf", "json", "properties") flatMap { ext => loader.getResources(s"META-INF/squbs-meta.$ext") }
-    scanResources(resources)(boot)
+    val jarConfigs = (cpResources ++ resources) map readConfigs collect { case Some(jarCfg) => jarCfg }
+    resolveCubes(jarConfigs, boot)
   }
 
   private[this] def resolveCubes(jarConfigs: Seq[(String, Config)], boot: UnicomplexBoot) = {
@@ -199,11 +201,11 @@ object UnicomplexBoot extends LazyLogging {
     }
 
     try {
-      val config = ConfigFactory.parseURL(resource)
+      val config = ConfigFactory.parseURL(resource, ConfigParseOptions.defaults().setAllowMissing(false))
       Some((jarName, config))
     } catch {
       case e: Exception =>
-        logger.info(s"${e.getClass.getName} reading configuration from $jarName.\n ${e.getMessage}")
+        logger.warn(s"${e.getClass.getName} reading configuration from $jarName.\n ${e.getMessage}")
         None
     }
   }
@@ -250,7 +252,7 @@ object UnicomplexBoot extends LazyLogging {
 
       var updated = false
 
-      val newAliases = (aliasConflicts map { case (alias, conflicts) =>
+      val newAliases = (aliasConflicts flatMap { case (alias, conflicts) =>
         conflicts.toSeq map { symName =>
           val idx = symName.lastIndexOf('.', symName.length - alias.length - 2)
           if (idx > 0) {
@@ -259,7 +261,7 @@ object UnicomplexBoot extends LazyLogging {
           }
           else (symName, symName)
         }
-      }).flatten.toSeq
+      }).toSeq
 
       if (updated) {
         val updatedList = cubeList map { cube =>
@@ -411,7 +413,7 @@ object UnicomplexBoot extends LazyLogging {
   def configuredListeners(config: Config): Map[String, Config] = {
     import collection.JavaConversions._
     val listeners = config.root.toSeq collect {
-      case (n, v: ConfigObject) if v.toConfig.getOptionalString("type") == Some("squbs.listener") => (n, v.toConfig)
+      case (n, v: ConfigObject) if v.toConfig.getOptionalString("type").contains("squbs.listener") => (n, v.toConfig)
     }
     // Check for duplicates
     val listenerMap = mutable.Map.empty[String, Config]
@@ -517,9 +519,11 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
   def scanComponents(jarNames: Seq[String]): UnicomplexBoot = scan(jarNames)(this)
 
-  def scanResources(resources: Seq[URL]): UnicomplexBoot = UnicomplexBoot.scanResources(resources)(this)
+  def scanResources(withClassPath: Boolean, resources: String*): UnicomplexBoot =
+    UnicomplexBoot.scanResources(resources map (new File(_).toURI.toURL), withClassPath)(this)
 
-  def scanResources(): UnicomplexBoot = UnicomplexBoot.scanResources(this)
+  def scanResources(resources: String*): UnicomplexBoot =
+    UnicomplexBoot.scanResources(resources map (new File(_).toURI.toURL), withClassPath = true)(this)
 
   def initExtensions: UnicomplexBoot = {
 
@@ -545,7 +549,9 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
   def stopJVMOnExit: UnicomplexBoot = copy(stopJVM = true)
 
-  def start(): UnicomplexBoot = synchronized {
+  def start(): UnicomplexBoot = start(defaultStartupTimeout)
+
+  def start(timeout: Timeout): UnicomplexBoot = synchronized {
 
     if (started) throw new IllegalStateException("Unicomplex already started!")
 
@@ -582,7 +588,7 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
     uniActor ! Started
 
     // Start all actors
-    val actors = cubes.map(startComponents(_, listenerAliases)).flatten
+    val actors = cubes.flatMap(startComponents(_, listenerAliases))
 
     // Start the service infrastructure if services are enabled and registered.
     if (startServices) startServiceInfra(this)
@@ -594,9 +600,12 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
     {
       // Tell Unicomplex we're done.
-      implicit val timeout = startupTimeout
+      implicit val awaitTimeout = timeout
       val stateFuture = Unicomplex(actorSystem).uniActor ? Activate
-      Try(Await.result(stateFuture, timeout.duration)) match {
+      Try(Await.result(stateFuture, awaitTimeout.duration)) recoverWith { case _: TimeoutException =>
+        val recoverFuture = Unicomplex(actorSystem).uniActor ? ActivateTimedOut
+        Try(Await.result(recoverFuture, awaitTimeout.duration))
+      } match {
         case Success(Active) => logger.info(s"[$actorSystemName] activated")
         case Success(Failed) => logger.info(s"[$actorSystemName] initialization failed.")
         case e => logger.warn(s"[$actorSystemName] awaiting confirmation, $e.")

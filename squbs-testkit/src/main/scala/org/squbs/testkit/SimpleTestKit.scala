@@ -22,6 +22,8 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import org.squbs.unicomplex.UnicomplexBoot
 
+import scala.language.postfixOps
+
 object SimpleTestKit {
 
   val testConfFile = Option(getClass.getResource("/test.conf")) orElse Option(getClass.getResource("/default-test.conf"))

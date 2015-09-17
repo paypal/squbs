@@ -47,7 +47,7 @@ object SystemStatusTest {
     (name, config) => ActorSystem(name, config)
   }
     .scanComponents(classPaths)
-    .initExtensions.start()
+    .initExtensions.start(startupTimeout)
 
 }
 

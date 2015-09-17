@@ -22,6 +22,9 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.squbs.lifecycle.GracefulStop
 import spray.util.Utils
+import Timeouts._
+
+import scala.language.postfixOps
 
 object MultipleUnicomplexTest {
 
@@ -61,12 +64,13 @@ object MultipleUnicomplexTest {
   val boot = UnicomplexBoot(config)
     .createUsing {(name, config) => ActorSystem(name, config)}
     .scanComponents(classPaths)
-    .initExtensions.start()
+    .initExtensions.start(startupTimeout)
 
   val boot2 = UnicomplexBoot(config2)
     .createUsing {(name, config) => ActorSystem(name, config)}
     .scanComponents(classPaths)
-    .initExtensions.start()
+    .initExtensions.start(startupTimeout)
+  // We know this test will never finish initializing. So don't waste time on timeouts.
 }
 
 class MultipleUnicomplexTest extends TestKit(MultipleUnicomplexTest.boot.actorSystem) with ImplicitSender

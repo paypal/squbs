@@ -19,10 +19,14 @@ package org.squbs.unicomplex
 import akka.util.Timeout
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 object Timeouts {
 
-   implicit val askTimeout = Timeout(30 seconds)
+  implicit val askTimeout = Timeout(30 seconds)
 
-   val awaitMax = 60 seconds
- }
+  val awaitMax = 60 seconds
+
+  // This is used for tests that would keep the startup waiting, and expect a startup timeout anyway. Set it low.
+  val startupTimeout = Timeout(5 seconds)
+}

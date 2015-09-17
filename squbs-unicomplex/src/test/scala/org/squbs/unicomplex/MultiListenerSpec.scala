@@ -73,9 +73,12 @@ object MultiListenerSpecActorSystem {
           ssl-context = default
         }
       """.stripMargin)
-    val boot = UnicomplexBoot(config)
+
+  val jarDir = getClass.getClassLoader.getResource("classpaths").getPath
+
+  val boot = UnicomplexBoot(config)
     		.createUsing { (name, config) => ActorSystem(name, config)}
-  			.scanComponents(Seq(new File("src/test/resources/classpaths/MultiListeners").getAbsolutePath))
+  			.scanComponents(Seq(new File(jarDir + "/MultiListeners").getAbsolutePath))
   			.initExtensions
   			.start()
   	

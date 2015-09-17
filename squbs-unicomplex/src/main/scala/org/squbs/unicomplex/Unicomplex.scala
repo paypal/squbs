@@ -35,6 +35,7 @@ import spray.can.Http
 
 import scala.collection.mutable
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.{Failure, Try}
 
 class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
@@ -94,6 +95,7 @@ private[unicomplex] case class  StartCubeService(webContext: String, listeners: 
 private[unicomplex] case object CheckInitStatus
 private[unicomplex] case object Started
 private[unicomplex] case object Activate
+private[unicomplex] case object ActivateTimedOut
 private[unicomplex] case object ShutdownTimedOut
 
 case class Cube(name: String, fullName: String, version: String, jarPath: String)
@@ -370,6 +372,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     case Extensions(es) => // Extension registration
       extensions = es
+      updateSystemState(checkInitState())
 
     case r: CubeRegistration => // Cube registration requests, normally from bootstrap
       cubes = cubes + (r.cubeSupervisor -> (r, None))
@@ -393,7 +396,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
           serviceListeners = serviceListeners + (name -> Some((serviceRef, sender())))
           if (serviceListeners.size == serviceRegistry.listenerRoutes.size) {
             listenersBound = true
-            updateSystemState(checkInitState)
+            updateSystemState(checkInitState())
           }
           context.unbecome()
           unstashAll()
@@ -403,7 +406,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
           log.error(s"Failed to bind listener $name. Cleaning up. System may not function properly.")
           context.unwatch(serviceRef)
           serviceRef ! PoisonPill
-          updateSystemState(checkInitState)
+          updateSystemState(checkInitState())
           context.unbecome()
           unstashAll()
           
@@ -417,14 +420,19 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     case Activate => // Bootstrap is done. Register for callback when system is active or failed. Remove afterwards
       lifecycleListeners = lifecycleListeners :+ (sender(), Seq(Active, Failed), true)
       activated = true
-      updateSystemState(checkInitState)
+      updateSystemState(checkInitState())
+
+    case ActivateTimedOut =>
+      // Deploy failFastStrategy for checking once activate times out.
+      checkInitState = failFastStrategy _
+      updateSystemState(checkInitState())
+      sender() ! systemState
 
     case ir: InitReports => // Cubes initialized
       updateCubes(ir)
 
     case ReportStatus => // Status report request from admin tooling
-      if (systemState == Active) // Stable state.
-        sender ! StatusReport(systemState, cubes, extensions)
+      if (systemState == Active) sender ! StatusReport(systemState, cubes, extensions)
       else {
         val requester = sender()
         var pendingCubes = cubes collect {
@@ -432,68 +440,80 @@ class Unicomplex extends Actor with Stash with ActorLogging {
           case (actorRef, (_, Some(InitReports(state, _)))) if state != Active => actorRef
         }
 
-        pendingCubes foreach (_ ! CheckInitStatus)
+        if (pendingCubes.isEmpty) sender() ! StatusReport(systemState, cubes, extensions)
+        else {
+          pendingCubes foreach (_ ! CheckInitStatus)
 
-        val expected: Actor.Receive = {
-          case ReportStatus => stash() // Stash concurrent ReportStatus requests, handle everything else.
+          val expected: Actor.Receive = {
+            case ReportStatus => stash() // Stash concurrent ReportStatus requests, handle everything else.
 
-          case (ir: InitReports, true) =>
-            updateCubes(ir)
-            pendingCubes = pendingCubes.filter(_ != sender)
-            if (pendingCubes.isEmpty) {
-              requester ! StatusReport(systemState, cubes, extensions)
-              unstashAll()
-              context.unbecome()
-            }
+            case (ir: InitReports, true) =>
+              updateCubes(ir)
+              pendingCubes = pendingCubes.filter(_ != sender())
+              if (pendingCubes.isEmpty) {
+                requester ! StatusReport(systemState, cubes, extensions)
+                unstashAll()
+                context.unbecome()
+              }
+          }
+          context.become(expected orElse receive, discardOld = false)
         }
-
-        context.become(expected orElse receive, discardOld = false)
       }
 
     case SystemState =>
-      sender ! systemState
+      sender() ! systemState
 
     case r: ObtainLifecycleEvents => // Registration of lifecycle listeners
       lifecycleListeners = lifecycleListeners :+ (sender(), r.states, false)
 
     case LifecycleTimesRequest => // Obtain all timestamps.
-      sender ! LifecycleTimes(systemStart, systemStarted, systemActive, systemStop)
+      sender() ! LifecycleTimes(systemStart, systemStarted, systemActive, systemStop)
   }
 
   def updateCubes(reports: InitReports) {
-    val reg = cubes get sender
+    val reg = cubes get sender()
     reg match {
       case Some((registration, _)) =>
-        cubes = cubes + (sender -> (registration, Some(reports)))
-        updateSystemState(checkInitState)
+        cubes = cubes + (sender() -> (registration, Some(reports)))
+        updateSystemState(checkInitState())
       case _ =>
         log.warning(s"""Received startup report from non-registered cube "${sender().path}".""")
     }
   }
 
-  def checkInitState: LifecycleState = {
+  def cubeStates: Iterable[LifecycleState] = {
     val reportOptions = cubes.values map (_._2)
-    val states: Iterable[LifecycleState] = reportOptions map {
+    reportOptions map {
       case None => Initializing
       case Some(reports) => reports.state
     }
-    if (states exists (_ == Failed)) {
+  }
+  
+  val checkStateFailed: PartialFunction[Iterable[LifecycleState], LifecycleState] = {
+    case states if states exists (_ == Failed) =>
       if (systemState != Failed) log.warning("Some cubes failed to initialize. Marking system state as Failed")
       Failed
-    }
-    else if (serviceListeners.values exists (_ == None)) {
+    case _ if serviceListeners.values exists (_ == None) =>
       if (systemState != Failed) log.warning("Some listeners failed to initialize. Marking system state as Failed")
       Failed
-    }
-    else if (extensions exists (_.exceptions.nonEmpty)) {
+    case _ if extensions exists (_.exceptions.nonEmpty) =>
       if (systemState != Failed) log.warning("Some extensions failed to initialize. Marking the system state as Failed")
       Failed
-    }
-    else if (states exists (_ == Initializing)) Initializing
-    else if (pendingServiceStarts) Initializing
-    else if (!activated) Initializing // Waiting for boot to activate
-    else Active
   }
+
+  val checkStateInitializing: PartialFunction[Iterable[LifecycleState], LifecycleState] = {
+    case states if states exists (_ == Initializing) => Initializing
+    case _ if pendingServiceStarts => Initializing
+    case _ if !activated => Initializing
+  }
+
+  val active = { _: Any => Active }
+
+  def failFastStrategy = checkStateFailed orElse checkStateInitializing applyOrElse (cubeStates, active)
+
+  def lenientStrategy  = checkStateInitializing orElse checkStateFailed applyOrElse (cubeStates, active)
+
+  var checkInitState = lenientStrategy _
 
   def pendingServiceStarts = servicesStarted && !listenersBound
 
@@ -607,7 +627,6 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     case StartCubeService(webContext, listeners, props, name, proxyName, initRequired) =>
 
-
       // Caution: The serviceActor may be the cubeActor in case of no proxy, or the proxy in case there is a proxy.
       val (cubeActor, serviceActor) = try {
         proxyName.fold(pipelineManager.default) {
@@ -684,7 +703,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       }
 
     case CheckInitStatus => // Explicitly requested reports have an attached requested flag as a tuple
-      sender ! (InitReports(cubeState, initMap.toMap), true)
+      sender() ! (InitReports(cubeState, initMap.toMap), true)
 
   }
 }
