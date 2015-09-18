@@ -99,7 +99,7 @@ Following is a sample cube declaration META-INF/squbs-meta.conf declaring a well
 
 ```
 cube-name = org.squbs.bottlecube
-cube-version = "0.0.2-SNAPSHOT"
+cube-version = "0.0.2"
 squbs-actors = [
   {
     class-name = org.squbs.bottlecube.LyricsDispatcher
@@ -155,7 +155,7 @@ Service metadata is declared in META-INF/squbs-meta.conf as shown in the followi
 
 ```
 cube-name = org.squbs.bottlesvc
-cube-version = "0.0.2-SNAPSHOT"
+cube-version = "0.0.2"
 squbs-services = [
   {
     class-name = org.squbs.bottlesvc.BottleSvc
