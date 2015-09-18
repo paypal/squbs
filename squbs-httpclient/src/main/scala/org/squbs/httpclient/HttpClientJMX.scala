@@ -102,7 +102,7 @@ case class HttpClientBean(system: ActorSystem) extends HttpClientMXBean {
   private def mapToHttpClientInfo(httpClient: HttpClient) = {
     val name = httpClient.name
     val env  = httpClient.env.lowercaseName
-    val endpoint = httpClient.endpoint.uri
+    val endpoint = httpClient.endpoint.uri.toString()
     val status = httpClient.status.toString
     val configuration = httpClient.endpoint.config
     val pipelines = configuration.pipeline.getOrElse(PipelineSetting.default).pipelineConfig

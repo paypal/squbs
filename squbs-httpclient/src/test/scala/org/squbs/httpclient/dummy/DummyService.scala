@@ -87,7 +87,7 @@ object DummyService {
 
   val (dummyServiceIpAddress, dummyServicePort) = temporaryServerHostnameAndPort()
 
-  val dummyServiceEndpoint = s"http://$dummyServiceIpAddress:$dummyServicePort"
+  val dummyServiceEndpoint = Uri(s"http://$dummyServiceIpAddress:$dummyServicePort")
 }
 
 object DummyServiceMain extends App with DummyService {

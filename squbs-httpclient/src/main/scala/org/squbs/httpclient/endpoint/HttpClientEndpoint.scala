@@ -18,13 +18,14 @@ package org.squbs.httpclient.endpoint
 
 import akka.actor.{ActorSystem, ExtensionId, Extension, ExtendedActorSystem}
 import org.squbs.pipeline.{PipelineManager, PipelineSetting}
+import spray.http.Uri
 
 import scala.collection.mutable.ListBuffer
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.Configuration
 import com.typesafe.scalalogging.LazyLogging
 
-case class Endpoint(uri: String, config: Configuration = Configuration())
+case class Endpoint(uri: Uri, config: Configuration = Configuration())
 
 object Endpoint {
 

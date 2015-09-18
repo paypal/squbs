@@ -35,7 +35,7 @@ case class PipelineManager(configs: Map[String, RawPipelineSetting], pipelines: 
     get(name) match {
       case Some(Left(v)) => v
       case Some(Right(v)) => v.factory.create(v.pipelineConfig, v.setting)
-      case None if (name.equals("default-proxy")) => None
+      case None if name.equals("default-proxy") => None
       case None => throw new IllegalArgumentException(s"No registered squbs.proxy found with name: $name")
     }
   }

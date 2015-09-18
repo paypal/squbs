@@ -20,6 +20,7 @@ import akka.actor.Status.Failure
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.{ImplicitSender, TestKit}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.squbs.httpclient.Configuration._
 import org.squbs.httpclient.HttpClientActorMessage.{MarkDownSuccess, MarkUpSuccess}
 import org.squbs.httpclient.HttpClientManagerMessage.{Delete, Get, _}
 import org.squbs.httpclient.dummy.DummyService._
@@ -30,11 +31,10 @@ import org.squbs.httpclient.pipeline.HttpClientUnmarshal
 import org.squbs.pipeline.PipelineSetting
 import spray.http.{HttpResponse, StatusCodes}
 import spray.httpx.SprayJsonSupport
-import spray.json.{RootJsonFormat, DefaultJsonProtocol}
+import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 import scala.collection.concurrent.TrieMap
 import scala.util.Success
-import Configuration._
 
 class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")) with FlatSpecLike
     with HttpClientTestKit with Matchers with ImplicitSender with BeforeAndAfterAll with DummyService{
@@ -50,6 +50,17 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
   override def afterAll() {
     clearHttpClient()
     shutdownActorSystem()
+  }
+
+  "Path end check" should "return correct results" in {
+    import spray.http.Uri.Path
+    import HttpClientManager._
+    Path("/foo/bar/").endsWithSlash shouldBe true
+    Path("/foo/bar").endsWithSlash shouldBe false
+    Path("foo/bar").endsWithSlash shouldBe false
+    Path("foo/").endsWithSlash shouldBe true
+    Path("/").endsWithSlash shouldBe true
+    Path("").endsWithSlash shouldBe false
   }
 
   "httpClientMap" should "be empty before creating any http clients" in {
