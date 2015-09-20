@@ -14,27 +14,19 @@
  *  limitations under the License.
  */
 
-package org.squbs.actormonitor
+package org.squbs.pipeline
 
-import akka.actor._
-import com.typesafe.scalalogging.LazyLogging
-import org.squbs.lifecycle.ExtensionLifecycle
+import akka.util.Timeout
+import org.scalatest.concurrent.PatienceConfiguration
 
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
-private class ActorMonitorInit extends ExtensionLifecycle with LazyLogging {
+object Timeouts {
 
-  override def postInit() {
-    logger.info(s"postInit ${this.getClass}")
+  implicit val askTimeout = Timeout(30 seconds)
 
-    import boot._
-    implicit val system = actorSystem
+  val awaitMax = 60 seconds
 
-    val monitorConfig = config.getConfig("squbs-actormonitor")
-
-    import monitorConfig._
-    system.actorOf(Props(classOf[ActorMonitor],
-      ActorMonitorConfig(getInt("maxActorCount"), getInt("maxChildrenDisplay"))), "squbs-actormonitor")
-  }
+  val waitMax = PatienceConfiguration.Timeout(awaitMax)
 }
-
-

@@ -23,6 +23,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import spray.http.HttpHeaders.RawHeader
 import spray.http.Uri.Path
 import spray.http._
+import Timeouts._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,7 +36,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
   }
 
 
-  "PipelineProcessor" should "processs the piepline correctly" in {
+  "PipelineProcessor" should "process the pipeline correctly" in {
     val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/hello"))
     val ctx = RequestContext(request)
     val target = TestActorRef[DummyTarget]
@@ -45,7 +46,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
     processorActor ! ctx
 
-    val resp = expectMsgType[HttpResponse]
+    val resp = expectMsgType[HttpResponse](awaitMax)
     val hs = resp.headers
     val pre = hs.find(_.name == "inbound")
     pre should not be None
@@ -66,7 +67,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
     processorActor ! ctx
 
-    val resp = expectMsgType[HttpResponse]
+    val resp = expectMsgType[HttpResponse](awaitMax)
     resp.status should be(StatusCodes.InternalServerError)
     resp.headers find (_.name == "inbound") should matchPattern { case Some(h: HttpHeader) if h.value == "go" => }
     resp.headers find (_.name == "outbound") should matchPattern { case Some(h: HttpHeader) if h.value == "go" => }
@@ -81,7 +82,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], Actor.noSender, self, processor))
     processorActor ! ctx
 
-    val resp = expectMsgType[HttpResponse]
+    val resp = expectMsgType[HttpResponse](awaitMax)
     resp should be(ExceptionalResponse.defaultErrorResponse.copy(headers = RawHeader("inbound", "go") :: RawHeader("postoutbound", "go") :: Nil))
   }
 
@@ -92,7 +93,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     object Unknown {}
     processorActor ! Unknown
 
-    expectMsg(Unknown)
+    expectMsg(awaitMax, Unknown)
   }
 
   "PipelineProcessorActor" should "handle the chunk response correctly" in {
@@ -105,12 +106,12 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     processorActor ! ctx
 
     val resp = expectMsgType[ChunkedResponseStart]
-    expectMsgType[MessageChunk]
-    expectMsgType[MessageChunk]
-    expectMsgType[MessageChunk]
-    expectMsgType[MessageChunk]
-    expectMsgType[MessageChunk]
-    expectMsgType[ChunkedMessageEnd]
+    expectMsgType[MessageChunk](awaitMax)
+    expectMsgType[MessageChunk](awaitMax)
+    expectMsgType[MessageChunk](awaitMax)
+    expectMsgType[MessageChunk](awaitMax)
+    expectMsgType[MessageChunk](awaitMax)
+    expectMsgType[ChunkedMessageEnd](awaitMax)
 
     val hs = resp.response.headers
     val pre = hs.find(_.name == "inbound")
@@ -131,24 +132,24 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
     processorActor ! ctx
 
-    val resp = expectMsgType[Confirmed]
+    val resp = expectMsgType[Confirmed](awaitMax)
     target ! DummyACK
-    expectMsgType[Confirmed]
-    target ! DummyACK
-
-    expectMsgType[Confirmed]
+    expectMsgType[Confirmed](awaitMax)
     target ! DummyACK
 
-    expectMsgType[Confirmed]
+    expectMsgType[Confirmed](awaitMax)
     target ! DummyACK
 
-    expectMsgType[Confirmed]
+    expectMsgType[Confirmed](awaitMax)
     target ! DummyACK
 
-    expectMsgType[Confirmed]
+    expectMsgType[Confirmed](awaitMax)
     target ! DummyACK
 
-    expectMsgType[ChunkedMessageEnd]
+    expectMsgType[Confirmed](awaitMax)
+    target ! DummyACK
+
+    expectMsgType[ChunkedMessageEnd](awaitMax)
 
     val hs = resp.messagePart.asInstanceOf[ChunkedResponseStart].response.headers
     val pre = hs.find(_.name == "inbound")
@@ -172,7 +173,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
       val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
       processorActor ! ctx
 
-      val res = expectMsgType[HttpResponse]
+      val res = expectMsgType[HttpResponse](awaitMax)
       res.status should be(StatusCodes.InternalServerError)
     })
 
@@ -190,7 +191,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
       val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
       processorActor ! ctx
 
-      val res = expectMsgType[HttpResponse]
+      val res = expectMsgType[HttpResponse](awaitMax)
       res.status should be(StatusCodes.InternalServerError)
     })
 

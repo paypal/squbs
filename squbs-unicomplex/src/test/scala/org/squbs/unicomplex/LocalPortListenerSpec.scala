@@ -21,6 +21,7 @@ import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
+import org.squbs.unicomplex.Timeouts._
 import spray.client.pipelining._
 import spray.routing.{Directives, Route}
 import spray.util.Utils
@@ -90,21 +91,19 @@ class LocalPortListenerSpec extends TestKit(LocalPortListenerSpecActorSystem.boo
     with FlatSpecLike with BeforeAndAfterAll with Matchers {
 
   import system.dispatcher
-
-  import scala.concurrent.duration._
   
   val (port1, port2, port3) = LocalPortListenerSpecActorSystem.getPort
 
   it should "patch local port well on local-port-header = true" in {
     val pipeline = sendReceive
-    Await.result(pipeline(Get(s"http://127.0.0.1:$port1/localport")), 1 second).entity.asString.toInt should be (port1)
-//    Await.result(pipeline(Get(s"http://127.0.0.1:$port2/localport")), 1 second).status.intValue should be (200)
+    Await.result(pipeline(Get(s"http://127.0.0.1:$port1/localport")), awaitMax).entity.asString.toInt should be (port1)
+//    Await.result(pipeline(Get(s"http://127.0.0.1:$port2/localport")), awaitMax).status.intValue should be (200)
   }
 
   it should "not patch local port header if local-port-header is false or absent" in {
     val pipeline = sendReceive
-    Await.result(pipeline(Get(s"http://127.0.0.1:$port2/localport")), 1 second).entity.asString.toInt should be (0)
-    Await.result(pipeline(Get(s"http://127.0.0.1:$port3/localport")), 1 second).entity.asString.toInt should be (0)
+    Await.result(pipeline(Get(s"http://127.0.0.1:$port2/localport")), awaitMax).entity.asString.toInt should be (0)
+    Await.result(pipeline(Get(s"http://127.0.0.1:$port3/localport")), awaitMax).entity.asString.toInt should be (0)
   }
 
   override protected def afterAll(): Unit = {

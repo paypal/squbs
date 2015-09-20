@@ -23,7 +23,7 @@ import spray.http._
 
 class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) with FlatSpecLike with Matchers with BeforeAndAfterAll {
 
-	override def afterAll {
+	override def afterAll() {
 		system.shutdown()
 	}
 
@@ -50,14 +50,14 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
 
 	"RequestContext" should "parse and wrap the request correctly" in {
 		val req = HttpRequest()
-		val ctx = RequestContext(req, false, attributes = Map("aaa" -> "dummy", "ccc" -> null))
+		val ctx = RequestContext(req, isChunkRequest = false, attributes = Map("aaa" -> "dummy", "ccc" -> null))
 		ctx.attribute[String]("aaa") shouldBe Some("dummy")
 		ctx.attribute[Int]("bbb") shouldBe None
 		ctx.attribute[String]("ccc") shouldBe None
 
 		ctx.payload shouldBe req
 
-		val ctx1 = RequestContext(req, true)
+		val ctx1 = RequestContext(req, isChunkRequest = true)
 		ctx1.payload shouldBe ChunkedRequestStart(req)
 	}
 

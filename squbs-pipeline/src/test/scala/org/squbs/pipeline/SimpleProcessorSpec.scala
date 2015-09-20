@@ -16,10 +16,11 @@
 
 package org.squbs.pipeline
 
-import akka.actor.{Actor, ActorSystem, ActorContext}
+import akka.actor.{Actor, ActorContext, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import org.scalatest.concurrent.AsyncAssertions.Waiter
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.squbs.pipeline.Timeouts._
 import spray.http.{HttpRequest, HttpResponse}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -48,7 +49,7 @@ class SimpleProcessorSpec extends TestKit(ActorSystem("SimpleProcessorSpec")) wi
         }
         w.dismiss()
     }
-    w.await()
+    w.await(waitMax)
 
     val p2 = SimpleProcessor(SimplePipelineConfig(Seq(new Inbound1, new Inbound2), Seq.empty))
     p2.inbound(ctx)(execCtx, nullContext).onComplete {
@@ -60,7 +61,7 @@ class SimpleProcessorSpec extends TestKit(ActorSystem("SimpleProcessorSpec")) wi
         }
         w.dismiss()
     }
-    w.await()
+    w.await(waitMax)
   }
 }
 
