@@ -42,7 +42,7 @@ follows:
 
 ```
 cube-name = org.squbs.bottlecube
-cube-version = "0.0.2-SNAPSHOT"
+cube-version = "0.0.2"
 squbs-actors = [
   {
     class-name = org.squbs.bottlecube.LyricsDispatcher
