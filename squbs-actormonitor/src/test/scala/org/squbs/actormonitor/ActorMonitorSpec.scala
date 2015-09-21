@@ -32,6 +32,8 @@ import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
 import spray.util.Utils
 
 import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.Try
 
 
@@ -105,7 +107,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
     "0.0) Register all necessary base actors and have an up-to-date count" in {
       awaitAssert({
-        import ActorMonitorSpec._
+        import ActorMonitorSpec.{getActorMonitorBean, getActorMonitorConfigBean}
         getActorMonitorBean("system", "Actor") should be (Some("Actor[akka://ActorMonitorSpec/system]"))
         getActorMonitorBean("user", "Actor") should be (Some("Actor[akka://ActorMonitorSpec/user]"))
         getActorMonitorBean("system/deadLetterListener", "Actor")
@@ -114,6 +116,8 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
           .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/user/unicomplex#")
         getActorMonitorBean("user/ActorMonitorCube", "Actor")
           .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/user/ActorMonitorCube#")
+        getActorMonitorBean("user/squbs-actormonitor", "Actor")
+          .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/user/squbs-actormonitor#")
         /*
         Note: The following actor beans are just checked in the other tests below, no need to repeat:
         1. user/TestCube
@@ -125,8 +129,12 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
          */
 
         val cfgBeanCount = getActorMonitorConfigBean("Count").getOrElse(-100)
-        cfgBeanCount should be >= 10
-      }, max = awaitMax)
+        if (cfgBeanCount < 11) {
+          system.actorSelection("/user/squbs-actormonitor") ! "refresh"
+          logger.warn("Did not register all relevant actors just yet. Refreshing...")
+        }
+        cfgBeanCount should be >= 11
+      }, max = awaitMax, interval = 2 seconds)
     }
 
     "1.0) getMailBoxSize of unicomplex" in {

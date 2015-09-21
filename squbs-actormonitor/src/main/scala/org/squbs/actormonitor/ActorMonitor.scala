@@ -32,7 +32,7 @@ private[actormonitor] class ActorMonitor(_monitorConfig: ActorMonitorConfig) ext
   val monitorConfig = _monitorConfig
 
   register(new ActorMonitorConfigBean(monitorConfig, self, context), prefix + configBean )
-  context.actorSelection(s"/*") ! Identify(monitorConfig)
+  context.actorSelection("/*") ! Identify(monitorConfig)
  
   override def postStop() {
     unregister(prefix + configBean)
@@ -42,7 +42,7 @@ private[actormonitor] class ActorMonitor(_monitorConfig: ActorMonitorConfig) ext
   def receive = {
     case "refresh" =>
       totalBeans foreach unregister
-      context.actorSelection(s"/*") ! Identify(monitorConfig)
+      context.actorSelection("/*") ! Identify(monitorConfig)
     case ActorIdentity(monitorConfig: ActorMonitorConfig , Some(actor))=>
       implicit val config = monitorConfig
       process(actor)

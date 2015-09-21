@@ -20,6 +20,7 @@ import akka.actor.{ActorContext, ActorRefFactory, ActorSystem}
 import akka.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{FlatSpecLike, Matchers}
+import Timeouts._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
@@ -108,13 +109,14 @@ class PipelineManagerSpec extends TestKit(ActorSystem("PipelineManagerSpec", Con
 
     manager.getProcessor("proxy1") should not be None
     manager.getProcessor("proxy2") should be (None)
-    Thread.sleep(500)
-    manager.getProcessor("proxy1") should not be None
-    manager.getProcessor("aaa") should not be None
-    manager.getProcessor("bbb") should not be None
-    manager.getProcessor("proxy2") should be (None)
-    manager.getProcessor("ccc") should be (None)
-    manager.getProcessor("ddd") should be (None)
+    awaitAssert({
+      manager.getProcessor("proxy1") should not be None
+      manager.getProcessor("aaa") should not be None
+      manager.getProcessor("bbb") should not be None
+      manager.getProcessor("proxy2") should be(None)
+      manager.getProcessor("ccc") should be(None)
+      manager.getProcessor("ddd") should be(None)
+    }, awaitMax)
 
     import org.squbs.pipeline.Tracking._
 
@@ -145,12 +147,13 @@ class PipelineManagerSpec extends TestKit(ActorSystem("PipelineManagerSpec", Con
     pipe.get.config.get.respPipe.size should be (2)
 
     manager.getPipelineSetting("pipe2") should not be None
-    Thread.sleep(500)
-    manager.getPipelineSetting("pipe1") should not be None
-    manager.getPipelineSetting("111") should not be None
-    manager.getPipelineSetting("222") should not be None
-    manager.getPipelineSetting("333") should not be None
-    manager.getPipelineSetting("444") should not be None
+    awaitAssert({
+      manager.getPipelineSetting("pipe1") should not be None
+      manager.getPipelineSetting("111") should not be None
+      manager.getPipelineSetting("222") should not be None
+      manager.getPipelineSetting("333") should not be None
+      manager.getPipelineSetting("444") should not be None
+    }, awaitMax)
 
 
     the[ClassNotFoundException] thrownBy {
