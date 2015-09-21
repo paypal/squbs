@@ -25,7 +25,11 @@ import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.Configuration
 import com.typesafe.scalalogging.LazyLogging
 
-case class Endpoint(uri: Uri, config: Configuration = Configuration())
+case class Endpoint(uri: Uri, config: Configuration = Configuration()){
+    val host = uri.authority.host.toString
+    def port = if (uri.effectivePort == 0) 80 else uri.effectivePort
+    val isSecure = uri.scheme.toLowerCase.equals("https")
+}
 
 object Endpoint {
 

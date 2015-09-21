@@ -25,8 +25,10 @@ import com.typesafe.scalalogging.LazyLogging
 import org.squbs.httpclient._
 import org.squbs.httpclient.endpoint.Endpoint
 import org.squbs.httpclient.pipeline.impl.RequestUpdateHeadersHandler
-import org.squbs.pipeline.PipelineSetting
+import org.squbs.pipeline.PipelineProcessorActor._
+import org.squbs.pipeline.{RequestContext, PipelineProcessorActor, Processor, PipelineSetting}
 import spray.can.Http
+import spray.client.pipelining._
 import spray.http.{HttpRequest, HttpResponse}
 import spray.httpx.unmarshalling._
 import spray.httpx.{PipelineException, UnsuccessfulResponseException}
@@ -67,11 +69,7 @@ trait PipelineManager extends LazyLogging {
     implicit val myClientEngineProvider = ClientSSLEngineProvider { engine =>
       engine
     }
-    import client.endpoint.uri
-    val host = uri.authority.host.toString
-    val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
-    val isSecure = uri.scheme.toLowerCase.equals("https")
-    val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
+
     import client.endpoint.config.settings.hostSettings.connectionSettings
     val clientConnectionSettings = reqSettings match {
       case Configuration.defaultRequestSettings =>
@@ -81,7 +79,8 @@ trait PipelineManager extends LazyLogging {
         connectionSettings.copy(requestTimeout = reqSettings.timeout.duration)
     }
     val hostSettings = client.endpoint.config.settings.hostSettings.copy(connectionSettings = clientConnectionSettings)
-    defaultHostConnectorSetup.copy(
+    import client.endpoint._
+    Http.HostConnectorSetup(host, port, isSecure).copy(
       settings = Some(hostSettings), connectionType = client.endpoint.config.settings.connectionType)
   }
 
@@ -102,13 +101,20 @@ trait PipelineManager extends LazyLogging {
 
     val processor = pipelineSetting.factory.create(updatedPipeConfig, pipelineSetting.setting)
 
-    val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.name, client.endpoint, processor, pipeline))
+
     Try {
       client.status match {
         case Status.DOWN =>
           throw HttpClientMarkDownException(client.name, client.env)
         case _ =>
-          r: HttpRequest => (pipelineActor ? r).mapTo[HttpResponse]
+          req: HttpRequest =>
+            processor match {
+              case None => pipeline(req)
+              case Some(proc) =>
+                val pipelineTarget : PipelineTarget = (req, caller) => pipeline(req.asInstanceOf[HttpRequest]) pipeTo caller
+                val pipeProxy = system.actorOf(Props(classOf[PipelineProcessorActor], pipelineTarget, proc))
+                (pipeProxy ? (RequestContext(req) +> ("HttpClient.name" -> client.name, "HttpClient.Endpoint" -> client.endpoint))).mapTo[HttpResponse]
+            }
       }
     }
   }

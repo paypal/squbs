@@ -20,6 +20,8 @@ import akka.actor.{Actor, ActorContext, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.AsyncAssertions.Waiter
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
+import org.scalatest.time.{Span, Millis}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.pipeline.Timeouts._
 import spray.http.{HttpRequest, HttpResponse}
@@ -87,6 +89,7 @@ class SimpleProcessorSpec extends TestKit(ActorSystem("SimpleProcessorSpec")) wi
   }
 
 }
+
 
 class Inbound1 extends Handler {
   override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext) =
