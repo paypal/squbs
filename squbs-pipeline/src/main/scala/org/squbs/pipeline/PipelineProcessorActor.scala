@@ -17,38 +17,49 @@
 package org.squbs.pipeline
 
 import akka.actor._
+import org.squbs.pipeline.PipelineProcessorActor.PipelineTarget
 import spray.can.Http.RegisterChunkHandler
 import spray.http._
 
 import scala.util.{Failure, Success}
 
+object PipelineProcessorActor {
+  type PipelineTarget = (HttpRequestPart, ActorRef) => Unit
+
+  implicit def toTarget(recevier: ActorRef): PipelineTarget = (req, sender) => {
+    recevier.tell(req, sender)
+  }
+}
+
 //TODO use FSM ??
-class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Processor) extends Actor with ActorLogging with Stash {
+class PipelineProcessorActor(target: PipelineTarget, processor: Processor) extends Actor with ActorLogging with Stash {
 
   import context.dispatcher
   import processor._
 
   //common receiver for all cases
-  def onPostProcess: Receive = {
-    case PostProcess(ctx) => postProcess(ctx)
+  def onPostProcess(client: ActorRef): Receive = {
+    case PostProcess(ctx) => postProcess(ctx, client)
     case other => client forward other // unknown message
   }
 
-  override def receive = onRequest orElse onPostProcess
+  override def receive = {
+    //Only accept RequestContext
+    case ctx: RequestContext =>
+      val client = sender()
+      context.become(onPostProcess(client)) // ready to handle exception or postProcess
+      inboundForRequest(ctx, client)
 
-  //1st state
-  def onRequest: Receive = {
-    case ctx: RequestContext => inboundForRequest(ctx)
-
+    case other => sender ! HttpResponse(status = StatusCodes.InternalServerError, entity = "Pipeline Error!")
   }
 
-  private def inboundForRequest(ctx: RequestContext) = {
+  private def inboundForRequest(ctx: RequestContext, client: ActorRef) = {
     var newCtx = ctx
     try {
       newCtx = preInbound(ctx)
       newCtx.response match {
-        case nr: NormalResponse => postProcess(newCtx) //TODO need go thru outbound??
-        case er: ExceptionalResponse => postProcess(newCtx)
+        case nr: NormalResponse => postProcess(newCtx, client) //TODO need go thru outbound??
+        case er: ExceptionalResponse => postProcess(newCtx, client)
         case _ =>
           inbound(newCtx) onComplete {
             case Success(result) =>
@@ -56,8 +67,8 @@ class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Proc
                 if (result.responseReady) self ! PostProcess(result)
                 else {
                   val postResult = postInbound(result)
-                  context.become(onResponse(postResult) orElse onPostProcess)
-                  target ! postResult.payload
+                  context.become(onResponse(postResult, client) orElse onPostProcess(client))
+                  target(postResult.payload, self)
                 }
               } catch {
                 case t: Throwable =>
@@ -100,15 +111,15 @@ class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Proc
   }
 
   // ready to serve response from proxied actor/route
-  def onResponse(reqCtx: RequestContext): Receive = {
+  def onResponse(reqCtx: RequestContext, client: ActorRef): Receive = {
 
     case resp: HttpResponse =>
       outboundForResponse(reqCtx.copy(response = NormalResponse(resp)), ctx => PostProcess(ctx))
 
     case ReadyToChunk(ctx) =>
-      val newCtx = postProcess(ctx)
+      val newCtx = postProcess(ctx, client)
       unstashAll()
-      context.become(onChunk(newCtx) orElse onPostProcess)
+      context.become(onChunk(newCtx, client) orElse onPostProcess(client))
 
     case respStart: ChunkedResponseStart =>
       outboundForResponse(reqCtx.copy(response = NormalResponse(respStart)), ctx => ReadyToChunk(ctx))
@@ -137,22 +148,22 @@ class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Proc
   }
 
   //usually chunks will not go to postProcess but go to finalOutput directly.
-  def onChunk(reqCtx: RequestContext): Receive = {
+  def onChunk(reqCtx: RequestContext, client: ActorRef): Receive = {
 
     case chunk: MessageChunk =>
       processChunk(reqCtx) {
-        finalOutput(reqCtx.copy(response = NormalResponse(processResponseChunk(reqCtx, chunk))))
+        finalOutput(reqCtx.copy(response = NormalResponse(processResponseChunk(reqCtx, chunk))), client)
       }
 
     case chunkEnd: ChunkedMessageEnd =>
       processChunk(reqCtx) {
-        finalOutput(reqCtx.copy(response = NormalResponse(processResponseChunkEnd(reqCtx, chunkEnd))))
+        finalOutput(reqCtx.copy(response = NormalResponse(processResponseChunkEnd(reqCtx, chunkEnd))), client)
       }
 
     case data@Confirmed(mc@(_: MessageChunk), ack) =>
       processChunk(reqCtx) {
         val newChunk = processResponseChunk(reqCtx, mc)
-        finalOutput(reqCtx.copy(response = NormalResponse(Confirmed(newChunk, ack), sender())))
+        finalOutput(reqCtx.copy(response = NormalResponse(Confirmed(newChunk, ack), sender())), client)
       }
     case AckInfo(rawAck, receiver) =>
       processChunk(reqCtx) {
@@ -160,7 +171,7 @@ class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Proc
       }
   }
 
-  private def postProcess(ctx: RequestContext): RequestContext = {
+  private def postProcess(ctx: RequestContext, client: ActorRef): RequestContext = {
     val newCtx: RequestContext = try {
       postOutbound(ctx)
     } catch {
@@ -168,11 +179,11 @@ class PipelineProcessorActor(target: ActorRef, client: ActorRef, processor: Proc
         log.error(t, "Error in processing postProcess")
         onResponseError(ctx, t)
     }
-    finalOutput(newCtx)
+    finalOutput(newCtx, client)
     newCtx
   }
 
-  private def finalOutput(ctx: RequestContext) = {
+  private def finalOutput(ctx: RequestContext, client: ActorRef) = {
 
     ctx.response match {
       case r: NormalResponse =>

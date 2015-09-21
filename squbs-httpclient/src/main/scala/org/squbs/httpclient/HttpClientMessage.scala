@@ -18,6 +18,8 @@ package org.squbs.httpclient
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
 import org.squbs.pipeline.PipelineSetting
+import spray.http.{HttpRequest, Uri}
+import spray.httpx.RequestBuilding
 import spray.httpx.marshalling.Marshaller
 
 object HttpClientManagerMessage {
@@ -94,33 +96,47 @@ object HttpClientActorMessage {
 
   case object CloseSuccess
 
-  /**
-   * Success => HttpResponse
-   * Failure => Throwable
-   * @param uri
-   */
-  case class Get(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+  sealed trait HttpClientMessage {
+    def requestBuilder : Uri => HttpRequest
+    def requestSettings : RequestSettings
+    def uri : String
+  }
 
   /**
    * Success => HttpResponse
    * Failure => Throwable
    * @param uri
    */
-  case class Options(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+  case class Get(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage {
+    val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Get(_)
+  }
 
   /**
    * Success => HttpResponse
    * Failure => Throwable
    * @param uri
    */
-  case class Head(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+  case class Options(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage {
+    val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Options(_)
+  }
 
   /**
    * Success => HttpResponse
    * Failure => Throwable
    * @param uri
    */
-  case class Delete(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+  case class Head(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage {
+    val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Head(_)
+  }
+
+  /**
+   * Success => HttpResponse
+   * Failure => Throwable
+   * @param uri
+   */
+  case class Delete(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage{
+    val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Delete(_)
+  }
 
 
   /**
@@ -133,7 +149,9 @@ object HttpClientActorMessage {
    */
   case class Post[T](uri: String, content: Option[T],
                      marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
-                     reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+                     requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage{
+    val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Post(_, content)(marshaller)
+  }
 
   /**
    * Success => HttpResponse
@@ -145,5 +163,7 @@ object HttpClientActorMessage {
    */
   case class Put[T](uri: String, content: Option[T],
                     marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
-                    reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+                    requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage {
+    val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Put(_, content)(marshaller)
+  }
 }

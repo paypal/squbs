@@ -38,7 +38,7 @@ class CubeProxyActor(processor: Processor, target: ActorRef) extends Actor with 
 
   def handleRequest(requestCtx: RequestContext, responder: ActorRef) {
 
-    val facade = context.actorOf(Props(classOf[PipelineProcessorActor], target, responder, processor))
+    val facade = context.actorOf(Props(classOf[PipelineProcessorActor], PipelineProcessorActor.toTarget(target), processor))
     facade tell(requestCtx, responder)
 
   }
