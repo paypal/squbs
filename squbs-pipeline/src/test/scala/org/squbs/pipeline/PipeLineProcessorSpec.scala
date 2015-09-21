@@ -27,6 +27,7 @@ import Timeouts._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
+import PipelineProcessorActor._
 
 class PipeLineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys", ConfigFactory.parseString(
   """
@@ -49,11 +50,11 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
   "PipelineProcessor" should "process the pipeline correctly" in {
     val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/hello"))
     val ctx = RequestContext(request)
-    val target = TestActorRef[DummyTarget]
+    val target : PipelineTarget = TestActorRef[DummyTarget]
 
 
     val processor = DummyProcessorFactory.create(None).get
-    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
+    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, processor))
     processorActor ! ctx
 
     val resp = expectMsgType[HttpResponse](awaitMax)
@@ -71,10 +72,10 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
   "PipelineProcessor" should "handle the exception from remote correctly" in {
     val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/error"))
     val ctx = RequestContext(request)
-    val target = TestActorRef[DummyTarget]
+    val target : PipelineTarget = TestActorRef[DummyTarget]
 
     val processor = DummyProcessorFactory.create(None).get
-    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
+    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, processor))
     processorActor ! ctx
 
     val resp = expectMsgType[HttpResponse](awaitMax)
@@ -89,7 +90,9 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/error"))
     val ctx = RequestContext(request, isChunkRequest = false)
     val processor = DummyProcessorFactory.create(None).get
-    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], Actor.noSender, self, processor))
+
+    val target : PipelineTarget = Actor.noSender
+    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, processor))
     processorActor ! ctx
 
     val resp = expectMsgType[HttpResponse](awaitMax)
@@ -98,21 +101,27 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   "PipelineProcessor" should "forward unknown msg to client" in {
     val processor = DummyProcessorFactory.create(None).get
-    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], Actor.noSender, self, processor))
+    val target : PipelineTarget = Actor.noSender
+    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, processor))
 
     object Unknown {}
     processorActor ! Unknown
 
-    expectMsg(awaitMax, Unknown)
+    expectMsgPF(){
+      case HttpResponse(status, entity, _, _) =>
+        status should be(StatusCodes.InternalServerError)
+        entity.data.toByteString.utf8String should be("Pipeline Error!")
+
+    }
   }
 
   "PipelineProcessorActor" should "handle the chunk response correctly" in {
     val request = HttpRequest(HttpMethods.POST, Uri("http://localhost:9900/hello"))
     val ctx = RequestContext(request)
-    val target = TestActorRef[DummyTarget]
+    val target : PipelineTarget = TestActorRef[DummyTarget]
 
     val processor = DummyProcessorFactory.create(None).get
-    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
+    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, processor))
     processorActor ! ctx
 
     val resp = expectMsgType[ChunkedResponseStart]
@@ -137,9 +146,10 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val request = HttpRequest(HttpMethods.PUT, Uri("http://localhost:9900/hello"))
     val ctx = RequestContext(request)
     val target = TestActorRef[DummyTarget]
+    val pipelineTarget : PipelineTarget = target
 
     val processor = DummyProcessorFactory.create(None).get
-    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
+    val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], pipelineTarget, processor))
     processorActor ! ctx
 
     val resp = expectMsgType[Confirmed](awaitMax)
@@ -181,13 +191,13 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
   "PipelineProcessorActor" should "handle exception from Processor correctly" in {
     val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/hello"))
     val ctx = RequestContext(request)
-    val target = TestActorRef[DummyTarget]
+    val target : PipelineTarget = TestActorRef[DummyTarget]
 
     val phases = List("preInbound", "inbound", "postInbound", "preOutbound", "outbound")
     phases.foreach(p => {
       print("check:" + p)
       val processor = new ExceptionProcessor(List(p))
-      val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
+      val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, processor))
       processorActor ! ctx
 
       val res = expectMsgType[HttpResponse](awaitMax)
@@ -199,13 +209,13 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
   "PipelineProcessorActor" should "handle exception from Processor for chunk response correctly" in {
     val request = HttpRequest(HttpMethods.PUT, Uri("http://localhost:9900/hello"))
     val ctx = RequestContext(request)
-    val target = TestActorRef[DummyTarget]
+    val target : PipelineTarget = TestActorRef[DummyTarget]
 
     val phases = List("preOutbound", "outbound")
     phases.foreach(p => {
       print("check:" + p)
       val processor = new ExceptionProcessor(List(p))
-      val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, self, processor))
+      val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, processor))
       processorActor ! ctx
 
       val res = expectMsgType[HttpResponse](awaitMax)

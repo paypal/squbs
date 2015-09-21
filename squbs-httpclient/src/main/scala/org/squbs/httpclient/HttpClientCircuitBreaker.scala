@@ -44,7 +44,7 @@ case class CircuitBreakerMetrics(var status: CircuitBreakerStatus,
 
 trait CircuitBreakerSupport{
 
-  def withCircuitBreaker(client: HttpClient, response: Future[HttpResponse])(implicit system: ActorSystem) = {
+  def withCircuitBreaker(client: HttpClient, response: => Future[HttpResponse])(implicit system: ActorSystem) = {
     implicit val ec = system.dispatcher
     val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](response)
     val fallbackHttpResponse = client.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse
