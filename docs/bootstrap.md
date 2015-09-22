@@ -12,7 +12,7 @@ Given normal circumstances, bootstrapping detail are of not much significance. H
 ```
 UnicomplexBoot(customConfig)
   .createUsing {(name, config) => ActorSystem(name, config)}
-  .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
+  .scanResources()
   .initExtensions
   .stopJVMOnExit
   .start()
@@ -22,7 +22,7 @@ UnicomplexBoot(customConfig)
 
 ```
 UnicomplexBoot {(name, config) => ActorSystem(name, config)}
-  .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
+  .scanResources()
   .initExtensions
   .stopJVMOnExit
   .start()  
@@ -36,13 +36,26 @@ Lets take a look at each component.
 
 3. The ActorSystem creator passes a function to create the ActorSystem. The actual creation happens in the start phase (item 7, below). The default function is `{(name, config) => ActorSystem(name, config)}`. The name passed in is the intended ActorSystem name read from the configuration. The config is the loaded configuration object after merging with any provided config. Most use cases would want to create the ActorSystem this way and thus the function need not be provided.
 
-4. Scanning components looking for cubes, services, or extensions using the `scanComponents()` function. This is mandatory as there would be no components to start. Normally, the squbs bootstrap will scan the whole classpath. Test cases may want to target certain components to scan only.
+4. Scanning components looking for cubes, services, or extensions using the `scanResources()` function. This is
+mandatory as there would be no components to start. Normally, the squbs bootstrap will scan the class loader. 
+Test cases may want to target certain components to scan only. This can be done by passing the location of additional
+`squbs-meta.conf` file locations (as a variable argument to scanResources), such as
+`.scanResources("component1/META-INF/squbs-meta.conf", "component2/META-INF/squbs-meta.conf")`. This will scan your
+classpath and the given resources in addition. If you do not want classpath to be scanned, pass
+`withClassPath = false` or just `false` as the first argument before the resource list: 
+`.scanResources(withClassPath = false, "component1/META-INF/squbs-meta.conf", "component2/META-INF/squbs-meta.conf")`
 
 5. Initialize the extensions using the `initExtentension` function. This will initialize the extensions scanned. Extension initialization is done before the ActorSystem is created. For multiple Unicomplex cases (multiple ActorSystems), the same extension must not be initialized more than once. An extension can only be used by one test case. In some cases we do not want to initialize the extensions at all and would not call `initExtension`
 
 6. Stopping the JVM on exit. This is enabled by calling the `stopJVMOnExit` function. This option should generally not be used for test cases. It is used by squbs' bootstrap to make sure squbs shuts down and exits properly.
 
-7. Starting the Unicomplex by calling `start()`. This is a mandatory step. Without it no ActorSystems start and no Actor would be able to run. It also runs other housekeeping tasks.
+7. Starting the Unicomplex by calling `start()`. This is a mandatory step. Without it no ActorSystems start and no 
+Actor would be able to run. The start call will block until the system is fully up and running, or a timeout occurs.
+When start times out, some components may still be initializing, leaving the system in `Initializing` state. However,
+any single component failure will flip the system state to `Failed` at timeout. This would allow for system components
+like system diagnostics to run and complete. The default start timeout is set to 60 seconds. For tests that expect
+timeouts, it can be set lower by passing the desired timeout as an argument to `start()` such as
+`start(Timeout(5 seconds))` or in short `start(5 seconds)` using implicit conversions from duration to a timeout.
 
 
 #Configuration Resolution
