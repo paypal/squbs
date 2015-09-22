@@ -18,11 +18,12 @@ package org.squbs.pipeline
 
 import akka.actor.{Actor, ActorContext, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
+import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.AsyncAssertions.Waiter
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.pipeline.Timeouts._
 import spray.http.{HttpRequest, HttpResponse}
-
+import scala.collection.JavaConversions._
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -34,6 +35,17 @@ class SimpleProcessorSpec extends TestKit(ActorSystem("SimpleProcessorSpec")) wi
   override def afterAll(): Unit = system.shutdown()
 
   implicit val execCtx = scala.concurrent.ExecutionContext.Implicits.global
+
+  "Simple processor related factory" should "work" in {
+    SimpleProcessor.empty should be(SimpleProcessor(SimplePipelineConfig.empty))
+
+    val factory = new SimpleProcessorFactory
+    factory.create(Some(ConfigFactory.empty())) should be(Some(SimpleProcessor(SimplePipelineConfig.empty)))
+
+    SimplePipelineResolver.create(SimplePipelineConfig.empty, None) should be(None)
+    SimplePipelineResolver.create(SimplePipelineConfig(Seq(new Inbound1, new Inbound2), Seq.empty), None) should not be(None)
+  }
+
   "Simple processor by pass handler" should "work" in {
 
     val w = new Waiter
@@ -45,7 +57,7 @@ class SimpleProcessorSpec extends TestKit(ActorSystem("SimpleProcessorSpec")) wi
         w {
           assert(result.isSuccess)
           result.get.attribute[String]("attr1") should be(Some("v1"))
-          result.get.response shouldBe a [NormalResponse]
+          result.get.response shouldBe a[NormalResponse]
         }
         w.dismiss()
     }
@@ -63,6 +75,17 @@ class SimpleProcessorSpec extends TestKit(ActorSystem("SimpleProcessorSpec")) wi
     }
     w.await(waitMax)
   }
+
+  "SimplePipelineConfig" should "work" in {
+    val config = SimplePipelineConfig.create(ConfigFactory.empty(), system)
+    config.reqPipe.size should be(0)
+    config.respPipe.size should be(0)
+
+    val config2 = SimplePipelineConfig.create(Seq(new Inbound1, new Inbound2), Seq.empty[Handler])
+    config2.reqPipe.size should be(2)
+
+  }
+
 }
 
 class Inbound1 extends Handler {

@@ -1,20 +1,19 @@
 /*
- * Licensed to Typesafe under one or more contributor license agreements.
- * See the AUTHORS file distributed with this work for
- * additional information regarding copyright ownership.
- * This file is licensed to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ *  Copyright 2015 PayPal
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
+
 package org.squbs.httpclient.japi
 
 import java.util.Optional
@@ -27,9 +26,6 @@ import org.squbs.pipeline.{PipelineSetting, SimplePipelineConfig}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling._
 
-/**
- * Created by lma on 6/11/2015.
- */
 class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
 
   import org.squbs.httpclient.json.JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
@@ -168,6 +164,10 @@ import scala.compat.java8.OptionConverters._
 
     def post[T <: AnyRef](uri: String, content: Optional[T], timeout: Timeout) = rawDelegate.post(uri, content.asScala)(timeout, content.asScala)
 
+    def post[T <: AnyRef](uri: String, content: Optional[T], reqSettings: RequestSettings, timeout: Timeout) = rawDelegate.post(uri, content.asScala, reqSettings)(timeout, content.asScala)
+
+    def post[T <: AnyRef](uri: String, content: Optional[T], marshaller: Marshaller[T]) = rawDelegate.post(uri, content.asScala)(marshaller = marshaller)
+
     def post[T <: AnyRef](uri: String, content: Optional[T], reqSettings: RequestSettings, marshaller: Marshaller[T]) = rawDelegate.post(uri, content.asScala, reqSettings)(marshaller = marshaller)
 
     def post[T <: AnyRef](uri: String, content: Optional[T], timeout: Timeout, marshaller: Marshaller[T]) = rawDelegate.post(uri, content.asScala)(timeout, marshaller)
@@ -179,6 +179,10 @@ import scala.compat.java8.OptionConverters._
     def put[T <: AnyRef](uri: String, content: Optional[T], reqSettings: RequestSettings) = rawDelegate.put(uri, content.asScala, reqSettings)(marshaller = content.asScala)
 
     def put[T <: AnyRef](uri: String, content: Optional[T], timeout: Timeout) = rawDelegate.put(uri, content.asScala)(timeout, content.asScala)
+
+    def put[T <: AnyRef](uri: String, content: Optional[T], reqSettings: RequestSettings, timeout: Timeout) = rawDelegate.put(uri, content.asScala, reqSettings)(timeout, content.asScala)
+
+    def put[T <: AnyRef](uri: String, content: Optional[T], marshaller: Marshaller[T]) = rawDelegate.put(uri, content.asScala)(marshaller = marshaller)
 
     def put[T <: AnyRef](uri: String, content: Optional[T], reqSettings: RequestSettings, marshaller: Marshaller[T]) = rawDelegate.put(uri, content.asScala, reqSettings)(marshaller = marshaller)
 
