@@ -29,6 +29,7 @@ import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.concurrent._
 import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 
 class HttpClientManagerExtension(system: ExtendedActorSystem) extends Extension {
@@ -140,14 +141,16 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
 
   private def makeFullUri(client: HttpClient, path: String): Uri = {
     import HttpClientManager._
+    val appendUri = Uri(path)
+    val appendPath = appendUri.path
     val basePath = client.endpoint.uri.path
-    val fullPath = (basePath.endsWithSlash, path.charAt(0) == '/') match {
-      case (false, false) => basePath + ('/' + path)
-      case (true, false)  => basePath + path
-      case (false, true)  => basePath + path
-      case (true, true)   => basePath + path.substring(1)
+    val fullPath = (basePath.endsWithSlash, appendPath.startsWithSlash) match {
+      case (false, false) => basePath ++ (Uri.Path / appendPath)
+      case (true, false)  => basePath ++ appendPath
+      case (false, true)  => basePath ++ appendPath
+      case (true, true)   => basePath ++ appendPath.tail
     }
-    Uri(path = fullPath)
+    appendUri withPath fullPath
   }
 }
 
