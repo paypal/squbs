@@ -15,7 +15,7 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-testkit" % sprayV % "test",
   "io.spray" %% "spray-client"  % sprayV % "test",
   "io.spray" %% "spray-json"    % "1.3.2" % "test",
-  "ch.qos.logback" % "logback-classic" % "1.0.11" % "test"
+  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 )
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
