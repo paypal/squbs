@@ -152,6 +152,7 @@ trait DummyService extends SimpleRoutingApp {
     "\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Jane\",\"lastName\":\"Williams\",\"age\":30,\"male\":false}," +
     "{\"id\":4,\"firstName\":\"Liz\",\"lastName\":\"Taylor\",\"age\":35,\"male\":false},{\"id\":5," +
     "\"firstName\":\"Jack\",\"lastName\":\"Ripper\",\"age\":35,\"male\":true}]}"
+  val newTeamMemberJson = "{\"id\":5,\"firstName\":\"Jack\",\"lastName\":\"Ripper\",\"age\":35,\"male\":true}"
 
   val fullTeamWithDel = Team("squbs Team", List[Employee](
     Employee(1, "John", "Doe", 20, male = true),
@@ -241,6 +242,16 @@ trait DummyService extends SimpleRoutingApp {
             respondWithMediaType(MediaTypes.`application/json`)
             complete {
               fullTeam3
+            }
+          }
+        } ~
+        path("viewrange") {
+          (get | head | options) {
+            parameters('range) { range =>
+              respondWithMediaType(MediaTypes.`application/json`)
+              complete {
+                if (range == "new") newTeamMember else fullTeam
+              }
             }
           }
         } ~
