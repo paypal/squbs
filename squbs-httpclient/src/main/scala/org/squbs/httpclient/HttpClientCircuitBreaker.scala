@@ -16,12 +16,13 @@
 
 package org.squbs.httpclient
 
-import scala.concurrent._
-import spray.http.HttpResponse
-import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
-import scala.collection.mutable.ListBuffer
+import akka.actor.ActorRefFactory
 import org.squbs.httpclient.CircuitBreakerStatus.CircuitBreakerStatus
-import akka.actor.ActorSystem
+import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
+import spray.http.HttpResponse
+
+import scala.collection.mutable.ListBuffer
+import scala.concurrent._
 
 object CircuitBreakerStatus extends Enumeration {
   type CircuitBreakerStatus = Value
@@ -44,8 +45,8 @@ case class CircuitBreakerMetrics(var status: CircuitBreakerStatus,
 
 trait CircuitBreakerSupport{
 
-  def withCircuitBreaker(client: HttpClient, response: => Future[HttpResponse])(implicit system: ActorSystem) = {
-    implicit val ec = system.dispatcher
+  def withCircuitBreaker(client: HttpClient, response: => Future[HttpResponse])(implicit actorFactory: ActorRefFactory) = {
+    implicit val ec = actorFactory.dispatcher
     val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](response)
     val fallbackHttpResponse = client.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse
     (fallbackHttpResponse, client.cbMetrics.status) match {
@@ -64,7 +65,7 @@ trait CircuitBreakerSupport{
     }
   }
 
-  def collectCbMetrics(client: HttpClient, status: ServiceCallStatus)(implicit system: ActorSystem) = {
+  def collectCbMetrics(client: HttpClient, status: ServiceCallStatus)(implicit actorFactory: ActorRefFactory) = {
     val cbLastDurationCall = client.cbMetrics.cbLastDurationCall
     val currentTime = System.currentTimeMillis
     val lastDuration = client.endpoint.config.settings.circuitBreakerConfig.lastDuration.toMillis
@@ -83,6 +84,6 @@ trait CircuitBreakerSupport{
         cbLastDurationCall.append(ServiceCall(currentTime, ServiceCallStatus.Exception))
     }
     client.cbMetrics.cbLastDurationCall = cbLastDurationCall.dropWhile(_.callTime + lastDuration <= currentTime)
-    HttpClientManager(system).httpClientMap.put((client.name, client.env), client)
+    HttpClientManager.get(actorFactory).httpClientMap.put((client.name, client.env), client)
   }
 }
