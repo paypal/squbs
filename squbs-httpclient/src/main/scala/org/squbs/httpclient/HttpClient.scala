@@ -68,8 +68,7 @@ case class HttpClient(name: String,
                       status: Status.Status = Status.UP,
                       config: Option[Configuration] = None)
                      (actorCreator: (ActorRefFactory) => Future[ActorRef] = {(arf) =>
-                        import arf.dispatcher
-                        Future(arf.actorOf(Props(classOf[HttpClientActor], name, env)))
+                        Future.successful(arf.actorOf(Props(classOf[HttpClientActor], name, env)))
                       })(implicit actorRefFactory: ActorRefFactory) { self =>
 
   val system = actorRefFactory match {

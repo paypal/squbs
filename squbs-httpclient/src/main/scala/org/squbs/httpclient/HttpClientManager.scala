@@ -19,7 +19,6 @@ import akka.actor._
 import akka.io.IO
 import akka.pattern._
 import akka.util.Timeout
-import org.squbs.httpclient.HttpClientActorMessage.HttpClientMessage
 import org.squbs.httpclient.env.Environment
 import org.squbs.httpclient.pipeline.PipelineManager
 import spray.can.Http
@@ -34,9 +33,9 @@ import scala.util.{Failure, Success, Try}
 
 class HttpClientManagerExtension(system: ExtendedActorSystem) extends Extension {
 
-  val httpClientManager = system.actorOf(Props[HttpClientManager], "httpClientManager")
+  val httpClientMap: TrieMap[(String, Environment), HttpClient] = TrieMap.empty[(String, Environment), HttpClient]
 
-  val httpClientMap: TrieMap[(String, Environment), HttpClient] = TrieMap[(String, Environment), HttpClient]()
+  val httpClientManager = system.actorOf(Props(classOf[HttpClientManager], httpClientMap), "httpClientManager")
 }
 
 object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with ExtensionIdProvider {
@@ -45,6 +44,12 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
     new HttpClientManagerExtension(system)
 
   override def lookup(): ExtensionId[_ <: Extension] = HttpClientManager
+
+  def get(actorFactory: ActorRefFactory) = actorFactory match {
+    case system: ActorSystem => super.apply(system)
+    case context: ActorContext => super.apply(context.system)
+    case other => throw new ClassCastException(other.getClass.toString + " is not an ActorSystem or an ActorContext")
+  }
 
   implicit class RichPath(val path: Uri.Path) extends AnyVal {
 
@@ -73,8 +78,8 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
 
   def handle(client: HttpClient,
              pipeline: Try[HttpRequest => Future[HttpResponse]],
-             httpRequest: HttpRequest)(implicit system: ActorSystem): Future[HttpResponse] = {
-    implicit val ec = system.dispatcher
+             httpRequest: HttpRequest)(implicit factory: ActorRefFactory): Future[HttpResponse] = {
+    implicit val ec = factory.dispatcher
     httpClientLogger.debug("HttpRequest headers: " +
       httpRequest.headers.map { h => h.name + '=' + h.value}.mkString(", "))
     pipeline match {
@@ -96,7 +101,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
            path: String,
            reqSettings: RequestSettings,
            requestBuilder: Uri => HttpRequest)
-          (implicit system: ActorSystem): Future[HttpResponse] = {
+          (implicit actorFactory: ActorRefFactory): Future[HttpResponse] = {
     val uri = makeFullUri(client, path)
     httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
     handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), requestBuilder(uri))
@@ -117,14 +122,11 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
   }
 }
 
-class HttpClientActor(svcName: String, env: Environment) extends Actor with HttpCallActorSupport with ActorLogging {
+class HttpClientActor(svcName: String, env: Environment, clientMap: TrieMap[(String, Environment), HttpClient])
+    extends Actor with HttpCallActorSupport with ActorLogging {
 
   import HttpClientActorMessage._
   implicit val ec = context.dispatcher
-
-  implicit val system = context.system
-
-  val clientMap = HttpClientManager(system).httpClientMap
 
   def client = clientMap(svcName, env)
 
@@ -137,12 +139,14 @@ class HttpClientActor(svcName: String, env: Environment) extends Actor with Http
   override def receive: Actor.Receive = {
     case msg: HttpClientMessage =>
       val currentClient = client
+      implicit val system = context.system
       implicit val timeout: Timeout =
         currentClient.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout
       (IO(Http) ? hostConnectorSetup(currentClient, msg.requestSettings)).flatMap {
-        case Http.HostConnectorInfo(connector, _) => call(currentClient, connector, msg.uri, msg.requestSettings, msg.requestBuilder)
-      }
-        .pipeTo(sender())
+        case Http.HostConnectorInfo(connector, _) =>
+          call(currentClient, connector, msg.uri, msg.requestSettings, msg.requestBuilder)(context)
+      } .pipeTo(sender()) // See whether we can even trim this further by not having to ask.
+      // Is there always the same hostConnector for the same HttpClientActor?
 
     case MarkDown =>
       clientMap.put((client.name, client.env),
@@ -178,7 +182,7 @@ class HttpClientActor(svcName: String, env: Environment) extends Actor with Http
   }
 }
 
-class HttpClientManager extends Actor {
+class HttpClientManager(clientMap: TrieMap[(String, Environment), HttpClient]) extends Actor {
 
   import org.squbs.httpclient.HttpClientManagerMessage._
 
@@ -187,28 +191,29 @@ class HttpClientManager extends Actor {
   implicit val system = context.system
 
   override def receive: Receive = {
-    case client@Get(name, env) =>
-      HttpClientManager(system).httpClientMap.get((name, env)) match {
+    case Get(name, env) =>
+      clientMap.get((name, env)) match {
         case Some(httpClient) =>
           httpClient.fActorRef pipeTo sender()
         case None =>
-          val httpClient = HttpClient(name, env)()
-          HttpClientManager(system).httpClientMap.put((name, env), httpClient)
+          val httpClient = HttpClient(name, env) { (arf) =>
+            Future.successful(arf.actorOf(Props(classOf[HttpClientActor], name, env, clientMap)))
+          }
+          clientMap.put((name, env), httpClient)
           httpClient.fActorRef pipeTo sender()
       }
     case Delete(name, env) =>
-      HttpClientManager(system).httpClientMap.get((name, env)) match {
+      clientMap.get((name, env)) match {
         case Some(_) =>
-          HttpClientManager(system).httpClientMap.remove((name, env))
+          clientMap.remove((name, env))
           sender ! DeleteSuccess
         case None =>
           sender ! HttpClientNotExistException(name, env)
       }
     case DeleteAll =>
-      HttpClientManager(system).httpClientMap.clear()
+      clientMap.clear()
       sender ! DeleteAllSuccess
     case GetAll =>
-      sender ! HttpClientManager(system).httpClientMap
+      sender ! clientMap
   }
-
 }
