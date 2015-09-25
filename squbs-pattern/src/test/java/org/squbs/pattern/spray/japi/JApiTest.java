@@ -16,31 +16,45 @@
 
 package org.squbs.pattern.spray.japi;
 
+import akka.util.ByteString;
 import org.junit.Test;
-import scala.collection.immutable.List$;
+import scala.xml.NodeSeq;
 import spray.http.*;
 import spray.http.parser.HttpParser;
+import spray.httpx.marshalling.Marshaller;
+import spray.httpx.unmarshalling.Deserializer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 
 import static org.junit.Assert.*;
+import static org.squbs.pattern.spray.japi.ScalaAccess.*;
 
 public class JApiTest {
 
     @Test
+    public void testMarshallerHelper() {
+        Marshaller<ByteString> marshaller = basicMarshallers().ByteStringMarshaller();
+        assertEquals(MarshallerHelper.toResponseMarshaller(marshaller).getClass(), toResponseMarshaller().liftMarshaller(marshaller).getClass());
+
+        Deserializer<HttpEntity, NodeSeq> unmarshaller = basicUnmarshallers().NodeSeqUnmarshaller();
+        assertEquals(MarshallerHelper.toFromResponseUnmarshaller(unmarshaller).getClass(), unmarshallerLifting().fromResponseUnmarshaller(unmarshallerLifting().fromMessageUnmarshaller(unmarshaller)).getClass());
+
+    }
+
+    @Test
     public void testHttpEntity() {
         HttpEntity entity = HttpEntityFactory.create("test");
-        assertEquals(entity, HttpEntity$.MODULE$.apply("test"));
+        assertEquals(entity, httpEntity().apply("test"));
 
         entity = HttpEntityFactory.create("abcdefg".getBytes());
-        assertEquals(entity, HttpEntity$.MODULE$.apply("abcdefg".getBytes()));
+        assertEquals(entity, httpEntity().apply("abcdefg".getBytes()));
 
-        entity = HttpEntityFactory.create(ContentTypes.application$divjson(), "abc");
-        assertEquals(entity, HttpEntity$.MODULE$.apply(ContentTypes.application$divjson(), "abc"));
+        entity = HttpEntityFactory.create(applicationJson(), "abc");
+        assertEquals(entity, httpEntity().apply(applicationJson(), "abc"));
 
-        entity = HttpEntityFactory.create(ContentTypes.application$divjson(), "abc".getBytes());
-        assertEquals(entity, HttpEntity$.MODULE$.apply(ContentTypes.application$divjson(), "abc".getBytes()));
+        entity = HttpEntityFactory.create(applicationJson(), "abc".getBytes());
+        assertEquals(entity, httpEntity().apply(applicationJson(), "abc".getBytes()));
 
     }
 
@@ -48,16 +62,16 @@ public class JApiTest {
     public void testChunkedMessageEnd() {
 
         ChunkedMessageEnd end = ChunkedMessageEndFactory.create();
-        assertEquals(end, ChunkedMessageEnd$.MODULE$);
+        assertEquals(end, chunkedMessageEnd());
 
         end = ChunkedMessageEndFactory.create("abc");
-        assertEquals(end, new ChunkedMessageEnd("abc", ChunkedMessageEnd$.MODULE$.copy$default$2()));
+        assertEquals(end, new ChunkedMessageEnd("abc", chunkedMessageEnd().trailer()));
 
         end = ChunkedMessageEndFactory.create(Arrays.asList(HttpHeaderFactory.create("Content-type", "application/json")));
-        assertEquals(end, ChunkedMessageEnd$.MODULE$.apply("", List$.MODULE$.empty().$colon$colon(HttpHeaderFactory.create("Content-type", "application/json"))));
+        assertEquals(end, chunkedMessageEnd().apply("", list(HttpHeaderFactory.create("Content-type", "application/json"))));
 
         end = ChunkedMessageEndFactory.create("abc", Arrays.asList(HttpHeaderFactory.create("Content-type", "application/json")));
-        assertEquals(end, ChunkedMessageEnd$.MODULE$.apply("abc", List$.MODULE$.empty().$colon$colon(HttpHeaderFactory.create("Content-type", "application/json"))));
+        assertEquals(end, chunkedMessageEnd().apply("abc", list(HttpHeaderFactory.create("Content-type", "application/json"))));
 
     }
 
@@ -67,7 +81,7 @@ public class JApiTest {
         assertEquals(chunk, MessageChunk.apply("abc"));
 
         chunk = MessageChunkFactory.create("abc", HttpParser.getCharset("UTF-8"));
-        assertEquals(chunk, MessageChunk.apply("abc", HttpCharsets.UTF$minus8()));
+        assertEquals(chunk, MessageChunk.apply("abc", charsetUTF8()));
 
         chunk = MessageChunkFactory.create("abc", "def");
         assertEquals(chunk, MessageChunk.apply("abc", "def"));
@@ -89,17 +103,17 @@ public class JApiTest {
         }
 
         ContentType contentType = ContentTypeFactory.create("application/json; charset=UTF-8");
-        assertEquals(ContentType$.MODULE$.apply(MediaTypes.application$divjson(), HttpCharsets.UTF$minus8()), contentType);
+        assertEquals(contentType().apply(applicationJson().mediaType(), charsetUTF8()), contentType);
 
         ContentType contentType1 = ContentTypeFactory.create("application/javascript");
-        assertEquals(ContentType$.MODULE$.apply(MediaTypes.application$divjavascript()), contentType1);
+        assertEquals(contentType().apply(applicationJavascript()), contentType1);
 
     }
 
     @Test
     public void testHttpHeaders() throws Exception {
         HttpHeader contentType = HttpHeaderFactory.create("Content-type", "application/json");
-        assertTrue(contentType instanceof HttpHeaders.Content$minusType);
+        assertEquals(contentType.getClass(), contentTypeClass());
         assertTrue(contentType.is("content-type"));
         assertEquals("application/json", contentType.value());
 
@@ -115,7 +129,7 @@ public class JApiTest {
         assertEquals(StatusCodes.OK(), defaultRes.status());
         assertTrue(defaultRes.entity().isEmpty());
         assertTrue(defaultRes.headers().isEmpty());
-        assertEquals(HttpProtocols.HTTP$div1$u002E1(), defaultRes.protocol());
+        assertEquals(http_1_1(), defaultRes.protocol());
 
         HttpResponse notFound = new HttpResponseBuilder().status(StatusCodes.NotFound()).build();
         assertEquals(404, notFound.status().intValue());
@@ -124,9 +138,14 @@ public class JApiTest {
         assertEquals("abc", normalResponse.entity().asString());
         assertEquals(ContentTypeFactory.create("text/plain; charset=UTF-8"), ((HttpEntity.NonEmpty) normalResponse.entity()).contentType());
 
+
         HttpResponse streamResponse = new HttpResponseBuilder().entity("abc".getBytes()).build();
         assertEquals("abc", streamResponse.entity().asString());
         assertEquals(ContentTypeFactory.create("application/octet-stream"), ((HttpEntity.NonEmpty) streamResponse.entity()).contentType());
+
+        HttpResponse binResponse = new HttpResponseBuilder().entity(ContentTypeFactory.create("application/octet-stream"), "abc".getBytes()).build();
+        assertEquals("abc", binResponse.entity().asString());
+        assertEquals(ContentTypeFactory.create("application/octet-stream"), ((HttpEntity.NonEmpty) binResponse.entity()).contentType());
 
         ContentType contentType = ContentTypeFactory.create("application/json");
         HttpResponse withContentType = new HttpResponseBuilder().entity(contentType, "{'a':1}").build();
@@ -147,6 +166,6 @@ public class JApiTest {
         assertEquals(header2, withHeaders2.headers().apply(1));
 
         HttpResponse withProtocol = new HttpResponseBuilder().protocol("HTTP/1.0").build();
-        assertEquals(HttpProtocols.HTTP$div1$u002E0(), withProtocol.protocol());
+        assertEquals(http_1_0(), withProtocol.protocol());
     }
 }
