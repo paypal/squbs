@@ -16,10 +16,12 @@
 
 package org.squbs.httpclient.japi
 
+import akka.actor.ActorSystem
+import org.squbs.httpclient.Configuration
 import org.squbs.httpclient.endpoint.Endpoint
 
 object EndpointFactory {
 
-  def create(uri: String) = Endpoint(uri)
+  def create(uri: String, system: ActorSystem) = Endpoint(uri, Configuration()(system))
 
 }

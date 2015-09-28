@@ -25,9 +25,6 @@ import spray.httpx.unmarshalling.Deserializer;
 
 import java.util.Optional;
 
-/**
- * Created by lma on 6/5/2015.
- */
 public class HttpClientJ {
 
     public static Future<HttpResponse> rawGet(String clientName, ActorSystem system, String uri) {
@@ -40,10 +37,10 @@ public class HttpClientJ {
         return client.raw().get(uri, reqSetting);
     }
 
-    public static Future<HttpResponse> rawGet(String clientName, ActorSystem system, String uri, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.raw().get(uri, timeout);
-    }
+//    public static Future<HttpResponse> rawGet(String clientName, ActorSystem system, String uri, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.raw().get(uri, timeout);
+//    }
 
     public static Future<HttpResponse> rawGet(String clientName, ActorSystem system, String uri, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -60,10 +57,10 @@ public class HttpClientJ {
         return client.raw().post(uri, data, reqSetting);
     }
 
-    public static <T> Future<HttpResponse> rawPost(String clientName, ActorSystem system, String uri, Optional<T> data, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.raw().post(uri, data, timeout);
-    }
+//    public static <T> Future<HttpResponse> rawPost(String clientName, ActorSystem system, String uri, Optional<T> data, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.raw().post(uri, data, timeout);
+//    }
 
     public static <T> Future<HttpResponse> rawPost(String clientName, ActorSystem system, String uri, Optional<T> data, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -80,10 +77,10 @@ public class HttpClientJ {
         return client.raw().post(uri, data, reqSetting, marshaller);
     }
 
-    public static <T> Future<HttpResponse> rawPost(String clientName, ActorSystem system, String uri, Optional<T> data, Timeout timeout, Marshaller<T> marshaller) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.raw().post(uri, data, timeout, marshaller);
-    }
+//    public static <T> Future<HttpResponse> rawPost(String clientName, ActorSystem system, String uri, Optional<T> data, Timeout timeout, Marshaller<T> marshaller) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.raw().post(uri, data, timeout, marshaller);
+//    }
 
     public static <T> Future<HttpResponse> rawPost(String clientName, ActorSystem system, String uri, Optional<T> data, RequestSettings reqSetting, Timeout timeout, Marshaller<T> marshaller) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -100,10 +97,10 @@ public class HttpClientJ {
         return client.raw().put(uri, data, reqSetting);
     }
 
-    public static <T> Future<HttpResponse> rawPut(String clientName, ActorSystem system, String uri, Optional<T> data, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.raw().put(uri, data, timeout);
-    }
+//    public static <T> Future<HttpResponse> rawPut(String clientName, ActorSystem system, String uri, Optional<T> data, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.raw().put(uri, data, timeout);
+//    }
 
     public static <T> Future<HttpResponse> rawPut(String clientName, ActorSystem system, String uri, Optional<T> data, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -120,10 +117,10 @@ public class HttpClientJ {
         return client.raw().put(uri, data, reqSetting, marshaller);
     }
 
-    public static <T> Future<HttpResponse> rawPut(String clientName, ActorSystem system, String uri, Optional<T> data, Timeout timeout, Marshaller<T> marshaller) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.raw().put(uri, data, timeout, marshaller);
-    }
+//    public static <T> Future<HttpResponse> rawPut(String clientName, ActorSystem system, String uri, Optional<T> data, Timeout timeout, Marshaller<T> marshaller) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.raw().put(uri, data, timeout, marshaller);
+//    }
 
     public static <T> Future<HttpResponse> rawPut(String clientName, ActorSystem system, String uri, Optional<T> data, RequestSettings reqSetting, Timeout timeout, Marshaller<T> marshaller) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -140,10 +137,10 @@ public class HttpClientJ {
         return client.get(uri, reqSetting, type);
     }
 
-    public static <T> Future<T> get(String clientName, ActorSystem system, String uri, Class<T> type, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.get(uri, timeout, type);
-    }
+//    public static <T> Future<T> get(String clientName, ActorSystem system, String uri, Class<T> type, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.get(uri, timeout, type);
+//    }
 
 
     public static <T> Future<T> get(String clientName, ActorSystem system, String uri, Class<T> type, RequestSettings reqSetting, Timeout timeout) {
@@ -161,10 +158,10 @@ public class HttpClientJ {
         return client.get(uri, reqSetting, unmarshaller);
     }
 
-    public static <T> Future<T> get(String clientName, ActorSystem system, String uri, Deserializer<HttpResponse, T> unmarshaller, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.get(uri, timeout, unmarshaller);
-    }
+//    public static <T> Future<T> get(String clientName, ActorSystem system, String uri, Deserializer<HttpResponse, T> unmarshaller, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.get(uri, timeout, unmarshaller);
+//    }
 
     public static <T> Future<T> get(String clientName, ActorSystem system, String uri, Deserializer<HttpResponse, T> unmarshaller, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -181,10 +178,10 @@ public class HttpClientJ {
         return client.raw().head(uri, reqSetting);
     }
 
-    public static Future<HttpResponse> rawHead(String clientName, ActorSystem system, String uri, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.raw().head(uri, timeout);
-    }
+//    public static Future<HttpResponse> rawHead(String clientName, ActorSystem system, String uri, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.raw().head(uri, timeout);
+//    }
 
     public static Future<HttpResponse> rawHead(String clientName, ActorSystem system, String uri, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -202,10 +199,10 @@ public class HttpClientJ {
         return client.raw().options(uri, reqSetting);
     }
 
-    public static Future<HttpResponse> rawOptions(String clientName, ActorSystem system, String uri, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.raw().options(uri, timeout);
-    }
+//    public static Future<HttpResponse> rawOptions(String clientName, ActorSystem system, String uri, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.raw().options(uri, timeout);
+//    }
 
     public static Future<HttpResponse> rawOptions(String clientName, ActorSystem system, String uri, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -222,10 +219,10 @@ public class HttpClientJ {
         return client.options(uri, reqSetting, type);
     }
 
-    public static <T> Future<T> options(String clientName, ActorSystem system, String uri, Class<T> type, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.options(uri, timeout, type);
-    }
+//    public static <T> Future<T> options(String clientName, ActorSystem system, String uri, Class<T> type, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.options(uri, timeout, type);
+//    }
 
     public static <T> Future<T> options(String clientName, ActorSystem system, String uri, Class<T> type, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -242,10 +239,10 @@ public class HttpClientJ {
         return client.options(uri, reqSetting, unmarshaller);
     }
 
-    public static <T> Future<T> options(String clientName, ActorSystem system, String uri, Deserializer<HttpResponse, T> unmarshaller, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.options(uri, timeout, unmarshaller);
-    }
+//    public static <T> Future<T> options(String clientName, ActorSystem system, String uri, Deserializer<HttpResponse, T> unmarshaller, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.options(uri, timeout, unmarshaller);
+//    }
 
     public static <T> Future<T> options(String clientName, ActorSystem system, String uri, Deserializer<HttpResponse, T> unmarshaller, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -262,10 +259,10 @@ public class HttpClientJ {
         return client.raw().delete(uri, reqSetting);
     }
 
-    public static Future<HttpResponse> rawDelete(String clientName, ActorSystem system, String uri, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.raw().delete(uri, timeout);
-    }
+//    public static Future<HttpResponse> rawDelete(String clientName, ActorSystem system, String uri, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.raw().delete(uri, timeout);
+//    }
 
     public static Future<HttpResponse> rawDelete(String clientName, ActorSystem system, String uri, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -283,10 +280,10 @@ public class HttpClientJ {
         return client.delete(uri, reqSetting, type);
     }
 
-    public static <T> Future<T> delete(String clientName, ActorSystem system, String uri, Class<T> type, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.delete(uri, timeout, type);
-    }
+//    public static <T> Future<T> delete(String clientName, ActorSystem system, String uri, Class<T> type, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.delete(uri, timeout, type);
+//    }
 
     public static <T> Future<T> delete(String clientName, ActorSystem system, String uri, Class<T> type, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -303,10 +300,10 @@ public class HttpClientJ {
         return client.delete(uri, reqSetting, unmarshaller);
     }
 
-    public static <T> Future<T> delete(String clientName, ActorSystem system, String uri, Deserializer<HttpResponse, T> unmarshaller, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.delete(uri, timeout, unmarshaller);
-    }
+//    public static <T> Future<T> delete(String clientName, ActorSystem system, String uri, Deserializer<HttpResponse, T> unmarshaller, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.delete(uri, timeout, unmarshaller);
+//    }
 
     public static <T> Future<T> delete(String clientName, ActorSystem system, String uri, Deserializer<HttpResponse, T> unmarshaller, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -323,10 +320,10 @@ public class HttpClientJ {
         return client.post(uri, data, reqSetting, respType);
     }
 
-    public static <T, R> Future<R> post(String clientName, ActorSystem system, String uri, Optional<T> data, Class<R> respType, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.post(uri, data, timeout, respType);
-    }
+//    public static <T, R> Future<R> post(String clientName, ActorSystem system, String uri, Optional<T> data, Class<R> respType, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.post(uri, data, timeout, respType);
+//    }
 
     public static <T, R> Future<R> post(String clientName, ActorSystem system, String uri, Optional<T> data, Class<R> respType, RequestSettings reqSetting, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -344,10 +341,10 @@ public class HttpClientJ {
         return client.post(uri, data, reqSettings, marshaller, unmarshaller);
     }
 
-    public static <T, R> Future<R> post(String clientName, ActorSystem system, String uri, Optional<T> data, Marshaller<T> marshaller, Deserializer<HttpResponse, R> unmarshaller, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.post(uri, data, timeout, marshaller, unmarshaller);
-    }
+//    public static <T, R> Future<R> post(String clientName, ActorSystem system, String uri, Optional<T> data, Marshaller<T> marshaller, Deserializer<HttpResponse, R> unmarshaller, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.post(uri, data, timeout, marshaller, unmarshaller);
+//    }
 
     public static <T, R> Future<R> post(String clientName, ActorSystem system, String uri, Optional<T> data, Marshaller<T> marshaller, Deserializer<HttpResponse, R> unmarshaller, RequestSettings reqSettings, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -364,10 +361,10 @@ public class HttpClientJ {
         return client.put(uri, data, reqSettings, respType);
     }
 
-    public static <T, R> Future<R> put(String clientName, ActorSystem system, String uri, Optional<T> data, Class<R> respType, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.put(uri, data, timeout, respType);
-    }
+//    public static <T, R> Future<R> put(String clientName, ActorSystem system, String uri, Optional<T> data, Class<R> respType, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.put(uri, data, timeout, respType);
+//    }
 
     public static <T, R> Future<R> put(String clientName, ActorSystem system, String uri, Optional<T> data, Class<R> respType, RequestSettings reqSettings, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -384,10 +381,10 @@ public class HttpClientJ {
         return client.put(uri, data, reqSettings, marshaller, unmarshaller);
     }
 
-    public static <T, R> Future<R> put(String clientName, ActorSystem system, String uri, Optional<T> data, Marshaller<T> marshaller, Deserializer<HttpResponse, R> unmarshaller, Timeout timeout) {
-        HttpClient client = HttpClientFactory.get(clientName, system);
-        return client.put(uri, data, timeout, marshaller, unmarshaller);
-    }
+//    public static <T, R> Future<R> put(String clientName, ActorSystem system, String uri, Optional<T> data, Marshaller<T> marshaller, Deserializer<HttpResponse, R> unmarshaller, Timeout timeout) {
+//        HttpClient client = HttpClientFactory.get(clientName, system);
+//        return client.put(uri, data, timeout, marshaller, unmarshaller);
+//    }
 
     public static <T, R> Future<R> put(String clientName, ActorSystem system, String uri, Optional<T> data, Marshaller<T> marshaller, Deserializer<HttpResponse, R> unmarshaller, RequestSettings reqSettings, Timeout timeout) {
         HttpClient client = HttpClientFactory.get(clientName, system);
