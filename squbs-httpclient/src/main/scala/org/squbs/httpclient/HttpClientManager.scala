@@ -101,7 +101,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
            path: String,
            reqSettings: RequestSettings,
            requestBuilder: Uri => HttpRequest)
-          (implicit actorFactory: ActorRefFactory): Future[HttpResponse] = {
+          (implicit actorFactory: ActorRefFactory, context : ActorContext): Future[HttpResponse] = {
     val uri = makeFullUri(client, path)
     httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
     handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), requestBuilder(uri))
@@ -145,7 +145,7 @@ class HttpClientActor(svcName: String, env: Environment, clientMap: TrieMap[(Str
       val requestSettings = msg.requestSettings getOrElse Configuration.defaultRequestSettings(system)
       (IO(Http) ? hostConnectorSetup(currentClient, requestSettings)).flatMap {
         case Http.HostConnectorInfo(connector, _) =>
-          call(currentClient, connector, msg.uri, requestSettings, msg.requestBuilder)(context)
+          call(currentClient, connector, msg.uri, requestSettings, msg.requestBuilder)(system, context)
       } .pipeTo(sender()) // See whether we can even trim this further by not having to ask.
       // Is there always the same hostConnector for the same HttpClientActor?
 
