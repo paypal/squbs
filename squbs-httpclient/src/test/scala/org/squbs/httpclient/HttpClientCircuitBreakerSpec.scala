@@ -25,8 +25,10 @@ import org.squbs.httpclient.endpoint.EndpointRegistry
 class HttpClientCircuitBreakerSpec extends TestKit(ActorSystem("HttpClientCircuitBreakerSpec")) with FlatSpecLike
 with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAfterAll with BeforeAndAfterEach{
 
+  implicit val _system = system
+
   override def beforeEach() {
-    EndpointRegistry(system).register(DummyServiceEndpointResolver)
+    EndpointRegistry(system).register(new DummyServiceEndpointResolver)
   }
 
   override def afterAll() {

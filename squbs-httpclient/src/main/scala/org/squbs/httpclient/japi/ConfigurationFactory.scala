@@ -16,9 +16,10 @@
 
 package org.squbs.httpclient.japi
 
+import akka.actor.ActorRefFactory
 import org.squbs.httpclient.Configuration
 
 object ConfigurationFactory {
 
-  def create() = Configuration()
+  def create(refFactory: ActorRefFactory) = Configuration()(refFactory)
 }

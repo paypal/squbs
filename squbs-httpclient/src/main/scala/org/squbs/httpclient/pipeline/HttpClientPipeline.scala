@@ -34,6 +34,7 @@ import spray.httpx.{PipelineException, UnsuccessfulResponseException}
 import spray.io.ClientSSLEngineProvider
 
 import scala.concurrent.Future
+import scala.language.implicitConversions
 import scala.util.Try
 
 object HttpClientUnmarshal{
@@ -71,7 +72,7 @@ trait PipelineManager extends LazyLogging {
 
     import client.endpoint.config.settings.hostSettings.connectionSettings
     val clientConnectionSettings = reqSettings match {
-      case Configuration.defaultRequestSettings =>
+      case s if s == Configuration.defaultRequestSettings =>
         val reqTimeout = Configuration.defaultRequestSettings(client.endpoint.config, client.config).timeout
         connectionSettings.copy(requestTimeout = reqTimeout.duration)
       case _                                    =>
