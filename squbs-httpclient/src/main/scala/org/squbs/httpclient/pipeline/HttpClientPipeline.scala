@@ -18,7 +18,7 @@ package org.squbs.httpclient.pipeline
 
 import javax.net.ssl.SSLContext
 
-import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.scalalogging.LazyLogging
@@ -26,7 +26,7 @@ import org.squbs.httpclient._
 import org.squbs.httpclient.endpoint.Endpoint
 import org.squbs.httpclient.pipeline.impl.RequestUpdateHeadersHandler
 import org.squbs.pipeline.PipelineProcessorActor._
-import org.squbs.pipeline.{RequestContext, PipelineProcessorActor, Processor, PipelineSetting}
+import org.squbs.pipeline._
 import spray.can.Http
 import spray.client.pipelining._
 import spray.http.{HttpRequest, HttpResponse}
@@ -85,7 +85,7 @@ trait PipelineManager extends LazyLogging {
   }
 
   def invokeToHttpResponseWithoutSetup(client: HttpClient, reqSettings: RequestSettings, actorRef: ActorRef)
-                                      (implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
+                                      (implicit system: ActorSystem, context : ActorContext): Try[(HttpRequest => Future[HttpResponse])] = {
     implicit val ec = system.dispatcher
     val pipelineSetting = client.endpoint.config.pipeline.getOrElse(PipelineSetting.default)
     val pipeConfig = pipelineSetting.pipelineConfig
@@ -99,7 +99,7 @@ trait PipelineManager extends LazyLogging {
       case true => pipeConfig
     }
 
-    val processor = pipelineSetting.factory.create(updatedPipeConfig, pipelineSetting.setting)
+    val processor = pipelineSetting.factory.create(updatedPipeConfig, pipelineSetting.setting)(system)
 
 
     Try {
@@ -111,9 +111,11 @@ trait PipelineManager extends LazyLogging {
             processor match {
               case None => pipeline(req)
               case Some(proc) =>
-                val pipelineTarget : PipelineTarget = (req, caller) => pipeline(req.asInstanceOf[HttpRequest]) pipeTo caller
-                val pipeProxy = system.actorOf(Props(classOf[PipelineProcessorActor], pipelineTarget, proc))
-                (pipeProxy ? (RequestContext(req) +> ("HttpClient.name" -> client.name, "HttpClient.Endpoint" -> client.endpoint))).mapTo[HttpResponse]
+                  val executor = new PipelineExecutor(pipeline, proc)
+                  executor.execute(RequestContext(req) +> ("HttpClient.name" -> client.name, "HttpClient.Endpoint" -> client.endpoint))
+//                val pipelineTarget : PipelineTarget = (req, caller) => pipeline(req.asInstanceOf[HttpRequest]) pipeTo caller
+//                val pipeProxy = system.actorOf(Props(classOf[PipelineProcessorActor], pipelineTarget, proc))
+//                (pipeProxy ? (RequestContext(req) +> ("HttpClient.name" -> client.name, "HttpClient.Endpoint" -> client.endpoint))).mapTo[HttpResponse]
             }
       }
     }
