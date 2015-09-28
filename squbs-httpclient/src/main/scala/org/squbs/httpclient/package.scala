@@ -13,22 +13,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package org.squbs
 
-package org.squbs.httpclient.japi
+import akka.actor.{ActorContext, ActorSystem, ActorRefFactory}
+import scala.language.implicitConversions
 
+package object httpclient {
 
-import org.scalatest.{FlatSpecLike, Matchers}
-import org.squbs.httpclient.Configuration
-import org.squbs.httpclient.endpoint.Endpoint
-
-
-class SimpleProcessorSpec extends FlatSpecLike with Matchers {
-
-  "ConfigurationFactory" should "work" in {
-    ConfigurationFactory.create() should be(Configuration())
-  }
-
-  "EndpointFactory" should "work" in {
-    EndpointFactory.create("/test") should be(Endpoint("/test"))
+  implicit def refFactoryToSystem(refFactory: ActorRefFactory): ActorSystem = refFactory match {
+    case sys: ActorSystem => sys
+    case ctx: ActorContext => ctx.system
+    case other =>
+      throw new IllegalArgumentException(s"Cannot create HttpClient with ActorRefFactory Impl ${other.getClass}")
   }
 }

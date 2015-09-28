@@ -35,6 +35,8 @@ import scala.language.postfixOps
 class HttpClientJMXSpec extends TestKit(ActorSystem("HttpClientJMXSpec")) with FlatSpecLike with Matchers
 with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndAfterAll{
 
+  implicit val _system = system
+
   override def beforeEach() = {
     EndpointRegistry(system).register(new EndpointResolver {
       override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] =
@@ -86,11 +88,11 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
   }
 
   "HttpClient Endpoint Resolver Info" should "show up the correct value of EndpointResolverBean" in {
-    EndpointRegistry(system).register(DummyServiceEndpointResolver)
+    EndpointRegistry(system).register(new DummyServiceEndpointResolver)
     EndpointResolverBean(system).getHttpClientEndpointResolverInfo should have size 2
     EndpointResolverBean(system).getHttpClientEndpointResolverInfo.get(0).position should be (0)
     EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
-    EndpointResolverBean(system).getHttpClientEndpointResolverInfo.get(0).resolver should be ("org.squbs.httpclient.dummy.DummyServiceEndpointResolver$")
+    EndpointResolverBean(system).getHttpClientEndpointResolverInfo.get(0).resolver should be ("org.squbs.httpclient.dummy.DummyServiceEndpointResolver")
   }
 
   "HttpClient Environment Resolver Info" should "show up the correct value of EnvironmentResolverBean" in {
@@ -104,7 +106,7 @@ with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndA
 
   "HttpClient Circuit Breaker Info" should "show up some value of CircuitBreakerBean" in {
     CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo should have size 0
-    EndpointRegistry(system).register(DummyServiceEndpointResolver)
+    EndpointRegistry(system).register(new DummyServiceEndpointResolver)
     val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/view")
     val result = Await.result(response, awaitMax)
     result.status should be (StatusCodes.OK)

@@ -140,9 +140,10 @@ class HttpClientActor(svcName: String, env: Environment, clientMap: TrieMap[(Str
       implicit val system = context.system
       implicit val timeout: Timeout =
         currentClient.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout
-      (IO(Http) ? hostConnectorSetup(currentClient, msg.requestSettings)).flatMap {
+      val requestSettings = msg.requestSettings getOrElse Configuration.defaultRequestSettings(system)
+      (IO(Http) ? hostConnectorSetup(currentClient, requestSettings)).flatMap {
         case Http.HostConnectorInfo(connector, _) =>
-          call(currentClient, connector, msg.uri, msg.requestSettings, msg.requestBuilder)(context)
+          call(currentClient, connector, msg.uri, requestSettings, msg.requestBuilder)(context)
       } .pipeTo(sender()) // See whether we can even trim this further by not having to ask.
       // Is there always the same hostConnector for the same HttpClientActor?
 

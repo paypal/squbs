@@ -40,13 +40,13 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
 
   //import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
-
+  implicit val _system = system
 
   override def beforeAll() {
     Json4sJacksonNoTypeHintsProtocol.registerSerializer(EmployeeBeanSerializer)
     val mapper = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY).registerModule(DefaultScalaModule)
     JacksonProtocol.registerMapper(classOf[TeamBean], mapper)
-    EndpointRegistry(system).register(DummyServiceEndpointResolver)
+    EndpointRegistry(system).register(new DummyServiceEndpointResolver)
     startDummyService(system)
   }
 
@@ -245,7 +245,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
 
   "HttpClient with correct Endpoint calling raw.post" should "get the correct response" in {
     import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
-    val response = HttpClientFactory.get("DummyService").raw.post[Employee]("/add", Some(newTeamMember))
+    val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.post[Employee]("/add", Some(newTeamMember))
     val result = Await.result(response, awaitMax)
     result.status should be (StatusCodes.OK)
     result.entity should not be empty
@@ -327,7 +327,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     val newConfig = Configuration(settings = Settings(hostSettings =
       Configuration.defaultHostSettings.copy(maxRetries = 11)))
     val updatedHttpClient = httpClient.withConfig(newConfig)
-    EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
+    EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint, Configuration()(system))))
     updatedHttpClient.endpoint should be (Endpoint(dummyServiceEndpoint, newConfig))
   }
 
