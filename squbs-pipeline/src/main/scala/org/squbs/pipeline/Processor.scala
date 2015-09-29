@@ -22,10 +22,10 @@ import com.typesafe.scalalogging.LazyLogging
 import org.squbs.pipeline.ConfigHelper._
 import spray.http.{ChunkedMessageEnd, MessageChunk}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 trait Handler {
-  def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
+  def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext]
 }
 
 trait HandlerFactory {
@@ -36,18 +36,18 @@ trait HandlerFactory {
 trait Processor {
 
   //inbound processing
-  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
+  def inbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext]
 
   //outbound processing
-  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
+  def outbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext]
 
   //first chance to handle input request before processing request
-  def preInbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
+  def preInbound(ctx: RequestContext)(implicit context: ActorRefFactory): RequestContext = {
     ctx
   }
 
   //last chance to handle input request before sending request to underlying service
-  def postInbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
+  def postInbound(ctx: RequestContext)(implicit context: ActorRefFactory): RequestContext = {
     ctx
   }
 
@@ -56,12 +56,12 @@ trait Processor {
   }
 
   //first chance to handle response before executing outbound
-  def preOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
+  def preOutbound(ctx: RequestContext)(implicit context: ActorRefFactory): RequestContext = {
     ctx
   }
 
   //last chance to handle output after executing outbound
-  def postOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
+  def postOutbound(ctx: RequestContext)(implicit context: ActorRefFactory): RequestContext = {
     ctx
   }
 
@@ -73,22 +73,22 @@ trait Processor {
   def processChunk(ctx: RequestContext)(func: => Unit): Unit = func
 
   //sync method to process response chunk
-  def processResponseChunk(ctx: RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
+  def processResponseChunk(ctx: RequestContext, chunk: MessageChunk)(implicit context: ActorRefFactory): MessageChunk = {
     chunk
   }
 
   //sync method to process response chunk end
-  def processResponseChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd)(implicit context: ActorContext): ChunkedMessageEnd = {
+  def processResponseChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd)(implicit context: ActorRefFactory): ChunkedMessageEnd = {
     chunkEnd
   }
 
   //sync method to process request chunk
-  def processRequestChunk(ctx: RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
+  def processRequestChunk(ctx: RequestContext, chunk: MessageChunk)(implicit context: ActorRefFactory): MessageChunk = {
     chunk
   }
 
   //sync method to process request chunk end
-  def processRequestChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd)(implicit context: ActorContext): ChunkedMessageEnd = {
+  def processRequestChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd)(implicit context: ActorRefFactory): ChunkedMessageEnd = {
     chunkEnd
   }
 
@@ -171,7 +171,8 @@ object SimplePipelineConfig extends LazyLogging {
 
 case class SimpleProcessor(pipeConf: SimplePipelineConfig) extends Processor {
   //inbound processing
-  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+  def inbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+    import context.dispatcher
     pipeConf.reqPipe.foldLeft(Future.successful(reqCtx)) {
       (ctxFuture, handler) =>
         ctxFuture flatMap {
@@ -183,8 +184,9 @@ case class SimpleProcessor(pipeConf: SimplePipelineConfig) extends Processor {
   }
 
   //outbound processing
-  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
-    pipeConf.respPipe.foldLeft(Future.successful(reqCtx)) { (ctxFuture, handler) => ctxFuture.flatMap(handler.process(_))}
+  def outbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+    import context.dispatcher
+    pipeConf.respPipe.foldLeft(Future.successful(reqCtx)) { (ctxFuture, handler) => ctxFuture flatMap handler.process }
   }
 }
 

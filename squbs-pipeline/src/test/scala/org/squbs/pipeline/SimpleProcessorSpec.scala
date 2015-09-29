@@ -16,17 +16,16 @@
 
 package org.squbs.pipeline
 
-import akka.actor.{Actor, ActorContext, ActorSystem}
+import akka.actor.{Actor, ActorRefFactory, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.AsyncAssertions.Waiter
-import org.scalatest.concurrent.PatienceConfiguration.Timeout
-import org.scalatest.time.{Span, Millis}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.pipeline.Timeouts._
 import spray.http.{HttpRequest, HttpResponse}
+
 import scala.collection.JavaConversions._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 
 class SimpleProcessorSpec extends TestKit(ActorSystem("SimpleProcessorSpec")) with FlatSpecLike
@@ -54,7 +53,7 @@ class SimpleProcessorSpec extends TestKit(ActorSystem("SimpleProcessorSpec")) wi
     val ctx = RequestContext(HttpRequest())
 
     val p1 = SimpleProcessor(SimplePipelineConfig(Seq(new Inbound2, new Inbound1), Seq.empty))
-    p1.inbound(ctx)(execCtx, nullContext).onComplete {
+    p1.inbound(ctx)(system).onComplete {
       result =>
         w {
           assert(result.isSuccess)
@@ -66,7 +65,7 @@ class SimpleProcessorSpec extends TestKit(ActorSystem("SimpleProcessorSpec")) wi
     w.await(waitMax)
 
     val p2 = SimpleProcessor(SimplePipelineConfig(Seq(new Inbound1, new Inbound2), Seq.empty))
-    p2.inbound(ctx)(execCtx, nullContext).onComplete {
+    p2.inbound(ctx)(system).onComplete {
       result =>
         w {
           assert(result.isSuccess)
@@ -92,12 +91,12 @@ class SimpleProcessorSpec extends TestKit(ActorSystem("SimpleProcessorSpec")) wi
 
 
 class Inbound1 extends Handler {
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext) =
+  override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory) =
     Future.successful(reqCtx.copy(response = NormalResponse(HttpResponse())))
 }
 
 class Inbound2 extends Handler {
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext) =
+  override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory) =
     Future.successful(reqCtx +> ("attr1" -> "v1"))
 }
 
