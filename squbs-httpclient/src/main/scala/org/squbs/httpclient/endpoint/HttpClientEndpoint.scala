@@ -79,7 +79,7 @@ class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension w
     endpointResolvers.find(_.resolve(svcName, env) != None)
   }
 
-  def resolve(svcName: String, env: Environment = Default)(implicit system: ActorSystem): Option[Endpoint] = {
+  def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     val resolvedEndpoint = endpointResolvers.foldLeft[Option[Endpoint]](None) {
       (endpoint: Option[Endpoint], resolver: EndpointResolver) =>
         endpoint match {
@@ -96,7 +96,7 @@ class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension w
       case None if svcName != null && (svcName.startsWith("http://") || svcName.startsWith("https://")) =>
         logger.debug(s"Endpoint can be resolved with service name match http:// or https:// pattern by " +
           s"($svcName, $env), the endpoint uri is:" + svcName)
-        Some(Endpoint(svcName))
+        Some(Endpoint(svcName)(system))
       case _ =>
         logger.warn(s"Endpoint can not be resolved by ($svcName, $env)!")
         None

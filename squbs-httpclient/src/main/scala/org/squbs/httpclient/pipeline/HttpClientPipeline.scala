@@ -58,7 +58,7 @@ trait PipelineManager extends LazyLogging {
 
   val httpClientLogger = logger
 
-  def hostConnectorSetup(client: HttpClient, reqSettings: RequestSettings)(implicit system: ActorSystem) = {
+  def hostConnectorSetup(client: HttpClient, reqSettings: Option[RequestSettings])(implicit system: ActorSystem) = {
     implicit def sslContext: SSLContext = {
       client.endpoint.config.settings.sslContext match {
         case Some(context) => context
@@ -72,11 +72,11 @@ trait PipelineManager extends LazyLogging {
 
     import client.endpoint.config.settings.hostSettings.connectionSettings
     val clientConnectionSettings = reqSettings match {
-      case s if s == Configuration.defaultRequestSettings =>
+      case None =>
         val reqTimeout = Configuration.defaultRequestSettings(client.endpoint.config, client.config).timeout
         connectionSettings.copy(requestTimeout = reqTimeout.duration)
-      case _                                    =>
-        connectionSettings.copy(requestTimeout = reqSettings.timeout.duration)
+      case Some(settings) =>
+        connectionSettings.copy(requestTimeout = settings.timeout.duration)
     }
     import client.endpoint._
     val hostSettings = config.settings.hostSettings.copy(connectionSettings = clientConnectionSettings)
@@ -84,7 +84,7 @@ trait PipelineManager extends LazyLogging {
       connectionType = client.endpoint.config.settings.connectionType)
   }
 
-  def invokeToHttpResponseWithoutSetup(client: HttpClient, reqSettings: RequestSettings, actorRef: ActorRef)
+  def invokeToHttpResponseWithoutSetup(client: HttpClient, reqSettings: Option[RequestSettings], actorRef: ActorRef)
                                       (implicit actorFactory: ActorRefFactory): Try[(HttpRequest => Future[HttpResponse])] = {
     implicit val ec = actorFactory.dispatcher
     val pipelineSetting = client.endpoint.config.pipeline.getOrElse(PipelineSetting.default)
@@ -92,12 +92,11 @@ trait PipelineManager extends LazyLogging {
     implicit val timeout: Timeout =
       client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
-    val updatedPipeConfig = reqSettings.headers.isEmpty match {
-      case false =>
-        val requestPipelines = pipeConfig.reqPipe :+ new RequestUpdateHeadersHandler(reqSettings.headers)
-        pipeConfig.copy(reqPipe = requestPipelines)
-      case true => pipeConfig
-    }
+    val headers = reqSettings.toList flatMap (setting => setting.headers)
+    val updatedPipeConfig = if (headers.nonEmpty) {
+      val requestPipelines = pipeConfig.reqPipe :+ new RequestUpdateHeadersHandler(headers)
+      pipeConfig.copy(reqPipe = requestPipelines)
+    } else pipeConfig
 
     val processor = pipelineSetting.factory.create(updatedPipeConfig, pipelineSetting.setting)
 

@@ -97,7 +97,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
   def call(client: HttpClient,
            actorRef: ActorRef,
            path: String,
-           reqSettings: RequestSettings,
+           reqSettings: Option[RequestSettings],
            requestBuilder: Uri => HttpRequest)
           (implicit actorFactory: ActorRefFactory): Future[HttpResponse] = {
     val uri = makeFullUri(client, path)
@@ -140,10 +140,9 @@ class HttpClientActor(svcName: String, env: Environment, clientMap: TrieMap[(Str
       implicit val system = context.system
       implicit val timeout: Timeout =
         currentClient.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout
-      val requestSettings = msg.requestSettings getOrElse Configuration.defaultRequestSettings(system)
-      (IO(Http) ? hostConnectorSetup(currentClient, requestSettings)).flatMap {
+      (IO(Http) ? hostConnectorSetup(currentClient, msg.requestSettings)).flatMap {
         case Http.HostConnectorInfo(connector, _) =>
-          call(currentClient, connector, msg.uri, requestSettings, msg.requestBuilder)(context)
+          call(currentClient, connector, msg.uri, msg.requestSettings, msg.requestBuilder)(context)
       } .pipeTo(sender()) // See whether we can even trim this further by not having to ask.
       // Is there always the same hostConnector for the same HttpClientActor?
 
