@@ -79,7 +79,7 @@ class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension w
     endpointResolvers.find(_.resolve(svcName, env) != None)
   }
 
-  def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
+  def resolve(svcName: String, env: Environment = Default)(implicit system: ActorSystem): Option[Endpoint] = {
     val resolvedEndpoint = endpointResolvers.foldLeft[Option[Endpoint]](None) {
       (endpoint: Option[Endpoint], resolver: EndpointResolver) =>
         endpoint match {

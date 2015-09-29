@@ -52,6 +52,7 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
   }
 
   implicit class RichPath(val path: Uri.Path) extends AnyVal {
+
     import Uri.Path._
 
     @tailrec
@@ -66,6 +67,7 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
 
     def endsWithSlash: Boolean = last(path).isInstanceOf[Slash]
   }
+
 }
 
 
@@ -101,7 +103,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
            requestBuilder: Uri => HttpRequest)
           (implicit actorFactory: ActorRefFactory): Future[HttpResponse] = {
     val uri = makeFullUri(client, path)
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (uri resolvedAgainst client.endpoint.uri))
     handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), requestBuilder(uri))
   }
 
@@ -214,5 +216,4 @@ class HttpClientManager(clientMap: TrieMap[(String, Environment), HttpClient]) e
     case GetAll =>
       sender ! clientMap
   }
-
 }

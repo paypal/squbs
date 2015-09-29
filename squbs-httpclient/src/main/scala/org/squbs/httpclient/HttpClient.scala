@@ -79,6 +79,7 @@ case class HttpClient(name: String,
   val fActorRef = actorCreator(actorRefFactory)
 
   val endpoint = {
+    implicit val _system = system
     val serviceEndpoint = EndpointRegistry(system).resolve(name, env)
     serviceEndpoint match {
       case Some(se) => config match {
