@@ -34,6 +34,7 @@ import spray.util.Utils._
 import spray.util._
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 
 class ChunkedRequestSpec extends TestKit(ActorSystem("testSystem", ConfigFactory.parseString(
@@ -69,13 +70,15 @@ with Matchers with ImplicitSender with BeforeAndAfterAll with MockHttpServerSupp
         val pipeHandler = context.actorOf(Props(classOf[ChunkActor]))
         val processor = new SimpleProcessor(SimplePipelineConfig.empty) {
           //sync method to process request chunk
-          override def processRequestChunk(ctx: RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
+          override def processRequestChunk(ctx: RequestContext, chunk: MessageChunk)(implicit context: ActorRefFactory):
+          MessageChunk = {
             println("processRequestChunk...")
             MessageChunk(chunk.data.asString(HttpCharsets.`UTF-8`).replace('0', 'A'), chunk.extension)
           }
 
           //sync method to process request chunk end
-          override def processRequestChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd)(implicit context: ActorContext): ChunkedMessageEnd = {
+          override def processRequestChunkEnd(ctx: RequestContext, chunkEnd: ChunkedMessageEnd)
+                                             (implicit context: ActorRefFactory): ChunkedMessageEnd = {
             chunkEnd.copy(extension = "XYZ")
           }
         }
@@ -85,7 +88,7 @@ with Matchers with ImplicitSender with BeforeAndAfterAll with MockHttpServerSupp
             pipeHandler forward start
 
           case start@ChunkedRequestStart(req@HttpRequest(POST, Uri.Path("/pipe"), _, _, _)) =>
-            context.actorOf(Props(classOf[PipelineProcessorActor], PipelineProcessorActor.toTarget(pipeHandler), processor)) forward RequestContext(start.request, true)
+            context.actorOf(Props(classOf[PipelineProcessorActor], PipelineProcessorActor.toTarget(pipeHandler), processor)) forward RequestContext(start.request, isChunkRequest = true)
         }
       }
     }, "facade")))
@@ -150,7 +153,7 @@ class ChunkActor extends Actor {
       case chunk: MessageChunk => receivedChunk(chunk.data)
 
       case chunkEnd: ChunkedMessageEnd =>
-        content ++= chunkEnd.extension.getBytes()
+        content ++= chunkEnd.extension.getBytes
         sender() ! HttpResponse(OK, content.toArray)
         context.stop(self)
       case _ =>

@@ -16,11 +16,13 @@
 
 package org.squbs.httpclient.endpoint.impl
 
-import org.squbs.httpclient.env.Environment
+import akka.actor.ActorSystem
 import org.squbs.httpclient.Configuration
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointResolver}
+import org.squbs.httpclient.env.Environment
 
 case class SimpleServiceEndpointResolver(resolverName: String, serviceMap: Map[String, Option[Configuration]])
+                                        (implicit system: ActorSystem)
     extends EndpointResolver {
 
   serviceMap.foreach(service => Endpoint.check(service._1))

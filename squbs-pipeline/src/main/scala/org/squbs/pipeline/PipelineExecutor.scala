@@ -15,7 +15,7 @@
  */
 package org.squbs.pipeline
 
-import akka.actor.ActorContext
+import akka.actor.{ActorRefFactory, ActorContext}
 import org.squbs.pipeline.PipelineExecutor.Target
 import spray.http.{HttpRequest, HttpResponse}
 
@@ -30,9 +30,9 @@ class PipelineExecutor(target: Target, processor: Processor) {
 
   import processor._
 
-  def execute(ctx: RequestContext)(implicit context: ActorContext): Future[HttpResponse] = {
+  def execute(ctx: RequestContext)(implicit refFactory: ActorRefFactory): Future[HttpResponse] = {
     val p = Promise[HttpResponse]
-    import context.dispatcher
+    import refFactory.dispatcher
 
     def afterResponse(rawResponse: Future[HttpResponse], currentCtx: RequestContext): Unit = {
       rawResponse onComplete {

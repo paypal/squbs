@@ -16,16 +16,16 @@
 
 package org.squbs.httpclient.pipeline.impl
 
-import akka.actor.ActorContext
+import akka.actor.ActorRefFactory
 import org.squbs.pipeline.{Handler, RequestContext}
 import spray.http.HttpHeader
 
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class RequestAddHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
-	    Future[RequestContext] = {
+	override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+		import context.dispatcher
 		val originalHeaders = reqCtx.request.headers
 		Future {
 			reqCtx.copy(request = reqCtx.request.copy(headers = originalHeaders :+ httpHeader))
@@ -34,8 +34,8 @@ class RequestAddHeaderHandler(httpHeader: HttpHeader) extends Handler {
 }
 
 class RequestRemoveHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
-      Future[RequestContext] = {
+	override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+		import context.dispatcher
 		val originalHeaders = reqCtx.request.headers.groupBy[Boolean](_.name == httpHeader.name)
 		Future {
 			reqCtx.copy(request = reqCtx.request.copy(headers = originalHeaders.getOrElse(false, List.empty[HttpHeader])))
@@ -44,8 +44,8 @@ class RequestRemoveHeaderHandler(httpHeader: HttpHeader) extends Handler {
 }
 
 class RequestUpdateHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
-      Future[RequestContext] = {
+	override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+		import context.dispatcher
 		val originalHeaders = reqCtx.request.headers.groupBy[Boolean](_.name == httpHeader.name)
 		Future {
 			reqCtx.copy(request =
@@ -55,8 +55,7 @@ class RequestUpdateHeaderHandler(httpHeader: HttpHeader) extends Handler {
 }
 
 class RequestUpdateHeadersHandler(newHeaders: List[HttpHeader]) extends Handler {
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
-  Future[RequestContext] = {
+  override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
 		val origHdrKV = reqCtx.request.headers map { h => h.lowercaseName -> h }
 		val newHdrKV = newHeaders map { h => h.lowercaseName -> h }
 		val finalHeaders = (mutable.LinkedHashMap(origHdrKV: _*) ++ newHdrKV).values.toList

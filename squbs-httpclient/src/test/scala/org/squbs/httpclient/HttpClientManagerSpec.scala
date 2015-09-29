@@ -41,8 +41,10 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
 
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
 
+  implicit val _system = system
+
   override def beforeAll() {
-    EndpointRegistry(system).register(DummyServiceEndpointResolver)
+    EndpointRegistry(system).register(new DummyServiceEndpointResolver)
     startDummyService(system)
     Thread.sleep(2000)
   }

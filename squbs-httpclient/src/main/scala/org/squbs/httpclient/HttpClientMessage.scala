@@ -98,7 +98,7 @@ object HttpClientActorMessage {
 
   sealed trait HttpClientMessage {
     def requestBuilder : Uri => HttpRequest
-    def requestSettings : RequestSettings
+    def requestSettings : Option[RequestSettings]
     def uri : String
   }
 
@@ -107,7 +107,7 @@ object HttpClientActorMessage {
    * Failure => Throwable
    * @param uri
    */
-  case class Get(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage {
+  case class Get(uri: String, requestSettings: Option[RequestSettings] = None) extends HttpClientMessage {
     val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Get(_)
   }
 
@@ -116,7 +116,7 @@ object HttpClientActorMessage {
    * Failure => Throwable
    * @param uri
    */
-  case class Options(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage {
+  case class Options(uri: String, requestSettings: Option[RequestSettings] = None) extends HttpClientMessage {
     val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Options(_)
   }
 
@@ -125,7 +125,7 @@ object HttpClientActorMessage {
    * Failure => Throwable
    * @param uri
    */
-  case class Head(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage {
+  case class Head(uri: String, requestSettings: Option[RequestSettings] = None) extends HttpClientMessage {
     val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Head(_)
   }
 
@@ -134,7 +134,7 @@ object HttpClientActorMessage {
    * Failure => Throwable
    * @param uri
    */
-  case class Delete(uri: String, requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage{
+  case class Delete(uri: String, requestSettings: Option[RequestSettings] = None) extends HttpClientMessage{
     val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Delete(_)
   }
 
@@ -149,7 +149,7 @@ object HttpClientActorMessage {
    */
   case class Post[T](uri: String, content: Option[T],
                      marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
-                     requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage{
+                     requestSettings: Option[RequestSettings] = None) extends HttpClientMessage{
     val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Post(_, content)(marshaller)
   }
 
@@ -163,7 +163,7 @@ object HttpClientActorMessage {
    */
   case class Put[T](uri: String, content: Option[T],
                     marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
-                    requestSettings: RequestSettings = Configuration.defaultRequestSettings) extends HttpClientMessage {
+                    requestSettings: Option[RequestSettings] = None) extends HttpClientMessage {
     val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Put(_, content)(marshaller)
   }
 }
