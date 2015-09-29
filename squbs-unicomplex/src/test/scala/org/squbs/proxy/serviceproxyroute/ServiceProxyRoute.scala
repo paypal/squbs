@@ -16,16 +16,16 @@
 
 package org.squbs.proxy.serviceproxyroute
 
-import akka.actor.{ActorRefFactory, ActorContext}
+import akka.actor.ActorRefFactory
 import com.typesafe.config.Config
 import org.squbs.pipeline.{NormalResponse, Processor, ProcessorFactory, RequestContext}
 import org.squbs.unicomplex._
 import spray.http.HttpHeaders.RawHeader
-import spray.http.{HttpEntity, HttpResponse}
 import spray.http.MediaTypes._
+import spray.http.{HttpEntity, HttpResponse}
 import spray.routing.Directives._
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Future, Promise}
 
 class ServiceProxyRoute extends RouteDefinition with WebContext {
   def route = path("msg" / Segment) {
@@ -44,7 +44,7 @@ class ServiceProxyRoute extends RouteDefinition with WebContext {
 
 class DummyProcessorForRoute extends Processor with ProcessorFactory {
 
-  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+  def inbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
     val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader", "eBay") :: reqCtx.request.headers)
     val promise = Promise[RequestContext]()
     promise.success(RequestContext(request = newreq, attributes = Map("key1" -> "CCOE")))
@@ -52,10 +52,11 @@ class DummyProcessorForRoute extends Processor with ProcessorFactory {
   }
 
   //outbound processing
-  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+  override def outbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
     val newCtx = reqCtx.response match {
       case nr@NormalResponse(r) =>
-        reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: r.headers)))
+        reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader", reqCtx.attribute[String]("key1")
+          .getOrElse("Unknown")) :: r.headers)))
 
       case other => reqCtx
     }

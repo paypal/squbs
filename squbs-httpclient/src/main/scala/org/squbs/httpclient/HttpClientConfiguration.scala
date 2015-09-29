@@ -29,8 +29,7 @@ import spray.http.{HttpHeader, HttpResponse}
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
-case class Configuration(pipeline: Option[PipelineSetting], settings: Settings) {
-}
+case class Configuration(pipeline: Option[PipelineSetting], settings: Settings)
 
 case class Settings(hostSettings: HostConnectorSettings, connectionType: ClientConnectionType,
                     sslContext: Option[SSLContext], circuitBreakerConfig: CircuitBreakerSettings)

@@ -16,30 +16,36 @@
 
 package org.squbs.httpclient.pipeline.impl
 
-import akka.actor.ActorContext
+import akka.actor.ActorRefFactory
 import org.squbs.pipeline.ProxyResponse._
 import org.squbs.pipeline.{Handler, RequestContext}
 import spray.http.HttpHeader
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class ResponseAddHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
-	    Future[RequestContext] = Future {
-		reqCtx.copy(response = reqCtx.response + httpHeader)
+	override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+		import context.dispatcher
+		Future {
+			reqCtx.copy(response = reqCtx.response + httpHeader)
+		}
 	}
 }
 
 class ResponseRemoveHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
-	    Future[RequestContext] = Future {
-		reqCtx.copy(response = reqCtx.response - httpHeader)
+	override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+		import context.dispatcher
+		Future {
+			reqCtx.copy(response = reqCtx.response - httpHeader)
+		}
 	}
 }
 
 class ResponseUpdateHeaderHandler(httpHeader: HttpHeader) extends Handler {
-	override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
-      Future[RequestContext] = Future {
-    reqCtx.copy(response = reqCtx.response - httpHeader + httpHeader)
-  }
+	override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+		import context.dispatcher
+		Future {
+			reqCtx.copy(response = reqCtx.response - httpHeader + httpHeader)
+		}
+	}
 }

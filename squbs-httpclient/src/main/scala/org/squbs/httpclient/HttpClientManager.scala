@@ -101,9 +101,9 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
            path: String,
            reqSettings: Option[RequestSettings],
            requestBuilder: Uri => HttpRequest)
-          (implicit actorFactory: ActorRefFactory, context : ActorContext): Future[HttpResponse] = {
+          (implicit actorFactory: ActorRefFactory): Future[HttpResponse] = {
     val uri = makeFullUri(client, path)
-    httpClientLogger.debug("Service call url is:" + (client.endpoint + uri))
+    httpClientLogger.debug("Service call url is:" + (uri resolvedAgainst client.endpoint.uri))
     handle(client, invokeToHttpResponseWithoutSetup(client, reqSettings, actorRef), requestBuilder(uri))
   }
 
