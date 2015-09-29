@@ -18,15 +18,17 @@ package org.squbs.httpclient.pipeline
 
 import javax.net.ssl.SSLContext
 
-import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.httpclient._
 import org.squbs.httpclient.endpoint.Endpoint
 import org.squbs.httpclient.pipeline.impl.RequestUpdateHeadersHandler
-import org.squbs.pipeline.PipelineSetting
+import org.squbs.pipeline.PipelineProcessorActor._
+import org.squbs.pipeline._
 import spray.can.Http
+import spray.client.pipelining._
 import spray.http.{HttpRequest, HttpResponse}
 import spray.httpx.unmarshalling._
 import spray.httpx.{PipelineException, UnsuccessfulResponseException}
@@ -67,11 +69,7 @@ trait PipelineManager extends LazyLogging {
     implicit val myClientEngineProvider = ClientSSLEngineProvider { engine =>
       engine
     }
-    import client.endpoint.uri
-    val host = uri.authority.host.toString
-    val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
-    val isSecure = uri.scheme.toLowerCase.equals("https")
-    val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
+
     import client.endpoint.config.settings.hostSettings.connectionSettings
     val clientConnectionSettings = reqSettings match {
       case Configuration.defaultRequestSettings =>
@@ -81,12 +79,13 @@ trait PipelineManager extends LazyLogging {
         connectionSettings.copy(requestTimeout = reqSettings.timeout.duration)
     }
     val hostSettings = client.endpoint.config.settings.hostSettings.copy(connectionSettings = clientConnectionSettings)
-    defaultHostConnectorSetup.copy(
+    import client.endpoint._
+    Http.HostConnectorSetup(host, port, isSecure).copy(
       settings = Some(hostSettings), connectionType = client.endpoint.config.settings.connectionType)
   }
 
   def invokeToHttpResponseWithoutSetup(client: HttpClient, reqSettings: RequestSettings, actorRef: ActorRef)
-                                      (implicit system: ActorSystem): Try[(HttpRequest => Future[HttpResponse])] = {
+                                      (implicit system: ActorSystem, context : ActorContext): Try[(HttpRequest => Future[HttpResponse])] = {
     implicit val ec = system.dispatcher
     val pipelineSetting = client.endpoint.config.pipeline.getOrElse(PipelineSetting.default)
     val pipeConfig = pipelineSetting.pipelineConfig
@@ -100,15 +99,24 @@ trait PipelineManager extends LazyLogging {
       case true => pipeConfig
     }
 
-    val processor = pipelineSetting.factory.create(updatedPipeConfig, pipelineSetting.setting)
+    val processor = pipelineSetting.factory.create(updatedPipeConfig, pipelineSetting.setting)(system)
 
-    val pipelineActor = system.actorOf(Props(classOf[HttpClientPipelineActor], client.name, client.endpoint, processor, pipeline))
+
     Try {
       client.status match {
         case Status.DOWN =>
           throw HttpClientMarkDownException(client.name, client.env)
         case _ =>
-          r: HttpRequest => (pipelineActor ? r).mapTo[HttpResponse]
+          req: HttpRequest =>
+            processor match {
+              case None => pipeline(req)
+              case Some(proc) =>
+                  val executor = new PipelineExecutor(pipeline, proc)
+                  executor.execute(RequestContext(req) +> ("HttpClient.name" -> client.name, "HttpClient.Endpoint" -> client.endpoint))
+//                val pipelineTarget : PipelineTarget = (req, caller) => pipeline(req.asInstanceOf[HttpRequest]) pipeTo caller
+//                val pipeProxy = system.actorOf(Props(classOf[PipelineProcessorActor], pipelineTarget, proc))
+//                (pipeProxy ? (RequestContext(req) +> ("HttpClient.name" -> client.name, "HttpClient.Endpoint" -> client.endpoint))).mapTo[HttpResponse]
+            }
       }
     }
   }
