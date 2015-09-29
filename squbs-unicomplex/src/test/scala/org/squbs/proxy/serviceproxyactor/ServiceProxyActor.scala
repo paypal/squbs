@@ -30,7 +30,7 @@ import spray.http.HttpMethods._
 import spray.http.StatusCodes._
 import spray.http.{ChunkedRequestStart, ChunkedResponseStart, Confirmed, HttpRequest, HttpResponse, _}
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Future, Promise}
 
 class ServiceProxyActor extends Actor with WebContext with ActorLogging {
 
@@ -71,7 +71,7 @@ class ServiceProxyActor extends Actor with WebContext with ActorLogging {
       else sender() ! Confirmed(MessageChunk(String.valueOf(i)), Pack(i + 1))
 
     case start@ChunkedRequestStart(req@HttpRequest(POST, Uri.Path("/serviceproxyactor/file-upload"), _, _, _)) =>
-      val handler = context.actorOf(Props(new ChunkHandler(sender, start)))
+      val handler = context.actorOf(Props(new ChunkHandler(sender(), start)))
       sender() ! RegisterChunkHandler(handler)
 
 
@@ -132,12 +132,13 @@ class DummyProcessorForActor extends Processor with ProcessorFactory {
 
   def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor] = Some(this)
 
-  override def processResponseChunk(ctx : RequestContext, chunk: MessageChunk)(implicit context: ActorContext): MessageChunk = {
+  override def processResponseChunk(ctx : RequestContext, chunk: MessageChunk)(implicit context: ActorRefFactory):
+  MessageChunk = {
     val raw = new String(chunk.data.toByteArray)
     MessageChunk(raw + "a")
   }
 
-  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+  def inbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
     reqCtx.request match {
       case HttpRequest(GET, Uri.Path("/serviceproxyactor/msg/processingRequestError"), _, _, _) =>
         val promise = Promise[RequestContext]()
@@ -151,10 +152,11 @@ class DummyProcessorForActor extends Processor with ProcessorFactory {
   }
 
   //outbound processing
-  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+  def outbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
     val newCtx = reqCtx.response match {
       case nr@NormalResponse(r) =>
-        reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: r.headers)))
+        reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader", reqCtx.attribute[String]("key1")
+          .getOrElse("Unknown")) :: r.headers)))
 
       case other => reqCtx
     }
