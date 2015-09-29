@@ -23,7 +23,6 @@ import org.squbs.httpclient.env.Environment
 import org.squbs.httpclient.pipeline.PipelineManager
 import spray.can.Http
 import spray.http.{HttpRequest, HttpResponse, _}
-import spray.httpx.marshalling.Marshaller
 
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
@@ -74,8 +73,6 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
  * Without setup HttpConnection
  */
 trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
-
-  import spray.httpx.RequestBuilding._
 
   def handle(client: HttpClient,
              pipeline: Try[HttpRequest => Future[HttpResponse]],
@@ -143,9 +140,10 @@ class HttpClientActor(svcName: String, env: Environment, clientMap: TrieMap[(Str
       implicit val system = context.system
       implicit val timeout: Timeout =
         currentClient.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout
-      (IO(Http) ? hostConnectorSetup(currentClient, msg.requestSettings)).flatMap {
+      val requestSettings = msg.requestSettings getOrElse Configuration.defaultRequestSettings(system)
+      (IO(Http) ? hostConnectorSetup(currentClient, requestSettings)).flatMap {
         case Http.HostConnectorInfo(connector, _) =>
-          call(currentClient, connector, msg.uri, msg.requestSettings, msg.requestBuilder)(context)
+          call(currentClient, connector, msg.uri, requestSettings, msg.requestBuilder)(context)
       } .pipeTo(sender()) // See whether we can even trim this further by not having to ask.
       // Is there always the same hostConnector for the same HttpClientActor?
 
