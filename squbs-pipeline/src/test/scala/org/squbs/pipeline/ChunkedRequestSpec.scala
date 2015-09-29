@@ -85,8 +85,7 @@ with Matchers with ImplicitSender with BeforeAndAfterAll with MockHttpServerSupp
             pipeHandler forward start
 
           case start@ChunkedRequestStart(req@HttpRequest(POST, Uri.Path("/pipe"), _, _, _)) =>
-            val client = sender()
-            context.actorOf(Props(classOf[PipelineProcessorActor], pipeHandler, processor)) tell(RequestContext(start.request, true), client)
+            context.actorOf(Props(classOf[PipelineProcessorActor], PipelineProcessorActor.toTarget(pipeHandler), processor)) forward RequestContext(start.request, true)
         }
       }
     }, "facade")))

@@ -137,6 +137,15 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     result.entity.data.asString should be (fullTeamJson)
   }
 
+  "HttpClient with correct Endpoint calling raw.get" should "pass correct query" in {
+    val response = HttpClientFactory.get("DummyService").raw.get("viewrange?range=new")
+    val result = Await.result(response, awaitMax)
+    result.status should be (StatusCodes.OK)
+    result.entity should not be empty
+    result.entity.data should not be empty
+    result.entity.data.asString should be (newTeamMemberJson)
+  }
+
   "HttpClient with correct Endpoint calling raw.get and unmarshall object" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").raw.get("/view")
     val result = Await.result(response, awaitMax)

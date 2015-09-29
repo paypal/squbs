@@ -23,6 +23,7 @@ import org.squbs.httpclient.env.Environment
 import org.squbs.httpclient.pipeline.PipelineManager
 import spray.can.Http
 import spray.http.{HttpRequest, HttpResponse, _}
+import spray.httpx.marshalling.Marshaller
 
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
@@ -52,7 +53,6 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
   }
 
   implicit class RichPath(val path: Uri.Path) extends AnyVal {
-
     import Uri.Path._
 
     @tailrec
@@ -67,7 +67,6 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
 
     def endsWithSlash: Boolean = last(path).isInstanceOf[Slash]
   }
-
 }
 
 
@@ -75,6 +74,8 @@ object HttpClientManager extends ExtensionId[HttpClientManagerExtension] with Ex
  * Without setup HttpConnection
  */
 trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
+
+  import spray.httpx.RequestBuilding._
 
   def handle(client: HttpClient,
              pipeline: Try[HttpRequest => Future[HttpResponse]],
@@ -109,14 +110,16 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
 
   private def makeFullUri(client: HttpClient, path: String): Uri = {
     import HttpClientManager._
+    val appendUri = Uri(path)
+    val appendPath = appendUri.path
     val basePath = client.endpoint.uri.path
-    val fullPath = (basePath.endsWithSlash, path.charAt(0) == '/') match {
-      case (false, false) => basePath + ('/' + path)
-      case (true, false) => basePath + path
-      case (false, true) => basePath + path
-      case (true, true) => basePath + path.substring(1)
+    val fullPath = (basePath.endsWithSlash, appendPath.startsWithSlash) match {
+      case (false, false) => basePath ++ (Uri.Path / appendPath)
+      case (true, false)  => basePath ++ appendPath
+      case (false, true)  => basePath ++ appendPath
+      case (true, true)   => basePath ++ appendPath.tail
     }
-    Uri(path = fullPath)
+    appendUri withPath fullPath
   }
 }
 
@@ -140,10 +143,9 @@ class HttpClientActor(svcName: String, env: Environment, clientMap: TrieMap[(Str
       implicit val system = context.system
       implicit val timeout: Timeout =
         currentClient.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout
-      val requestSettings = msg.requestSettings getOrElse Configuration.defaultRequestSettings(system)
-      (IO(Http) ? hostConnectorSetup(currentClient, requestSettings)).flatMap {
+      (IO(Http) ? hostConnectorSetup(currentClient, msg.requestSettings)).flatMap {
         case Http.HostConnectorInfo(connector, _) =>
-          call(currentClient, connector, msg.uri, requestSettings, msg.requestBuilder)(context)
+          call(currentClient, connector, msg.uri, msg.requestSettings, msg.requestBuilder)(context)
       } .pipeTo(sender()) // See whether we can even trim this further by not having to ask.
       // Is there always the same hostConnector for the same HttpClientActor?
 
@@ -215,4 +217,5 @@ class HttpClientManager(clientMap: TrieMap[(String, Environment), HttpClient]) e
     case GetAll =>
       sender ! clientMap
   }
+
 }
