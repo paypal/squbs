@@ -16,12 +16,12 @@
 
 package org.squbs.pipeline
 
-import akka.actor.{ActorContext, ActorRefFactory, ActorSystem}
+import akka.actor.{ActorRefFactory, ActorSystem}
 import akka.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{FlatSpecLike, Matchers}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class PipelineHandlerManagerSpec extends TestKit(ActorSystem("PipelineHandlerManagerSpec", ConfigFactory.parseString(
   """
@@ -80,7 +80,7 @@ class TestHandlerFactory1 extends HandlerFactory with Handler {
 
   override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = Some(this)
 
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+  override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory):
       Future[RequestContext] = Future.successful(reqCtx)
 }
 
@@ -89,7 +89,7 @@ class TestHandlerFactory2 extends HandlerFactory with Handler {
 
   override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = None
 
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+  override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory):
       Future[RequestContext] = Future.successful(reqCtx)
 }
 

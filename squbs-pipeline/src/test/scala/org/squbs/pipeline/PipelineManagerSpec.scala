@@ -16,14 +16,14 @@
 
 package org.squbs.pipeline
 
-import akka.actor.{ActorContext, ActorRefFactory, ActorSystem}
+import akka.actor.{ActorRefFactory, ActorSystem}
 import akka.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{FlatSpecLike, Matchers}
-import Timeouts._
+import org.squbs.pipeline.Timeouts._
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class PipelineManagerSpec extends TestKit(ActorSystem("PipelineManagerSpec", ConfigFactory.parseString(
   """
@@ -193,11 +193,11 @@ object Tracking {
 
 object TestProcessor extends Processor {
   //inbound processing
-  def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+  def inbound(reqCtx: RequestContext)(implicit context: ActorRefFactory):
       Future[RequestContext] = Future.successful(reqCtx)
 
   //outbound processing
-  def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
+  def outbound(reqCtx: RequestContext)(implicit context: ActorRefFactory):
       Future[RequestContext] = Future.successful(reqCtx)
 }
 
@@ -242,8 +242,8 @@ class TestResolver4
 class TestHandlerFactory extends HandlerFactory with Handler {
   override def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler] = Some(this)
 
-  override def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext):
-  Future[RequestContext] = Future.successful(reqCtx)
+  override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] =
+    Future.successful(reqCtx)
 }
 
 

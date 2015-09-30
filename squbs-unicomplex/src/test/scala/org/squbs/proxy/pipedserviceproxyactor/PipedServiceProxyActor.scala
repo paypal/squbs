@@ -16,16 +16,15 @@
 
 package org.squbs.proxy.pipedserviceproxyactor
 
-import akka.actor.{ActorRefFactory, Actor, ActorContext, ActorLogging}
+import akka.actor.{Actor, ActorLogging, ActorRefFactory}
 import com.typesafe.config.Config
 import org.squbs.pipeline._
-import org.squbs.proxy._
 import org.squbs.unicomplex.WebContext
 import spray.http.HttpHeaders.RawHeader
-import spray.http.{HttpRequest, HttpResponse}
 import spray.http.StatusCodes._
+import spray.http.{HttpRequest, HttpResponse}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class PipedServiceProxyActor extends Actor with WebContext with ActorLogging {
 
@@ -52,25 +51,28 @@ class DummyPipedProcessorFactoryForActor extends ProcessorFactory {
   }
 
   object RequestHandler1 extends Handler {
-    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+    def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+      import context.dispatcher
       val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader1", "PayPal") :: reqCtx.request.headers)
       Future {
-	      reqCtx.copy(request = newreq, attributes = reqCtx.attributes + (("key1" -> "CDC")))
+	      reqCtx.copy(request = newreq, attributes = reqCtx.attributes + ("key1" -> "CDC"))
       }
     }
   }
 
   object RequestHandler2 extends Handler {
-    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+    def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
       val newreq = reqCtx.request.copy(headers = RawHeader("dummyReqHeader2", "eBay") :: reqCtx.request.headers)
+      import context.dispatcher
       Future {
-	      reqCtx.copy(request = newreq, attributes = reqCtx.attributes + (("key2" -> "CCOE")))
+	      reqCtx.copy(request = newreq, attributes = reqCtx.attributes + ("key2" -> "CCOE"))
       }
     }
   }
 
   object ResponseHandler1 extends Handler {
-    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+    def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+      import context.dispatcher
       val newCtx = reqCtx.response match {
         case nr@NormalResponse(r) =>
           reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader1", reqCtx.attribute[String]("key1").getOrElse("Unknown")) :: r.headers)))
@@ -84,13 +86,14 @@ class DummyPipedProcessorFactoryForActor extends ProcessorFactory {
   }
 
   object ResponseHandler2 extends Handler {
-    def process(reqCtx: RequestContext)(implicit dispatcher: ExecutionContext, context: ActorContext): Future[RequestContext] = {
+    def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
       val newCtx = reqCtx.response match {
         case nr@NormalResponse(r) =>
           reqCtx.copy(response = nr.update(r.copy(headers = RawHeader("dummyRespHeader2", reqCtx.attribute[String]("key2").getOrElse("Unknown")) :: r.headers)))
 
         case other => reqCtx
       }
+      import context.dispatcher
       Future { newCtx }
     }
   }

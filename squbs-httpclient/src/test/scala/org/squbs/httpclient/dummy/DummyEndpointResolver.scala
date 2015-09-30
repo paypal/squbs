@@ -16,12 +16,13 @@
 
 package org.squbs.httpclient.dummy
 
+import akka.actor.ActorSystem
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointResolver}
 import org.squbs.httpclient.env.{DEV, Default, Environment}
 import org.squbs.httpclient.HttpClientException
 import DummyService._
 
-object DummyServiceEndpointResolver extends EndpointResolver{
+class DummyServiceEndpointResolver(implicit system: ActorSystem) extends EndpointResolver{
 
   override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
     if (svcName == name) {
@@ -34,7 +35,7 @@ object DummyServiceEndpointResolver extends EndpointResolver{
   override def name: String = "DummyService"
 }
 
-object NotExistingEndpointResolver extends EndpointResolver {
+class NotExistingEndpointResolver(implicit system: ActorSystem) extends EndpointResolver {
 
   override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
     if (svcName == name) {
@@ -47,7 +48,7 @@ object NotExistingEndpointResolver extends EndpointResolver {
   override def name: String = "NotExistingService"
 }
 
-object DummyLocalhostResolver extends EndpointResolver {
+class DummyLocalhostResolver(implicit system: ActorSystem) extends EndpointResolver {
   override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     require(svcName != null, "Service name cannot be null")
     require(svcName.length > 0, "Service name must not be blank")
@@ -63,7 +64,7 @@ object DummyLocalhostResolver extends EndpointResolver {
 
 object GoogleAPI {
 
-  object GoogleMapAPIEndpointResolver extends EndpointResolver {
+  class GoogleMapAPIEndpointResolver(implicit system: ActorSystem) extends EndpointResolver {
     override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
       if (svcName == name)
         Some(Endpoint("http://maps.googleapis.com/maps"))

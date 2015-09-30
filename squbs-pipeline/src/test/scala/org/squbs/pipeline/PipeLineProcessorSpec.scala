@@ -20,14 +20,14 @@ import akka.actor._
 import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.squbs.pipeline.PipelineProcessorActor._
+import org.squbs.pipeline.Timeouts._
 import spray.http.HttpHeaders.RawHeader
 import spray.http.Uri.Path
 import spray.http._
-import Timeouts._
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{ExecutionContext, Future}
-import PipelineProcessorActor._
+import scala.concurrent.Future
 
 class PipeLineProcessorSpec extends TestKit(ActorSystem("PipelineProcessorSpecSys", ConfigFactory.parseString(
   """
@@ -302,20 +302,26 @@ class ExceptionProcessor(errorAt: List[String]) extends Processor {
   }
 
   //inbound processing
-  override def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = Future(error(reqCtx, "inbound"))
+  override def inbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+    import context.dispatcher
+    Future(error(reqCtx, "inbound"))
+  }
 
   //outbound processing
-  override def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] = Future(error(reqCtx, "outbound"))
+  override def outbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+    import context.dispatcher
+    Future(error(reqCtx, "outbound"))
+  }
 
   //first chance to handle input request before processing request
-  override def preInbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = error(ctx, "preInbound")
+  override def preInbound(ctx: RequestContext)(implicit context: ActorRefFactory): RequestContext = error(ctx, "preInbound")
 
-  override def postInbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = error(ctx, "postInbound")
+  override def postInbound(ctx: RequestContext)(implicit context: ActorRefFactory): RequestContext = error(ctx, "postInbound")
 
-  override def preOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = error(ctx, "preOutbound")
+  override def preOutbound(ctx: RequestContext)(implicit context: ActorRefFactory): RequestContext = error(ctx, "preOutbound")
 
   //last chance to handle output
-  override def postOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = error(ctx, "postOutbound")
+  override def postOutbound(ctx: RequestContext)(implicit context: ActorRefFactory): RequestContext = error(ctx, "postOutbound")
 }
 
 object DummyProcessor extends Processor {
@@ -326,19 +332,23 @@ object DummyProcessor extends Processor {
     }
   }
 
-  override def inbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] =
+  override def inbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+    import context.dispatcher
     Future {
       reqCtx +>("inbound", "go")
     }
+  }
 
   //outbound processing
-  override def outbound(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext] =
+  override def outbound(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+    import context.dispatcher
     Future {
       reqCtx +>("outbound", "go")
     }
+  }
 
   //last chance to handle output
-  override def postOutbound(ctx: RequestContext)(implicit context: ActorContext): RequestContext = {
+  override def postOutbound(ctx: RequestContext)(implicit context: ActorRefFactory): RequestContext = {
     val newctx = ctx +>("postoutbound", "go")
     val hs: List[HttpHeader] = newctx.attributes.flatMap { entry =>
       Some(HttpHeaders.RawHeader(entry._1, entry._2.toString))
