@@ -54,8 +54,8 @@ class ChunkedRequestSpec extends TestKit(ActorSystem("testSystem", ConfigFactory
   """.stripMargin))) with FlatSpecLike
 with Matchers with ImplicitSender with BeforeAndAfterAll with MockHttpServerSupport {
 
+  import system.dispatcher
   implicit val connectTimeout: Timeout = 5 seconds
-  implicit val executionContext = system.dispatcher
 
   val (_, port) = temporaryServerHostnameAndPort()
 

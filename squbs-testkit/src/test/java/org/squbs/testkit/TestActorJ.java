@@ -20,7 +20,7 @@ import akka.actor.UntypedActor;
 
 public class TestActorJ extends UntypedActor {
     public void onReceive(Object msg) {
-        if (msg.equals("Ping")) {
+        if ("Ping".equals(msg)) {
             getSender().tell("Pong", getSelf());
         }
     }

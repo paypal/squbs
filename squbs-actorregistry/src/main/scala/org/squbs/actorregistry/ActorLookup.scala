@@ -108,7 +108,7 @@ case class ActorNotFound(actorLookup: ActorLookup) extends RuntimeException("Act
       case ActorLookup(None, None, None) =>
         p.failure(org.squbs.actorregistry.ActorNotFound(this))
       case _ =>
-        implicit val ec = system.dispatcher
+        import system.dispatcher
         system.actorSelection(ActorRegistry.path) ? ActorLookupMessage(this, Identify("ActorLookup")) onComplete {
           case Success(ActorIdentity(_, Some(ref))) =>
             p.success(ref)

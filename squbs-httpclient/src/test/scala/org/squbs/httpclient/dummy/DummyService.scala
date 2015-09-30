@@ -181,7 +181,7 @@ trait DummyService extends SimpleRoutingApp {
 
   def startDummyService(implicit system: ActorSystem, address: String = dummyServiceIpAddress,
                         port: Int = dummyServicePort) {
-    implicit val ec = system.dispatcher
+    import system.dispatcher
     startServer(address, port = port) {
       pathSingleSlash {
         redirect("/view", StatusCodes.Found)

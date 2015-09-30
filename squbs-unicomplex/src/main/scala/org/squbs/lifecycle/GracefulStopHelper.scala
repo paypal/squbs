@@ -50,7 +50,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
     context.parent ! StopTimeout(stopTimeout)
   }
 
-  implicit val executionContext = context.system.dispatcher
+  import context.dispatcher
 
   /**
    * Duration that the actor needs to finish the graceful stop.

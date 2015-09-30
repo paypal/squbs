@@ -16,19 +16,18 @@
 
 package org.squbs.httpclient.demo
 
-import org.squbs.httpclient._
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.CircuitBreakerOpenException
-import scala.concurrent.duration._
-import akka.actor.{Props, ActorRef, Actor, ActorSystem}
-import org.squbs.httpclient.endpoint.{Endpoint, EndpointResolver, EndpointRegistry}
+import org.squbs.httpclient.{CircuitBreakerSettings, _}
+import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolver}
 import org.squbs.httpclient.env.Environment
-import org.squbs.httpclient.CircuitBreakerSettings
 import spray.http.HttpResponse
+
+import scala.concurrent.duration._
 
 object CircuitBreakerMain2 extends App{
 
   implicit val system = ActorSystem("CircuitBreakerMain2")
-  implicit val ec = system.dispatcher
 
   EndpointRegistry(system).register(new EndpointResolver{
 

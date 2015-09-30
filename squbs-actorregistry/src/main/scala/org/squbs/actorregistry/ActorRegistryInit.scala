@@ -63,7 +63,7 @@ private class ActorRegistryInit extends ExtensionLifecycle with LazyLogging {
 }
 
 private class HelperActor(sel: ActorSelection, msg: Any, duration: FiniteDuration) extends Actor {
-  implicit val ex = context.dispatcher
+  import context.dispatcher
   sel ! Identify("try")
 
   context.setReceiveTimeout(duration)

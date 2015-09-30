@@ -64,8 +64,6 @@ class RootCtxRouteSpec extends TestKit(
 
   val port = system.settings.config getInt "default-listener.bind-port"
 
-  implicit val executionContext = system.dispatcher
-
   override def afterAll() {
     Unicomplex(system).uniActor ! GracefulStop
   }
