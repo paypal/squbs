@@ -57,7 +57,7 @@ The following is an example of an EndpointResolver:
 
 ```scala
 
-object DummyLocalhostResolver extends EndpointResolver {
+class DummyLocalhostResolver(implicit system: ActorSystem) {
   override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == null || svcName.length <= 0) throw new HttpClientException(700, "Service name cannot be null")
     env match {
@@ -75,6 +75,13 @@ object DummyLocalhostResolver extends EndpointResolver {
 ```java
 
 public class DummyLocalhostResolver extends AbstractEndpointResolver{
+
+    private ActorSystem system;
+
+    public DummyLocalhostResolver(ActorSystem system) {
+        this.system = system;
+    }
+    
     @Override
     public String name() {
         return "DummyLocalhostResolver";
@@ -83,7 +90,7 @@ public class DummyLocalhostResolver extends AbstractEndpointResolver{
     @Override
     public Option<Endpoint> resolve(String svcName, Environment env) {
         if (svcName == null || svcName.length() <= 0) throw new HttpClientException("Service name cannot be null");
-        if(env == Default.value() || env == DEV.value()) return Option.apply(EndpointFactory.create("http://localhost:8080/" + svcName));
+        if(env == Default.value() || env == DEV.value()) return Option.apply(EndpointFactory.create("http://localhost:8080/" + svcName, system));
         else throw new HttpClientException("DummyLocalhostResolver cannot support " + env + " environment");
     }
 }
@@ -95,7 +102,7 @@ After defining the resolver, simply register the resolver with the EndpointRegis
 
 ```scala
 
-EndpointRegistry(actorSystem).register(DummyLocalhostResolver)
+EndpointRegistry(actorSystem).register(new DummyLocalhostResolver)
 
 ```
 **Java**
@@ -103,7 +110,7 @@ EndpointRegistry(actorSystem).register(DummyLocalhostResolver)
 ```java
 
 EndpointRegistryExtension registry = (EndpointRegistryExtension) EndpointRegistry.get(actorSystem); 
-registry.register(new DummyLocalhostResolver());
+registry.register(new DummyLocalhostResolver(system));
         
 ```
 
@@ -338,7 +345,7 @@ response:
 ```scala
 
 //get HttpClientActor Ref from Get HttpClient Message Call
-httpClientActorRef ! Get(uri: String, reqSettings = Configuration.defaultRequestSettings)
+httpClientActorRef ! Get(uri: String, reqSettings = None)
 
 ```
 - uri(Mandatory): Uri for Service Call
@@ -514,59 +521,71 @@ val result: Future[Unit] = client.readyFuture
 
 ```scala
 
-val t: Future[T] = client.get[T](uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.get(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.get[T](uri: String)
+val response: Future[HttpResponse] = client.raw.get(uri: String)
+val t: Future[T] = client.get[T](uri: String, reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.get(uri: String, reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings  
+- reqSettings: Request Settings, if non-default
 
 ```scala
 
-val t: Future[T] = client.post[T](uri: String, content: Option[T], reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.post(uri: String, content: Option[T], reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.post[T](uri: String, content: Option[T])
+val response: Future[HttpResponse] = client.raw.post(uri: String, content: Option[T])
+val t: Future[T] = client.post[T](uri: String, content: Option[T], reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.post(uri: String, content: Option[T], reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Post Content
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings 
+- reqSettings: Request Settings, if non-default 
 
 ```scala
 
-val t: Future[T] = client.put[T](uri: String, content: Option[T], reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.put(uri: String, content: Option[T], reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.put[T](uri: String, content: Option[T])
+val response: Future[HttpResponse] = client.raw.put(uri: String, content: Option[T])
+val t: Future[T] = client.put[T](uri: String, content: Option[T], reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.put(uri: String, content: Option[T], reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Put Content
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings 
+- reqSettings: Request Settings, if non-default
 
 ```scala
 
-val t: Future[T] = client.head[T](uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.head(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.head[T](uri: String)
+val response: Future[HttpResponse] = client.raw.head(uri: String)
+val t: Future[T] = client.head[T](uri: String, reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.head(uri: String, reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings
+- reqSettings: Request Settings, if non-default
 
 ```scala
 
-val t: Future[T] = client.delete[T](uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.delete(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.delete[T](uri: String)
+val response: Future[HttpResponse] = client.raw.delete(uri: String)
+val t: Future[T] = client.delete[T](uri: String, reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.delete(uri: String, reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings
+- reqSettings: Request Settings, if non-default
 
 ```scala
 
-val t: Future[T] = client.options[T](uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.options(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.options[T](uri: String)
+val response: Future[HttpResponse] = client.raw.options(uri: String)
+val t: Future[T] = client.options[T](uri: String, reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.options(uri: String, reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings
+- reqSettings: Request Settings, if non-default
 
 
 ### Pipeline
@@ -692,7 +711,7 @@ val circuitBreakers: java.util.List[CircuitBreakerInfo] = (new CircuitBreakerBea
 
 ```scala
 
-object GoogleMapAPIEndpointResolver extends EndpointResolver {
+class GoogleMapAPIEndpointResolver(implicit system: ActorSystem) extends EndpointResolver {
   override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == name)
       Some(Endpoint("http://maps.googleapis.com/maps"))
@@ -724,7 +743,7 @@ object HttpClientDemo1 extends App {
   implicit val system = ActorSystem("HttpClientDemo1")
   implicit val timeout: Timeout = 3 seconds
   import system.dispatcher
-  EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
+  EndpointRegistry(system).register(new GoogleMapAPIEndpointResolver)
 
   val response = HttpClientFactory.get("googlemap").raw.get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
@@ -751,7 +770,7 @@ object HttpClientDemo2 extends App {
   implicit val system = ActorSystem("HttpClientDemo2")
   implicit val timeout: Timeout = 3 seconds
   import system.dispatcher
-  EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
+  EndpointRegistry(system).register(new GoogleMapAPIEndpointResolver)
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
   val response = HttpClientFactory.get("googlemap").get[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
@@ -775,7 +794,7 @@ object HttpClientDemo2 extends App {
   implicit val system = ActorSystem("HttpClientDemo2")
   implicit val timeout: Timeout = 3 seconds
 
-  EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
+  EndpointRegistry(system).register(new GoogleMapAPIEndpointResolver)
 
   system.actorOf(Props(new HttpClientDemoActor(system))) ! GoogleApiCall
 }

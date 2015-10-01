@@ -19,8 +19,7 @@ import akka.actor.{ActorContext, ActorSystem, ActorRefFactory}
 import akka.util.Timeout
 
 import scala.concurrent.duration._
-import scala.language.implicitConversions
-import scala.language.postfixOps
+import scala.language.{implicitConversions, postfixOps}
 
 package object httpclient {
 

@@ -103,7 +103,7 @@ With this impl, user can simply setup a proxy by:
 Handler definition:
 ```scala
 trait Handler {
-	def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
+  def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext]
 }
 
 ```
