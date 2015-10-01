@@ -24,6 +24,7 @@ import scala.concurrent.Future
 
 class GracefulStopHelperTest extends TestKit(ActorSystem("testSystem")) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
+  import system.dispatcher
 
   "GracefulStopHelper" should "work when stop failed" in {
 
@@ -35,7 +36,6 @@ class GracefulStopHelperTest extends TestKit(ActorSystem("testSystem")) with Fla
       }
 
       override def gracefulStop(target: ActorRef, timeout: FiniteDuration, stopMessage: Any = PoisonPill): Future[Boolean] = {
-
         Future {
           throw new RuntimeException("BadMan")
         }

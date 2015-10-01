@@ -20,7 +20,6 @@ import akka.pattern.CircuitBreakerOpenException
 import org.squbs.httpclient._
 import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolver}
 import org.squbs.httpclient.env.Environment
-import org.squbs.testkit.Timeouts._
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -28,7 +27,7 @@ import scala.util.{Failure, Success}
 object CircuitBreakerMain1 extends App{
 
   implicit val system = ActorSystem("CircuitBreakerMain1")
-  implicit val ec = system.dispatcher
+  import system.dispatcher
 
 
   EndpointRegistry(system).register(new EndpointResolver{

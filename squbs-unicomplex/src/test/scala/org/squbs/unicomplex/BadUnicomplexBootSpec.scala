@@ -85,7 +85,7 @@ with AsyncAssertions {
 
   import org.squbs.unicomplex.BadUnicomplexBootSpec._
 
-  implicit val executionContext = system.dispatcher
+  import system.dispatcher
 
   override def afterAll() {
     Unicomplex(system).uniActor ! GracefulStop

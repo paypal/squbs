@@ -141,7 +141,7 @@ case class ProxiedActor(actor: ActorRef) extends ActorWrapper
  */
 class Unicomplex extends Actor with Stash with ActorLogging {
 
-  implicit val executionContext = context.dispatcher
+  import context.dispatcher
 
   private var shutdownTimeout = 1.second
 
@@ -562,6 +562,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   import scala.collection.JavaConversions._
+  import context.dispatcher
+
   val cubeName = self.path.name
   val pipelineManager = PipelineManager(context.system)
   val actorErrorStatesAgent = Agent[Map[String, ActorErrorState]](Map())

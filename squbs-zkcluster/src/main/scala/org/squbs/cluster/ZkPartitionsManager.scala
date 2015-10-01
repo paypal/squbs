@@ -27,6 +27,7 @@ import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
 import scala.collection.JavaConversions._
+import scala.language.postfixOps
 import scala.util.Try
 
 private[cluster] case class ZkRebalance(planedPartitions: Map[ByteString, ZkPartitionData])
@@ -42,14 +43,14 @@ private[cluster] case class ZkDropOffPartitions(dropOffs: Set[ByteString])
 private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLogging {
 
   import org.squbs.cluster.ZkPartitionsManager._
+
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._
-  
+
   private[this] implicit val segLogic = segmentationLogic
   import segLogic._
-  
+
   private[this] implicit val log = logger
-  implicit val ec = context.dispatcher
 //  private[cluster] var partitionsToProtect = Set.empty[ByteString]
   private[this] var segmentsToPartitions = Map.empty[String, Set[ByteString]]
   private[this] var partitionWatchers = Map.empty[String, CuratorWatcher]

@@ -77,7 +77,6 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
                              with AsyncAssertions {
 
   import org.squbs.testkit.Timeouts._
-  implicit val ec = system.dispatcher
 
 
   override def afterAll() {

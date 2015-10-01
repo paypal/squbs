@@ -79,7 +79,6 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
   def handle(client: HttpClient,
              pipeline: Try[HttpRequest => Future[HttpResponse]],
              httpRequest: HttpRequest)(implicit factory: ActorRefFactory): Future[HttpResponse] = {
-    implicit val ec = factory.dispatcher
     httpClientLogger.debug("HttpRequest headers: " +
       httpRequest.headers.map { h => h.name + '=' + h.value}.mkString(", "))
     pipeline match {
@@ -126,7 +125,7 @@ class HttpClientActor(svcName: String, env: Environment, clientMap: TrieMap[(Str
     extends Actor with HttpCallActorSupport with ActorLogging {
 
   import HttpClientActorMessage._
-  implicit val ec = context.dispatcher
+  import context.dispatcher
 
   def client = clientMap(svcName, env)
 
@@ -185,8 +184,7 @@ class HttpClientActor(svcName: String, env: Environment, clientMap: TrieMap[(Str
 class HttpClientManager(clientMap: TrieMap[(String, Environment), HttpClient]) extends Actor {
 
   import org.squbs.httpclient.HttpClientManagerMessage._
-
-  implicit val ec = context.dispatcher
+  import context.dispatcher
 
   implicit val system = context.system
 

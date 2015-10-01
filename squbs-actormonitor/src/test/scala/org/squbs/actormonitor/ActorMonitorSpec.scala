@@ -82,7 +82,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
                              with AsyncAssertions with LazyLogging {
 
   import org.squbs.testkit.Timeouts._
-  implicit val ec = system.dispatcher
+  import system.dispatcher
 
   override def beforeAll() {
     // Make sure all actors are indeed alive.

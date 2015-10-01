@@ -149,16 +149,15 @@ with WordSpecLike with Matchers with BeforeAndAfterAll
 with AsyncAssertions {
 
   import org.squbs.proxy.ServiceProxySpec._
+  import system.dispatcher
 
   implicit val timeout: akka.util.Timeout =
-    Try(System.getProperty("test.timeout").toLong) map {
+  Try(System.getProperty("test.timeout").toLong) map {
       millis =>
         akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
     } getOrElse Timeouts.askTimeout
 
   val port = system.settings.config getInt "default-listener.bind-port"
-
-  implicit val executionContext = system.dispatcher
 
   override def afterAll() {
     Unicomplex(system).uniActor ! GracefulStop

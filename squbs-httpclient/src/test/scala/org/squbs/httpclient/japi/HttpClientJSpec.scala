@@ -38,7 +38,6 @@ import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpHeader, StatusCodes}
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Success
 
@@ -49,7 +48,8 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
 
   override def beforeAll() {
     Json4sJacksonNoTypeHintsProtocol.registerSerializer(EmployeeBeanSerializer)
-    val mapper = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY).registerModule(DefaultScalaModule)
+    val mapper = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
+      .registerModule(DefaultScalaModule)
     JacksonProtocol.registerMapper(classOf[TeamBean], mapper)
     EndpointRegistry(system).register(new DummyServiceEndpointResolver()(system))
     startDummyService(system)
@@ -99,7 +99,8 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
   }
 
 
-  "HttpClient with correct Endpoint calling raw.get with java bean using case class" should "get the correct response" in {
+  "HttpClient with correct Endpoint calling raw.get with java bean using case class" should "get the correct " +
+    "response" in {
     //val response = HttpClientFactory.get("DummyService").raw.get("/view3")
     val response = HttpClientJ.rawGet("DummyService", system, "/view3")
     val result = Await.result(response, awaitMax)
@@ -111,7 +112,6 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
 
 
   "HttpClient with correct Endpoint calling raw.get with java bean" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").raw.get("/viewj")
     val response = HttpClientJ.rawGet("DummyService", system, "/viewj")
     val result = Await.result(response, awaitMax)
     result.status should be(StatusCodes.OK)
@@ -122,34 +122,10 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
 
   }
 
-//  "HttpClient with correct Endpoint calling raw.get with java bean with timeout" should "get the correct response" in {
-//    //val response = HttpClientFactory.get("DummyService").raw.get("/viewj")
-//    val response = HttpClientJ.rawGet("DummyService", system, "/viewj", 5 seconds)
-//    val result = Await.result(response, awaitMax)
-//    result.status should be(StatusCodes.OK)
-//    result.entity should not be empty
-//    result.entity.data should not be empty
-//    result.entity.data.asString should be(fullTeamJson)
-//    println(result.entity.data.asString)
-//
-//  }
-
-
   "HttpClient with correct Endpoint calling raw.get and pass requestSettings" should "get the correct response" in {
     val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), awaitMax)
     //val response = HttpClientFactory.get("DummyService").raw.get("/view", reqSettings)
     val response = HttpClientJ.rawGet("DummyService", system, "/view", reqSettings)
-    val result = Await.result(response, awaitMax)
-    result.status should be(StatusCodes.OK)
-    result.headers should contain(RawHeader("res-req1-name", "res-test123456"))
-    result.entity should not be empty
-    result.entity.data should not be empty
-    result.entity.data.asString should be(fullTeamJson)
-  }
-
-  "HttpClient with correct Endpoint calling raw.get and pass requestSettings and timeout" should "get the correct response" in {
-    val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), awaitMax)
-    val response = HttpClientJ.rawGet("DummyService", system, "/view", reqSettings, 5 seconds)
     val result = Await.result(response, awaitMax)
     result.status should be(StatusCodes.OK)
     result.headers should contain(RawHeader("res-req1-name", "res-test123456"))
@@ -170,34 +146,13 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result.entity.data.asString should be(fullTeamJson)
   }
 
-  "HttpClient with correct Endpoint calling raw.post with marshaller and pass requestSettings" should "get the correct response" in {
+  "HttpClient with correct Endpoint calling raw.post with marshaller and pass requestSettings" should "get the " +
+    "correct response" in {
     val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), awaitMax)
     //val response = HttpClientFactory.get("DummyService").raw.post[Employee]("/view", None, reqSettings)
     import JsonProtocol.ClassSupport._
-    val response = HttpClientJ.rawPost("DummyService", system, "/view", Optional.empty[Employee], reqSettings, classOf[Employee])
-    val result = Await.result(response, awaitMax)
-    result.status should be(StatusCodes.OK)
-    result.headers should contain(RawHeader("res-req1-name", "res-test123456"))
-    result.entity should not be empty
-    result.entity.data should not be empty
-    result.entity.data.asString should be(fullTeamJson)
-  }
-
-  "HttpClient with correct Endpoint calling raw.post and pass requestSettings and timeout" should "get the correct response" in {
-    val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), awaitMax)
-    val response = HttpClientJ.rawPost("DummyService", system, "/view", Optional.empty[Employee], reqSettings, 5 seconds)
-    val result = Await.result(response, awaitMax)
-    result.status should be(StatusCodes.OK)
-    result.headers should contain(RawHeader("res-req1-name", "res-test123456"))
-    result.entity should not be empty
-    result.entity.data should not be empty
-    result.entity.data.asString should be(fullTeamJson)
-  }
-
-  "HttpClient with correct Endpoint calling raw.post with marshaller and pass requestSettings and timeout" should "get the correct response" in {
-    val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), awaitMax)
-    import JsonProtocol.ClassSupport._
-    val response = HttpClientJ.rawPost("DummyService", system, "/view", Optional.empty[Employee], reqSettings, 5 seconds, classOf[Employee])
+    val response =
+      HttpClientJ.rawPost("DummyService", system, "/view", Optional.empty[Employee], reqSettings, classOf[Employee])
     val result = Await.result(response, awaitMax)
     result.status should be(StatusCodes.OK)
     result.headers should contain(RawHeader("res-req1-name", "res-test123456"))
@@ -225,7 +180,8 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result.unmarshalTo[Team] should be(Success(fullTeam))
   }
 
-  "HttpClient with correct Endpoint calling raw.get and unmarshall object with java bean" should "get the correct response" in {
+  "HttpClient with correct Endpoint calling raw.get and unmarshall object with java bean" should "get the correct " +
+    "response" in {
     //val response = HttpClientFactory.get("DummyService").raw.get("/viewj")
     val response = HttpClientJ.rawGet("DummyService", system, "/viewj")
     val result = Await.result(response, awaitMax)
@@ -237,8 +193,8 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result.unmarshalTo(classOf[TeamBean]) should be(Success(fullTeamBean))
   }
 
-  "HttpClient with correct Endpoint calling raw.get and unmarshall object with java bean using case class" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").raw.get("/view3")
+  "HttpClient with correct Endpoint calling raw.get and unmarshall object with java bean using case " +
+    "class" should "get the correct response" in {
     val response = HttpClientJ.rawGet("DummyService", system, "/view3")
     val result = Await.result(response, awaitMax)
     import JsonProtocol.TypeTagSupport.typeTagToUnmarshaller
@@ -249,7 +205,8 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result.unmarshalTo(classOf[TeamBeanWithCaseClassMember]) should be(Success(fullTeam3))
   }
 
-  "HttpClient with correct Endpoint calling raw.get and unmarshall object with normal scala class" should "get the correct response" in {
+  "HttpClient with correct Endpoint calling raw.get and unmarshall object with normal scala class" should "get the " +
+    "correct response" in {
     //val response = HttpClientFactory.get("DummyService").raw.get("/view1")
     val response = HttpClientJ.rawGet("DummyService", system, "/view1")
     val result = Await.result(response, awaitMax)
@@ -278,31 +235,6 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result should be(fullTeam)
   }
 
-//  "HttpClient with correct Endpoint calling get with timeout" should "get the correct response" in {
-//    val response = HttpClientJ.get("DummyService", system, "/view", classOf[Team], 5 second)
-//    val result = Await.result(response, awaitMax)
-//    result should be(fullTeam)
-//
-//    val timeoutResp = HttpClientJ.get("DummyService", system, "/timeout", classOf[Team], 1 second)
-//    a[AskTimeoutException] should be thrownBy {
-//      Await.result(timeoutResp, awaitMax)
-//    }
-//
-//    val badResp = HttpClientJ.get("DummyService", system, "/timeout", classOf[Team], 5 second)
-//    a[spray.httpx.PipelineException] should be thrownBy {
-//      Await.result(badResp, awaitMax)
-//    }
-//
-//  }
-
-  "HttpClient with correct Endpoint calling get with setting and timeout" should "get the correct response" in {
-
-    val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), awaitMax)
-    val response = HttpClientJ.get("DummyService", system, "/view", classOf[Team], reqSettings, 5 seconds)
-    val result = Await.result(response, awaitMax)
-    result should be(fullTeam)
-  }
-
   "HttpClient with correct Endpoint calling get with unmarshaller" should "get the correct response" in {
     val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
     val response = HttpClientJ.get("DummyService", system, "/view", unmarshaller)
@@ -313,30 +245,6 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
   "HttpClient with correct Endpoint calling get with unmarshaller and setting" should "get the correct response" in {
     val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
     val response = HttpClientJ.get("DummyService", system, "/view", unmarshaller, RequestSettings())
-    val result = Await.result(response, awaitMax)
-    result should be(fullTeam)
-  }
-
-//  "HttpClient with correct Endpoint calling get with unmarshaller and timeout" should "get the correct response" in {
-//    val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
-//    val response = HttpClientJ.get("DummyService", system, "/view", unmarshaller, 5 second)
-//    val result = Await.result(response, awaitMax)
-//    result should be(fullTeam)
-//
-//    val timeoutResp = HttpClientJ.get("DummyService", system, "/timeout", unmarshaller, 1 second)
-//    a[AskTimeoutException] should be thrownBy {
-//      Await.result(timeoutResp, awaitMax)
-//    }
-//
-//    val badResp = HttpClientJ.get("DummyService", system, "/timeout", unmarshaller, 5 second)
-//    a[spray.httpx.PipelineException] should be thrownBy {
-//      Await.result(badResp, awaitMax)
-//    }
-//  }
-
-  "HttpClient with correct Endpoint calling get with unmarshaller, setting and timeout" should "get the correct response" in {
-    val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
-    val response = HttpClientJ.get("DummyService", system, "/view", unmarshaller, RequestSettings(), 5 seconds)
     val result = Await.result(response, awaitMax)
     result should be(fullTeam)
   }
@@ -352,22 +260,6 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
   "HttpClient with correct Endpoint calling raw.head with setting" should "get the correct response" in {
     //val response = HttpClientFactory.get("DummyService").raw.head("/view")
     val response = HttpClientJ.rawHead("DummyService", system, "/view", RequestSettings())
-    val result = Await.result(response, awaitMax)
-    result.status should be(StatusCodes.OK)
-    result.entity shouldBe empty
-  }
-
-//  "HttpClient with correct Endpoint calling raw.head with timeout" should "get the correct response" in {
-//    //val response = HttpClientFactory.get("DummyService").raw.head("/view")
-//    val response = HttpClientJ.rawHead("DummyService", system, "/view", 5 second)
-//    val result = Await.result(response, awaitMax)
-//    result.status should be(StatusCodes.OK)
-//    result.entity shouldBe empty
-//  }
-
-  "HttpClient with correct Endpoint calling raw.head with timeout,setting" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").raw.head("/view")
-    val response = HttpClientJ.rawHead("DummyService", system, "/view", RequestSettings(), 5 second)
     val result = Await.result(response, awaitMax)
     result.status should be(StatusCodes.OK)
     result.entity shouldBe empty
@@ -391,24 +283,6 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result.entity.data should not be empty
   }
 
-//  "HttpClient with correct Endpoint calling raw.options with timeout" should "get the correct response" in {
-//    //val response = HttpClientFactory.get("DummyService").raw.options("/view")
-//    val response = HttpClientJ.rawOptions("DummyService", system, "/view", 5 seconds)
-//    val result = Await.result(response, awaitMax)
-//    result.status should be(StatusCodes.OK)
-//    result.entity should not be empty
-//    result.entity.data should not be empty
-//  }
-
-  "HttpClient with correct Endpoint calling raw.options with setting, timeout" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").raw.options("/view")
-    val response = HttpClientJ.rawOptions("DummyService", system, "/view", RequestSettings(), 5 seconds)
-    val result = Await.result(response, awaitMax)
-    result.status should be(StatusCodes.OK)
-    result.entity should not be empty
-    result.entity.data should not be empty
-  }
-
   "HttpClient with correct Endpoint calling options" should "get the correct response" in {
     //val response = HttpClientFactory.get("DummyService").options[Team]("/view")
     val response = HttpClientJ.options("DummyService", system, "/view", classOf[Team])
@@ -423,31 +297,6 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result should be(fullTeam)
   }
 
-//  "HttpClient with correct Endpoint calling options with timeout" should "get the correct response" in {
-//
-//    val response = HttpClientJ.options("DummyService", system, "/view", classOf[Team], 5 second)
-//    val result = Await.result(response, awaitMax)
-//    result should be(fullTeam)
-//
-//    val timeoutResp = HttpClientJ.options("DummyService", system, "/timeout", classOf[Team], 1 second)
-//    a[AskTimeoutException] should be thrownBy {
-//      Await.result(timeoutResp, awaitMax)
-//    }
-//
-//    val badResp = HttpClientJ.options("DummyService", system, "/timeout", classOf[Team], 5 second)
-//    a[spray.httpx.PipelineException] should be thrownBy {
-//      Await.result(badResp, awaitMax)
-//    }
-//
-//  }
-
-  "HttpClient with correct Endpoint calling options with settings and timeout" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").options[Team]("/view")
-    val response = HttpClientJ.options("DummyService", system, "/view", classOf[Team], RequestSettings(), 5 second)
-    val result = Await.result(response, awaitMax)
-    result should be(fullTeam)
-  }
-
   "HttpClient with correct Endpoint calling options with marshaller" should "get the correct response" in {
     val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
     val response = HttpClientJ.options("DummyService", system, "/view", unmarshaller)
@@ -458,31 +307,6 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
   "HttpClient with correct Endpoint calling options with marshaller and settings" should "get the correct response" in {
     val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
     val response = HttpClientJ.options("DummyService", system, "/view", unmarshaller, RequestSettings())
-    val result = Await.result(response, awaitMax)
-    result should be(fullTeam)
-  }
-
-//  "HttpClient with correct Endpoint calling options with marshaller and timeout" should "get the correct response" in {
-//    val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
-//    val response = HttpClientJ.options("DummyService", system, "/view", unmarshaller, 5 second)
-//    val result = Await.result(response, awaitMax)
-//    result should be(fullTeam)
-//
-//    val timeoutResp = HttpClientJ.options("DummyService", system, "/timeout", unmarshaller, 1 second)
-//    a[AskTimeoutException] should be thrownBy {
-//      Await.result(timeoutResp, awaitMax)
-//    }
-//
-//    val badResp = HttpClientJ.options("DummyService", system, "/timeout", unmarshaller, 5 second)
-//    a[spray.httpx.PipelineException] should be thrownBy {
-//      Await.result(badResp, awaitMax)
-//    }
-//
-//  }
-
-  "HttpClient with correct Endpoint calling options with marshaller, settings and timeout" should "get the correct response" in {
-    val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
-    val response = HttpClientJ.options("DummyService", system, "/view", unmarshaller, RequestSettings(), 5 second)
     val result = Await.result(response, awaitMax)
     result should be(fullTeam)
   }
@@ -516,27 +340,6 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result.entity.data.asString should be(fullTeamWithDelJson)
   }
 
-//  "HttpClient with correct Endpoint calling raw.delete with timeout" should "get the correct response" in {
-//    //val response = HttpClientFactory.get("DummyService").raw.delete("/del/4")
-//    val response = HttpClientJ.rawDelete("DummyService", system, "/del/4", 5 second)
-//    val result = Await.result(response, awaitMax)
-//    result.status should be(StatusCodes.OK)
-//    result.entity should not be empty
-//    result.entity.data should not be empty
-//    result.entity.data.asString should be(fullTeamWithDelJson)
-//  }
-
-
-  "HttpClient with correct Endpoint calling raw.delete with timeout,setting" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").raw.delete("/del/4")
-    val response = HttpClientJ.rawDelete("DummyService", system, "/del/4", RequestSettings(), 5 second)
-    val result = Await.result(response, awaitMax)
-    result.status should be(StatusCodes.OK)
-    result.entity should not be empty
-    result.entity.data should not be empty
-    result.entity.data.asString should be(fullTeamWithDelJson)
-  }
-
   "HttpClient with correct Endpoint calling raw.delete and unmarshall object" should "get the correct response" in {
     //val response = HttpClientFactory.get("DummyService").raw.delete("/del/4")
     val response = HttpClientJ.rawDelete("DummyService", system, "/del/4")
@@ -558,18 +361,6 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result should be(fullTeamWithDel)
   }
 
-//  "HttpClient with correct Endpoint calling delete with timeout" should "get the correct response" in {
-//    val response = HttpClientJ.delete("DummyService", system, "/del/4", classOf[Team], 5 second)
-//    val result = Await.result(response, awaitMax)
-//    result should be(fullTeamWithDel)
-//  }
-
-  "HttpClient with correct Endpoint calling delete with timeout and settings" should "get the correct response" in {
-    val response = HttpClientJ.delete("DummyService", system, "/del/4", classOf[Team], RequestSettings(), 5 second)
-    val result = Await.result(response, awaitMax)
-    result should be(fullTeamWithDel)
-  }
-
   "HttpClient with correct Endpoint calling delete with unmarshaller" should "get the correct response" in {
     val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
     val response = HttpClientJ.delete("DummyService", system, "/del/4", unmarshaller)
@@ -577,23 +368,10 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result should be(fullTeamWithDel)
   }
 
-  "HttpClient with correct Endpoint calling delete with unmarshaller and settings" should "get the correct response" in {
+  "HttpClient with correct Endpoint calling delete with unmarshaller and settings" should "get the correct " +
+    "response" in {
     val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
     val response = HttpClientJ.delete("DummyService", system, "/del/4", unmarshaller, RequestSettings())
-    val result = Await.result(response, awaitMax)
-    result should be(fullTeamWithDel)
-  }
-
-//  "HttpClient with correct Endpoint calling delete with unmarshaller and timeout" should "get the correct response" in {
-//    val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
-//    val response = HttpClientJ.delete("DummyService", system, "/del/4", unmarshaller, 5 second)
-//    val result = Await.result(response, awaitMax)
-//    result should be(fullTeamWithDel)
-//  }
-
-  "HttpClient with correct Endpoint calling delete with unmarshaller, timeout and settings" should "get the correct response" in {
-    val unmarshaller = ClassSupport.classToFromResponseUnmarshaller(classOf[Team])
-    val response = HttpClientJ.delete("DummyService", system, "/del/4", unmarshaller, RequestSettings(), 5 second)
     val result = Await.result(response, awaitMax)
     result should be(fullTeamWithDel)
   }
@@ -617,25 +395,6 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result.entity.data.asString should be(fullTeamWithAddJson)
   }
 
-//  "HttpClient with correct Endpoint calling raw.post and timeout" should "get the correct response" in {
-//    val response = HttpClientJ.rawPost("DummyService", system, "/add", Some(newTeamMember).asJava, 5 seconds)
-//    val result = Await.result(response, awaitMax)
-//    result.status should be(StatusCodes.OK)
-//    result.entity should not be empty
-//    result.entity.data should not be empty
-//    result.entity.data.asString should be(fullTeamWithAddJson)
-//  }
-
-//  "HttpClient with correct Endpoint calling raw.post with marshaller and timeout" should "get the correct response" in {
-//    import JsonProtocol.ClassSupport._
-//    val response = HttpClientJ.rawPost("DummyService", system, "/add", Some(newTeamMember).asJava, 5 seconds, classOf[Employee])
-//    val result = Await.result(response, awaitMax)
-//    result.status should be(StatusCodes.OK)
-//    result.entity should not be empty
-//    result.entity.data should not be empty
-//    result.entity.data.asString should be(fullTeamWithAddJson)
-//  }
-
   "HttpClient with correct Endpoint calling raw.post and unmarshall object" should "get the correct response" in {
     val response = HttpClientJ.rawPost("DummyService", system, "/add", Some(newTeamMember).asJava)
     val result = Await.result(response, awaitMax)
@@ -644,9 +403,9 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result.unmarshalTo[Team] should be(Success(fullTeamWithAdd))
   }
 
-  "HttpClient with correct Endpoint calling raw.post and unmarshall object for java bean" should "get the correct response" in {
-    //import JsonProtocol.manifestToMarshaller
-    //val response = HttpClientFactory.get("DummyService").raw.post[EmployeeBean]("/addj", Some(newTeamMemberBean))
+  "HttpClient with correct Endpoint calling raw.post and unmarshall object for java bean" should "get the correct " +
+    "response" in {
+
     val response = HttpClientJ.rawPost("DummyService", system, "/addj", Some(newTeamMemberBean).asJava)
     val result = Await.result(response, awaitMax)
 
@@ -656,7 +415,6 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
   }
 
   "HttpClient with correct Endpoint calling post" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").post[Employee, Team]("/add", Some(newTeamMember))
     val response = HttpClientJ.post("DummyService", system, "/add", Some(newTeamMember).asJava, classOf[Team])
     val result = Await.result(response, awaitMax)
     result should be(fullTeamWithAdd)
@@ -664,64 +422,35 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
 
   "HttpClient with correct Endpoint calling post with settings" should "get the correct response" in {
     //val response = HttpClientFactory.get("DummyService").post[Employee, Team]("/add", Some(newTeamMember))
-    val response = HttpClientJ.post("DummyService", system, "/add", Some(newTeamMember).asJava, classOf[Team], RequestSettings())
-    val result = Await.result(response, awaitMax)
-    result should be(fullTeamWithAdd)
-  }
-
-//  "HttpClient with correct Endpoint calling post with timeout" should "get the correct response" in {
-//    //val response = HttpClientFactory.get("DummyService").post[Employee, Team]("/add", Some(newTeamMember))
-//    val response = HttpClientJ.post("DummyService", system, "/add", Some(newTeamMember).asJava, classOf[Team], 5 second)
-//    val result = Await.result(response, awaitMax)
-//    result should be(fullTeamWithAdd)
-//  }
-
-  "HttpClient with correct Endpoint calling post with settings and timeout" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").post[Employee, Team]("/add", Some(newTeamMember))
-    val response = HttpClientJ.post("DummyService", system, "/add", Some(newTeamMember).asJava, classOf[Team], RequestSettings(), 5 second)
+    val response =
+      HttpClientJ.post("DummyService", system, "/add", Some(newTeamMember).asJava, classOf[Team], RequestSettings())
     val result = Await.result(response, awaitMax)
     result should be(fullTeamWithAdd)
   }
 
   "HttpClient with correct Endpoint calling post for java bean" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").post[EmployeeBean, TeamBean]("/addj", Some(newTeamMemberBean))
     val response = HttpClientJ.post("DummyService", system, "/addj", Some(newTeamMemberBean).asJava, classOf[TeamBean])
     val result = Await.result(response, awaitMax)
     result should be(fullTeamBeanWithAdd)
   }
 
-  "HttpClient with correct Endpoint calling post for java bean with explicit marshaller/unmarshaller" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").post[EmployeeBean, TeamBean]("/addj", Some(newTeamMemberBean))
+  "HttpClient with correct Endpoint calling post for java bean with explicit marshaller/unmarshaller" should "get " +
+    "the correct response" in {
     import JsonProtocol.ClassSupport._
-    val response = HttpClientJ.post("DummyService", system, "/addj", Some(newTeamMemberBean).asJava, classOf[EmployeeBean], classOf[TeamBean])
+    val response = HttpClientJ.post("DummyService", system, "/addj", Some(newTeamMemberBean).asJava,
+      classOf[EmployeeBean], classOf[TeamBean])
     val result = Await.result(response, awaitMax)
     result should be(fullTeamBeanWithAdd)
   }
 
-  "HttpClient with correct Endpoint calling post for java bean with explicit marshaller/unmarshaller and settings" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").post[EmployeeBean, TeamBean]("/addj", Some(newTeamMemberBean))
+  "HttpClient with correct Endpoint calling post for java bean with explicit marshaller/unmarshaller and " +
+    "settings" should "get the correct response" in {
     import JsonProtocol.ClassSupport._
-    val response = HttpClientJ.post("DummyService", system, "/addj", Some(newTeamMemberBean).asJava, classOf[EmployeeBean], classOf[TeamBean], RequestSettings())
+    val response = HttpClientJ.post("DummyService", system, "/addj", Some(newTeamMemberBean).asJava,
+      classOf[EmployeeBean], classOf[TeamBean], RequestSettings())
     val result = Await.result(response, awaitMax)
     result should be(fullTeamBeanWithAdd)
   }
-
-//  "HttpClient with correct Endpoint calling post for java bean with explicit marshaller/unmarshaller and timeout" should "get the correct response" in {
-//    //val response = HttpClientFactory.get("DummyService").post[EmployeeBean, TeamBean]("/addj", Some(newTeamMemberBean))
-//    import JsonProtocol.ClassSupport._
-//    val response = HttpClientJ.post("DummyService", system, "/addj", Some(newTeamMemberBean).asJava, classOf[EmployeeBean], classOf[TeamBean], 5 seconds)
-//    val result = Await.result(response, awaitMax)
-//    result should be(fullTeamBeanWithAdd)
-//  }
-
-  "HttpClient with correct Endpoint calling post for java bean with explicit marshaller/unmarshaller and settings and timeout" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").post[EmployeeBean, TeamBean]("/addj", Some(newTeamMemberBean))
-    import JsonProtocol.ClassSupport._
-    val response = HttpClientJ.post("DummyService", system, "/addj", Some(newTeamMemberBean).asJava, classOf[EmployeeBean], classOf[TeamBean], RequestSettings(), 5 second)
-    val result = Await.result(response, awaitMax)
-    result should be(fullTeamBeanWithAdd)
-  }
-
 
   "HttpClient with correct Endpoint calling raw.put" should "get the correct response" in {
     //val response = HttpClientFactory.get("DummyService").raw.put[Employee]("/add", Some(newTeamMember))
@@ -755,47 +484,8 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
 
   "HttpClient with correct Endpoint calling raw.put with marshaller and setting" should "get the correct response" in {
     import JsonProtocol.ClassSupport._
-    val response = HttpClientJ.rawPut("DummyService", system, "/add", Some(newTeamMember).asJava, RequestSettings(), classOf[Employee])
-    val result = Await.result(response, awaitMax)
-    result.status should be(StatusCodes.OK)
-    result.entity should not be empty
-    result.entity.data should not be empty
-    result.entity.data.asString should be(fullTeamWithAddJson)
-  }
-
-//  "HttpClient with correct Endpoint calling raw.put and timeout" should "get the correct response" in {
-//    //val response = HttpClientFactory.get("DummyService").raw.put[Employee]("/add", Some(newTeamMember))
-//    val response = HttpClientJ.rawPut("DummyService", system, "/add", Some(newTeamMember).asJava, 5 second)
-//    val result = Await.result(response, awaitMax)
-//    result.status should be(StatusCodes.OK)
-//    result.entity should not be empty
-//    result.entity.data should not be empty
-//    result.entity.data.asString should be(fullTeamWithAddJson)
-//  }
-
-//  "HttpClient with correct Endpoint calling raw.put with marshaller and timeout" should "get the correct response" in {
-//    import JsonProtocol.ClassSupport._
-//    val response = HttpClientJ.rawPut("DummyService", system, "/add", Some(newTeamMember).asJava, 5 seconds, classOf[Employee])
-//    val result = Await.result(response, awaitMax)
-//    result.status should be(StatusCodes.OK)
-//    result.entity should not be empty
-//    result.entity.data should not be empty
-//    result.entity.data.asString should be(fullTeamWithAddJson)
-//  }
-
-  "HttpClient with correct Endpoint calling raw.put and timeout, setting" should "get the correct response" in {
-    //val response = HttpClientFactory.get("DummyService").raw.put[Employee]("/add", Some(newTeamMember))
-    val response = HttpClientJ.rawPut("DummyService", system, "/add", Some(newTeamMember).asJava, RequestSettings(), 5 second)
-    val result = Await.result(response, awaitMax)
-    result.status should be(StatusCodes.OK)
-    result.entity should not be empty
-    result.entity.data should not be empty
-    result.entity.data.asString should be(fullTeamWithAddJson)
-  }
-
-  "HttpClient with correct Endpoint calling raw.put with marshaller and timeout, setting" should "get the correct response" in {
-    import JsonProtocol.ClassSupport._
-    val response = HttpClientJ.rawPut("DummyService", system, "/add", Some(newTeamMember).asJava, RequestSettings(), 5 seconds, classOf[Employee])
+    val response = HttpClientJ.rawPut("DummyService", system, "/add", Some(newTeamMember).asJava, RequestSettings(),
+      classOf[Employee])
     val result = Await.result(response, awaitMax)
     result.status should be(StatusCodes.OK)
     result.entity should not be empty
@@ -819,54 +509,32 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
   }
 
   "HttpClient with correct Endpoint calling put with settings" should "get the correct response" in {
-    val response = HttpClientJ.put("DummyService", system, "/add", Some(newTeamMember).asJava, classOf[Team], RequestSettings())
+    val response = HttpClientJ.put("DummyService", system, "/add", Some(newTeamMember).asJava,
+      classOf[Team], RequestSettings())
     val result = Await.result(response, awaitMax)
     result should be(fullTeamWithAdd)
   }
 
-//  "HttpClient with correct Endpoint calling put with timeout" should "get the correct response" in {
-//    val response = HttpClientJ.put("DummyService", system, "/add", Some(newTeamMember).asJava, classOf[Team], 5 seconds)
-//    val result = Await.result(response, awaitMax)
-//    result should be(fullTeamWithAdd)
-//  }
-
-  "HttpClient with correct Endpoint calling put with settings and timeout" should "get the correct response" in {
-    val response = HttpClientJ.put("DummyService", system, "/add", Some(newTeamMember).asJava, classOf[Team], RequestSettings(), 5 seconds)
-    val result = Await.result(response, awaitMax)
-    result should be(fullTeamWithAdd)
-  }
-
-  "HttpClient with correct Endpoint calling put for java bean with explicit marshaller/unmarshaller" should "get the correct response" in {
+  "HttpClient with correct Endpoint calling put for java bean with explicit marshaller/unmarshaller" should "get " +
+    "the correct response" in {
     import JsonProtocol.ClassSupport._
-    val response = HttpClientJ.put("DummyService", system, "/addj", Some(newTeamMemberBean).asJava, classOf[EmployeeBean], classOf[TeamBean])
+    val response = HttpClientJ.put("DummyService", system, "/addj", Some(newTeamMemberBean).asJava,
+      classOf[EmployeeBean], classOf[TeamBean])
     val result = Await.result(response, awaitMax)
     result should be(fullTeamBeanWithAdd)
   }
 
-  "HttpClient with correct Endpoint calling put for java bean with explicit marshaller/unmarshaller and settings" should "get the correct response" in {
+  "HttpClient with correct Endpoint calling put for java bean with explicit marshaller/unmarshaller and " +
+    "settings" should "get the correct response" in {
     import JsonProtocol.ClassSupport._
-    val response = HttpClientJ.put("DummyService", system, "/addj", Some(newTeamMemberBean).asJava, classOf[EmployeeBean], classOf[TeamBean], RequestSettings())
-    val result = Await.result(response, awaitMax)
-    result should be(fullTeamBeanWithAdd)
-  }
-
-//  "HttpClient with correct Endpoint calling put for java bean with explicit marshaller/unmarshaller and timeout" should "get the correct response" in {
-//    import JsonProtocol.ClassSupport._
-//    val response = HttpClientJ.put("DummyService", system, "/addj", Some(newTeamMemberBean).asJava, classOf[EmployeeBean], classOf[TeamBean], 5 seconds)
-//    val result = Await.result(response, awaitMax)
-//    result should be(fullTeamBeanWithAdd)
-//  }
-
-  "HttpClient with correct Endpoint calling put for java bean with explicit marshaller/unmarshaller and settings, timeout" should "get the correct response" in {
-    import JsonProtocol.ClassSupport._
-    val response = HttpClientJ.put("DummyService", system, "/addj", Some(newTeamMemberBean).asJava, classOf[EmployeeBean], classOf[TeamBean], RequestSettings(), 5 seconds)
+    val response = HttpClientJ.put("DummyService", system, "/addj", Some(newTeamMemberBean).asJava,
+      classOf[EmployeeBean], classOf[TeamBean], RequestSettings())
     val result = Await.result(response, awaitMax)
     result should be(fullTeamBeanWithAdd)
   }
 
   "HttpClient could use endpoint as service name directly without registering endpoint resolvers for " +
     "third party service call" should "get the correct response" in {
-    //val response: Future[HttpResponse] = HttpClientFactory.get(dummyServiceEndpoint).raw.get("/view")
     val response = HttpClientJ.rawGet(dummyServiceEndpoint.toString(), system, "/view")
     val result = Await.result(response, awaitMax)
     result.status should be(StatusCodes.OK)
@@ -930,7 +598,8 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result.unmarshalTo[String] shouldBe 'failure
   }
 
-  "HttpClient with correct endpoint calling raw.get with not existing uri and unmarshall value" should "throw out UnsuccessfulResponseException and failed" in {
+  "HttpClient with correct endpoint calling raw.get with not existing uri and unmarshall value" should "throw " +
+    "UnsuccessfulResponseException and failed" in {
     //val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/notExisting")
     val response = HttpClientJ.rawGet("DummyService", system, "/notExisting")
     val result = Await.result(response, awaitMax)
@@ -971,39 +640,10 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     HttpClientPathBuilder.buildRequestUri("/abc/", map2) should include("by=1")
     HttpClientPathBuilder.buildRequestUri("/abc/", map2) should include("c=a")
     HttpClientPathBuilder.buildRequestUri("/abc/", map2) should include("d=1.23")
-    //should be ("/abc?s=Hello&f=2.3&i=100&b=true&by=1&c=a&d=1.23&sh=2")
     HttpClientPathBuilder.buildRequestUri("/abc/", map2) should include("sh=2")
     HttpClientPathBuilder.buildRequestUri("/abc/", Map("n1" -> "v1", "n2" -> "v2")) should include("n1=v1")
-    //should be ("/abc?n1=v1&n2=v2")
     HttpClientPathBuilder.buildRequestUri("/abc/", Map("n1" -> "v1", "n2" -> "v2")) should not include "n1=v2"
     HttpClientPathBuilder.buildRequestUri("/abc/", Map("n1" -> "v1&", "n2" -> "v2%")) should include("v1%26")
-    //should be ("/abc?n1=v1%26&n2=v2%25")
     HttpClientPathBuilder.buildRequestUri("/abc/", Map("n1" -> "v1&", "n2" -> "v2%")) should include("n2=v2%25")
   }
-
-  //  "HttpClient with fallback HttpResponse" should "get correct fallback logic" in {
-  //    val fallbackHttpResponse = HttpResponse()
-  //    val httpClient = HttpClientFactory.get("DummyService").withFallback(Some(fallbackHttpResponse))
-  //    httpClient.endpoint.config.circuitBreakerConfig.fallbackHttpResponse should be (Some(fallbackHttpResponse))
-  //  }
-
-  //  "MarkDown/MarkUp HttpClient" should "have the correct behaviour" in {
-  //    implicit val ec = system.dispatcher
-  //    val httpClient = HttpClientFactory.get("DummyService")
-  //    httpClient.markDown
-  //    val response = httpClient.get("/view")
-  //    try{
-  //      Await.result(response, awaitMax)
-  //    } catch {
-  //      case e: Exception =>
-  //        e should be (HttpClientMarkDownException("DummyService"))
-  //    }
-  //    httpClient.markUp
-  //    val updatedResponse = httpClient.get("/view")
-  //    val updatedResult = Await.result(updatedResponse, awaitMax)
-  //    updatedResult.status should be (StatusCodes.OK)
-  //    updatedResult.entity should not be empty
-  //    updatedResult.entity.data should not be empty
-  //    updatedResult.entity.data.asString should be (fullTeamJson)
-  //  }
 }

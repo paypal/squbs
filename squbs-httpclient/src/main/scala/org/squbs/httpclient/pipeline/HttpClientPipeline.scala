@@ -84,7 +84,7 @@ trait PipelineManager extends LazyLogging {
 
   def invokeToHttpResponseWithoutSetup(client: HttpClient, reqSettings: Option[RequestSettings], actorRef: ActorRef)
                                       (implicit actorFactory: ActorRefFactory): Try[(HttpRequest => Future[HttpResponse])] = {
-    implicit val ec = actorFactory.dispatcher
+    import actorFactory.dispatcher
     val pipelineSetting = client.endpoint.config.pipeline.getOrElse(PipelineSetting.default)
     val pipeConfig = pipelineSetting.pipelineConfig
     implicit val timeout: Timeout =
