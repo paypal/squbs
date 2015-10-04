@@ -20,7 +20,6 @@ import java.util
 import javax.management.{MXBean, ObjectName}
 
 import akka.actor.ActorSystem
-import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
 import org.squbs.httpclient.endpoint.{EndpointRegistry, EndpointResolver}
 import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
 import org.squbs.pipeline.PipelineSetting
@@ -29,6 +28,7 @@ import spray.can.Http.ClientConnectionType.{AutoProxied, Direct, Proxied}
 
 import scala.beans.BeanProperty
 import scala.collection.JavaConversions._
+import scala.language.implicitConversions
 
 object HttpClientJMX {
 
@@ -71,22 +71,20 @@ object HttpClientJMX {
 }
 
 // $COVERAGE-OFF$
-case class HttpClientInfo @ConstructorProperties(
-  Array("name", "env", "endpoint", "status", "connectionType", "maxConnections", "maxRetries",
-    "maxRedirects", "requestTimeout", "connectingTimeout", "requestPipelines", "responsePipelines"))(
-                                                                                                      @BeanProperty name: String,
-                                                                                                      @BeanProperty env: String,
-                                                                                                      @BeanProperty endpoint: String,
-                                                                                                      @BeanProperty status: String,
-                                                                                                      @BeanProperty connectionType: String,
-                                                                                                      @BeanProperty maxConnections: Int,
-                                                                                                      @BeanProperty maxRetries: Int,
-                                                                                                      @BeanProperty maxRedirects: Int,
-                                                                                                      @BeanProperty requestTimeout: Long,
-                                                                                                      @BeanProperty connectingTimeout: Long,
-                                                                                                      @BeanProperty requestPipelines: String,
-                                                                                                      @BeanProperty responsePipelines: String)
-
+case class HttpClientInfo @ConstructorProperties(Array("name", "env", "endpoint", "status", "connectionType",
+  "maxConnections", "maxRetries", "maxRedirects", "requestTimeout", "connectingTimeout", "requestPipelines",
+  "responsePipelines")) (@BeanProperty name: String,
+                         @BeanProperty env: String,
+                         @BeanProperty endpoint: String,
+                         @BeanProperty status: String,
+                         @BeanProperty connectionType: String,
+                         @BeanProperty maxConnections: Int,
+                         @BeanProperty maxRetries: Int,
+                         @BeanProperty maxRedirects: Int,
+                         @BeanProperty requestTimeout: Long,
+                         @BeanProperty connectingTimeout: Long,
+                         @BeanProperty requestPipelines: String,
+                         @BeanProperty responsePipelines: String)
 // $COVERAGE-ON$
 
 @MXBean
@@ -179,20 +177,25 @@ case class EnvironmentResolverBean(system: ActorSystem) extends EnvironmentResol
 }
 
 // $COVERAGE-OFF$
-case class CircuitBreakerInfo @ConstructorProperties(
-  Array("name", "status", "lastDurationConfig", "successTimes", "fallbackTimes", "failFastTimes", "exceptionTimes",
-    "lastDurationErrorRate", "lastDurationFailFastRate", "lastDurationExceptionRate"))(
-                                                                                        @BeanProperty name: String,
-                                                                                        @BeanProperty status: String,
-                                                                                        @BeanProperty lastDurationConfig: String,
-                                                                                        @BeanProperty successTimes: Long,
-                                                                                        @BeanProperty fallbackTimes: Long,
-                                                                                        @BeanProperty failFastTimes: Long,
-                                                                                        @BeanProperty exceptionTimes: Long,
-                                                                                        @BeanProperty lastDurationErrorRate: String,
-                                                                                        @BeanProperty lastDurationFailFastRate: String,
-                                                                                        @BeanProperty lastDurationExceptionRate: String
-                                                                                        )
+case class CircuitBreakerInfo @ConstructorProperties(Array("name", "status", "historyUnitDuration", "successTimes",
+  "fallbackTimes", "failFastTimes", "exceptionTimes", "history")) (@BeanProperty name: String,
+                                                                   @BeanProperty status: String,
+                                                                   @BeanProperty historyUnitDuration: String,
+                                                                   @BeanProperty successTimes: Long,
+                                                                   @BeanProperty fallbackTimes: Long,
+                                                                   @BeanProperty failFastTimes: Long,
+                                                                   @BeanProperty exceptionTimes: Long,
+                                                                   @BeanProperty history: java.util.List[CBHistory])
+
+case class CBHistory @ConstructorProperties(Array("period", "successes", "fallbacks", "failFasts", "exceptions",
+  "errorRate", "failFastRate", "exceptionRate"))(@BeanProperty period: String,
+                                                 @BeanProperty successes: Int,
+                                                 @BeanProperty fallbacks: Int,
+                                                 @BeanProperty failFasts: Int,
+                                                 @BeanProperty exceptions: Int,
+                                                 @BeanProperty errorRate: String,
+                                                 @BeanProperty failFastRate: String,
+                                                 @BeanProperty exceptionRate: String)
 
 // $COVERAGE-ON$
 
@@ -208,39 +211,34 @@ case class CircuitBreakerBean(system: ActorSystem) extends CircuitBreakerMXBean 
 
   private def mapToHttpClientCircuitBreakerInfo(httpClient: HttpClient) = {
     val name = httpClient.name
-    val status = httpClient.cbMetrics.status.toString
-    val lastDurationConfig = httpClient.endpoint.config.settings.circuitBreakerConfig.lastDuration.toSeconds + " Seconds"
-    val successTimes = httpClient.cbMetrics.successTimes
-    val fallbackTimes = httpClient.cbMetrics.fallbackTimes
-    val failFastTimes = httpClient.cbMetrics.failFastTimes
-    val exceptionTimes = httpClient.cbMetrics.exceptionTimes
-    val currentTime = System.currentTimeMillis
-    val lastDuration = httpClient.endpoint.config.settings.circuitBreakerConfig.lastDuration.toMillis
-    httpClient.cbMetrics.cbLastDurationCall = httpClient.cbMetrics.cbLastDurationCall.dropWhile{
-      _.callTime + lastDuration <= currentTime
+    val status = httpClient.cbStat.toString
+    import httpClient.cbMetrics._
+    val successTimes = total.successTimes
+    val fallbackTimes = total.fallbackTimes
+    val failFastTimes = total.failFastTimes
+    val exceptionTimes = total.exceptionTimes
+    val unitDesc = unitSize.toString()
+    val currentTime = System.nanoTime
+    val startIdx = currentIndex(currentTime)
+    val history = for (i <- 0 until units) yield {
+      val bucket = buckets((bucketCount + startIdx - i) % bucketCount)
+      val period = i match {
+        case 0 => s"$unitDesc to-date"
+        case 1 => s"previous $unitDesc"
+        case n if unitDesc endsWith "s" => s"$n x $unitDesc prior"
+        case n => s" $n x ${unitDesc}s prior "
+      }
+      val calls = bucket.successTimes + bucket.fallbackTimes + bucket.failFastTimes + bucket.exceptionTimes
+      val (errorRate, failFastRate, exceptionRate) =
+        if (calls > 0) (
+          String.format("%.2f%%", ((calls - bucket.successTimes) * 100.0 / calls).asInstanceOf[java.lang.Double]),
+          String.format("%.2f%%", (bucket.fallbackTimes * 100.0 / calls).asInstanceOf[java.lang.Double]),
+          String.format("%.2f%%", (bucket.exceptionTimes * 100.0 / calls).asInstanceOf[java.lang.Double])
+        ) else ("0%", "0%", "0%")
+      CBHistory(period, bucket.successTimes, bucket.fallbackTimes, bucket.failFastTimes, bucket.exceptionTimes,
+        errorRate, failFastRate, exceptionRate)
     }
-    val cbLastMinMetrics = httpClient.cbMetrics.cbLastDurationCall.groupBy[ServiceCallStatus](_.status) map { data =>
-      data._1 -> data._2.size
-    }
-    val lastDurationSuccess = cbLastMinMetrics.getOrElse(ServiceCallStatus.Success, 0)
-    val lastDurationFallback = cbLastMinMetrics.getOrElse(ServiceCallStatus.Fallback, 0)
-    val lastDurationFailFast = cbLastMinMetrics.getOrElse(ServiceCallStatus.FailFast, 0)
-    val lastDurationException = cbLastMinMetrics.getOrElse(ServiceCallStatus.Exception, 0)
-    val lastDurationTotal = lastDurationSuccess + lastDurationFallback + lastDurationFailFast + lastDurationException
-    val df = new java.text.DecimalFormat("0.00%")
-    val lastDurationErrorRate = lastDurationTotal match {
-      case 0 => "0%"
-      case _ => df.format((lastDurationTotal - lastDurationSuccess) * 1.0 / lastDurationTotal)
-    }
-    val lastDurationFailFastRate = lastDurationTotal match {
-      case 0 => "0%"
-      case _ => df.format(lastDurationFallback * 1.0 / lastDurationTotal)
-    }
-    val lastDurationExceptionRate = lastDurationTotal match {
-      case 0 => "0%"
-      case _ => df.format(lastDurationException * 1.0 / lastDurationTotal)
-    }
-    CircuitBreakerInfo(name, status, lastDurationConfig, successTimes, fallbackTimes, failFastTimes, exceptionTimes,
-      lastDurationErrorRate, lastDurationFailFastRate, lastDurationExceptionRate)
+    CircuitBreakerInfo(name, status, unitDesc,
+      successTimes, fallbackTimes, failFastTimes, exceptionTimes, history)
   }
 }

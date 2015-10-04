@@ -179,6 +179,8 @@ class HttpClientActor(svcName: String, env: Environment, clientMap: TrieMap[(Str
       clientMap.remove((client.name, client.env))
       sender ! CloseSuccess
   }
+
+  override def postStop(): Unit = client.cbMetrics.cancel()
 }
 
 class HttpClientManager(clientMap: TrieMap[(String, Environment), HttpClient]) extends Actor {
