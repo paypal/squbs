@@ -129,7 +129,8 @@ object Configuration {
 case class CircuitBreakerSettings(maxFailures: Int = 5,
                                   callTimeout: FiniteDuration = 10 seconds,
                                   resetTimeout: FiniteDuration = 1 minute,
-                                  lastDuration: FiniteDuration = 60 seconds,
+                                  historyUnits: Int = 5,
+                                  historyUnitDuration: FiniteDuration = 1 minute,
                                   fallbackHttpResponse: Option[HttpResponse] = None)
 
 import org.squbs.httpclient.Configuration._

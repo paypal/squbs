@@ -22,6 +22,7 @@ import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolv
 import org.squbs.httpclient.env.Environment
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 object CircuitBreakerMain1 extends App{
@@ -56,14 +57,14 @@ object CircuitBreakerMain1 extends App{
       Thread.sleep(2000)
       httpClient.raw.get("/view") onComplete {
         case Success(httpResponse) =>
-          println(s"call success, body is: ${httpResponse.entity.data.asString}, " +
-            s"error rate is: ${CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.get(0).lastDurationErrorRate}")
+          println(s"call success, body is: ${httpResponse.entity.data.asString}, error rate is: " +
+            CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.get(0).history.get(0).errorRate)
         case Failure(e: CircuitBreakerOpenException) =>
-          println(s"circuitBreaker open! remaining time is: ${e.remainingDuration.toSeconds}, " +
-            s"error rate is: ${CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.get(0).lastDurationErrorRate}")
+          println(s"circuitBreaker open! remaining time is: ${e.remainingDuration.toSeconds}, error rate is: " +
+            CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.get(0).history.get(0).errorRate)
         case Failure(throwable) =>
-          println(s"exception is: ${throwable.getMessage}, " +
-            s"error rate is: ${CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.get(0).lastDurationErrorRate}")
+          println(s"exception is: ${throwable.getMessage}, error rate is: " +
+            CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.get(0).history.get(0).errorRate)
       }
     }
   }
