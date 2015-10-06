@@ -49,7 +49,7 @@ with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAf
     cbMetrics.total.successTimes should be (0)
     val time = System.nanoTime
     cbMetrics.currentBucket(time).successTimes should be (0)
-    collectCbMetrics(httpClient, ServiceCallStatus.Success)
+    httpClient.cbMetrics.add(ServiceCallStatus.Success, time)
     1 should (be (cbMetrics.currentBucket(time).successTimes) or be (
         cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).successTimes))
     cbMetrics.total.successTimes should be (1)
@@ -59,9 +59,9 @@ with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAf
     val httpClient = HttpClientFactory.get("DummyService")
     import httpClient.cbMetrics
     cbMetrics.total.fallbackTimes should be (0)
-    val time = System.nanoTime()
+    val time = System.nanoTime
     cbMetrics.currentBucket(time).fallbackTimes should be (0)
-    collectCbMetrics(httpClient, ServiceCallStatus.Fallback)
+    httpClient.cbMetrics.add(ServiceCallStatus.Fallback, time)
     1 should (be (cbMetrics.currentBucket(time).fallbackTimes) or be (
       cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).fallbackTimes))
     cbMetrics.total.fallbackTimes should be (1)
@@ -71,9 +71,9 @@ with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAf
     val httpClient = HttpClientFactory.get("DummyService")
     import httpClient.cbMetrics
     cbMetrics.total.failFastTimes should be (0)
-    val time = System.nanoTime()
+    val time = System.nanoTime
     cbMetrics.currentBucket(time).failFastTimes should be (0)
-    collectCbMetrics(httpClient, ServiceCallStatus.FailFast)
+    httpClient.cbMetrics.add(ServiceCallStatus.FailFast, time)
     1 should (be (cbMetrics.currentBucket(time).failFastTimes) or be (
       cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).failFastTimes))
     cbMetrics.total.failFastTimes should be (1)
@@ -83,9 +83,9 @@ with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAf
     val httpClient = HttpClientFactory.get("DummyService")
     import httpClient.cbMetrics
     cbMetrics.total.exceptionTimes should be (0)
-    val time = System.nanoTime()
+    val time = System.nanoTime
     cbMetrics.currentBucket(time).exceptionTimes should be (0)
-    collectCbMetrics(httpClient, ServiceCallStatus.Exception)
+    httpClient.cbMetrics.add(ServiceCallStatus.Exception, time)
     1 should (be (cbMetrics.currentBucket(time).exceptionTimes) or be (
       cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).exceptionTimes))
     cbMetrics.total.exceptionTimes should be (1)
