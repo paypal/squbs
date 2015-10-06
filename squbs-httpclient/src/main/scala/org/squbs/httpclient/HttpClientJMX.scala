@@ -223,17 +223,18 @@ case class CircuitBreakerBean(system: ActorSystem) extends CircuitBreakerMXBean 
     val history = for (i <- 0 until units) yield {
       val bucket = buckets((bucketCount + startIdx - i) % bucketCount)
       val period = i match {
-        case 0 => s"$unitDesc to-date"
+        case 0 => s"$unitDesc-to-date"
         case 1 => s"previous $unitDesc"
         case n if unitDesc endsWith "s" => s"$n x $unitDesc prior"
         case n => s" $n x ${unitDesc}s prior "
       }
       val calls = bucket.successTimes + bucket.fallbackTimes + bucket.failFastTimes + bucket.exceptionTimes
+      def formatPercent(value: java.lang.Double) = String.format("%.2f%%", value)
       val (errorRate, failFastRate, exceptionRate) =
         if (calls > 0) (
-          String.format("%.2f%%", ((calls - bucket.successTimes) * 100.0 / calls).asInstanceOf[java.lang.Double]),
-          String.format("%.2f%%", (bucket.fallbackTimes * 100.0 / calls).asInstanceOf[java.lang.Double]),
-          String.format("%.2f%%", (bucket.exceptionTimes * 100.0 / calls).asInstanceOf[java.lang.Double])
+          formatPercent((calls - bucket.successTimes) * 100.0 / calls),
+          formatPercent(bucket.failFastTimes * 100.0 / calls),
+          formatPercent(bucket.exceptionTimes * 100.0 / calls)
         ) else ("0%", "0%", "0%")
       CBHistory(period, bucket.successTimes, bucket.fallbackTimes, bucket.failFastTimes, bucket.exceptionTimes,
         errorRate, failFastRate, exceptionRate)

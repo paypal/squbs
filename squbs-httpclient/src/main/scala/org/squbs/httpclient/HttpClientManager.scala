@@ -86,11 +86,11 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
         withCircuitBreaker(client, res(httpRequest))
       case Failure(t@HttpClientMarkDownException(_, _)) =>
         httpClientLogger.debug("HttpClient has been mark down!", t)
-        collectCbMetrics(client, ServiceCallStatus.Exception)
+        client.cbMetrics.add(ServiceCallStatus.Exception, System.nanoTime)
         Future.failed(t)
       case Failure(t) =>
         httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
-        collectCbMetrics(client, ServiceCallStatus.Exception)
+        client.cbMetrics.add(ServiceCallStatus.Exception, System.nanoTime)
         Future.failed(t)
     }
   }

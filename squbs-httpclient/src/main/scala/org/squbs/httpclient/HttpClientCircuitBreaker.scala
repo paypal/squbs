@@ -17,12 +17,14 @@
 package org.squbs.httpclient
 
 import akka.actor.{ActorRefFactory, ActorSystem}
+import akka.pattern.CircuitBreakerOpenException
 import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
 import spray.http.HttpResponse
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 
 object CircuitBreakerStatus extends Enumeration {
@@ -39,30 +41,24 @@ case class ServiceCall(callTime: Long, status: ServiceCallStatus)
 
 trait CircuitBreakerSupport{
 
-  def withCircuitBreaker(client: HttpClient, response: => Future[HttpResponse])(implicit actorFactory: ActorRefFactory) = {
+  def withCircuitBreaker(client: HttpClient, response: => Future[HttpResponse])
+                        (implicit actorFactory: ActorRefFactory) = {
     import actorFactory.dispatcher
     val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](response)
-    val fallbackHttpResponse = client.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse
-    (fallbackHttpResponse, client.cbStat) match {
-      case (Some(resp), CircuitBreakerStatus.Closed) =>
-        collectCbMetrics(client, ServiceCallStatus.Success)
-        runCircuitBreaker fallbackTo Future{resp}
-      case (None, CircuitBreakerStatus.Closed) =>
-        collectCbMetrics(client, ServiceCallStatus.Success)
-        runCircuitBreaker
-      case (Some(resp), _) =>
-        collectCbMetrics(client, ServiceCallStatus.Fallback)
-        runCircuitBreaker fallbackTo Future{resp}
-      case (None, _)           =>
-        collectCbMetrics(client, ServiceCallStatus.FailFast)
-        runCircuitBreaker
+    import client.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse
+    runCircuitBreaker onComplete {
+      case Success(r) => client.cbMetrics.add(ServiceCallStatus.Success, System.nanoTime)
+      case Failure(e: CircuitBreakerOpenException) => fallbackHttpResponse match {
+        case Some(r) => client.cbMetrics.add(ServiceCallStatus.Fallback, System.nanoTime)
+        case None => client.cbMetrics.add(ServiceCallStatus.FailFast, System.nanoTime)
+      }
+      case Failure(e) => client.cbMetrics.add(ServiceCallStatus.Exception, System.nanoTime)
     }
-  }
-
-  def collectCbMetrics(client: HttpClient, status: ServiceCallStatus)(implicit actorFactory: ActorRefFactory) = {
-    client.cbMetrics.add(status, System.nanoTime)
-    // TODO: Check whether we really need this next line. Why would we have to put the client back for each response?
-//    HttpClientManager.get(actorFactory).httpClientMap.put((client.name, client.env), client)
+    fallbackHttpResponse map { fallback =>
+      runCircuitBreaker recover {
+        case e: CircuitBreakerOpenException => fallback
+      }
+    } getOrElse runCircuitBreaker
   }
 }
 
