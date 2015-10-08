@@ -22,3 +22,6 @@ project/plugins/project/
 .metadata/
 temp_*.xml
 .idea_modules/
+
+# travis-ci
+local.*
