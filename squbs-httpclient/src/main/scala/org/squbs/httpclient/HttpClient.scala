@@ -28,8 +28,7 @@ import spray.http.{HttpResponse, Uri}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling._
 
-import scala.collection.mutable.ListBuffer
-import scala.concurrent._
+import scala.concurrent.Future
 import scala.language.postfixOps
 
 object Status extends Enumeration {
@@ -82,30 +81,31 @@ case class HttpClient(name: String,
     serviceEndpoint match {
       case Some(se) => config match {
         case Some(conf) => se.copy(config = conf)
-        case None       => se
+        case None => se
       }
-      case None     => throw HttpClientEndpointNotExistException(name, env)
+      case None => throw HttpClientEndpointNotExistException(name, env)
     }
   }
 
-  val cbMetrics = CircuitBreakerMetrics(CircuitBreakerStatus.Closed, 0, 0, 0, 0, ListBuffer.empty[ServiceCall])
+  import endpoint.config.settings.{circuitBreakerConfig => cbConfig}
 
-  val cb: CircuitBreaker = {
-    val cbConfig = endpoint.config.settings.circuitBreakerConfig
-    new CircuitBreaker(system.scheduler, cbConfig.maxFailures, cbConfig.callTimeout,
-      cbConfig.resetTimeout)(system.dispatcher)
-  }
+  private[httpclient] var cbStat = CircuitBreakerStatus.Closed
+  private[httpclient] val cbMetrics =
+    new CircuitBreakerMetrics(cbConfig.historyUnits, cbConfig.historyUnitDuration)(system)
+  private[httpclient] val cb: CircuitBreaker = new CircuitBreaker(system.scheduler, cbConfig.maxFailures,
+    cbConfig.callTimeout, cbConfig.resetTimeout)(system.dispatcher)
+
 
   cb.onClose{
-    cbMetrics.status = CircuitBreakerStatus.Closed
+    cbStat = CircuitBreakerStatus.Closed
   }
 
   cb.onOpen{
-    cbMetrics.status = CircuitBreakerStatus.Open
+    cbStat = CircuitBreakerStatus.Open
   }
 
   cb.onHalfOpen{
-    cbMetrics.status = CircuitBreakerStatus.HalfOpen
+    cbStat = CircuitBreakerStatus.HalfOpen
   }
 
   def get[R](uri: String, reqSettings: RequestSettings)

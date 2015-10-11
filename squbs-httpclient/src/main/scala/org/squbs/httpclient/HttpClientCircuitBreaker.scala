@@ -16,13 +16,16 @@
 
 package org.squbs.httpclient
 
-import akka.actor.ActorRefFactory
-import org.squbs.httpclient.CircuitBreakerStatus.CircuitBreakerStatus
+import akka.actor.{ActorRefFactory, ActorSystem}
+import akka.pattern.CircuitBreakerOpenException
 import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
 import spray.http.HttpResponse
 
-import scala.collection.mutable.ListBuffer
-import scala.concurrent._
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.language.postfixOps
+import scala.util.{Failure, Success}
+
 
 object CircuitBreakerStatus extends Enumeration {
   type CircuitBreakerStatus = Value
@@ -36,54 +39,96 @@ object ServiceCallStatus extends Enumeration {
 
 case class ServiceCall(callTime: Long, status: ServiceCallStatus)
 
-case class CircuitBreakerMetrics(var status: CircuitBreakerStatus,
-                                 var successTimes: Long,
-                                 var fallbackTimes: Long,
-                                 var failFastTimes: Long,
-                                 var exceptionTimes: Long,
-                                 var cbLastDurationCall: ListBuffer[ServiceCall])
-
 trait CircuitBreakerSupport{
 
-  def withCircuitBreaker(client: HttpClient, response: => Future[HttpResponse])(implicit actorFactory: ActorRefFactory) = {
+  def withCircuitBreaker(client: HttpClient, response: => Future[HttpResponse])
+                        (implicit actorFactory: ActorRefFactory) = {
     import actorFactory.dispatcher
     val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](response)
-    val fallbackHttpResponse = client.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse
-    (fallbackHttpResponse, client.cbMetrics.status) match {
-      case (Some(resp), CircuitBreakerStatus.Closed) =>
-        collectCbMetrics(client, ServiceCallStatus.Success)
-        runCircuitBreaker fallbackTo Future{resp}
-      case (None, CircuitBreakerStatus.Closed) =>
-        collectCbMetrics(client, ServiceCallStatus.Success)
-        runCircuitBreaker
-      case (Some(resp), _) =>
-        collectCbMetrics(client, ServiceCallStatus.Fallback)
-        runCircuitBreaker fallbackTo Future{resp}
-      case (None, _)           =>
-        collectCbMetrics(client, ServiceCallStatus.FailFast)
-        runCircuitBreaker
+    import client.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse
+    runCircuitBreaker onComplete {
+      case Success(r) => client.cbMetrics.add(ServiceCallStatus.Success, System.nanoTime)
+      case Failure(e: CircuitBreakerOpenException) => fallbackHttpResponse match {
+        case Some(r) => client.cbMetrics.add(ServiceCallStatus.Fallback, System.nanoTime)
+        case None => client.cbMetrics.add(ServiceCallStatus.FailFast, System.nanoTime)
+      }
+      case Failure(e) => client.cbMetrics.add(ServiceCallStatus.Exception, System.nanoTime)
+    }
+    fallbackHttpResponse map { fallback =>
+      runCircuitBreaker recover {
+        case e: CircuitBreakerOpenException => fallback
+      }
+    } getOrElse runCircuitBreaker
+  }
+}
+
+class CircuitBreakerMetrics(val units: Int, val unitSize: FiniteDuration)(implicit val system: ActorSystem) {
+
+  require(units >= 1)
+
+  class CBStat(var successTimes: Long, var fallbackTimes: Long, var failFastTimes: Long, var exceptionTimes: Long)
+
+  class CBStatBucket(var successTimes: Int, var fallbackTimes: Int, var failFastTimes: Int, var exceptionTimes: Int)
+
+  private[httpclient] val bucketCount = units + 1
+
+  // Note: We use Array for the fastest access and lightest weight to this non-changing list
+  private[httpclient] val buckets = Array.fill(bucketCount){ new CBStatBucket(0, 0, 0, 0) }
+  private[httpclient] val total = new CBStat(0, 0, 0, 0)
+  private val unitNanos = unitSize.toNanos
+  private val cancellable = scheduleCleanup()
+
+  def add(status: ServiceCallStatus, time: Long): Unit = {
+    status match {
+      case ServiceCallStatus.Success =>
+        total.successTimes += 1
+        currentBucket(time).successTimes += 1
+      case ServiceCallStatus.Fallback =>
+        total.fallbackTimes += 1
+        currentBucket(time).fallbackTimes += 1
+      case ServiceCallStatus.FailFast =>
+        total.failFastTimes += 1
+        currentBucket(time).failFastTimes += 1
+      case ServiceCallStatus.Exception =>
+        total.exceptionTimes += 1
+        currentBucket(time).exceptionTimes += 1
     }
   }
 
-  def collectCbMetrics(client: HttpClient, status: ServiceCallStatus)(implicit actorFactory: ActorRefFactory) = {
-    val cbLastDurationCall = client.cbMetrics.cbLastDurationCall
-    val currentTime = System.currentTimeMillis
-    val lastDuration = client.endpoint.config.settings.circuitBreakerConfig.lastDuration.toMillis
-    status match {
-      case ServiceCallStatus.Success =>
-        client.cbMetrics.successTimes += 1
-        cbLastDurationCall.append(ServiceCall(currentTime, ServiceCallStatus.Success))
-      case ServiceCallStatus.Fallback =>
-        client.cbMetrics.fallbackTimes += 1
-        cbLastDurationCall.append(ServiceCall(currentTime, ServiceCallStatus.Fallback))
-      case ServiceCallStatus.FailFast =>
-        client.cbMetrics.failFastTimes += 1
-        cbLastDurationCall.append(ServiceCall(currentTime, ServiceCallStatus.FailFast))
-      case ServiceCallStatus.Exception =>
-        client.cbMetrics.exceptionTimes += 1
-        cbLastDurationCall.append(ServiceCall(currentTime, ServiceCallStatus.Exception))
-    }
-    client.cbMetrics.cbLastDurationCall = cbLastDurationCall.dropWhile(_.callTime + lastDuration <= currentTime)
-    HttpClientManager.get(actorFactory).httpClientMap.put((client.name, client.env), client)
+  def currentBucket(time: Long) = buckets(currentIndex(time))
+
+  def currentIndex(time: Long) = {
+    // Note: currentTime can be negative so signedIdx can be negative
+    // signShift is 0 if positive and 1 if negative
+    // Avoid using if statements (branches) to not throw off the CPU's branch prediction.
+    val signShift = time >>> 63
+    val signedIdx = ((time / unitNanos % bucketCount) - signShift).toInt
+    (signedIdx + bucketCount) % bucketCount // This ensures the index is 0 or positive
+  }
+
+  def cancel(): Unit = cancellable.cancel()
+
+  private def clearNext(time: Long) = {
+    val clearBucket = buckets((currentIndex(time) + 1) % bucketCount)
+    clearBucket.successTimes = 0
+    clearBucket.fallbackTimes = 0
+    clearBucket.failFastTimes = 0
+    clearBucket.exceptionTimes = 0
+  }
+
+  private def scheduleCleanup() = {
+    val currentTime = System.nanoTime
+    val bucketBase = currentTime - (currentTime % unitNanos)
+
+    // Schedule the first cleanup 10ms or a quarter into the next bucket time, whichever is smaller.
+    // 10ms is a safe margin already.
+    val offset = math.min((10 milliseconds).toNanos, unitNanos / 4)
+
+    // In case of negative current time, bucket base is larger than the current time.
+    val firstCleanup =
+      if (bucketBase > currentTime) bucketBase + offset
+      else bucketBase + unitNanos + offset
+    import system.dispatcher
+    system.scheduler.schedule((firstCleanup - currentTime) nanos, unitSize) { clearNext(System.nanoTime) }
   }
 }

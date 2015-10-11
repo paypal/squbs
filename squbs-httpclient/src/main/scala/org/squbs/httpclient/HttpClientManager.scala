@@ -86,11 +86,11 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
         withCircuitBreaker(client, res(httpRequest))
       case Failure(t@HttpClientMarkDownException(_, _)) =>
         httpClientLogger.debug("HttpClient has been mark down!", t)
-        collectCbMetrics(client, ServiceCallStatus.Exception)
+        client.cbMetrics.add(ServiceCallStatus.Exception, System.nanoTime)
         Future.failed(t)
       case Failure(t) =>
         httpClientLogger.debug("HttpClient Pipeline execution failure!", t)
-        collectCbMetrics(client, ServiceCallStatus.Exception)
+        client.cbMetrics.add(ServiceCallStatus.Exception, System.nanoTime)
         Future.failed(t)
     }
   }
@@ -179,6 +179,8 @@ class HttpClientActor(svcName: String, env: Environment, clientMap: TrieMap[(Str
       clientMap.remove((client.name, client.env))
       sender ! CloseSuccess
   }
+
+  override def postStop(): Unit = client.cbMetrics.cancel()
 }
 
 class HttpClientManager(clientMap: TrieMap[(String, Environment), HttpClient]) extends Actor {
