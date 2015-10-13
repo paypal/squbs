@@ -30,6 +30,12 @@ package object httpclient {
       throw new IllegalArgumentException(s"Cannot create HttpClient with ActorRefFactory Impl ${other.getClass}")
   }
 
+  implicit def toTimeout(d: Duration): Timeout = Timeout(d match {
+    case f: FiniteDuration => f
+    case Duration.Inf => Duration.fromNanos(Long.MaxValue)
+    case _ => Duration.Zero
+  })
+
   implicit class RequestToAskTimeout(val requestTimeout: Timeout) extends AnyVal {
 
     def askTimeout: Timeout = {
