@@ -1,5 +1,5 @@
 val akkaVersion = "2.3.9"
-val SqubsVersion = "0.8.0-SNAPSHOT"
+val SqubsVersion = "0.7.1-SNAPSHOT"
 
 libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % "1.7.5",

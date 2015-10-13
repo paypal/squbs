@@ -57,9 +57,6 @@ class HttpClient(private[httpclient] val delegate: org.squbs.httpclient.HttpClie
 
   def readyFuture = delegate.readyFuture
 
-//  def endpoint = delegate.endpoint
-
-
   def get[R](uri: String, clazz: Class[R]) = delegate.get(uri)(unmarshaller = clazz)
 
   def get[R](uri: String, reqSettings: RequestSettings, clazz: Class[R]) =

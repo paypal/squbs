@@ -64,10 +64,9 @@ trait HttpClientPathBuilder {
 
 object HttpClientPathBuilder extends HttpClientPathBuilder
 
-class HttpClient private[httpclient] (val name: String, val env: Environment = Default,
-                                           config: Option[Configuration] = None, val askTimeout: Timeout)
-                                          (actorCreator: (ActorRefFactory) => Future[ActorRef])
-                                          (implicit val actorFactory: ActorRefFactory) {
+class HttpClient private[httpclient] (val name: String, val env: Environment = Default, val askTimeout: Timeout)
+                                     (actorCreator: (ActorRefFactory) => Future[ActorRef])
+                                     (implicit val actorFactory: ActorRefFactory) {
 
   import actorFactory.dispatcher
   val fActorRef: Future[ActorRef] = actorCreator(actorFactory)
@@ -173,7 +172,7 @@ class HttpClient private[httpclient] (val name: String, val env: Environment = D
   def withConfig(config: Configuration): HttpClient = {
     implicit val timeout = defaultFutureTimeout
     val newAskTimeout = toTimeout(config.settings.hostSettings.connectionSettings.requestTimeout).askTimeout
-    new HttpClient(name, env, Some(config), newAskTimeout)(
+    new HttpClient(name, env, newAskTimeout)(
       (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateConfig(config)).mapTo[ActorRef] }
     )
   }
@@ -181,15 +180,14 @@ class HttpClient private[httpclient] (val name: String, val env: Environment = D
   def withSettings(settings: Settings): HttpClient = {
     implicit val timeout = defaultFutureTimeout
     val newAskTimeout = toTimeout(settings.hostSettings.connectionSettings.requestTimeout).askTimeout
-    new HttpClient(name, env, Some(config.getOrElse(Configuration().copy(settings = settings))), newAskTimeout)(
+    new HttpClient(name, env, newAskTimeout)(
       (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateSettings(settings)).mapTo[ActorRef] }
     )
   }
 
   def withPipelineSetting(pipelineSetting: Option[PipelineSetting]): HttpClient = {
     implicit val timeout = defaultFutureTimeout
-    val newConfig = config.getOrElse(Configuration()).copy(pipeline = pipelineSetting)
-    new HttpClient(name, env, Some(newConfig), askTimeout)(
+    new HttpClient(name, env, askTimeout)(
       (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdatePipeline(pipelineSetting)).mapTo[ActorRef] }
     )
   }
@@ -337,14 +335,14 @@ object HttpClientFactory {
     }
 
     val endpoint =
-      EndpointRegistry(system).resolve(name, env) getOrElse { throw HttpClientEndpointNotExistException(name, env) }
+      EndpointRegistry(system).resolve(name, env) getOrElse   { throw HttpClientEndpointNotExistException(name, env) }
 
     val clientAskTimeout =
       toTimeout(endpoint.config.settings.hostSettings.connectionSettings.requestTimeout).askTimeout
 
 
     implicit val timeout = defaultFutureTimeout
-    new HttpClient(name, newEnv, None, clientAskTimeout)((_) =>
+    new HttpClient(name, newEnv, clientAskTimeout)((_) =>
       (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, newEnv)).mapTo[ActorRef]
     )
   }
