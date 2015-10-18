@@ -17,11 +17,36 @@ squbs {
   # is relative to the working directory of the squbs process.
   external-config-dir = squbsconfig
 
-  # An external configuration file name list. Any file with the name in the list under the external-confi-dir will bes
+  # An external configuration file name list. Any file with the name in the list under the external-confi-dir will be
   # loaded during squbs initialization for Actor System settings. Implicit "application.conf" will be loaded
   # besides this file name list
   external-config-files = []
 }
+
+
+default-proxy {
+
+  # All squbs proxies carry the type "squbs.proxy"
+  type = squbs.proxy
+
+  # a processorFactory must be provided in a proxy
+  processorFactory = "org.squbs.pipeline.SimpleProcessorFactory"
+
+  # settings will be parsed by processorFactory and create a processor
+  settings = {
+    # handlers is the unified place to indicate all the request/response/common handlers class name
+    # each handler should have a default constructor and derived from trait Handler
+    # handlers = {
+    #   myhandler = com.myorg.myhandler
+    # }
+
+    # inbound and outbound determine the handlers to be go throught in request/response phases
+    # inbound = []
+    # outbound = []
+  }
+
+}
+
 
 default-listener {
 
@@ -46,10 +71,9 @@ default-listener {
   secure = false
 
   # HTTPS needs client authorization? This configuration is not read if secure is false.
-  client-authn = false
+  need-client-auth = false
 
-  # SSLContext fully qualified classname. Setting to "default" means platform default.
-  # ssl-context = org.foobar.MySSLContext
+  # Any custom SSLContext provider? Setting to "default" means platform default.
   ssl-context = default
 }
 
@@ -57,27 +81,37 @@ blocking-dispatcher {
   # Dispatcher is the name of the event-based dispatcher
   type = Dispatcher
   # What kind of ExecutionService to use
-  executor = "fork-join-executor"
-  # Configuration for the fork join pool
-  fork-join-executor {
-    # Min number of threads to cap factor-based parallelism number to
-    parallelism-min = 2
-    # Parallelism (threads) ... ceil(available processors * factor)
-    parallelism-factor = 3.0
-    # Max number of threads to cap factor-based parallelism number to
-    parallelism-max = 24
+  executor = "thread-pool-executor"
+  thread-pool-executor {
+    # Min number of threads to cap factor-based core number to
+    core-pool-size-min = 2
+    # The core pool size factor is used to determine thread pool core size
+    # using the following formula: ceil(available processors * factor).
+    # Resulting size is then bounded by the core-pool-size-min and
+    # core-pool-size-max values.
+    core-pool-size-factor = 3.0
+    # Max number of threads to cap factor-based number to
+    core-pool-size-max = 24
+    # Minimum number of threads to cap factor-based max number to
+    # (if using a bounded task queue)
+    max-pool-size-min = 2
+    # Max no of threads (if using a bounded task queue) is determined by
+    # calculating: ceil(available processors * factor)
+    max-pool-size-factor  = 3.0
+    # Max number of threads to cap factor-based max number to
+    # (if using a  bounded task queue)
+    max-pool-size-max = 24
   }
   # Throughput defines the maximum number of messages to be
   # processed per actor before the thread jumps to the next actor.
   # Set to 1 for as fair as possible.
   throughput = 2
 }
-
 ```
 
 ##Blocking Dispatcher
 
-The squbs `reference.conf` declares a `blocking-dispatcher` used for blocking I/O calls. This is a standard Akka dispatcher configuration. Please see [dispatchers](http://doc.akka.io/docs/akka/2.3.3/scala/dispatchers.html) in the Akka documentation for more detail.
+The squbs `reference.conf` declares a `blocking-dispatcher` used for blocking I/O calls. This is a standard Akka dispatcher configuration. Please see [dispatchers](http://doc.akka.io/docs/akka/2.3.13/scala/dispatchers.html) in the Akka documentation for more detail.
 
 ##Listeners
 
@@ -86,3 +120,7 @@ A listener defines a port binding and the behavior of this port binding such as 
 A listener is declared at the root level of the configuiration file. The name generally follows the pattern *-listener but this is not a requirement. What defines the entry as a listener is the `type` field under the listener entry. It MUST be set to `squbs.listener`. Please see the default-listener example above on how to configure new listeners listening to different ports.
 
 A declared listener is not started unless a service route attaches itself to this listener. In other words, just declaring the listener does not automatically cause the listener to start unless there is a real use for the listener.
+
+##Proxies
+
+A default proxy pipeline is installed for pre-processing every single request and post-processing every response. Services can specify a different proxy, or none at all as described under [Bootstrapping squbs](bootstrap.md#services). Applications or infrastructure can implement their own proxies for pre-processing needs such as logging or tracing. Please see detailed description of proxies under [Request/Response Pipeline Proxy](pipeline.md).

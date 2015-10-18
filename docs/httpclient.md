@@ -4,6 +4,49 @@
 
 squbs HttpClient is the library enabling Scala/Akka/Spray applications to easily execute HTTP requests and asynchronously process the HTTP responses in a managed environment. This means it provides environment awareness whether you're in development or in production, service routing which exact service endpoint should be accessed, and also service resilience ensuring that service quality is being maintained. It is build on the top of Akka and the spray layer.
 
+##Dependencies
+
+Add the following dependency to your build.sbt or scala build file:
+
+```
+"org.squbs" %% "squbs-httpclient" % squbsVersion
+```
+
+##Getting Started
+
+###Simple Scala API Samples:
+
+```scala
+import org.squbs.httpclient._
+
+// Expecting an implicit actor system.
+val getFuture: Future[String] = HttpClientFactory.get("http://foo.com").get("/mypath")
+val postFuture: Future[String] = HttpClientFactory.get("http://foo.com").post("/mypath", Some"foo=bar")
+```
+
+Lets add some explanations around such breakdown. The first `HttpClientFactory.get(name)` obtains you a HttpClient instance. While the name can often be a base URL of a certain site, it does not have to be. It can be any unique identifier to a HttpClient. Most applications or services do not call random sites, but rather a limited amount of other sites or services. These can also be different whether you work in you dev, QA, or production environment. So it is more practical to abstract out the site from the path.
+
+Once you have the HttpClient, you can make any number of calls to different paths with it. This also facilitates connection pooling to these other services and allow easy re-use of the connections to a particular service.
+
+###Simple Java API Samples:
+
+We use the Scala `Future` API even for Java use cases. This is commonly used in Akka as well.
+
+```java
+import org.squbs.httpclient.japi.*;
+
+// Need an actor system
+Future<String> getFuture = HttpClientFactory.get("http://foo.com", system).get("/mypath");
+Future<String> postFuture = HttpClientFactory.post("http://foo.com, system").post("/mypath", Optional.of("foo=bar"));
+```
+
+Similar to the Scala version of the API, the HttpClientFactory provides an HttpClient by name. This name is often a URL, but does not have to be. It is the name of the service to call. Once obtained, you can now call get, post, put, delete, option on the HttpClient given a more specific path. The same client will share the same connection pool while a separate client may or may not share the connection pool depending on whether the framework can identify those clients to be the same endpoint or not.
+
+The squbs API generally uses `Optional` to indicate an optional value. Nulls should never be passed.
+
+The Scala `Future` allows functional processing. Please visit the [Akka Futures API page](http://doc.akka.io/docs/akka/2.3.13/java/futures.html) for a more complete description of how to use Futures from Java code.
+
+
 ##Concepts
 
 ###HttpClient
@@ -39,13 +82,7 @@ Following are a few basic pipeline handlers provided with the HttpClient
 * RequestHeaderHandler (Add/Update/Delete)
 * ResponseHeaderHandler (Add/Update/Delete)
 
-## Getting Started
-
-### Dependencies
-
-Add the following dependency to your build.sbt or scala build file:
-
-"org.squbs" %% "squbs-httpclient" % squbsVersion
+## API
 
 ### EndpointRegistry
 
@@ -605,7 +642,7 @@ Configuration
 
 ### Json4s Marshalling/Unmarshalling
 
-Squbs HttpClient provides integration with Json4s Marshalling/Unmarshalling to support native/jackson Protocols. User don't limit to use Json4s for Marshalling/Unmarshalling.
+squbs HttpClient provides integration with Json4s Marshalling/Unmarshalling to support native/jackson Protocols. User don't limit to use Json4s for Marshalling/Unmarshalling.
 
 Json4s Jackson Support:
 
