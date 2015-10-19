@@ -56,7 +56,7 @@ trait PipelineManager extends LazyLogging {
 
   val httpClientLogger = logger
 
-  def hostConnectorSetup(client: HttpClient, reqSettings: Option[RequestSettings])(implicit system: ActorSystem) = {
+  def hostConnectorSetup(client: HttpClientState, reqSettings: Option[RequestSettings])(implicit system: ActorSystem) = {
     implicit def sslContext: SSLContext = {
       client.endpoint.config.settings.sslContext match {
         case Some(context) => context
@@ -82,7 +82,7 @@ trait PipelineManager extends LazyLogging {
       connectionType = client.endpoint.config.settings.connectionType)
   }
 
-  def invokeToHttpResponseWithoutSetup(client: HttpClient, reqSettings: Option[RequestSettings], actorRef: ActorRef)
+  def invokeToHttpResponseWithoutSetup(client: HttpClientState, reqSettings: Option[RequestSettings], actorRef: ActorRef)
                                       (implicit actorFactory: ActorRefFactory): Try[(HttpRequest => Future[HttpResponse])] = {
     import actorFactory.dispatcher
     val pipelineSetting = client.endpoint.config.pipeline.getOrElse(PipelineSetting.default)

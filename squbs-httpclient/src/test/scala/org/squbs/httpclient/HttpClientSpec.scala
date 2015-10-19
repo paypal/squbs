@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.PropertyAccessor
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import org.scalatest.OptionValues._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.httpclient.dummy.DummyService._
 import org.squbs.httpclient.dummy._
@@ -336,16 +337,20 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     val newConfig = Configuration(settings = Settings(hostSettings =
       Configuration.defaultHostSettings.copy(maxRetries = 11)))
     val updatedHttpClient = httpClient.withConfig(newConfig)
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
     EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint, Configuration()(system))))
-    updatedHttpClient.endpoint should be (Endpoint(dummyServiceEndpoint, newConfig))
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    clientState.value.endpoint should be (Endpoint(dummyServiceEndpoint, newConfig))
   }
 
   "HttpClient update settings" should "get the correct behaviour" in {
     val httpClient = HttpClientFactory.get("DummyService")
     val settings = Settings(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 20))
     val updatedHttpClient = httpClient.withSettings(settings)
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
     EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
-    updatedHttpClient.endpoint.config.settings should be (settings)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    clientState.value.endpoint.config.settings should be (settings)
   }
 
   "HttpClient update pipeline" should "get the correct behaviour" in {
@@ -354,8 +359,10 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     val pipeline = Some(DummyRequestPipeline)
     val pipelineSetting : Option[PipelineSetting] = pipeline
     val updatedHttpClient = httpClient.withPipelineSetting(Some(PipelineSetting(config = pipeline)))
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
     EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
-    updatedHttpClient.endpoint.config.pipeline should be (pipelineSetting)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    clientState.value.endpoint.config.pipeline should be (pipelineSetting)
   }
 
   "HttpClient update pipeline setting" should "get the correct behaviour" in {
@@ -363,8 +370,10 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     val httpClient = HttpClientFactory.get("DummyService")
     val pipelineSetting : Option[PipelineSetting] = Some(DummyRequestPipeline)
     val updatedHttpClient = httpClient.withPipelineSetting(pipelineSetting)
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
     EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
-    updatedHttpClient.endpoint.config.pipeline should be (pipelineSetting)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    clientState.value.endpoint.config.pipeline should be (pipelineSetting)
   }
 
   "HttpClient with the correct endpoint sleep 10s" should "restablish the connection and get response" in {
