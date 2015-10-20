@@ -111,7 +111,7 @@ Handler definition:
 
 ```scala
 trait Handler {
-	def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext]
+  def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext]
 }
 ```
 
@@ -211,6 +211,3 @@ handler4 {
 }
 
 ```
-
-
-

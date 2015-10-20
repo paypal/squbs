@@ -19,10 +19,13 @@ package org.squbs.httpclient
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import org.scalatest._
+import org.scalatest.OptionValues._
 import org.squbs.httpclient.dummy.DummyServiceEndpointResolver
 import org.squbs.httpclient.endpoint.EndpointRegistry
+import org.squbs.testkit.Timeouts._
 
 import scala.annotation.tailrec
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -45,11 +48,13 @@ with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAf
 
   "HttpClient with Success ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
-    import httpClient.cbMetrics
+    Await.ready(httpClient.readyFuture, awaitMax)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    val cbMetrics = clientState.value.cbMetrics
     cbMetrics.total.successTimes should be (0)
     val time = System.nanoTime
     cbMetrics.currentBucket(time).successTimes should be (0)
-    httpClient.cbMetrics.add(ServiceCallStatus.Success, time)
+    cbMetrics.add(ServiceCallStatus.Success, time)
     1 should (be (cbMetrics.currentBucket(time).successTimes) or be (
         cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).successTimes))
     cbMetrics.total.successTimes should be (1)
@@ -57,11 +62,13 @@ with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAf
 
   "HttpClient with Fallback ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
-    import httpClient.cbMetrics
+    Await.ready(httpClient.readyFuture, awaitMax)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    val cbMetrics = clientState.value.cbMetrics
     cbMetrics.total.fallbackTimes should be (0)
     val time = System.nanoTime
     cbMetrics.currentBucket(time).fallbackTimes should be (0)
-    httpClient.cbMetrics.add(ServiceCallStatus.Fallback, time)
+    cbMetrics.add(ServiceCallStatus.Fallback, time)
     1 should (be (cbMetrics.currentBucket(time).fallbackTimes) or be (
       cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).fallbackTimes))
     cbMetrics.total.fallbackTimes should be (1)
@@ -69,11 +76,13 @@ with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAf
 
   "HttpClient with FailFast ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
-    import httpClient.cbMetrics
+    Await.ready(httpClient.readyFuture, awaitMax)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    val cbMetrics = clientState.value.cbMetrics
     cbMetrics.total.failFastTimes should be (0)
     val time = System.nanoTime
     cbMetrics.currentBucket(time).failFastTimes should be (0)
-    httpClient.cbMetrics.add(ServiceCallStatus.FailFast, time)
+    cbMetrics.add(ServiceCallStatus.FailFast, time)
     1 should (be (cbMetrics.currentBucket(time).failFastTimes) or be (
       cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).failFastTimes))
     cbMetrics.total.failFastTimes should be (1)
@@ -81,11 +90,13 @@ with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAf
 
   "HttpClient with Exception ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
-    import httpClient.cbMetrics
+    Await.ready(httpClient.readyFuture, awaitMax)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    val cbMetrics = clientState.value.cbMetrics
     cbMetrics.total.exceptionTimes should be (0)
     val time = System.nanoTime
     cbMetrics.currentBucket(time).exceptionTimes should be (0)
-    httpClient.cbMetrics.add(ServiceCallStatus.Exception, time)
+    cbMetrics.add(ServiceCallStatus.Exception, time)
     1 should (be (cbMetrics.currentBucket(time).exceptionTimes) or be (
       cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).exceptionTimes))
     cbMetrics.total.exceptionTimes should be (1)

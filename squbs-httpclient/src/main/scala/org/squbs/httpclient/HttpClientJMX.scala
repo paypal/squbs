@@ -95,9 +95,9 @@ trait HttpClientMXBean {
 case class HttpClientBean(system: ActorSystem) extends HttpClientMXBean {
 
   override def getHttpClientInfo: java.util.List[HttpClientInfo] =
-    HttpClientManager(system).httpClientMap.values.toList map mapToHttpClientInfo
+    HttpClientManager(system).httpClientMap.values.toList map toHttpClientInfo
 
-  private def mapToHttpClientInfo(httpClient: HttpClient) = {
+  private def toHttpClientInfo(httpClient: HttpClientState) = {
     val name = httpClient.name
     val env  = httpClient.env.lowercaseName
     val endpoint = httpClient.endpoint.uri.toString()
@@ -206,10 +206,10 @@ trait CircuitBreakerMXBean {
 case class CircuitBreakerBean(system: ActorSystem) extends CircuitBreakerMXBean {
 
   override def getHttpClientCircuitBreakerInfo: util.List[CircuitBreakerInfo] = {
-    HttpClientManager(system).httpClientMap.values.toList map mapToHttpClientCircuitBreakerInfo
+    HttpClientManager(system).httpClientMap.values.toList map toHttpClientCircuitBreakerInfo
   }
 
-  private def mapToHttpClientCircuitBreakerInfo(httpClient: HttpClient) = {
+  private def toHttpClientCircuitBreakerInfo(httpClient: HttpClientState) = {
     val name = httpClient.name
     val status = httpClient.cbStat.toString
     import httpClient.cbMetrics._

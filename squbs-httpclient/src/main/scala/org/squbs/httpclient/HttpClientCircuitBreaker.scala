@@ -41,7 +41,7 @@ case class ServiceCall(callTime: Long, status: ServiceCallStatus)
 
 trait CircuitBreakerSupport{
 
-  def withCircuitBreaker(client: HttpClient, response: => Future[HttpResponse])
+  def withCircuitBreaker(client: HttpClientState, response: => Future[HttpResponse])
                         (implicit actorFactory: ActorRefFactory) = {
     import actorFactory.dispatcher
     val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](response)
