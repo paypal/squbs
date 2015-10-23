@@ -218,10 +218,7 @@ case class CircuitBreakerBean(system: ActorSystem) extends CircuitBreakerMXBean 
     val failFastTimes = total.failFastTimes
     val exceptionTimes = total.exceptionTimes
     val unitDesc = unitSize.toString()
-    val currentTime = System.nanoTime
-    val startIdx = currentIndex(currentTime)
-    val history = for (i <- 0 until units) yield {
-      val bucket = buckets((bucketCount + startIdx - i) % bucketCount)
+    val h = history.zipWithIndex map { case (bucket, i) =>
       val period = i match {
         case 0 => s"$unitDesc-to-date"
         case 1 => s"previous $unitDesc"
@@ -235,11 +232,11 @@ case class CircuitBreakerBean(system: ActorSystem) extends CircuitBreakerMXBean 
           formatPercent((calls - bucket.successTimes) * 100.0 / calls),
           formatPercent(bucket.failFastTimes * 100.0 / calls),
           formatPercent(bucket.exceptionTimes * 100.0 / calls)
-        ) else ("0%", "0%", "0%")
+          ) else ("0%", "0%", "0%")
       CBHistory(period, bucket.successTimes, bucket.fallbackTimes, bucket.failFastTimes, bucket.exceptionTimes,
         errorRate, failFastRate, exceptionRate)
     }
     CircuitBreakerInfo(name, status, unitDesc,
-      successTimes, fallbackTimes, failFastTimes, exceptionTimes, history)
+      successTimes, fallbackTimes, failFastTimes, exceptionTimes, h)
   }
 }
