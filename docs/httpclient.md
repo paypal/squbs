@@ -4,6 +4,49 @@
 
 squbs HttpClient is the library enabling Scala/Akka/Spray applications to easily execute HTTP requests and asynchronously process the HTTP responses in a managed environment. This means it provides environment awareness whether you're in development or in production, service routing which exact service endpoint should be accessed, and also service resilience ensuring that service quality is being maintained. It is build on the top of Akka and the spray layer.
 
+##Dependencies
+
+Add the following dependency to your build.sbt or scala build file:
+
+```
+"org.squbs" %% "squbs-httpclient" % squbsVersion
+```
+
+##Getting Started
+
+###Simple Scala API Samples:
+
+```scala
+import org.squbs.httpclient._
+
+// Expecting an implicit actor system.
+val getFuture: Future[String] = HttpClientFactory.get("http://foo.com").get("/mypath")
+val postFuture: Future[String] = HttpClientFactory.get("http://foo.com").post("/mypath", Some"foo=bar")
+```
+
+Lets add some explanations around such breakdown. The first `HttpClientFactory.get(name)` obtains you a HttpClient instance. While the name can often be a base URL of a certain site, it does not have to be. It can be any unique identifier to a HttpClient. Most applications or services do not call random sites, but rather a limited amount of other sites or services. These can also be different whether you work in you dev, QA, or production environment. So it is more practical to abstract out the site from the path.
+
+Once you have the HttpClient, you can make any number of calls to different paths with it. This also facilitates connection pooling to these other services and allow easy re-use of the connections to a particular service.
+
+###Simple Java API Samples:
+
+We use the Scala `Future` API even for Java use cases. This is commonly used in Akka as well.
+
+```java
+import org.squbs.httpclient.japi.*;
+
+// Need an actor system
+Future<String> getFuture = HttpClientFactory.get("http://foo.com", system).get("/mypath");
+Future<String> postFuture = HttpClientFactory.post("http://foo.com, system").post("/mypath", Optional.of("foo=bar"));
+```
+
+Similar to the Scala version of the API, the HttpClientFactory provides an HttpClient by name. This name is often a URL, but does not have to be. It is the name of the service to call. Once obtained, you can now call get, post, put, delete, option on the HttpClient given a more specific path. The same client will share the same connection pool while a separate client may or may not share the connection pool depending on whether the framework can identify those clients to be the same endpoint or not.
+
+The squbs API generally uses `Optional` to indicate an optional value. Nulls should never be passed.
+
+The Scala `Future` allows functional processing. Please visit the [Akka Futures API page](http://doc.akka.io/docs/akka/2.3.13/java/futures.html) for a more complete description of how to use Futures from Java code.
+
+
 ##Concepts
 
 ###HttpClient
@@ -39,13 +82,7 @@ Following are a few basic pipeline handlers provided with the HttpClient
 * RequestHeaderHandler (Add/Update/Delete)
 * ResponseHeaderHandler (Add/Update/Delete)
 
-## Getting Started
-
-### Dependencies
-
-Add the following dependency to your build.sbt or scala build file:
-
-"org.squbs" %% "squbs-httpclient" % squbsVersion
+## API
 
 ### EndpointRegistry
 
@@ -57,7 +94,7 @@ The following is an example of an EndpointResolver:
 
 ```scala
 
-object DummyLocalhostResolver extends EndpointResolver {
+class DummyLocalhostResolver(implicit system: ActorSystem) {
   override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == null || svcName.length <= 0) throw new HttpClientException(700, "Service name cannot be null")
     env match {
@@ -75,6 +112,13 @@ object DummyLocalhostResolver extends EndpointResolver {
 ```java
 
 public class DummyLocalhostResolver extends AbstractEndpointResolver{
+
+    private ActorSystem system;
+
+    public DummyLocalhostResolver(ActorSystem system) {
+        this.system = system;
+    }
+    
     @Override
     public String name() {
         return "DummyLocalhostResolver";
@@ -83,7 +127,7 @@ public class DummyLocalhostResolver extends AbstractEndpointResolver{
     @Override
     public Option<Endpoint> resolve(String svcName, Environment env) {
         if (svcName == null || svcName.length() <= 0) throw new HttpClientException("Service name cannot be null");
-        if(env == Default.value() || env == DEV.value()) return Option.apply(EndpointFactory.create("http://localhost:8080/" + svcName));
+        if(env == Default.value() || env == DEV.value()) return Option.apply(EndpointFactory.create("http://localhost:8080/" + svcName, system));
         else throw new HttpClientException("DummyLocalhostResolver cannot support " + env + " environment");
     }
 }
@@ -95,7 +139,7 @@ After defining the resolver, simply register the resolver with the EndpointRegis
 
 ```scala
 
-EndpointRegistry(actorSystem).register(DummyLocalhostResolver)
+EndpointRegistry(actorSystem).register(new DummyLocalhostResolver)
 
 ```
 **Java**
@@ -103,7 +147,7 @@ EndpointRegistry(actorSystem).register(DummyLocalhostResolver)
 ```java
 
 EndpointRegistryExtension registry = (EndpointRegistryExtension) EndpointRegistry.get(actorSystem); 
-registry.register(new DummyLocalhostResolver());
+registry.register(new DummyLocalhostResolver(system));
         
 ```
 
@@ -338,7 +382,7 @@ response:
 ```scala
 
 //get HttpClientActor Ref from Get HttpClient Message Call
-httpClientActorRef ! Get(uri: String, reqSettings = Configuration.defaultRequestSettings)
+httpClientActorRef ! Get(uri: String, reqSettings = None)
 
 ```
 - uri(Mandatory): Uri for Service Call
@@ -514,59 +558,71 @@ val result: Future[Unit] = client.readyFuture
 
 ```scala
 
-val t: Future[T] = client.get[T](uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.get(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.get[T](uri: String)
+val response: Future[HttpResponse] = client.raw.get(uri: String)
+val t: Future[T] = client.get[T](uri: String, reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.get(uri: String, reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings  
+- reqSettings: Request Settings, if non-default
 
 ```scala
 
-val t: Future[T] = client.post[T](uri: String, content: Option[T], reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.post(uri: String, content: Option[T], reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.post[T](uri: String, content: Option[T])
+val response: Future[HttpResponse] = client.raw.post(uri: String, content: Option[T])
+val t: Future[T] = client.post[T](uri: String, content: Option[T], reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.post(uri: String, content: Option[T], reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Post Content
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings 
+- reqSettings: Request Settings, if non-default 
 
 ```scala
 
-val t: Future[T] = client.put[T](uri: String, content: Option[T], reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.put(uri: String, content: Option[T], reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.put[T](uri: String, content: Option[T])
+val response: Future[HttpResponse] = client.raw.put(uri: String, content: Option[T])
+val t: Future[T] = client.put[T](uri: String, content: Option[T], reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.put(uri: String, content: Option[T], reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
 - content(Mandatory): Put Content
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings 
+- reqSettings: Request Settings, if non-default
 
 ```scala
 
-val t: Future[T] = client.head[T](uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.head(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.head[T](uri: String)
+val response: Future[HttpResponse] = client.raw.head(uri: String)
+val t: Future[T] = client.head[T](uri: String, reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.head(uri: String, reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings
+- reqSettings: Request Settings, if non-default
 
 ```scala
 
-val t: Future[T] = client.delete[T](uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.delete(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.delete[T](uri: String)
+val response: Future[HttpResponse] = client.raw.delete(uri: String)
+val t: Future[T] = client.delete[T](uri: String, reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.delete(uri: String, reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings
+- reqSettings: Request Settings, if non-default
 
 ```scala
 
-val t: Future[T] = client.options[T](uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
-val response: Future[HttpResponse] = client.raw.options(uri: String, reqSettings: RequestSettings = Configuration.defaultRequestSettings)
+val t: Future[T] = client.options[T](uri: String)
+val response: Future[HttpResponse] = client.raw.options(uri: String)
+val t: Future[T] = client.options[T](uri: String, reqSettings: RequestSettings)
+val response: Future[HttpResponse] = client.raw.options(uri: String, reqSettings: RequestSettings)
 
 ```
 - uri(Mandatory): Uri for Service Call
-- reqSettings(Optional): Request Settings, default value is Configuration.defaultRequestSettings
+- reqSettings: Request Settings, if non-default
 
 
 ### Pipeline
@@ -605,7 +661,7 @@ Configuration
 
 ### Json4s Marshalling/Unmarshalling
 
-Squbs HttpClient provides integration with Json4s Marshalling/Unmarshalling to support native/jackson Protocols. User don't limit to use Json4s for Marshalling/Unmarshalling.
+squbs HttpClient provides integration with Json4s Marshalling/Unmarshalling to support native/jackson Protocols. User don't limit to use Json4s for Marshalling/Unmarshalling.
 
 Json4s Jackson Support:
 
@@ -692,7 +748,7 @@ val circuitBreakers: java.util.List[CircuitBreakerInfo] = (new CircuitBreakerBea
 
 ```scala
 
-object GoogleMapAPIEndpointResolver extends EndpointResolver {
+class GoogleMapAPIEndpointResolver(implicit system: ActorSystem) extends EndpointResolver {
   override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     if (svcName == name)
       Some(Endpoint("http://maps.googleapis.com/maps"))
@@ -724,7 +780,7 @@ object HttpClientDemo1 extends App {
   implicit val system = ActorSystem("HttpClientDemo1")
   implicit val timeout: Timeout = 3 seconds
   import system.dispatcher
-  EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
+  EndpointRegistry(system).register(new GoogleMapAPIEndpointResolver)
 
   val response = HttpClientFactory.get("googlemap").raw.get("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
@@ -751,7 +807,7 @@ object HttpClientDemo2 extends App {
   implicit val system = ActorSystem("HttpClientDemo2")
   implicit val timeout: Timeout = 3 seconds
   import system.dispatcher
-  EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
+  EndpointRegistry(system).register(new GoogleMapAPIEndpointResolver)
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
   val response = HttpClientFactory.get("googlemap").get[GoogleApiResult[Elevation]]("/api/elevation/json?locations=27.988056,86.925278&sensor=false")
   response onComplete {
@@ -775,7 +831,7 @@ object HttpClientDemo2 extends App {
   implicit val system = ActorSystem("HttpClientDemo2")
   implicit val timeout: Timeout = 3 seconds
 
-  EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
+  EndpointRegistry(system).register(new GoogleMapAPIEndpointResolver)
 
   system.actorOf(Props(new HttpClientDemoActor(system))) ! GoogleApiCall
 }
