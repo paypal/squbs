@@ -88,7 +88,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   "PipelineProcessor" should "return error if response in ctx didn't set correctly" in {
     val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:9900/error"))
-    val ctx = RequestContext(request, isChunkRequest = false)
+    val ctx = RequestContext(request, isChunkedRequest = false)
     val processor = DummyProcessorFactory.create(None).get
 
     val target : PipelineTarget = Actor.noSender
@@ -246,7 +246,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val processor = DummyProcessorFactory.create(None).get
     val request = HttpRequest(HttpMethods.PUT, Uri("http://localhost:9900/hello"))
     val response = DirectResponse(HttpResponse())
-    val ctx = RequestContext(request, isChunkRequest = false, response)
+    val ctx = RequestContext(request, isChunkedRequest = false, response)
 
     val ex = new RuntimeException("test")
     val result = processor.onResponseError(ctx, ex)
