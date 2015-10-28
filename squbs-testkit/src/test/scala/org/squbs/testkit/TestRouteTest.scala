@@ -17,7 +17,7 @@
 package org.squbs.testkit
 
 import org.scalatest.{Matchers, FlatSpecLike}
-import org.squbs.unicomplex.RouteDefinition
+import org.squbs.unicomplex.{WebContext, RouteDefinition}
 import spray.routing.Directives._
 import spray.testkit.ScalatestRouteTest
 
@@ -33,13 +33,38 @@ class MyRoute extends RouteDefinition {
     }
 }
 
+class MyRouteWithContext extends RouteDefinition with WebContext {
+
+  val route =
+    path("ping") {
+      get {
+        complete {
+          s"pong from $webContext"
+        }
+      }
+    }
+}
+
 class TestRouteTest extends FlatSpecLike with Matchers with ScalatestRouteTest {
 
-  val route = TestRoute[MyRoute]
-
   it should "return pong on a ping" in {
+    val route = TestRoute[MyRoute]
     Get("/ping") ~> route ~> check {
       responseAs[String] should be ("pong")
+    }
+  }
+
+  it should "return pong from nothing on a ping" in {
+    val route = TestRoute[MyRouteWithContext]
+    Get("/ping") ~> route ~> check {
+      responseAs[String] should be ("pong from ")
+    }
+  }
+
+  it should "return pong from context on a ping" in {
+    val route = TestRoute[MyRouteWithContext]("test")
+    Get("/test/ping") ~> route ~> check {
+      responseAs[String] should be ("pong from test")
     }
   }
 }
