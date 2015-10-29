@@ -11,3 +11,5 @@ addSbtPlugin("io.spray" % "sbt-boilerplate" % "0.5.9")
 addSbtPlugin("com.github.gseitz" % "sbt-release" % "0.8.4")
 
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")
+
+addSbtPlugin("io.spray" % "sbt-revolver" % "0.7.2")
