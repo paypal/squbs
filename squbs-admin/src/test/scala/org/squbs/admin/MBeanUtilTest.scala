@@ -22,17 +22,17 @@ import javax.management.{MXBean, ObjectName}
 
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
-import org.scalatest.{Inspectors, BeforeAndAfterAll, FunSpecLike, Matchers}
+import org.scalatest._
 
 import scala.beans.{BeanProperty, BooleanBeanProperty}
 import scala.collection.JavaConversions._
 
-class MBeanUtilTest extends FunSpecLike with Matchers with BeforeAndAfterAll with Inspectors {
+class MBeanUtilTest extends FunSpecLike with Matchers with BeforeAndAfterAll with Inspectors with OptionValues {
 
   override def beforeAll() {
 
     val testBean = TestBean("Hello", 123.456, Long.MaxValue, props03 = false,
-      AnotherTestObject("Hi TestObject", props1 = true), Array(1.2, 1.5, 1.8, 2.1), Array(true, false, false, true),
+      AnotherTestObject("Hi TestObject", props1 = true), Array(1.0f, 1.5f, 2.0f, 2.5f), Array(true, false, false, true),
       Array("foo", "bar", "foobar", "baz"), Array(AnotherTestObject("Hi TestObject1", props1 = true),
         AnotherTestObject("Hi TestObject2", props1 = false)), Array(KeyValueObject("foo", "bar"),
         KeyValueObject("foobar", "baz")),
@@ -59,10 +59,10 @@ class MBeanUtilTest extends FunSpecLike with Matchers with BeforeAndAfterAll wit
         |    "props1" : true
         |  },
         |  "Props05" : [
-        |    1.2,
+        |    1.0,
         |    1.5,
-        |    1.8,
-        |    2.1
+        |    2.0,
+        |    2.5
         |  ],
         |  "Props06" : [
         |    true,
@@ -102,8 +102,22 @@ class MBeanUtilTest extends FunSpecLike with Matchers with BeforeAndAfterAll wit
         |  }
         |}""".stripMargin
 
-    val testBeanJSON = MBeanUtil.asJSON("org.squbs.admin.test:type=TestBean")
+    val testBeanJSON = MBeanUtil.asJSON("org.squbs.admin.test:type=TestBean").value
+    println(testBeanJSON)
     testBeanJSON shouldBe expectedJSON
+  }
+
+  it ("should render TestMXBean while skipping exclusions") {
+    val testBeanJSON = MBeanUtil.asJSON("org.squbs.admin.test:type=TestBean", Set("props1", "Props09")).value
+    testBeanJSON should include (""""Props10" : """)
+    testBeanJSON should include (""": "Hi TestObject3"""")
+    testBeanJSON should not include """"Props09" : """
+    testBeanJSON should not include """ "props1"" : """
+  }
+
+  it ("should return None for invalid bean name") {
+    val optionJSON = MBeanUtil.asJSON("org.squbs.admin.test:type=TestBean2")
+    optionJSON should not be defined
   }
 
   it ("should list relevant JMX beans in the system") {
@@ -115,7 +129,7 @@ class MBeanUtilTest extends FunSpecLike with Matchers with BeforeAndAfterAll wit
 
   it ("should provide valid JSON for all JMX beans in the system") {
     forAll (MBeanUtil.allObjectNames) { name =>
-      noException should be thrownBy parse(MBeanUtil.asJSON(name))
+      noException should be thrownBy parse(MBeanUtil.asJSON(name).value)
     }
   }
 }
@@ -127,7 +141,7 @@ trait TestMXBean {
   def getProps02: Long
   def isProps03: Boolean
   def getProps04: AnotherTestObject
-  def getProps05: Array[Double]
+  def getProps05: Array[Float]
   def getProps06: Array[Boolean]
   def getProps07: Array[String]
   def getProps08: Array[AnotherTestObject]
@@ -137,7 +151,7 @@ trait TestMXBean {
 
 case class TestBean(@BeanProperty props00: String, @BeanProperty props01: Double, @BeanProperty props02: Long,
                     @BooleanBeanProperty props03: Boolean, @BeanProperty props04: AnotherTestObject,
-                    @BeanProperty props05: Array[Double], @BeanProperty props06: Array[Boolean],
+                    @BeanProperty props05: Array[Float], @BeanProperty props06: Array[Boolean],
                     @BeanProperty props07: Array[String], @BeanProperty props08: Array[AnotherTestObject],
                     @BeanProperty props09: Array[KeyValueObject],
                     @BeanProperty props10: java.util.Map[String, AnotherTestObject])

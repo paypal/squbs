@@ -17,99 +17,98 @@
 package org.squbs.admin
 
 import java.lang.management.ManagementFactory
-import javax.management.ObjectName
+import javax.management.{InstanceNotFoundException, ObjectName}
 import javax.management.openmbean.{CompositeData, TabularData}
 
+import com.fasterxml.jackson.core.util.{DefaultPrettyPrinter, DefaultIndenter}
+import org.json4s.JsonAST._
+import org.json4s.JsonDSL._
+import org.json4s.jackson.JsonMethods._
+
 import scala.collection.JavaConversions._
-import scala.collection.immutable.StringOps
+import scala.util.Try
 
 object MBeanUtil {
 
-  val indentStep = 2
-
   val server = ManagementFactory.getPlatformMBeanServer
 
-  def allObjectNames: Seq[String] = {
+  def allObjectNames: List[String] = {
     val beans = server.queryMBeans(null, null)
     beans.map { bean =>
       bean.getObjectName.toString
-    } .toSeq.sorted
+    } .toList.sorted
   }
 
-  def asJSON(beanName: String): String = {
+  def asJSON(beanName: String, exclusions: Set[String] = Set.empty): Option[String] = {
     val objectName = new ObjectName(beanName)
-    server.getMBeanInfo(objectName).getAttributes.map { _.getName } .sorted.map { name =>
-      writeProperty(name, option { server.getAttribute(objectName, name) }, indentStep)
-    } .mkString("{\n", ",\n", "\n}")
-  }
-
-  private def writeProperty(key: String, value: Option[AnyRef], indent: Int): String = {
-    val pad = space(indent)
-    value match {
-
-      case Some(table: TabularData) =>
-        val list = table.values.toArray
-        val render = option { writeKeyValueList(list, indent) } getOrElse { writeArray(list, indent) }
-        s"""$pad"$key" : $render"""
-
-      case Some(list: Array[_]) =>
-        val render = option { writeKeyValueList(list, indent) } getOrElse { writeArray(list, indent) }
-        s"""$pad"$key" : $render"""
-
-      case Some(c: CompositeData) => s"""$pad"$key" : ${writeProperties(c, indent)}"""
-
-      case Some(v: java.lang.Number) => s"""$pad"$key" : $v"""
-
-      case Some(v: java.lang.Boolean) => s"""$pad"$key" : $v"""
-
-      case Some(v) => s"""$pad"$key" : "${clean(v.toString)}""""
-
-      case None => s"""$pad"$key" : null"""
-    }
-  }
-
-  private def writeArray(list: Array[_], indent: Int): String = {
-    val pad = space(indent)
-    val pad2 = space(indent + indentStep)
-    list.map {
-      case c: CompositeData => pad2 + writeProperties(c, indent + indentStep)
-      case n: java.lang.Number => pad2 + n
-      case b: java.lang.Boolean => pad2 + b
-      case v => s"""$pad2"${clean(v.toString)}""""
-    } .mkString("[\n", ",\n", s"\n$pad]")
-  }
-
-  private def writeKeyValueList(list: Array[_], indent: Int): String = {
-    val pad = space(indent)
-    val kv = list.map {
-      case c: CompositeData =>
-        val keySet = c.getCompositeType.keySet
-        if (keySet.size == 2 && keySet.contains("key") && keySet.contains("value"))
-          c.get("key").asInstanceOf[String] -> c
-        else throw new ClassCastException("CompositeData member is not a key/value pair")
-      case _ => throw new ClassCastException("Non-CompositeData value")
-    }
-    kv.map {
-      case (k, c) => writeProperty(k, option { c.get("value") }, indent + indentStep)
-    } .mkString("{\n", ",\n", s"\n$pad}")
-  }
-
-  private def writeProperties(c: CompositeData, indent: Int): String = {
-    val pad = space(indent)
-    c.getCompositeType.keySet.toSeq.sorted.map { key =>
-      writeProperty(key, option { c.get(key) }, indent + indentStep)
-    } .mkString("{\n", ",\n", s"\n$pad}")
-  }
-
-  private def space(indent: Int): String = new StringOps(" ") * indent
-
-  private def clean(s: String): String = s.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
-
-  private def option[T](fn: => T): Option[T] = {
+    val c = new MBean2JSON(exclusions)
     try {
-      Option(fn)
+      val fields = server.getMBeanInfo(objectName).getAttributes.toList.map { _.getName}.sorted.collect {
+        case name if !(exclusions contains name) => name -> c.eval {
+          server.getAttribute(objectName, name)
+        }
+      }
+      Option(prettyPrint(render(fields)))
     } catch {
-      case e: Exception => None
+      case e: InstanceNotFoundException => None
     }
+  }
+
+  private def prettyPrint(v: JValue) = {
+    val printer = new DefaultPrettyPrinter().withArrayIndenter(new DefaultIndenter)
+    mapper.writer(printer).writeValueAsString(v)
+  }
+
+  class MBean2JSON(exclusions: Set[String]) {
+
+    private def toJValue(valueOption: Option[Any]): JValue = valueOption match {
+      case Some(value) => value match {
+        case table: TabularData =>
+          val list = table.values.toArray
+          optionJObject(list) getOrElse {
+            toJArray(list)
+          }
+        case list: Array[_] => optionJObject(list) getOrElse {
+          toJArray(list)
+        }
+        case c: CompositeData => toJObject(c)
+        case v: java.lang.Double => v.doubleValue
+        case v: java.lang.Float => v.floatValue
+        case v: java.lang.Number => v.longValue
+        case v: java.lang.Boolean => v.booleanValue
+        case v => v.toString
+      }
+      case None => JNull
+    }
+
+    private def toJArray(list: Array[_]) = JArray(list.toList map { v => toJValue(Option(v)) })
+
+    private def optionJObject(list: Array[_]) = {
+      try {
+        val kc = list.map {
+          case c: CompositeData =>
+            val keySet = c.getCompositeType.keySet
+            if (keySet.size == 2 && keySet.contains("key") && keySet.contains("value"))
+              c.get("key").asInstanceOf[String] -> c
+            else throw new ClassCastException("CompositeData member is not a key/value pair")
+          case _ => throw new ClassCastException("Non-CompositeData value")
+        }
+        val fields = kc.toList collect {
+          case (k, c) if !(exclusions contains k) => k -> eval { c.get("value") }
+        }
+        Some(JObject(fields))
+      } catch {
+        case e: ClassCastException => None
+      }
+    }
+
+    private def toJObject(c: CompositeData) =
+      JObject(c.getCompositeType.keySet.toList.sorted collect {
+        case key if !(exclusions contains key) => key -> eval { c.get(key)}
+      })
+
+    // Note: Try {...} .toOption can give you a Some(null), especially with Java APIs.
+    // Need to flatMap with Option again to ensure Some(null) is None.
+    def eval(fn: => Any) = toJValue(Try { fn } .toOption flatMap { v => Option(v) })
   }
 }
