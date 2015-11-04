@@ -153,6 +153,17 @@ class HttpClientActor(svcName: String, env: Environment, clientMap: TrieMap[(Str
       val conf = client.config.getOrElse(Configuration()).copy(pipeline = pipeline)
       clientMap.put((client.name, client.env), client.copy(config = Some(conf)))
       sender() ! self
+    case UpdateCircuitBreaker(settings) =>
+      val conf = client.config.getOrElse(Configuration())
+      val newConf = conf.copy(settings = conf.settings.copy(circuitBreakerConfig = settings))
+      clientMap.put((client.name, client.env), client.copy(config = Some(newConf)))
+      sender() ! self
+    case UpdateFallbackResponse(responseOption) =>
+      val conf = client.config.getOrElse(Configuration())
+      val newConf = conf.copy(settings = conf.settings.copy(
+        circuitBreakerConfig = conf.settings.circuitBreakerConfig.copy(fallbackHttpResponse = responseOption)))
+      clientMap.put((client.name, client.env), client.copy(config = Some(newConf)))
+      sender() ! self
     case Close =>
       context.stop(self)
       clientMap.remove((client.name, client.env))

@@ -45,7 +45,10 @@ trait CircuitBreakerSupport{
                         (implicit actorFactory: ActorRefFactory) = {
     import actorFactory.dispatcher
     val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](response)
-    import client.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse
+    val fallbackHttpResponse = client.config match {
+      case Some(conf) => conf.settings.circuitBreakerConfig.fallbackHttpResponse
+      case None => client.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse
+    }
     runCircuitBreaker onComplete {
       case Success(r) => client.cbMetrics.add(ServiceCallStatus.Success, System.nanoTime)
       case Failure(e: CircuitBreakerOpenException) => fallbackHttpResponse match {

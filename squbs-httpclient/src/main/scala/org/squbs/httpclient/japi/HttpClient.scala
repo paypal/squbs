@@ -22,6 +22,7 @@ import akka.actor.ActorSystem
 import org.squbs.httpclient._
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.pipeline.{PipelineSetting, SimplePipelineConfig}
+import spray.http.HttpResponse
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling._
 
@@ -50,6 +51,15 @@ class HttpClient(private[httpclient] val delegate: org.squbs.httpclient.HttpClie
   def withPipelineSetting(pipeline: Optional[PipelineSetting]): HttpClient = {
     new HttpClient(delegate.withPipelineSetting(pipeline.asScala))
   }
+
+  def withCircuitBreakerSettings(circuitBreakerSettings: CircuitBreakerSettings): HttpClient = {
+    new HttpClient(delegate.withCircuitBreakerSettings(circuitBreakerSettings))
+  }
+
+  def withFallbackResponse(fallbackResponse: Optional[HttpResponse]): HttpClient = {
+    new HttpClient(delegate.withFallbackResponse(fallbackResponse.asScala))
+  }
+
 
   def markDown = delegate.markDown
 
