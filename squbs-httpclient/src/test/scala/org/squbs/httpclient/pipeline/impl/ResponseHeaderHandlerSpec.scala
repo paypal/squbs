@@ -35,7 +35,7 @@ class ResponseHeaderHandlerSpec extends TestKit(ActorSystem("ResponseHeaderHandl
      val handler = new ResponseAddHeaderHandler(httpHeader)
 
 		 val agentActor = system.actorOf(Props(classOf[HandlerAgentActor], handler))
-     agentActor ! RequestContext(HttpRequest(), isChunkRequest = false, NormalResponse(httpResponse))
+     agentActor ! RequestContext(HttpRequest(), isChunkedRequest = false, NormalResponse(httpResponse))
 		 val updateHttpResponse = expectMsgType[RequestContext].response match {
 			 case n@NormalResponse(resp) => resp
 			 case _ => httpResponse
@@ -50,7 +50,7 @@ class ResponseHeaderHandlerSpec extends TestKit(ActorSystem("ResponseHeaderHandl
      val httpResponse = HttpResponse(headers = List[HttpHeader](httpHeader1, httpHeader2))
      val handler = new ResponseRemoveHeaderHandler(httpHeader1)
 		 val agentActor = system.actorOf(Props(classOf[HandlerAgentActor], handler))
-		 agentActor ! RequestContext(HttpRequest(), isChunkRequest = false, NormalResponse(httpResponse))
+		 agentActor ! RequestContext(HttpRequest(), isChunkedRequest = false, NormalResponse(httpResponse))
 		 val updateHttpResponse = expectMsgType[RequestContext].response match {
 			 case n@NormalResponse(resp) => resp
 			 case _ => httpResponse
@@ -65,7 +65,7 @@ class ResponseHeaderHandlerSpec extends TestKit(ActorSystem("ResponseHeaderHandl
      val httpResponse = HttpResponse(headers = List[HttpHeader](httpHeader1))
      val handler = new ResponseUpdateHeaderHandler(httpHeader2)
 		 val agentActor = system.actorOf(Props(classOf[HandlerAgentActor], handler))
-		 agentActor ! RequestContext(HttpRequest(), isChunkRequest = false, NormalResponse(httpResponse))
+		 agentActor ! RequestContext(HttpRequest(), isChunkedRequest = false, NormalResponse(httpResponse))
 		 val updateHttpResponse = expectMsgType[RequestContext].response match {
 			 case n@NormalResponse(resp) => resp
 			 case _ => httpResponse

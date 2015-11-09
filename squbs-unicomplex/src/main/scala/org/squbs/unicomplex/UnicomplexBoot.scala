@@ -349,20 +349,11 @@ object UnicomplexBoot extends LazyLogging {
       }
     }
 
-    def getProxyName(serviceConfig: Config): Option[String] = {
-      Try {
-        serviceConfig.getString("proxy-name").trim
-      } match {
-        case Success(proxyName) => Some(proxyName)
-        case Failure(t) => None // not defined
-      }
-    }
-
     def startService(serviceConfig: Config): Option[(String, String, String, Class[_])] =
     try {
       val className = serviceConfig.getString("class-name")
       val clazz = Class.forName(className, true, getClass.getClassLoader)
-      val proxyName = getProxyName(serviceConfig)
+      val proxyName = serviceConfig.getOptionalString("proxy-name") map (_.trim)
       val webContext = serviceConfig.getString("web-context")
 
       val listeners = serviceConfig.getOptionalStringList("listeners").fold(Seq("default-listener"))({ list =>

@@ -22,7 +22,7 @@ import spray.http._
 import scala.collection.JavaConversions._
 
 case class RequestContext(request: HttpRequest,
-                          isChunkRequest: Boolean = false,
+                          isChunkedRequest: Boolean = false,
                           response: ProxyResponse = ResponseNotReady,
                           attributes: Map[String, Any] = Map.empty) {
   //Store any other data
@@ -31,7 +31,7 @@ case class RequestContext(request: HttpRequest,
   }
 
   def payload = {
-    isChunkRequest match {
+    isChunkedRequest match {
       case true => ChunkedRequestStart(request)
       case false => request
     }
