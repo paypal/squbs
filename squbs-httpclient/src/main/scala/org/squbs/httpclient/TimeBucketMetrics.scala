@@ -21,14 +21,14 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 
-class TimeBucketMetrics[T: ClassTag](val units: Int, val unitSize: FiniteDuration, bucketCreator: => T,
+class TimeBucketMetrics[T: ClassTag](val units: Int, val unitSize: FiniteDuration, bucketCreator: () => T,
                                      clearBucket: (T) => Unit)(implicit val system: ActorSystem) {
 
   require(units >= 1)
 
   private[httpclient] val bucketCount = units + 1
 
-  private[httpclient] val buckets = Array.fill(bucketCount){ bucketCreator }
+  private[httpclient] val buckets = Array.fill(bucketCount){ bucketCreator() }
 
   private val unitNanos = unitSize.toNanos
 
@@ -68,18 +68,31 @@ class TimeBucketMetrics[T: ClassTag](val units: Int, val unitSize: FiniteDuratio
 
   private def clearNext(time: Long) = clearBucket(bucketAt(1, time))
 
-  private def scheduleCleanup() = {
-    val currentTime = System.nanoTime
-    val bucketBase = currentTime - (currentTime % unitNanos)
+  /**
+   * Provides the time into the bucket useful for calculating ratios in the current bucket when reporting,
+   * especially in conjunction with the bucket unit size.
+   * @param time The current nano time
+   * @return The time into this bucket, in nanoseconds
+   */
+  def timeIntoBucket(time: Long): Long = {
+    val bucketTime = time % unitNanos
+    // In case of negative current time, bucketTime is negative and offsets leftwards
+    if (bucketTime < 0) unitNanos + bucketTime else bucketTime
+  }
 
+  private[httpclient] def nextBucketBase(time: Long) = {
+    val bucketTime = time % unitNanos
+    val bucketBase = time - bucketTime
+    // In case of negative current time, bucketTime is negative and offsets leftwards
+    if (bucketTime < 0) bucketBase else bucketBase + unitNanos
+  }
+
+  private def scheduleCleanup() = {
     // Schedule the first cleanup 10ms or a quarter into the next bucket time, whichever is smaller.
     // 10ms is a safe margin already.
     val offset = math.min((10 milliseconds).toNanos, unitNanos / 4)
-
-    // In case of negative current time, bucket base is larger than the current time.
-    val firstCleanup =
-      if (bucketBase > currentTime) bucketBase + offset
-      else bucketBase + unitNanos + offset
+    val currentTime = System.nanoTime
+    val firstCleanup = nextBucketBase(currentTime) + offset
     import system.dispatcher
     system.scheduler.schedule((firstCleanup - currentTime) nanos, unitSize) { clearNext(System.nanoTime) }
   }

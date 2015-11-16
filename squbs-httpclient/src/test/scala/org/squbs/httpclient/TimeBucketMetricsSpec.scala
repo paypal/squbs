@@ -33,7 +33,7 @@ class TimeBucketMetricsSpec extends TestKit(ActorSystem("CircuitBreakerMetricsSp
     val bucketSize = 1 minute
     val bucketSizeNanos = bucketSize.toNanos
     val metrics = new TimeBucketMetrics[AtomicInteger](5, bucketSize,
-        { new AtomicInteger(0) }, { ai => ai.set(0) })
+        { () => new AtomicInteger(0) }, { ai => ai.set(0) })
     val indexes =
       for (testMinute <- -10 to 10) yield {
         val time = bucketSizeNanos * testMinute + (bucketSizeNanos / 2)
@@ -49,7 +49,7 @@ class TimeBucketMetricsSpec extends TestKit(ActorSystem("CircuitBreakerMetricsSp
     val bucketSize = 1 minute
     val bucketSizeNanos = bucketSize.toNanos
     val metrics = new TimeBucketMetrics[AtomicInteger](5, bucketSize,
-    { new AtomicInteger(0) }, { ai => ai.set(0) })
+    { () => new AtomicInteger(0) }, { ai => ai.set(0) })
     val indexes =
       for (testMinute <- -10 to 10) yield {
         val time = bucketSizeNanos * testMinute + (bucketSizeNanos / 2)
@@ -62,7 +62,8 @@ class TimeBucketMetricsSpec extends TestKit(ActorSystem("CircuitBreakerMetricsSp
   it ("should index buckets with large negative offsets correctly near and around 0") {
     val bucketSize = 1 minute
     val bucketSizeNanos = bucketSize.toNanos
-    val metrics = new TimeBucketMetrics[AtomicInteger](5, bucketSize, { new AtomicInteger(0) }, { ai => ai.set(0) })
+    val metrics = new TimeBucketMetrics[AtomicInteger](5, bucketSize,
+                  { () => new AtomicInteger(0) }, { ai => ai.set(0) })
     val indexes =
       for (testMinute <- -10 to 10) yield {
         val time = bucketSizeNanos * testMinute + (bucketSizeNanos / 2)
@@ -75,7 +76,8 @@ class TimeBucketMetricsSpec extends TestKit(ActorSystem("CircuitBreakerMetricsSp
   it ("should index the next buckets correctly near and around 0") {
     val bucketSize = 1 minute
     val bucketSizeNanos = bucketSize.toNanos
-    val metrics = new TimeBucketMetrics[AtomicInteger](5, bucketSize, { new AtomicInteger(0) }, { ai => ai.set(0) })
+    val metrics = new TimeBucketMetrics[AtomicInteger](5, bucketSize,
+                  { () => new AtomicInteger(0) }, { ai => ai.set(0) })
     val indexes =
       for (testMinute <- -10 to 10) yield {
         val time = bucketSizeNanos * testMinute + (bucketSizeNanos / 2)
@@ -87,9 +89,33 @@ class TimeBucketMetricsSpec extends TestKit(ActorSystem("CircuitBreakerMetricsSp
 
   it ("should provide correct history") {
     val time = (30 seconds).toNanos
-    val metrics = new TimeBucketMetrics[AtomicInteger](5, 1 minute, { new AtomicInteger(0) }, { ai => ai.set(0) })
+    val metrics = new TimeBucketMetrics[AtomicInteger](5, 1 minute, { () => new AtomicInteger(0) }, { ai => ai.set(0) })
     metrics.history(time) should contain theSameElementsAs Seq(
       metrics.buckets(0), metrics.buckets(5), metrics.buckets(4), metrics.buckets(3), metrics.buckets(2))
+  }
+
+  it ("should properly calculate the time into bucket when time is negative") {
+    val time = -(105 seconds).toNanos
+    val metrics = new TimeBucketMetrics[AtomicInteger](5, 1 minute, { () => new AtomicInteger(0) }, { ai => ai.set(0) })
+    metrics.timeIntoBucket(time) shouldBe (15 seconds).toNanos
+  }
+
+  it ("should properly calculate the time into bucket when time is positive") {
+    val time = (75 seconds).toNanos
+    val metrics = new TimeBucketMetrics[AtomicInteger](5, 1 minute, { () => new AtomicInteger(0) }, { ai => ai.set(0) })
+    metrics.timeIntoBucket(time) shouldBe (15 seconds).toNanos
+  }
+
+  it ("should properly calculate the base time of the next bucket when time is negative") {
+    val time = -(90 seconds).toNanos
+    val metrics = new TimeBucketMetrics[AtomicInteger](5, 1 minute, { () => new AtomicInteger(0) }, { ai => ai.set(0) })
+    metrics.nextBucketBase(time) shouldBe -(1 minute).toNanos
+  }
+
+  it ("should properly calculate the base time of the next bucket when time is positive") {
+    val time = (90 seconds).toNanos
+    val metrics = new TimeBucketMetrics[AtomicInteger](5, 1 minute, { () => new AtomicInteger(0) }, { ai => ai.set(0) })
+    metrics.nextBucketBase(time) shouldBe (2 minutes).toNanos
   }
 
   it ("should add stats and clear the next bucket ahead of time") {
@@ -97,7 +123,7 @@ class TimeBucketMetricsSpec extends TestKit(ActorSystem("CircuitBreakerMetricsSp
     val bucketSizeNanos = bucketSize.toNanos
     val buckets = 5
     val metrics = new TimeBucketMetrics[AtomicInteger](buckets, bucketSize,
-        { new AtomicInteger(0) }, { ai => ai.set(0) })
+        { () => new AtomicInteger(0) }, { ai => ai.set(0) })
 
     // Make sure we go through each bucket twice.
     for (i <- 0 until (metrics.bucketCount * 2)) {

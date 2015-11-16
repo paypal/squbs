@@ -127,3 +127,11 @@ class MyRouteTest extends FlatSpecLike with Matchers with ScalatestRouteTest {
   }
 }
 ```
+
+Alternatively, you may also want to pass a web context to your route. This can be done by passing it to `TestRoute` as follows:
+
+```scala
+  val route = TestRoute[MyRoute](webContext = "mycontext")
+```
+
+or just pass `"mycontext"` without the parameter name. The `TestRoute` signature without parameters is equivalent to passing the root context `""`.

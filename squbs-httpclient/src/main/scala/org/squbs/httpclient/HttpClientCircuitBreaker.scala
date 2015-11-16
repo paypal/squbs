@@ -64,11 +64,14 @@ trait CircuitBreakerSupport{
 
 class CircuitBreakerMetrics(val units: Int, val unitSize: FiniteDuration)(implicit val system: ActorSystem) {
 
+  require(units >= 1)
+
   class CBStat(var successTimes: Long, var fallbackTimes: Long, var failFastTimes: Long, var exceptionTimes: Long)
 
   class CBStatBucket(var successTimes: Int, var fallbackTimes: Int, var failFastTimes: Int, var exceptionTimes: Int)
 
-  val metrics = new TimeBucketMetrics[CBStatBucket](units, unitSize, bucketCreator = { new CBStatBucket(0, 0, 0, 0) },
+  val metrics = new TimeBucketMetrics[CBStatBucket](units, unitSize,
+    bucketCreator = { () => new CBStatBucket(0, 0, 0, 0) },
     clearBucket = { bucket =>
       bucket.successTimes = 0
       bucket.fallbackTimes = 0
@@ -77,6 +80,8 @@ class CircuitBreakerMetrics(val units: Int, val unitSize: FiniteDuration)(implic
     })
 
   private[httpclient] val total = new CBStat(0, 0, 0, 0)
+  private val unitNanos = unitSize.toNanos
+  private val cancellable = scheduleCleanup()
 
   def add(status: ServiceCallStatus, time: Long): Unit = {
     status match {
