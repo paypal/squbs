@@ -1537,10 +1537,11 @@ object HttpClientDemo2 extends App {
 
   EndpointRegistry(system).register(GoogleMapAPIEndpointResolver)
 
-  system.actorOf(Props(new HttpClientDemoActor(system))) ! GoogleApiCall
+  system.actorOf(Props[HttpClientDemoActor]) ! GoogleApiCall
 }
 
-case class HttpClientDemoActor(system: ActorSystem) extends Actor with HttpClientTestKit {
+case class HttpClientDemoActor extends Actor {
+  import context.system
   override def receive: Receive = {
     case GoogleApiCall =>
       val httpClientManager = HttpClientManager(system).httpClientManager
@@ -1560,13 +1561,13 @@ case class HttpClientDemoActor(system: ActorSystem) extends Actor with HttpClien
         case Failure(e)     =>
           println("unmarshal error is:" + e.getMessage)
       }
-      system.shutdown
+      context stop self
     case HttpResponse(code, _, _, _) =>
       println("Success, the status code is: " + code)
-      system.shutdown
+      context stop self
     case akka.actor.Status.Failure(e) =>
       println("Failure, the reason is: " + e.getMessage)
-      system.shutdown
+      context stop self
   }
 }
 
