@@ -23,15 +23,13 @@ service (Spray) responder and the squbs service. That is to say:
 In your `squbs-meta.conf`, you can specify proxy for your service as follows:
 
 ```
-
 squbs-services = [
   {
-    class-name = com.ebay.myapp.MyActor
+    class-name = com.myorg.myapp.MyActor
     web-context = mypath
     proxy-name = myProxy
   }
 ]
-
 ```
 
 Please check out [Unicomplex & Cube Bootstrapping](bootstrap.md) for more
@@ -54,7 +52,7 @@ Following is the proxy definition required in the conf files:
 ```
 myProxy {
   type = squbs.proxy
-  processorFactory = org.myorg.app.SomeProcessorFactory
+  processorFactory = org.myorg.myapp.SomeProcessorFactory
   settings = {
     // Proxy-specific configuration/settings here.  
   }
@@ -62,27 +60,27 @@ myProxy {
 
 ```
 
-Explaining the fields
+Explaining the fields:
 
-* proxy name:  As you can see from above, myProxy is the name of the proxy which aligns with the binding in `squbs-meta.conf`.
-* type :  must be squbs.proxy to be recognized as a proxy declaration.
-* processorFactory: A factory impl which can be used to create a proxy processor. (Processor will be discussed in a later section of this document)
+* `myProxy` is the name of the proxy which aligns with the binding in `squbs-meta.conf`.
+* `type` must be `squbs.proxy` to be recognized as a proxy declaration.
+* `processorFactory` is factory impl which can be used to create a proxy processor (`Processor` is discussed in a later section of this document).
 
    ```scala
    trait ProcessorFactory {
      def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor]
    }
    ```
-* settings : an optional config object which can be used by processorFactory.(As you can tell from the above create method)
+* `settings` is an optional config object which can be used by processorFactory (as you can tell from the above create method).
 
 
 ### Proxy Processor
 
-Proxy Processor is used to describe the behavior of the proxy, like how to handle HttpRequest, HttpResponse, chunked request/chunked response, etc. It provides some method hooks which allows implementors to define their own logic.
+Proxy Processor is used to describe the behavior of the proxy, like how to handle HttpRequest, HttpResponse, chunked request/chunked response, etc.  It provides method hooks that allow implementers to define their own logic.
 
-You can check the [Processor definition](../squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala#L31)
+You can check the [Processor definition](../squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala).
 
-This Processor will be used along with the proxy actor (In this case it is `PipelineProcessorActor`) to perform the proxy behavior:
+This Processor will be used along with the proxy actor (in this case it is `PipelineProcessorActor`) to perform the proxy behavior:
 
 ![Processor](./img/Processor.jpg)
 
@@ -91,10 +89,10 @@ Implementation of this processor is optional. In most cases you don't have to cr
 
 ### RequestContext
 
-As you might see from Processor definition, a class called RequestContext is widely used.
-This class is an **immutable** data container which host all useful information accross the request/response lifecycle.
+As you might see from Processor definition, a class called `RequestContext` is widely used.
+This class is an **immutable** data container which hosts all useful information across the request/response lifecycle.
 
-Below is a basic structure of the RequestContext and corresponding response wrapper class information:
+Below is a basic structure of the `RequestContext` and corresponding response wrapper class information:
 
 ![RequestContext](./img/RequestContext.jpg)
 
@@ -168,11 +166,11 @@ Or you might check [sample config with description](../squbs-unicomplex/src/main
 
 For the above configuration:
 
-* processorFactory: must be org.squbs.proxy.SimpleProcessorFactory.
-* settings.inbound: sequence of request handlers
-* settings.outbound: sequence of response handlers
-* handlerX.type : must be pipeline.handler
-* handlerX.factory : name of a class that implements HandlerFactory
+* `processorFactory` must be `org.squbs.proxy.SimpleProcessorFactory`.
+* `settings.inbound` is the sequence of request handlers.
+* `settings.outbound` is the sequence of response handlers.
+* `handlerX.type` must be `pipeline.handler`.
+* `handlerX.factory` is the name of a class that implements HandlerFactory
 
 Again, if you want to have custom logic for other phases like preInbound or postOutbound, you can extend [SimpleProcessor](../squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L30) and create your own factory just like [SimpleProcessorFactory](../squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L46)
 
