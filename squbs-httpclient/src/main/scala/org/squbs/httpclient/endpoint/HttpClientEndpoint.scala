@@ -16,19 +16,40 @@
 
 package org.squbs.httpclient.endpoint
 
-import akka.actor.{ActorSystem, ExtensionId, Extension, ExtendedActorSystem}
+import java.util.Optional
+
+import akka.actor._
 import org.squbs.pipeline.{PipelineManager, PipelineSetting}
-import spray.http.Uri
+import spray.http.{HttpResponse, Uri}
 
 import scala.collection.mutable.ListBuffer
 import org.squbs.httpclient.env.{Default, Environment}
-import org.squbs.httpclient.Configuration
+import org.squbs.httpclient.{CircuitBreakerSettings, Settings, Configuration}
 import com.typesafe.scalalogging.LazyLogging
 
-case class Endpoint(uri: Uri, config: Configuration){
+case class Endpoint(uri: Uri, config: Configuration) {
     val host = uri.authority.host.toString
     def port = if (uri.effectivePort == 0) 80 else uri.effectivePort
     val isSecure = uri.scheme.toLowerCase.equals("https")
+
+  def withSettings(settings: Settings): Endpoint = copy(config = config.copy(settings = settings))
+
+  def withCircuitBreakerSettings(circuitBreakerSettings: CircuitBreakerSettings): Endpoint =
+    copy(config = config.copy(settings = config.settings.copy(circuitBreakerConfig = circuitBreakerSettings)))
+
+  def withFallbackResponse(fallbackResponse: Option[HttpResponse]): Endpoint =
+    copy(config = config.copy(settings = config.settings.copy(circuitBreakerConfig =
+      config.settings.circuitBreakerConfig.copy(fallbackHttpResponse = fallbackResponse))))
+
+  /**
+   * Java API.
+   * @param fallbackResponse The response to fallback to.
+   * @return A new endpoint configured with the fallback response.
+   */
+  def withFallbackResponse(fallbackResponse: Optional[HttpResponse]): Endpoint = {
+    import scala.compat.java8.OptionConverters._
+    withFallbackResponse(fallbackResponse.asScala)
+  }
 }
 
 object Endpoint {
@@ -104,8 +125,12 @@ class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension w
   }
 }
 
-object EndpointRegistry extends ExtensionId[EndpointRegistryExtension] {
+object EndpointRegistry extends ExtensionId[EndpointRegistryExtension] with ExtensionIdProvider {
+
+  override def lookup() = EndpointRegistry
 
   override def createExtension(system: ExtendedActorSystem): EndpointRegistryExtension =
     new EndpointRegistryExtension(system)
+
+  override def get(system: ActorSystem): EndpointRegistryExtension = super.get(system)
 }

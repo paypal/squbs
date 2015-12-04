@@ -19,8 +19,7 @@ import akka.actor.{ActorContext, ActorSystem, ActorRefFactory}
 import akka.util.Timeout
 
 import scala.concurrent.duration._
-import scala.language.implicitConversions
-import scala.language.postfixOps
+import scala.language.{implicitConversions, postfixOps}
 
 package object httpclient {
 
@@ -30,6 +29,12 @@ package object httpclient {
     case other =>
       throw new IllegalArgumentException(s"Cannot create HttpClient with ActorRefFactory Impl ${other.getClass}")
   }
+
+  implicit def toTimeout(d: Duration): Timeout = Timeout(d match {
+    case f: FiniteDuration => f
+    case Duration.Inf => Duration.fromNanos(Long.MaxValue)
+    case _ => Duration.Zero
+  })
 
   implicit class RequestToAskTimeout(val requestTimeout: Timeout) extends AnyVal {
 

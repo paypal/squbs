@@ -23,6 +23,7 @@ import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 /**
  *
@@ -271,7 +272,9 @@ object TimeoutPolicy extends LazyLogging {
 
 }
 
-// API for java
+/**
+ * Java API
+ */
 object TimeoutPolicyBuilder {
   def create(initial: FiniteDuration, ec: ExecutionContext) =
     TimeoutPolicyBuilder(initial = initial)(ec)
