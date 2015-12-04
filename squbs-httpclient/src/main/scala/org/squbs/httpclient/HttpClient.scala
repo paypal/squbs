@@ -24,7 +24,7 @@ import org.squbs.httpclient.HttpClientActorMessage.{MarkDownSuccess, MarkUpSucce
 import org.squbs.httpclient.endpoint.EndpointRegistry
 import org.squbs.httpclient.env.{Default, Environment, EnvironmentRegistry}
 import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
-import org.squbs.pipeline.PipelineSetting
+import org.squbs.pipeline.{SimplePipelineConfig, PipelineSetting}
 import spray.http.{HttpResponse, Uri}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling._
@@ -190,6 +190,11 @@ class HttpClient private[httpclient] (val name: String, val env: Environment = D
     new HttpClient(name, env, askTimeout)( (_) =>
       fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdatePipeline(pipelineSetting)).mapTo[ActorRef] }
     )
+  }
+
+  @deprecated
+  def withPipeline(pipeline: Option[SimplePipelineConfig]): HttpClient = {
+    withPipelineSetting(Some(PipelineSetting(config = pipeline)))
   }
 
   def withCircuitBreakerSettings(circuitBreakerSettings: CircuitBreakerSettings): HttpClient = {

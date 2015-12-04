@@ -360,7 +360,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     val httpClient = HttpClientFactory.get("DummyService")
     val pipeline = Some(DummyRequestPipeline)
     val pipelineSetting : Option[PipelineSetting] = pipeline
-    val updatedHttpClient = httpClient.withPipelineSetting(Some(PipelineSetting(config = pipeline)))
+    val updatedHttpClient = httpClient.withPipeline(pipeline)
     Await.ready(updatedHttpClient.readyFuture, awaitMax)
     EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
     val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
@@ -472,24 +472,20 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   //    httpClient.endpoint.config.circuitBreakerConfig.fallbackHttpResponse should be (Some(fallbackHttpResponse))
   //  }
 
-  //  "MarkDown/MarkUp HttpClient" should "have the correct behaviour" in {
-  //    implicit val ec = system.dispatcher
-  //    val httpClient = HttpClientFactory.get("DummyService")
-  //    httpClient.markDown
-  //    val response = httpClient.get("/view")
-  //    try{
-  //      Await.result(response, awaitMax)
-  //    } catch {
-  //      case e: Exception =>
-  //        e should be (HttpClientMarkDownException("DummyService"))
-  //    }
-  //    httpClient.markUp
-  //    val updatedResponse = httpClient.get("/view")
-  //    val updatedResult = Await.result(updatedResponse, awaitMax)
-  //    updatedResult.status should be (StatusCodes.OK)
-  //    updatedResult.entity should not be empty
-  //    updatedResult.entity.data should not be empty
-  //    updatedResult.entity.data.asString should be (fullTeamJson)
-  //  }
+    "MarkDown/MarkUp HttpClient" should "have the correct behaviour" in {
+      implicit val ec = system.dispatcher
+      val httpClient = HttpClientFactory.get("DummyService")
+      Await.ready(httpClient.markDown, awaitMax)
+      val response = httpClient.raw.get("/view")
+      val thrown = the [HttpClientMarkDownException] thrownBy Await.result(response, awaitMax)
+      thrown.getMessage shouldBe "HttpClient:(DummyService,Default) has been marked down!"
 
+      Await.ready(httpClient.markUp, awaitMax)
+      val updatedResponse = httpClient.raw.get("/view")
+      val updatedResult = Await.result(updatedResponse, awaitMax)
+      updatedResult.status should be (StatusCodes.OK)
+      updatedResult.entity should not be empty
+      updatedResult.entity.data should not be empty
+      updatedResult.entity.data.asString should be (fullTeamJson)
+    }
 }
