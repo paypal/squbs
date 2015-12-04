@@ -1,6 +1,6 @@
 #Validation
 
-squbs Validation provides a [Spray](http://spray.io) directive for data validation by using [Accord Validation Library](http://wix.github.io/accord/).
+squbs Validation provides a [Spray](http://spray.io) directive for data validation by using [Accord Validation Library](http://wix.github.io/accord/). Since Spray directives are currently Scala only, there is no equivalent in Java code until future versions of squbs.
   
 ##Usage
   

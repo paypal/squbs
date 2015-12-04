@@ -22,10 +22,11 @@ import akka.actor.ActorSystem
 import org.squbs.httpclient._
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.pipeline.{PipelineSetting, SimplePipelineConfig}
+import spray.http.HttpResponse
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling._
 
-class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
+class HttpClient(private[httpclient] val delegate: org.squbs.httpclient.HttpClient) {
 
   import org.squbs.httpclient.json.JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
   import org.squbs.httpclient.json.JsonProtocol.optionToMarshaller
@@ -44,21 +45,27 @@ class HttpClient(private val delegate: org.squbs.httpclient.HttpClient) {
 
   @deprecated
   def withPipeline(pipeline: Optional[SimplePipelineConfig]): HttpClient = {
-    new HttpClient(delegate.withPipeline(pipeline.asScala))
+    new HttpClient(delegate.withPipelineSetting(Some(PipelineSetting(config = pipeline.asScala))))
   }
 
   def withPipelineSetting(pipeline: Optional[PipelineSetting]): HttpClient = {
     new HttpClient(delegate.withPipelineSetting(pipeline.asScala))
   }
 
+  def withCircuitBreakerSettings(circuitBreakerSettings: CircuitBreakerSettings): HttpClient = {
+    new HttpClient(delegate.withCircuitBreakerSettings(circuitBreakerSettings))
+  }
+
+  def withFallbackResponse(fallbackResponse: Optional[HttpResponse]): HttpClient = {
+    new HttpClient(delegate.withFallbackResponse(fallbackResponse.asScala))
+  }
+
+
   def markDown = delegate.markDown
 
   def markUp = delegate.markUp
 
   def readyFuture = delegate.readyFuture
-
-  def endpoint = delegate.endpoint
-
 
   def get[R](uri: String, clazz: Class[R]) = delegate.get(uri)(unmarshaller = clazz)
 

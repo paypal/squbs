@@ -18,8 +18,9 @@ package org.squbs.testkit
 
 import akka.actor.{Actor, ActorSystem}
 import akka.testkit.TestActorRef
-import org.squbs.unicomplex.RouteDefinition
+import org.squbs.unicomplex.{WebContext, RouteDefinition}
 import spray.routing._
+import spray.routing.Directives._
 
 import scala.reflect.ClassTag
 
@@ -35,13 +36,25 @@ object TestRoute {
    * @tparam T The RouteDefinition to be tested
    * @return The Route to be used for testing.
    */
-  def apply[T <: RouteDefinition: ClassTag](implicit system: ActorSystem): Route = {
+  def apply[T <: RouteDefinition: ClassTag](implicit system: ActorSystem): Route = apply[T]("")
+
+  /**
+   * Creates the Route to be used in Spray TestKit.
+   * @param webContext The web context to simulate
+   * @param system The ActorSystem. This will be supplied implicitly if using the ScalaTestRouteTest trait from Spray.
+   * @tparam T The RouteDefinition to be tested
+   * @return The Route to be used for testing.
+   */
+  def apply[T <: RouteDefinition: ClassTag](webContext: String)(implicit system: ActorSystem): Route = {
     val clazz = implicitly[ClassTag[T]].runtimeClass
     implicit val actorContext = TestActorRef[TestRouteActor].underlyingActor.context
-    val routeDef = RouteDefinition.startRoutes{
-      clazz.asSubclass(classOf[RouteDefinition]).newInstance()
+    val routeDef = WebContext.createWithContext(webContext) {
+      RouteDefinition.startRoutes {
+        clazz.asSubclass(classOf[RouteDefinition]).newInstance()
+      }
     }
-    routeDef.route
+    if (webContext.length > 0) pathPrefix(separateOnSlashes(webContext)) {routeDef.route}
+    else routeDef.route
   }
 
   private class TestRouteActor extends Actor {

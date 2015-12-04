@@ -32,6 +32,15 @@ import static org.squbs.pattern.spray.japi.ScalaAccess.*;
 
 public class JApiTest {
 
+    public static class TestVO {
+        public final String foo;
+        public final int bar;
+        TestVO(String foo, int bar) {
+            this.foo = foo;
+            this.bar = bar;
+        }
+    }
+
     @Test
     public void testMarshallerHelper() {
         Marshaller<ByteString> marshaller = basicMarshallers().ByteStringMarshaller();
@@ -55,6 +64,14 @@ public class JApiTest {
 
         entity = HttpEntityFactory.create(applicationJson(), "abc".getBytes());
         assertEquals(entity, httpEntity().apply(applicationJson(), "abc".getBytes()));
+
+        entity = HttpEntityFactory.create(new TestVO("foo", -1), JacksonSerializer.marshaller(TestVO.class));
+        assertTrue(entity instanceof HttpEntity.NonEmpty);
+        ContentType cType = ContentTypeFactory.create("application/json; charset=UTF-8");
+        HttpEntity.NonEmpty neEntity = (HttpEntity.NonEmpty) entity;
+        assertEquals(cType, neEntity.contentType());
+        assertEquals("{\"foo\":\"foo\",\"bar\":-1}", entity.asString());
+
 
     }
 

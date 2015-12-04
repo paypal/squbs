@@ -16,8 +16,9 @@
 
 package org.squbs.httpclient.env
 
-import akka.actor.{ExtensionId, Extension, ExtendedActorSystem}
+import akka.actor._
 import com.typesafe.scalalogging.LazyLogging
+
 import scala.collection.mutable.ListBuffer
 
 abstract class Environment {
@@ -101,8 +102,13 @@ class EnvironmentRegistryExtension(system: ExtendedActorSystem) extends Extensio
   }
 }
 
-object EnvironmentRegistry extends ExtensionId[EnvironmentRegistryExtension] {
-  override def createExtension(system: ExtendedActorSystem): EnvironmentRegistryExtension = new EnvironmentRegistryExtension(system)
-}
+object EnvironmentRegistry extends ExtensionId[EnvironmentRegistryExtension] with ExtensionIdProvider {
 
+  override def lookup() = EnvironmentRegistry
+
+  override def createExtension(system: ExtendedActorSystem): EnvironmentRegistryExtension =
+    new EnvironmentRegistryExtension(system)
+
+  override def get(system: ActorSystem): EnvironmentRegistryExtension = super.get(system)
+}
 

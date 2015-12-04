@@ -2,9 +2,19 @@
 
 ##Overview
 
-Monitoring status of each actor under actor system 
+The squbs-actormonitor module attaches monitoring to each actor in the actor system. For large number of actors, this can get intrusive. The number of actors to monitor can be configured through `application.conf`. Use judgement attaching this module in production. There is no user API to this module.
 
-* Each actor has a corresponding JMXBean(org.squbs.unicomplex:type=ActorMonitor,name=%actorPath) to expose the actor information:
+## Dependencies
+
+Add the following dependency to your build.sbt or scala build file:
+
+```
+"org.squbs" %% "squbs-actormonitor" % squbsVersion
+```
+
+## Monitoring
+
+Each actor has a corresponding JMXBean(org.squbs.unicomplex:type=ActorMonitor,name=%actorPath) to expose the actor information:
 
 ```
  trait ActorMonitorMXBean {
@@ -18,8 +28,18 @@ Monitoring status of each actor under actor system
 }
 ```
 
+## Configuration
 
-* A JMX Bean(org.squbs.unicomplex:type=ActorMonitor) to expose the configuration of Actor Monitor
+The following is the configuration entries for squbs-actormonitor:
+
+```
+squbs-actormonitor = {
+  maxActorCount = 500
+  maxChildrenDisplay = 20
+}
+```
+
+A JMX Bean `org.squbs.unicomplex:type=ActorMonitor` exposes the configuration of Actor Monitor. The JMX Bean is read-only.
 
 ```
  trait ActorMonitorConfigMXBean {
@@ -30,8 +50,3 @@ Monitoring status of each actor under actor system
  ```
  
 
-## Dependencies
-
-Add the following dependency to your build.sbt or scala build file:
-
-"org.squbs" %% "squbs-actormonitor" % squbsVersion

@@ -68,7 +68,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
   "httpClientMap" should "be empty before creating any http clients" in {
     val httpClientManager = HttpClientManager(system).httpClientManager
     httpClientManager ! GetAll
-    type HttpClientMap = TrieMap[(String, Environment), (HttpClient, ActorRef)]
+    type HttpClientMap = TrieMap[(String, Environment), (HttpClientState, ActorRef)]
     expectMsgType[HttpClientMap] shouldBe empty
   }
 
@@ -125,7 +125,7 @@ class HttpClientManagerSpec extends TestKit(ActorSystem("HttpClientManagerSpec")
     HttpClientManager(system).httpClientMap should have size 2
     val httpClientManager = HttpClientManager(system).httpClientManager
     httpClientManager ! GetAll
-    type HttpClientMap = TrieMap[(String, Environment), (HttpClient, ActorRef)]
+    type HttpClientMap = TrieMap[(String, Environment), (HttpClientState, ActorRef)]
     val httpClientMap = expectMsgType[HttpClientMap]
     httpClientMap should have size 2
     httpClientMap should contain key ("DummyService", Default)
