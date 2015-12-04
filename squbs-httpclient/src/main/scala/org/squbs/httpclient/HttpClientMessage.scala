@@ -18,7 +18,7 @@ package org.squbs.httpclient
 import org.squbs.httpclient.env.{Default, Environment}
 import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol
 import org.squbs.pipeline.PipelineSetting
-import spray.http.{HttpRequest, Uri}
+import spray.http.{HttpResponse, HttpRequest, Uri}
 import spray.httpx.RequestBuilding
 import spray.httpx.marshalling.Marshaller
 
@@ -26,16 +26,16 @@ object HttpClientManagerMessage {
 
   /**
    * Success => HttpClientActor
-   * @param name
-   * @param env
+   * @param name The client name
+   * @param env The environment
    */
   case class Get(name: String, env: Environment = Default)
 
   /**
    * Success => DeleteSuccess
    * Failure => HttpClientNotExistException
-   * @param name
-   * @param env
+   * @param name The client name
+   * @param env The environment
    */
   case class Delete(name: String, env: Environment = Default)
 
@@ -58,21 +58,33 @@ object HttpClientActorMessage {
 
   /**
    * Success => HttpClientActor
-   * @param config
+   * @param config The new client configuration
    */
   case class UpdateConfig(config: Configuration)
 
   /**
    * Success => HttpClientActor
-   * @param settings
+   * @param settings The new client settings
    */
   case class UpdateSettings(settings: Settings)
 
   /**
    * Success => HttpClientActor
-   * @param pipeline
+   * @param pipeline The new pipeline, or None
    */
   case class UpdatePipeline(pipeline: Option[PipelineSetting])
+
+  /**
+   * Updates the circuit breaker settings.
+   * @param circuitBreakerSettings The new settings
+   */
+  case class UpdateCircuitBreaker(circuitBreakerSettings: CircuitBreakerSettings)
+
+  /**
+   * Updates or sets the fallback response.
+   * @param fallbackResponse The new fallback response, or None.
+   */
+  case class UpdateFallbackResponse(fallbackResponse: Option[HttpResponse])
 
   /**
    * Success => MarkDownSuccess
@@ -105,7 +117,7 @@ object HttpClientActorMessage {
   /**
    * Success => HttpResponse
    * Failure => Throwable
-   * @param uri
+   * @param uri The GET URI
    */
   case class Get(uri: String, requestSettings: Option[RequestSettings] = None) extends HttpClientMessage {
     val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Get(_)
@@ -114,7 +126,7 @@ object HttpClientActorMessage {
   /**
    * Success => HttpResponse
    * Failure => Throwable
-   * @param uri
+   * @param uri The OPTIONS URI
    */
   case class Options(uri: String, requestSettings: Option[RequestSettings] = None) extends HttpClientMessage {
     val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Options(_)
@@ -123,7 +135,7 @@ object HttpClientActorMessage {
   /**
    * Success => HttpResponse
    * Failure => Throwable
-   * @param uri
+   * @param uri The HEAD URI
    */
   case class Head(uri: String, requestSettings: Option[RequestSettings] = None) extends HttpClientMessage {
     val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Head(_)
@@ -132,7 +144,7 @@ object HttpClientActorMessage {
   /**
    * Success => HttpResponse
    * Failure => Throwable
-   * @param uri
+   * @param uri The DELETE URI
    */
   case class Delete(uri: String, requestSettings: Option[RequestSettings] = None) extends HttpClientMessage{
     val requestBuilder : (Uri) => HttpRequest = RequestBuilding.Delete(_)
@@ -142,10 +154,10 @@ object HttpClientActorMessage {
   /**
    * Success => HttpResponse
    * Failure => Throwable
-   * @param uri
-   * @param content
-   * @param marshaller
-   * @tparam T
+   * @param uri The POST URI
+   * @param content The POST content
+   * @param marshaller A marshaller, if non-default
+   * @tparam T The return object type
    */
   case class Post[T](uri: String, content: Option[T],
                      marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,
@@ -156,10 +168,10 @@ object HttpClientActorMessage {
   /**
    * Success => HttpResponse
    * Failure => Throwable
-   * @param uri
-   * @param content
-   * @param marshaller
-   * @tparam T
+   * @param uri The PUT URI
+   * @param content The PUT content
+   * @param marshaller A marshaller, if non-default
+   * @tparam T The return object type
    */
   case class Put[T](uri: String, content: Option[T],
                     marshaller: Marshaller[T] = Json4sJacksonNoTypeHintsProtocol.json4sMarshaller,

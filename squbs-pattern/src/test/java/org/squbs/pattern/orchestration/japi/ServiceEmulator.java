@@ -1,4 +1,3 @@
-
 /*
  *  Copyright 2015 PayPal
  *
@@ -15,17 +14,21 @@
  *  limitations under the License.
  */
 
-package org.squbs.pattern.validation
+package org.squbs.pattern.orchestration.japi;
 
-case class Person(firstName: String, lastName: String, middleName: Option[String] = None, age: Int)
+import akka.actor.AbstractActor;
+import akka.japi.pf.ReceiveBuilder;
 
-object SampleValidators {
+import static org.squbs.pattern.orchestration.japi.Messages.*;
 
-  import com.wix.accord.dsl._
-  implicit val personValidator = com.wix.accord.dsl.validator[ Person ] { p =>
-                p.firstName as "First Name" is notEmpty
-                p.lastName as "Last Name" is notEmpty
-                p.middleName.each is notEmpty // If exists, should not be empty.
-                p.age should be >= 0
-              }
+public class ServiceEmulator extends AbstractActor {
+
+    public ServiceEmulator() {
+        receive(ReceiveBuilder.match(ServiceRequest.class, request ->
+                getContext().system().scheduler().scheduleOnce(request.delay, sender(),
+                        new ServiceResponse(request.id), getContext().dispatcher(), self())
+        ).build());
+
+    }
 }
+

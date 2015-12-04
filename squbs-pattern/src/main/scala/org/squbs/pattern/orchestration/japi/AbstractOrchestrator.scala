@@ -1,4 +1,3 @@
-
 /*
  *  Copyright 2015 PayPal
  *
@@ -15,17 +14,11 @@
  *  limitations under the License.
  */
 
-package org.squbs.pattern.validation
+package org.squbs.pattern.orchestration.japi
 
-case class Person(firstName: String, lastName: String, middleName: Option[String] = None, age: Int)
+import akka.actor.AbstractActor
+import org.squbs.pattern.orchestration.Orchestrator
 
-object SampleValidators {
-
-  import com.wix.accord.dsl._
-  implicit val personValidator = com.wix.accord.dsl.validator[ Person ] { p =>
-                p.firstName as "First Name" is notEmpty
-                p.lastName as "Last Name" is notEmpty
-                p.middleName.each is notEmpty // If exists, should not be empty.
-                p.age should be >= 0
-              }
+abstract class AbstractOrchestrator extends AbstractActor with Orchestrator {
+  override def receive = super.receive;
 }

@@ -34,7 +34,9 @@ import org.squbs.testkit.Timeouts._
 import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpHeader, HttpResponse, StatusCodes}
 
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
 import scala.util.Success
 
 class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpecLike
@@ -376,7 +378,27 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     clientState.value.endpoint.config.pipeline should be (pipelineSetting)
   }
 
-  "HttpClient with the correct endpoint sleep 10s" should "restablish the connection and get response" in {
+  "HttpClient update circuit breaker settings" should "actually set the circuit breaker settings" in {
+    val httpClient = HttpClientFactory.get("DummyService")
+    val cbSettings = CircuitBreakerSettings(callTimeout = 3 seconds)
+    val updatedHttpClient = httpClient.withCircuitBreakerSettings(cbSettings)
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
+    EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    clientState.value.endpoint.config.settings.circuitBreakerConfig should be (cbSettings)
+  }
+
+  "HttpClient update fallback response" should "actually set the circuit breaker settings" in {
+    val httpClient = HttpClientFactory.get("DummyService")
+    val fallback = HttpResponse(entity = """{ "defaultResponse" : "Some default" }""")
+    val updatedHttpClient = httpClient.withFallbackResponse(Some(fallback))
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
+    EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    clientState.value.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse should be (Some(fallback))
+  }
+
+  "HttpClient with the correct endpoint sleep 10s" should "re-establish the connection and get response" in {
     Thread.sleep(10000)
     val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/view")
     val result = Await.result(response, awaitMax)
@@ -395,7 +417,8 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     result.unmarshalTo[String] shouldBe 'failure
   }
 
-  "HttpClient with correct endpoint calling raw.get with not existing uri and unmarshall value" should "throw out UnsuccessfulResponseException and failed" in {
+  "HttpClient with correct endpoint calling raw.get with not existing uri and unmarshall value" should
+    "throw out UnsuccessfulResponseException and failed" in {
     val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/notExisting")
     val result = Await.result(response, awaitMax)
     result.status should be (StatusCodes.NotFound)

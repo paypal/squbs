@@ -172,23 +172,39 @@ class HttpClient private[httpclient] (val name: String, val env: Environment = D
   def withConfig(config: Configuration): HttpClient = {
     implicit val timeout = defaultFutureTimeout
     val newAskTimeout = toTimeout(config.settings.hostSettings.connectionSettings.requestTimeout).askTimeout
-    new HttpClient(name, env, newAskTimeout)(
-      (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateConfig(config)).mapTo[ActorRef] }
+    new HttpClient(name, env, newAskTimeout)( (_) =>
+      fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateConfig(config)).mapTo[ActorRef] }
     )
   }
 
   def withSettings(settings: Settings): HttpClient = {
     implicit val timeout = defaultFutureTimeout
     val newAskTimeout = toTimeout(settings.hostSettings.connectionSettings.requestTimeout).askTimeout
-    new HttpClient(name, env, newAskTimeout)(
-      (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateSettings(settings)).mapTo[ActorRef] }
+    new HttpClient(name, env, newAskTimeout)( (_) =>
+      fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateSettings(settings)).mapTo[ActorRef] }
     )
   }
 
   def withPipelineSetting(pipelineSetting: Option[PipelineSetting]): HttpClient = {
     implicit val timeout = defaultFutureTimeout
-    new HttpClient(name, env, askTimeout)(
-      (_) => fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdatePipeline(pipelineSetting)).mapTo[ActorRef] }
+    new HttpClient(name, env, askTimeout)( (_) =>
+      fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdatePipeline(pipelineSetting)).mapTo[ActorRef] }
+    )
+  }
+
+  def withCircuitBreakerSettings(circuitBreakerSettings: CircuitBreakerSettings): HttpClient = {
+    implicit val timeout = defaultFutureTimeout
+    new HttpClient(name, env, askTimeout)( (_) =>
+      fActorRef flatMap { ref => (ref ? HttpClientActorMessage.
+        UpdateCircuitBreaker(circuitBreakerSettings)).mapTo[ActorRef] }
+    )
+  }
+
+  def withFallbackResponse(fallbackResponse: Option[HttpResponse]): HttpClient = {
+    implicit val timeout = defaultFutureTimeout
+    new HttpClient(name, env, askTimeout)( (_) =>
+      fActorRef flatMap { ref => (ref ? HttpClientActorMessage.
+        UpdateFallbackResponse(fallbackResponse)).mapTo[ActorRef] }
     )
   }
 
