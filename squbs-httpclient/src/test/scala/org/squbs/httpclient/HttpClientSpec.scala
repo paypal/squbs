@@ -42,7 +42,6 @@ import scala.util.Success
 class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpecLike
     with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll{
 
-  //import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
   implicit val _system = system
 
   override def beforeAll() {
@@ -192,7 +191,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   }
 
   "HttpClient with correct Endpoint calling get" should "get the correct response" in {
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
+    import Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     val response = HttpClientFactory.get("DummyService").get[Team]("/view")
     val result = Await.result(response, awaitMax)
     result should be (fullTeam)
@@ -217,7 +216,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   }
 
   "HttpClient with correct Endpoint calling options" should "get the correct response" in {
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
+    import Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     val response = HttpClientFactory.get("DummyService").options[Team]("/view")
     val result = Await.result(response, awaitMax)
     result should be (fullTeam)
@@ -226,7 +225,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   "HttpClient with correct Endpoint calling raw.options and unmarshall object" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").raw.options("/view")
     val result = Await.result(response, awaitMax)
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
+    import Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
     result.unmarshalTo[Team] should be (Success(fullTeam))
   }
@@ -243,20 +242,20 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   "HttpClient with correct Endpoint calling raw.delete and unmarshall object" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").raw.delete("/del/4")
     val result = Await.result(response, awaitMax)
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
+    import Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
     result.unmarshalTo[Team] should be (Success(fullTeamWithDel))
   }
 
   "HttpClient with correct Endpoint calling delete" should "get the correct response" in {
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
+    import Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     val response = HttpClientFactory.get("DummyService").delete[Team]("/del/4")
     val result = Await.result(response, awaitMax)
     result should be (fullTeamWithDel)
   }
 
   "HttpClient with correct Endpoint calling raw.post" should "get the correct response" in {
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
+    import Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
     val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.post[Employee]("/add", Some(newTeamMember))
     val result = Await.result(response, awaitMax)
     result.status should be (StatusCodes.OK)
@@ -266,10 +265,10 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   }
 
   "HttpClient with correct Endpoint calling raw.post and unmarshall object" should "get the correct response" in {
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
+    import Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
     val response = HttpClientFactory.get("DummyService").raw.post[Employee]("/add", Some(newTeamMember))
     val result = Await.result(response, awaitMax)
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
+    import Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
     result.unmarshalTo[Team] should be (Success(fullTeamWithAdd))
   }
@@ -284,7 +283,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   }
 
   "HttpClient with correct Endpoint calling post" should "get the correct response" in {
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
+    import Json4sJacksonNoTypeHintsProtocol._
     val response = HttpClientFactory.get("DummyService").post[Employee, Team]("/add", Some(newTeamMember))
     val result = Await.result(response, awaitMax)
     result should be (fullTeamWithAdd)
@@ -300,7 +299,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   }
 
   "HttpClient with correct Endpoint calling raw.put" should "get the correct response" in {
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
+    import Json4sJacksonNoTypeHintsProtocol.json4sMarshaller
     val response = HttpClientFactory.get("DummyService").raw.put[Employee]("/add", Some(newTeamMember))
     val result = Await.result(response, awaitMax)
     result.status should be (StatusCodes.OK)
@@ -310,7 +309,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   }
 
   "HttpClient with correct Endpoint calling raw.put and unmarshall object" should "get the correct response" in {
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
+    import Json4sJacksonNoTypeHintsProtocol._
     val response = HttpClientFactory.get("DummyService").raw.put[Employee]("/add", Some(newTeamMember))
     val result = Await.result(response, awaitMax)
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
@@ -318,7 +317,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
   }
 
   "HttpClient with correct Endpoint calling put" should "get the correct response" in {
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
+    import Json4sJacksonNoTypeHintsProtocol._
     val response = HttpClientFactory.get("DummyService").put[Employee, Team]("/add", Some(newTeamMember))
     val result = Await.result(response, awaitMax)
     result should be (fullTeamWithAdd)
@@ -412,7 +411,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/view")
     val result = Await.result(response, awaitMax)
     result.status should be (StatusCodes.OK)
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
+    import Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
     result.unmarshalTo[String] shouldBe 'failure
   }
@@ -422,7 +421,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/notExisting")
     val result = Await.result(response, awaitMax)
     result.status should be (StatusCodes.NotFound)
-    import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
+    import Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
     import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
     result.unmarshalTo[Team] shouldBe 'failure
   }
