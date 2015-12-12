@@ -20,6 +20,7 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import spray.http.{ContentTypes, HttpCharsets, HttpEntity, MediaTypes}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
+import scala.language.implicitConversions
 
 object JacksonProtocol {
 

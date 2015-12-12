@@ -142,20 +142,21 @@ class CPULoad {
   val mbs    = ManagementFactory.getPlatformMBeanServer
   val name    = ObjectName.getInstance("java.lang:type=OperatingSystem")
 
-  var count = 0l
+  var count = 0L
   var sum = 0d
   var sumSquares = 0d
 
   def current: Option[Double] = {
     val list = mbs.getAttributes(name, Array("ProcessCpuLoad"))
 
-    if (list.isEmpty)     return None
+    if (list.isEmpty) None
+    else {
+      val att = list.get(0).asInstanceOf[Attribute]
+      val value = att.getValue.asInstanceOf[java.lang.Double]
 
-    val att = list.get(0).asInstanceOf[Attribute]
-    val value  = att.getValue.asInstanceOf[java.lang.Double]
-
-    if (value == -1.0) None  // usually takes a couple of seconds before we get real values
-    else Some(value)   // returns the percentage
+      if (value == -1.0) None // usually takes a couple of seconds before we get real values
+      else Some(value) // returns the percentage
+    }
   }
 
   def record(): Unit = {

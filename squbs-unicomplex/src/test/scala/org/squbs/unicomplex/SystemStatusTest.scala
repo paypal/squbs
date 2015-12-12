@@ -56,21 +56,14 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
 	with SequentialNestedSuiteExecution {
 
 	override def beforeAll() {
-		while (true) {
-			try {
-				Thread.sleep(5)
-			} catch {
-				case e: Throwable =>
-			}
-				
-			Unicomplex(system).uniActor ! ReportStatus
-
-			val StatusReport(state, _, _) = expectMsgType[StatusReport](awaitMax)
-
-			if ((Seq[LifecycleState](Active, Stopped, Failed) indexOf state) >= 0) {
-				return
-			}
-		}
+    awaitAssert({
+      Unicomplex(system).uniActor ! ReportStatus
+      receiveOne(awaitMax) match {
+        case StatusReport(state, _, _) =>
+          Seq(Active, Stopped, Failed) should contain (state)
+        case _ => fail()
+      }
+    }, max = awaitMax)
 	}
 
 	override def afterAll() {
