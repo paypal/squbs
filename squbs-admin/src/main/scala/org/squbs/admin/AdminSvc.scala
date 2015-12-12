@@ -15,6 +15,8 @@
  */
 package org.squbs.admin
 
+import java.net.URLEncoder
+
 import org.squbs.unicomplex.{RouteDefinition, WebContext}
 import spray.http.MediaTypes._
 import spray.http.Uri.Path
@@ -31,7 +33,8 @@ class AdminSvc extends RouteDefinition with WebContext {
           requestUri { uri =>
             complete {
               MBeanUtil.allObjectNames.map { name =>
-                val resource = Path(s"$prefix/${name.replace('=', '~')}")
+                val linkTarget = URLEncoder.encode(name.replace('=', '~').replace('/', '%'), "utf-8")
+                val resource = Path(s"$prefix/$linkTarget")
                 s""""$name" : "${uri.withPath(resource)}""""
               } .mkString("{\n  ", ",\n  ", "\n}")
             }
@@ -41,7 +44,7 @@ class AdminSvc extends RouteDefinition with WebContext {
       path("bean" / Segment) { name =>
         respondWithMediaType(`application/json`) {
           complete {
-            MBeanUtil.asJSON(name.replace('~', '='))
+            MBeanUtil.asJSON(name.replace('~', '=').replace('%', '/'))
           }
         }
       }
