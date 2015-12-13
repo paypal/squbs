@@ -16,19 +16,18 @@
 
 package org.squbs.unicomplex.streamSvc
 
+import java.io.{ByteArrayInputStream, InputStream}
+
 import akka.actor._
-import spray.http._
-import spray.http.HttpMethods._
-import spray.http.HttpRequest
-import spray.http.HttpResponse
-import spray.http.ChunkedRequestStart
-import spray.can.Http.RegisterChunkHandler
-import spray.http.StatusCodes._
 import org.jvnet.mimepull.MIMEMessage
-import java.io.{InputStream, ByteArrayInputStream}
+import spray.can.Http.RegisterChunkHandler
+import spray.http.HttpMethods._
+import spray.http.StatusCodes._
+import spray.http.{ChunkedRequestStart, HttpRequest, HttpResponse, _}
+import spray.io.CommandWrapper
+
 import scala.annotation.tailrec
 import scala.concurrent.duration._
-import spray.io.CommandWrapper
 
 class StreamSvc extends Actor with ActorLogging {
 
@@ -86,9 +85,9 @@ class ChunkedRequestHandler(client: ActorRef, start: ChunkedRequestStart) extend
   }
 
   /**
-   * calculate the size of input stream
-   * @param is
-   * @return
+   * Calculate the size of input stream.
+   * @param is The input stream
+   * @return The size of the input stream
    */
   def sizeOf(is: InputStream): Long = {
     val buffer = new Array[Byte](65000)

@@ -104,7 +104,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
     val target : PipelineTarget = Actor.noSender
     val processorActor = system.actorOf(Props(classOf[PipelineProcessorActor], target, processor))
 
-    object Unknown {}
+    object Unknown
     processorActor ! Unknown
 
     expectMsgPF(){
