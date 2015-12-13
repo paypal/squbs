@@ -1,4 +1,3 @@
-
 /*
  *  Copyright 2015 PayPal
  *
@@ -36,7 +35,7 @@ sealed trait ValidationMagnet {
 }
 
 object ValidationMagnet {
-  implicit def fromObj[T](obj: T)(implicit validator: Validator[ T ]) =
+  implicit def fromObj[T](obj: T)(implicit validator: Validator[T]) =
     new ValidationMagnet {
       def apply() = {
 

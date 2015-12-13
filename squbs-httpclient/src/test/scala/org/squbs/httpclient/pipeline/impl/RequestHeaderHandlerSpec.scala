@@ -23,7 +23,8 @@ import org.squbs.pipeline.RequestContext
 import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpHeader, HttpRequest}
 
-class RequestHeaderHandlerSpec extends TestKit(ActorSystem("RequestHeaderHandlerSpecSys")) with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll {
+class RequestHeaderHandlerSpec extends TestKit(ActorSystem("RequestHeaderHandlerSpecSys"))
+with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll {
 
 	override def afterAll() {
 		system.shutdown()

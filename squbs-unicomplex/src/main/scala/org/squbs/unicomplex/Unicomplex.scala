@@ -400,7 +400,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
           }
           context.unbecome()
           unstashAll()
-          
+
         case f: Http.CommandFailed =>
           serviceListeners = serviceListeners + (name -> None)
           log.error(s"Failed to bind listener $name. Cleaning up. System may not function properly.")
@@ -409,9 +409,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
           updateSystemState(checkInitState())
           context.unbecome()
           unstashAll()
-          
+
         case _ => stash()
-      }, 
+      },
       discardOld = false)
 
     case Started => // Bootstrap startup and extension init done
@@ -488,7 +488,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       case Some(reports) => reports.state
     }
   }
-  
+
   val checkStateFailed: PartialFunction[Iterable[LifecycleState], LifecycleState] = {
     case states if states exists (_ == Failed) =>
       if (systemState != Failed) log.warning("Some cubes failed to initialize. Marking system state as Failed")

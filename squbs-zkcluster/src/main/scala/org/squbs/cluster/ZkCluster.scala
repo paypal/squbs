@@ -64,7 +64,7 @@ case class ZkCluster(zkAddress: Address,
           logger.info("[zkCluster] reconnected")
           system.eventStream.publish(ZkReconnected)
           zkClusterActor ! ZkClientUpdated(zkClientWithNs)
-        case otherState => 
+        case otherState =>
           logger.warn(s"[zkCluster] connection state changed $otherState. What shall I do?")
       }
     }
@@ -78,9 +78,9 @@ case class ZkCluster(zkAddress: Address,
 
   //all interactions with the zk cluster extension should be through the zkClusterActor below
   lazy val zkClusterActor = system.actorOf(Props[ZkClusterActor], "zkCluster")
-  
+
   val remoteGuardian = system.actorOf(Props[RemoteGuardian], "remoteGuardian")
-  
+
   private[this] def initialize() = {
     //make sure /leader, /members, /segments zNodes are available
     guarantee("/leader", Some(Array[Byte]()), CreateMode.PERSISTENT)
@@ -93,9 +93,9 @@ case class ZkCluster(zkAddress: Address,
       })
     }
   }
-  
+
   def addShutdownListener(listener: () => Unit) = shutdownListeners = listener :: shutdownListeners
-  
+
   private[cluster] def close() = {
     stopped set true
     shutdownListeners foreach (_())

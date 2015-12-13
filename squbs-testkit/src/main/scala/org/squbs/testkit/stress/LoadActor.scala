@@ -104,7 +104,7 @@ class LoadActor extends Actor {
         val timeInSteady = System.nanoTime() - steadyStart
         if (timeInSteady < 0) sender() ! LoadStats(0d)
         else if (timeInSteady >= steady.toNanos) sender() ! LoadStats(steadyRequests.toDouble / steady.toSeconds)
-        else sender() ! LoadStats(1000000000l * steadyRequests.toDouble / timeInSteady)
+        else sender() ! LoadStats(1000000000L * steadyRequests.toDouble / timeInSteady)
     }
   }
 }

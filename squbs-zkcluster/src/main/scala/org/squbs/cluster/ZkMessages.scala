@@ -80,9 +80,9 @@ case object ZkStopMonitorPartition
  * @param onBoardMembers
  * @param dropOffMembers
  */
-case class ZkPartitionDiff(partitionKey: ByteString, 
-                           onBoardMembers: Set[Address], 
-                           dropOffMembers: Set[Address], 
+case class ZkPartitionDiff(partitionKey: ByteString,
+                           onBoardMembers: Set[Address],
+                           dropOffMembers: Set[Address],
                            props: Array[Byte] = Array.empty)
 /**
  * event of a partition removal

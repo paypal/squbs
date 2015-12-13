@@ -121,9 +121,11 @@ object Configuration {
 
   val defaultFutureTimeout: Timeout = 2 seconds
 
-  implicit def pipelineConfigToSetting(pipelineConfig : SimplePipelineConfig) : PipelineSetting = PipelineSetting(config = Option(pipelineConfig))
+  implicit def pipelineConfigToSetting(pipelineConfig : SimplePipelineConfig) : PipelineSetting =
+    PipelineSetting(config = Option(pipelineConfig))
 
-  implicit def optionPipelineConfigToOptionSetting(pipelineConfig : Option[SimplePipelineConfig]) : Option[PipelineSetting] = Some(PipelineSetting(config = pipelineConfig))
+  implicit def optionPipelineConfigToOptionSetting(pipelineConfig: Option[SimplePipelineConfig]):
+    Option[PipelineSetting] = Some(PipelineSetting(config = pipelineConfig))
 }
 
 case class CircuitBreakerSettings(maxFailures: Int = 5,

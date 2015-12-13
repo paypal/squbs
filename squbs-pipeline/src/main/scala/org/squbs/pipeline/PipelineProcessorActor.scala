@@ -21,6 +21,7 @@ import org.squbs.pipeline.PipelineProcessorActor.PipelineTarget
 import spray.can.Http.RegisterChunkHandler
 import spray.http._
 
+import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
 object PipelineProcessorActor {
@@ -139,7 +140,8 @@ class PipelineProcessorActor(target: PipelineTarget, processor: Processor) exten
 
     case Status.Failure(t) =>
       log.error(t, "Receive Status.Failure")
-      outboundForResponse(onResponseError(reqCtx, t), ctx => PostProcess(ctx)) // make sure preOutbound gets invoked to pair with postInbound
+      // make sure preOutbound gets invoked to pair with postInbound
+      outboundForResponse(onResponseError(reqCtx, t), ctx => PostProcess(ctx))
 
     case t: Throwable =>
       log.error(t, "Receive Throwable")
@@ -210,7 +212,8 @@ case class ReadyToChunk(ctx: RequestContext)
 
 case class PostProcess(ctx: RequestContext)
 
-private class ChunkHandler(realHandler: ActorRef, caller: ActorRef, processor: Processor, reqCtx: RequestContext) extends Actor {
+private class ChunkHandler(realHandler: ActorRef, caller: ActorRef, processor: Processor, reqCtx: RequestContext)
+    extends Actor {
 
   import processor._
 

@@ -18,8 +18,6 @@ libraryDependencies ++= Seq(
   "org.apache.zookeeper" % "zookeeper" % "3.4.6" % "test"
 )
 
-org.scalastyle.sbt.ScalastylePlugin.Settings
-
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-zkcluster")
 
 parallelExecution := false
