@@ -16,14 +16,15 @@
 
 package org.squbs.lifecycle
 
-import akka.pattern.GracefulStopSupport
-import scala.concurrent.duration.FiniteDuration
-import akka.actor._
-import org.squbs.unicomplex.{StopTimeout, Unicomplex}
 import java.util.concurrent.TimeUnit
+
+import akka.actor._
+import akka.pattern.GracefulStopSupport
+import org.squbs.unicomplex.{StopTimeout, Unicomplex}
+
 import scala.concurrent.Future
-import scala.util.Success
-import scala.util.Failure
+import scala.concurrent.duration.FiniteDuration
+import scala.util.{Failure, Success}
 
 case object GracefulStop
 
