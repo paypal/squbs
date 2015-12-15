@@ -22,6 +22,7 @@ import akka.actor.{Actor, ActorSystem}
 import akka.io.IO
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
+import org.scalatest.OptionValues._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import spray.can.Http
@@ -56,8 +57,8 @@ object CubeActorErrorStatesSpec{
     .initExtensions.start()
 }
 
-class CubeActorErrorStatesSpec extends TestKit(
-  CubeActorErrorStatesSpec.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
+class CubeActorErrorStatesSpec extends TestKit(CubeActorErrorStatesSpec.boot.actorSystem) with FlatSpecLike
+with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   val port = system.settings.config getInt "default-listener.bind-port"
 
@@ -73,16 +74,17 @@ class CubeActorErrorStatesSpec extends TestKit(
     IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/test1?msg=2"))
     Thread.sleep(1000) // wait the agent get refreshed
     import org.squbs.unicomplex.JMX._
-    val errorStates = get(new ObjectName(prefix(system) + cubeStateName + "CubeActorErrorStates"), "ActorErrorStates").asInstanceOf[Array[CompositeData]]
+    val errorStates = get(new ObjectName(prefix(system) + cubeStateName + "CubeActorErrorStates"), "ActorErrorStates")
+      .asInstanceOf[Array[CompositeData]]
 //    val state = errorStates.get("akka://squbs/user/CubeActorErrorStates/$b")
 //    val state = errorStates.values()
     errorStates.size should be(2)
-    val state1 = errorStates.find(_.get("actorPath").equals("/user/CubeActorErrorStates/$a")).get
-    state1.get("errorCount") should be(2)
-    state1.get("latestException").asInstanceOf[String] should include ("test1:2")
-    val state2 = errorStates.find(_.get("actorPath").equals("/user/CubeActorErrorStates/$b")).get
-    state2.get("errorCount") should be(1)
-    state2.get("latestException").asInstanceOf[String] should include ("test2:1")
+    val state1 = errorStates.find(_.get("actorPath") == "/user/CubeActorErrorStates/test1-CubeActorTest-handlertarget")
+    state1.value.get("errorCount") should be(2)
+    state1.value.get("latestException").asInstanceOf[String] should include ("test1:2")
+    val state2 = errorStates.find(_.get("actorPath") == "/user/CubeActorErrorStates/test2-CubeActorTest-handlertarget")
+    state2.value.get("errorCount") should be(1)
+    state2.value.get("latestException").asInstanceOf[String] should include ("test2:1")
   }
 }
 
