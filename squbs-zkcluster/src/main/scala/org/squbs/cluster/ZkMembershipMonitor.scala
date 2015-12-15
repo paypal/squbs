@@ -33,7 +33,7 @@ private[cluster] case class ZkLeaderElected(address: Option[Address])
 private[cluster] case class ZkMembersChanged(members: Set[Address])
 
 /**
- * the membership monitor has a few responsibilities, 
+ * The membership monitor has a few responsibilities,
  * most importantly to enroll the leadership competition and get membership,
  * leadership information immediately after change
  */
@@ -41,11 +41,11 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
 
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._
-  
+
   private[this] implicit val log = logger
   private[this] var zkLeaderLatch: Option[LeaderLatch] = None
   private[this] val stopped = new AtomicBoolean(false)
-  
+
   def initialize() = {
     //watch over leader changes
     val leader = Option(zkClientWithNs.getData.usingWatcher(new CuratorWatcher {
@@ -107,14 +107,14 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
     refresh(members)
     leader foreach { l => zkClusterActor ! ZkLeaderElected(l.toAddress) }
   }
-  
+
   override def postStop() = {
     //stop the leader latch to quit the competition
     stopped set true
     zkLeaderLatch foreach (_.close())
     zkLeaderLatch = None
   }
-  
+
   def receive: Actor.Receive = {
     case ZkClientUpdated(updated) =>
       // differentiate first connected to ZK or reconnect after connection lost

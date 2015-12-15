@@ -33,7 +33,7 @@ private[actormonitor] class ActorMonitor(_monitorConfig: ActorMonitorConfig) ext
 
   register(new ActorMonitorConfigBean(monitorConfig, self, context), prefix + configBean )
   context.actorSelection("/*") ! Identify(monitorConfig)
- 
+
   override def postStop() {
     unregister(prefix + configBean)
     totalBeans foreach unregister

@@ -27,18 +27,18 @@ import scala.util.Try
  * Then close the Zookeeper connection and terminate the entire system
  */
 class RemoteGuardian extends Actor with ActorLogging {
-  
+
   val zkCluster= ZkCluster(context.system)
   import zkCluster._
-  
+
   val suicideThreshold = Try {
     context.system.settings.config.getInt("zkCluster.suicide-threshold")
   } getOrElse 3
-  
+
   override def preStart() = context.system.eventStream.subscribe(self, classOf[QuarantinedEvent])
-  
+
   private[this] var quarantinedRemotes = Set.empty[Address]
-  
+
   override def receive: Receive = {
     case QuarantinedEvent(remote, uid) => // first QuarantinedEvent arrived
       log.error("[RemoteGuardian] get Quarantined event for remote {} uid {}", remote, uid)

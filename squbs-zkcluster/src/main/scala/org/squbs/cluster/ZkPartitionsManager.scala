@@ -55,15 +55,15 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
   private[this] var segmentsToPartitions = Map.empty[String, Set[ByteString]]
   private[this] var partitionWatchers = Map.empty[String, CuratorWatcher]
   private[this] val stopped = new AtomicBoolean(false)
-  
+
   def initialize() = {
-    segmentsToPartitions = zkClientWithNs.getChildren.forPath("/segments").map{
+    segmentsToPartitions = zkClientWithNs.getChildren.forPath("/segments").map {
       segment => segment -> watchOverSegment(segment)
     }.toMap
   }
 
   override def postStop() = stopped set true
-  
+
   def watchOverSegment(segment:String) = {
     val segmentZkPath = s"/segments/${keyToPath(segment)}"
     //watch over changes of creation/removal of any partition (watcher over /partitions)
@@ -107,14 +107,14 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
       case (partitionKey, Some(partitionData)) => partitionKey
     }.toSet
   }
-  
+
   private def whenPartitionChanged(segment: String, change: ZkPartitionData) = {
     log.debug("[partitions] partitions change detected from zk: {}",
       keyToPath(change.partitionKey) -> change
     )
     zkClusterActor ! ZkPartitionsChanged(segment, Map(change.partitionKey -> change))
   }
-  
+
   def watchOverPartition(segment: String,
                          partitionKey: ByteString,
                          partitionWatcher: CuratorWatcher): Option[ZkPartitionData] = {
@@ -132,12 +132,12 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
         None
     }
   }
-  
+
   def receive: Actor.Receive = {
-    
+
     case ZkClientUpdated(updated) =>
       initialize()
-    
+
     case ZkSegmentChanged(segment, changes) =>
       log.debug("[partitions] segment change detected from zk: {}", segment -> (changes map (keyToPath(_))))
       val onBoardPartitions = changes.diff(segmentsToPartitions.getOrElse(segment, Set.empty))
@@ -155,7 +155,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
         zkClusterActor ! ZkPartitionsChanged(segment,
           dropOffPartitions.map(key => key -> ZkPartitionData(key, expectedSize = 0)).toMap
         )
-    
+
     case ZkRebalance(updates) =>
       log.info("[partitions] update partitions based on plan:{}",
         updates.map{case (key, value) => keyToPath(key) -> (value.members, value.expectedSize)}
@@ -167,19 +167,19 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
           if (partitionData.expectedSize != partitionSize(partitionKey))
             guarantee(sizeOfParZkPath(partitionKey), Some(partitionData.expectedSize), CreateMode.PERSISTENT)
       }
-    
+
     case ZkRemovePartition(partitionKey) =>
       log.debug("[partitions] remove partition {}", keyToPath(partitionKey))
       safelyDiscard(partitionZkPath(partitionKey))
       sender ! ZkPartitionRemoval(partitionKey)
-    
+
     case ZkResizePartition(partitionKey, size) =>
       guarantee(sizeOfParZkPath(partitionKey), Some(size), CreateMode.PERSISTENT)
   }
 }
 
 object ZkPartitionsManager {
-  
+
   def loadPartitions()(implicit zkClient: CuratorFramework,
                        segmentationLogic: SegmentationLogic): Map[ByteString, ZkPartitionData] = {
     import segmentationLogic._
@@ -193,7 +193,7 @@ object ZkPartitionsManager {
       parKey -> ZkPartitionData(parKey, members, size, props)
     } toMap
   }
-  
+
   private def partitionServants(partitionKey: ByteString)
                                (implicit zkClient: CuratorFramework,
                                 segmentationLogic: SegmentationLogic): Set[Address] = {
@@ -205,7 +205,7 @@ object ZkPartitionsManager {
       case _:Throwable => Set.empty
     }
   }
-  
+
   private def partitionSize(partitionKey: ByteString)
                            (implicit zkClient: CuratorFramework,
                             segmentationLogic: SegmentationLogic): Int = {

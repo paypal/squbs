@@ -21,8 +21,6 @@ libraryDependencies ++= Seq(
   "org.json4s" %% "json4s-jackson" % "3.3.0" % "test"
 )
 
-org.scalastyle.sbt.ScalastylePlugin.Settings
-
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")
 
 mainClass in (Compile, run) := Some("org.squbs.unicomplex.Bootstrap")

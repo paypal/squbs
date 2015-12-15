@@ -92,7 +92,7 @@ object UnicomplexBoot extends LazyLogging {
         configNames.add("application")
         val parseOptions = ConfigParseOptions.defaults().setAllowMissing(true)
         val addConfigs = configNames map {
-        	name => ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
+          name => ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
         }
         if (addConfigs.isEmpty) baseConfig
         else ConfigFactory.load((addConfigs :\ baseConfig) (_ withFallback _))

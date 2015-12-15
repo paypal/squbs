@@ -17,5 +17,3 @@ libraryDependencies ++= Seq(
 )
 
 testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
-
-org.scalastyle.sbt.ScalastylePlugin.Settings
