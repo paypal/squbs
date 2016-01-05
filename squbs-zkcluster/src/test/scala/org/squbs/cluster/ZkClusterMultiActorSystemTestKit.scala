@@ -20,12 +20,13 @@ import java.net.{InetAddress, ServerSocket}
 
 import akka.actor.{PoisonPill, Terminated, ActorSelection, ActorSystem}
 import akka.testkit.TestKit
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.zookeeper.server.quorum.QuorumPeerMain
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.util.Random
+import scala.language.postfixOps
 
 import org.squbs.cluster.ZkClusterMultiActorSystemTestKit._
 
@@ -38,7 +39,7 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
 
   private var actorSystems = Map.empty[String, ActorSystem]
 
-  def zkClusterExts = actorSystems map { sys => sys._1 -> ZkCluster(sys._2)}
+  def zkClusterExts: Map[String, ZkCluster] = actorSystems map { sys => sys._1 -> ZkCluster(sys._2)}
 
   def startCluster(): Unit = {
     Random.setSeed(System.nanoTime)
@@ -48,9 +49,9 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
     } toMap
     
     // start the lazy actor
-    zkClusterExts foreach { ext => 
+    zkClusterExts foreach { ext =>
       watch(ext._2.zkClusterActor)
-      ext._2.addShutdownListener(actorSystems(ext._1).shutdown)
+      ext._2.addShutdownListener((_) => actorSystems(ext._1).shutdown)
     }
     
     Thread.sleep(timeout.toMillis / 10)
@@ -62,7 +63,7 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
     println("*********************************** Shutting Down the Cluster ***********************************")
     val exts = zkClusterExts
     val head = exts.head
-    head._2.addShutdownListener(() => head._2.zkClientWithNs.delete.guaranteed.deletingChildrenIfNeeded.forPath(""))
+    head._2.addShutdownListener((zkClient) => zkClient.delete.guaranteed.deletingChildrenIfNeeded.forPath("/"))
     exts.tail.foreach(ext => killSystem(ext._1))
     killSystem(head._1)
     system.shutdown()
@@ -83,7 +84,7 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
   def bringUpSystem(sysName: String): Unit = {
     actorSystems += sysName -> ActorSystem(sysName, akkaRemoteConfig withFallback zkConfig)
     watch(zkClusterExts(sysName).zkClusterActor)
-    zkClusterExts(sysName).addShutdownListener(actorSystems(sysName).shutdown)
+    zkClusterExts(sysName).addShutdownListener((_) => actorSystems(sysName).shutdown)
     println(s"system $sysName is up")
     Thread.sleep(timeout.toMillis / 5)
   }
@@ -104,12 +105,12 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
 object ZkClusterMultiActorSystemTestKit {
   lazy val now = System.nanoTime
 
-  (new Thread() {
-    override def run = {
+  new Thread() {
+    override def run(): Unit = {
       QuorumPeerMain.main(Array[String](this.getClass.getClassLoader.getResource("zoo.cfg").getFile))
       println("Zookeeper started")
     }
-  }).start
+  } start()
 
   Thread.sleep(5000)
 
@@ -127,7 +128,7 @@ object ZkClusterMultiActorSystemTestKit {
     }
   }
 
-  def akkaRemoteConfig = ConfigFactory.parseString(
+  def akkaRemoteConfig: Config = ConfigFactory.parseString(
     s"""
        |akka {
        |  actor {

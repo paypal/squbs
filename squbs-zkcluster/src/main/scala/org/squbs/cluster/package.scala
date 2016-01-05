@@ -146,7 +146,7 @@ package object cluster {
     address.toString.getBytes(UTF_8)
   }
 
-  implicit def AddressSetToBytes(members: Set[Address]): Array[Byte] = {
+  implicit def addressSetToBytes(members: Set[Address]): Array[Byte] = {
     members.mkString(",").getBytes(UTF_8)
   }
 }
