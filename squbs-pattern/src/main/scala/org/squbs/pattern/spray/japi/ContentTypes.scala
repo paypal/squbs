@@ -13,22 +13,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.squbs.pattern.spray.japi
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import spray.httpx.marshalling.Marshaller
+import spray.http.ContentTypes._
 
-object JacksonSerializer {
+object ContentTypes {
 
-  //default mapper relies on getters
-  val defaultMapper = new ObjectMapper()
-    //.setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
-    .registerModule(DefaultScalaModule)
-
-
-  def marshaller[T <: AnyRef](clazz: Class[T]): Marshaller[T] =
-    Marshaller.delegate[T, String](ContentTypes.APPLICATION_JSON)(defaultMapper.writeValueAsString(_))
-
+  final val APPLICATION_JSON = `application/json`
+  final val APPLICATION_OCTET_STREAM = `application/octet-stream`
+  final val TEXT_PLAIN = `text/plain`
+  final val TEXT_PLAIN_UTF8 = `text/plain(UTF-8)`
 }

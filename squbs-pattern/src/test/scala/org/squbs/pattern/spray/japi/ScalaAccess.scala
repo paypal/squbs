@@ -15,7 +15,7 @@
  */
 package org.squbs.pattern.spray.japi
 
-import spray.http._
+import spray.http.{MediaTypes => SMediaTypes, _}
 import spray.httpx.marshalling.{BasicMarshallers, ToResponseMarshaller}
 import spray.httpx.unmarshalling.{BasicUnmarshallers, UnmarshallerLifting}
 
@@ -31,9 +31,6 @@ object ScalaAccess {
   val contentType = ContentType
 
   def list[T](element: T) = List(element)
-
-  val applicationJson = ContentTypes.`application/json`
-  val applicationJavascript = MediaTypes.`application/javascript`
 
   val contentTypeHeader = HttpHeaders.`Content-Type`
   val charsetUTF8 = HttpCharsets.`UTF-8`

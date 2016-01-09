@@ -24,8 +24,10 @@ import akka.util.Timeout
 import org.squbs.pipeline.{PipelineSetting, SimplePipelineConfig}
 import spray.can.Http.ClientConnectionType
 import spray.can.client.HostConnectorSettings
-import spray.http.{HttpHeader, HttpResponse}
+import spray.http.HttpHeaders.Accept
+import spray.http._
 
+import scala.annotation.varargs
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
@@ -135,17 +137,37 @@ case class CircuitBreakerSettings(maxFailures: Int = 5,
                                   historyUnitDuration: FiniteDuration = 1 minute,
                                   fallbackHttpResponse: Option[HttpResponse] = None)
 
-import org.squbs.httpclient.Configuration._
-
 object RequestSettings {
 
-  def apply(headers: List[HttpHeader])(implicit refFactory: ActorRefFactory) =
-    new RequestSettings(headers, Timeout(requestTimeout(defaultHostSettings), TimeUnit.MILLISECONDS))
+  def apply(headers: List[HttpHeader]) =
+    new RequestSettings(headers, None)
 
-  def apply(timeout: Timeout) = new RequestSettings(List.empty, timeout)
+  def apply(timeout: Timeout) = new RequestSettings(List.empty, Option(timeout))
 
-  def apply()(implicit refFactory: ActorRefFactory) =
-    new RequestSettings(List.empty, Timeout(requestTimeout(defaultHostSettings), TimeUnit.MILLISECONDS))
+  def apply() = new RequestSettings(List.empty, None)
+
+  def apply(headers: HttpHeader*): RequestSettings = apply(headers.toList)
+
+  def apply(headers: List[HttpHeader], timeout: Timeout) = new RequestSettings(headers, Option(timeout))
+
+  /**
+    * Java API for defining headers in http client requests.
+    */
+  @varargs def headers(headers: HttpHeader*): RequestSettings = apply(headers.toList)
+
+  /**
+    * Java API for defining the accept header in http client requests.
+    */
+  @varargs def accept(mediaType: MediaType, mediaTypes: MediaType*): RequestSettings = {
+    val range = (mediaType +: mediaTypes) map MediaRange.apply
+    apply(Accept(range))
+  }
+
+
 }
 
-case class RequestSettings(headers: List[HttpHeader], timeout: Timeout)
+case class RequestSettings(headers: List[HttpHeader], timeout: Option[Timeout]) {
+
+  @varargs def headers(headers: HttpHeader*): RequestSettings = copy(headers = this.headers ++ headers)
+
+}
