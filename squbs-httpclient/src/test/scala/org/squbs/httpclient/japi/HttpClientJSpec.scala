@@ -37,6 +37,7 @@ import org.squbs.pipeline.{PipelineSetting, SimplePipelineConfig}
 import org.squbs.testkit.Timeouts._
 import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpResponse, HttpHeader, StatusCodes}
+import spray.httpx.UnsuccessfulResponseException
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -249,6 +250,12 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     val response = HttpClientJ.get("DummyService", system, "/view", unmarshaller, RequestSettings())
     val result = Await.result(response, awaitMax)
     result should be(fullTeam)
+  }
+
+  "HttpClient deserialization call resulting in NO_CONTENT" should "get the correct exception" in {
+    val response = HttpClientJ.get("DummyService", system, "/emptyresponse", classOf[Team])
+    val thrown = the [UnsuccessfulResponseException] thrownBy Await.result(response, awaitMax)
+    thrown.response.status should be (StatusCodes.NoContent)
   }
 
   "HttpClient with correct Endpoint calling raw.head" should "get the correct response" in {
