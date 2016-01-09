@@ -229,6 +229,12 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result should be(fullTeam)
   }
 
+  "HttpClient deserializing data into object hierarchy" should " get the correct deserialization" in {
+    val response = HttpClientJ.get("DummyService", system, "/paged", classOf[PageData])
+    val result = Await.result(response, awaitMax)
+    result should be (pageTest)
+  }
+
   "HttpClient with correct Endpoint calling get with setting" should "get the correct response" in {
 
     val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), awaitMax)
