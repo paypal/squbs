@@ -16,10 +16,10 @@
 package org.squbs.httpclient.json
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import spray.http.{ContentTypes, HttpCharsets, HttpEntity, MediaTypes}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
+
 import scala.language.implicitConversions
 
 object JacksonProtocol {
@@ -37,7 +37,8 @@ object JacksonProtocol {
   //default mapper relies on getters
   val defaultMapper = new ObjectMapper()
     //.setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
-    .registerModule(DefaultScalaModule)
+    //.registerModule(DefaultScalaModule)
+  // Don't register the additional modules. Customer code needing specific behavior should do so themselves.
 
   private def mapper(clazz: Class[_]): ObjectMapper = {
     mappers.getOrElse(clazz.getName, defaultMapper)
