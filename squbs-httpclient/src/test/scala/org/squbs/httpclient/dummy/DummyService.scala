@@ -323,6 +323,11 @@ trait DummyService extends SimpleRoutingApp {
                 }
               }
             }
+        } ~
+        path("emptyresponse") {
+          complete {
+            HttpResponse(status = StatusCodes.NoContent)
+          }
         }
     } onComplete {
       case Success(b) =>

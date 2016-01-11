@@ -41,10 +41,11 @@ object HttpClientUnmarshal{
 
     def unmarshalTo[T: FromResponseUnmarshaller]: Try[T] = {
       Try{
-        if (response.status.isSuccess)
+        if (response.status.isSuccess && response.status.allowsEntity && response.entity.nonEmpty)
           response.as[T] match {
             case Right(value) ⇒ value
-            case Left(error) ⇒ throw new PipelineException(error.toString)
+            case Left(error) ⇒
+              throw new PipelineException(error.toString, cause = new UnsuccessfulResponseException(response))
           }
         else throw new UnsuccessfulResponseException(response)
       }
