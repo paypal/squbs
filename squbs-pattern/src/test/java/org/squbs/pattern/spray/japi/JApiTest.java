@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.squbs.pattern.spray.japi;
 
 import akka.util.ByteString;
@@ -25,7 +24,7 @@ import spray.httpx.marshalling.Marshaller;
 import spray.httpx.unmarshalling.Deserializer;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.Assert.*;
 import static org.squbs.pattern.spray.japi.ScalaAccess.*;
@@ -59,11 +58,11 @@ public class JApiTest {
         entity = HttpEntityFactory.create("abcdefg".getBytes());
         assertEquals(entity, httpEntity().apply("abcdefg".getBytes()));
 
-        entity = HttpEntityFactory.create(applicationJson(), "abc");
-        assertEquals(entity, httpEntity().apply(applicationJson(), "abc"));
+        entity = HttpEntityFactory.create(ContentTypes.APPLICATION_JSON(), "abc");
+        assertEquals(entity, httpEntity().apply(ContentTypes.APPLICATION_JSON(), "abc"));
 
-        entity = HttpEntityFactory.create(applicationJson(), "abc".getBytes());
-        assertEquals(entity, httpEntity().apply(applicationJson(), "abc".getBytes()));
+        entity = HttpEntityFactory.create(ContentTypes.APPLICATION_JSON(), "abc".getBytes());
+        assertEquals(entity, httpEntity().apply(ContentTypes.APPLICATION_JSON(), "abc".getBytes()));
 
         entity = HttpEntityFactory.create(new TestVO("foo", -1), JacksonSerializer.marshaller(TestVO.class));
         assertTrue(entity instanceof HttpEntity.NonEmpty);
@@ -84,10 +83,10 @@ public class JApiTest {
         end = ChunkedMessageEndFactory.create("abc");
         assertEquals(end, new ChunkedMessageEnd("abc", chunkedMessageEnd().trailer()));
 
-        end = ChunkedMessageEndFactory.create(Arrays.asList(HttpHeaderFactory.create("Content-type", "application/json")));
+        end = ChunkedMessageEndFactory.create(Collections.singletonList(HttpHeaderFactory.create("Content-type", "application/json")));
         assertEquals(end, chunkedMessageEnd().apply("", list(HttpHeaderFactory.create("Content-type", "application/json"))));
 
-        end = ChunkedMessageEndFactory.create("abc", Arrays.asList(HttpHeaderFactory.create("Content-type", "application/json")));
+        end = ChunkedMessageEndFactory.create("abc", Collections.singletonList(HttpHeaderFactory.create("Content-type", "application/json")));
         assertEquals(end, chunkedMessageEnd().apply("abc", list(HttpHeaderFactory.create("Content-type", "application/json"))));
 
     }
@@ -120,10 +119,10 @@ public class JApiTest {
         }
 
         ContentType contentType = ContentTypeFactory.create("application/json; charset=UTF-8");
-        assertEquals(contentType().apply(applicationJson().mediaType(), charsetUTF8()), contentType);
+        assertEquals(contentType().apply(MediaTypes.APPLICATION_JSON(), charsetUTF8()), contentType);
 
         ContentType contentType1 = ContentTypeFactory.create("application/javascript");
-        assertEquals(contentType().apply(applicationJavascript()), contentType1);
+        assertEquals(contentType().apply(MediaTypes.APPLICATION_JAVASCRIPT()), contentType1);
 
     }
 

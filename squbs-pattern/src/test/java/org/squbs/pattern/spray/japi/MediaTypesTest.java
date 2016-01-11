@@ -13,22 +13,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package org.squbs.pattern.spray.japi;
 
-package org.squbs.pattern.spray.japi
+import org.junit.Test;
+import spray.http.MediaType;
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import spray.httpx.marshalling.Marshaller
+import static org.junit.Assert.*;
 
-object JacksonSerializer {
+public class MediaTypesTest {
 
-  //default mapper relies on getters
-  val defaultMapper = new ObjectMapper()
-    //.setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
-    .registerModule(DefaultScalaModule)
+    @Test
+    public void testByName() {
+        MediaType mediaType = MediaTypes.byName("application/json");
+        assertSame(MediaTypes.APPLICATION_JSON(), mediaType);
+    }
 
-
-  def marshaller[T <: AnyRef](clazz: Class[T]): Marshaller[T] =
-    Marshaller.delegate[T, String](ContentTypes.APPLICATION_JSON)(defaultMapper.writeValueAsString(_))
-
+    @Test
+    public void testCustomByName() {
+        MediaType m1 = MediaTypes.byName("application/foobar");
+        MediaType m2 = MediaTypes.byName("application/foobar");
+        assertSame(m1, m2);
+    }
 }

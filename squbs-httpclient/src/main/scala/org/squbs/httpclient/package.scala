@@ -15,13 +15,17 @@
  */
 package org.squbs
 
-import akka.actor.{ActorContext, ActorSystem, ActorRefFactory}
+import java.util.concurrent.TimeUnit
+
+import akka.actor.{ActorContext, ActorRefFactory, ActorSystem}
 import akka.util.Timeout
 
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
 package object httpclient {
+
+  val defaultRequestTimeout: Option[Timeout] = None
 
   implicit def refFactoryToSystem(refFactory: ActorRefFactory): ActorSystem = refFactory match {
     case sys: ActorSystem => sys
@@ -36,10 +40,11 @@ package object httpclient {
     case _ => Duration.Zero
   })
 
-  implicit class RequestToAskTimeout(val requestTimeout: Timeout) extends AnyVal {
+  implicit class RequestToAskTimeout(val reqTimeout: Option[Timeout]) extends AnyVal {
 
-    def askTimeout: Timeout = {
-      val Timeout(d) = requestTimeout
+    def askTimeout(implicit refFactory: ActorRefFactory): Timeout = {
+      import Configuration._
+      val Timeout(d) = reqTimeout getOrElse Timeout(requestTimeout(defaultHostSettings), TimeUnit.MILLISECONDS)
       if (d < 1.second) d + 100.millis
       else if (d > 10.second) d + 1.second
       else {

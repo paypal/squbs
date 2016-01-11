@@ -198,8 +198,16 @@ trait DummyService extends SimpleRoutingApp {
         path("view") {
           (get | head | options | post) {
             respondWithMediaType(MediaTypes.`application/json`)
-            headerValueByName("req1-name") {
-              value =>
+            headerValueByName("req1-name") { value =>
+              headerValueByName("req2-name") { value2 =>
+                  respondWithHeader(RawHeader("res-req1-name", "res-" + value))  {
+                    respondWithHeader(RawHeader("res-req2-name", "res2-" + value2)) {
+                      complete {
+                        fullTeam
+                      }
+                    }
+                  }
+                } ~
                 respondWithHeader(RawHeader("res-req1-name", "res-" + value)) {
                   complete {
                     fullTeam

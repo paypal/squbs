@@ -23,6 +23,8 @@ import spray.httpx.marshalling._
  */
 object HttpEntityFactory {
 
+  val empty = HttpEntity.Empty
+
   def create(string : String): HttpEntity = HttpEntity(string)
 
   def create(bytes: Array[Byte]): HttpEntity = HttpEntity(bytes)

@@ -171,7 +171,7 @@ class HttpClient private[httpclient] (val name: String, val env: Environment = D
 
   def withConfig(config: Configuration): HttpClient = {
     implicit val timeout = defaultFutureTimeout
-    val newAskTimeout = toTimeout(config.settings.hostSettings.connectionSettings.requestTimeout).askTimeout
+    val newAskTimeout = defaultRequestTimeout.askTimeout
     new HttpClient(name, env, newAskTimeout)( (_) =>
       fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateConfig(config)).mapTo[ActorRef] }
     )
@@ -179,7 +179,7 @@ class HttpClient private[httpclient] (val name: String, val env: Environment = D
 
   def withSettings(settings: Settings): HttpClient = {
     implicit val timeout = defaultFutureTimeout
-    val newAskTimeout = toTimeout(settings.hostSettings.connectionSettings.requestTimeout).askTimeout
+    val newAskTimeout = defaultRequestTimeout.askTimeout
     new HttpClient(name, env, newAskTimeout)( (_) =>
       fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateSettings(settings)).mapTo[ActorRef] }
     )
@@ -359,7 +359,7 @@ object HttpClientFactory {
       EndpointRegistry(system).resolve(name, env) getOrElse   { throw HttpClientEndpointNotExistException(name, env) }
 
     val clientAskTimeout =
-      toTimeout(endpoint.config.settings.hostSettings.connectionSettings.requestTimeout).askTimeout
+      Some(toTimeout(endpoint.config.settings.hostSettings.connectionSettings.requestTimeout)).askTimeout
 
 
     implicit val timeout = defaultFutureTimeout
