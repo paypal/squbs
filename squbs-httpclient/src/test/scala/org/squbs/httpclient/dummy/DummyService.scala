@@ -19,9 +19,11 @@ package org.squbs.httpclient.dummy
 import java.util
 
 import akka.actor.ActorSystem
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.json4s.CustomSerializer
 import org.json4s.JsonAST._
-import org.squbs.httpclient.japi.{EmployeeBean, TeamBean, TeamBeanWithCaseClassMember}
+import org.squbs.httpclient.japi.{PageData, EmployeeBean, TeamBean, TeamBeanWithCaseClassMember}
 import org.squbs.httpclient.json.JsonProtocol
 import spray.http.HttpHeaders.RawHeader
 import spray.http._
@@ -137,6 +139,8 @@ trait DummyService extends SimpleRoutingApp {
     Employee(4, "Liz", "Taylor", 35, male = false)
   ))
 
+  val pageTest = new PageData(100, Seq("one", "two", "three"))
+
   val newTeamMember = Employee(5, "Jack", "Ripper", 35, male = true)
   val newTeamMemberBean = new EmployeeBean(5, "Jack", "Ripper", 35, true)
 
@@ -178,6 +182,10 @@ trait DummyService extends SimpleRoutingApp {
   //  import scala.concurrent.ExecutionContext.Implicits.global
   import DummyService._
   import org.squbs.testkit.Timeouts._
+  import org.squbs.httpclient.json.JacksonProtocol
+
+  JacksonProtocol.registerMapper(classOf[TeamBeanWithCaseClassMember],
+    new ObjectMapper().registerModule(DefaultScalaModule))
 
   def startDummyService(implicit system: ActorSystem, address: String = dummyServiceIpAddress,
                         port: Int = dummyServicePort) {
@@ -253,6 +261,14 @@ trait DummyService extends SimpleRoutingApp {
             }
           }
         } ~
+        path("paged") {
+          get {
+            respondWithMediaType(MediaTypes.`application/json`)
+            complete {
+              pageTest
+            }
+          }
+        } ~
         path("viewrange") {
           (get | head | options) {
             parameters('range) { range =>
@@ -315,6 +331,11 @@ trait DummyService extends SimpleRoutingApp {
                 }
               }
             }
+        } ~
+        path("emptyresponse") {
+          complete {
+            HttpResponse(status = StatusCodes.NoContent)
+          }
         }
     } onComplete {
       case Success(b) =>

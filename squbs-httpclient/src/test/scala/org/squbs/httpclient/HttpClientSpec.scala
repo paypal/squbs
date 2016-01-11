@@ -33,6 +33,7 @@ import org.squbs.pipeline.PipelineSetting
 import org.squbs.testkit.Timeouts._
 import spray.http.HttpHeaders.RawHeader
 import spray.http.{HttpHeader, HttpResponse, StatusCodes}
+import spray.httpx.UnsuccessfulResponseException
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -197,8 +198,12 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with FlatSpe
     result should be (fullTeam)
   }
 
-
-
+  "HttpClient deserialization call resulting in NO_CONTENT" should "get the correct exception" in {
+    import Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
+    val response = HttpClientFactory.get("DummyService").get[Team]("/emptyresponse")
+    val thrown = the [UnsuccessfulResponseException] thrownBy Await.result(response, awaitMax)
+    thrown.response.status should be (StatusCodes.NoContent)
+  }
 
   "HttpClient with correct Endpoint calling raw.head" should "get the correct response" in {
     val response = HttpClientFactory.get("DummyService").raw.head("/view")
