@@ -110,7 +110,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
                                  partitionKey: ByteString,
                                  partitionWatcher: CuratorWatcher)
                                 (implicit curatorFwk: CuratorFramework): Option[ZkPartitionData] = {
-    try {
+    Try {
       guarantee(servantsOfParZkPath(partitionKey), None, CreateMode.PERSISTENT)
       guarantee(sizeOfParZkPath(partitionKey), None, CreateMode.PERSISTENT)
       val servants =
@@ -118,11 +118,10 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
       val expectedSize =
         curatorFwk.getData.usingWatcher(partitionWatcher).forPath(sizeOfParZkPath(partitionKey)).toInt
       Some(ZkPartitionData(partitionKey, servants, partitionSize(partitionKey), expectedSize))
-    }
-    catch {
+    } recover {
       case t: Throwable => log.error("partitions refresh failed due to unknown reason: {}", t.getMessage)
         None
-    }
+    } get
   }
 
   private def whenPartitionChanged(segment: String, change: ZkPartitionData) = {
@@ -207,23 +206,17 @@ object ZkPartitionsManager {
                                (implicit zkClient: CuratorFramework,
                                 segmentationLogic: SegmentationLogic): Set[Address] = {
     import segmentationLogic._
-    try{
+    Try {
       zkClient.getData.forPath(servantsOfParZkPath(partitionKey)).toAddressSet
-    }
-    catch{
-      case _:Throwable => Set.empty
-    }
+    } getOrElse Set.empty
   }
 
   private def partitionSize(partitionKey: ByteString)
                            (implicit zkClient: CuratorFramework,
                             segmentationLogic: SegmentationLogic): Int = {
     import segmentationLogic._
-    try{
+    Try {
       zkClient.getData.forPath(sizeOfParZkPath(partitionKey)).toInt
-    }
-    catch{
-      case _:Throwable => 0
-    }
+    } getOrElse 0
   }
 }
