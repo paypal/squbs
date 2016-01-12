@@ -28,20 +28,20 @@ import org.squbs.testkit.Timeouts._
 class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitTest") with LazyLogging
   with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with BeforeAndAfterEach {
   import org.squbs.cluster.ZkClusterMultiActorSystemTestKit._
-  
+
   override val timeout = awaitMax
-  
+
   override val clusterSize: Int = 6
-  
+
   override def afterEach(): Unit = {
     println("------------------------------------------------------------------------------------------")
     Thread.sleep(1000)
   }
-  
+
   val par1 = ByteString("myPar1")
   val par2 = ByteString("myPar2")
   val par3 = ByteString("myPar3")
-  
+
   implicit val log = logger
   implicit def string2ByteArray(s: String): Array[Byte] = s.toCharArray map (c => c.toByte)
   implicit def ByteArray2String(array: Array[Byte]): String = array.map(_.toChar).mkString
@@ -70,9 +70,9 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
     guarantee(s"/segments/segment-0/${keyToPath(par3)}/$$size", Some(3), CreateMode.PERSISTENT)
     zkClient.close()
   }
-  
+
   override def afterAll() = shutdownCluster()
-  
+
   "ZkCluster" should "list the partitions" in {
     startCluster()
     zkClusterExts foreach {
@@ -80,7 +80,7 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
         println(expectMsgType[ZkPartitions](timeout))
     }
   }
-  
+
   "ZkCluster" should "load persisted partition information and sync across the cluster" in {
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(par1), self)
@@ -95,7 +95,7 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
         expectMsgType[ZkPartition](timeout).members should have size 3
     }
   }
-  
+
   "ZkCluster" should "list all the members across the cluster" in {
     val members = zkClusterExts.map(_._2.zkAddress).toSet
     zkClusterExts foreach {

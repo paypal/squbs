@@ -16,19 +16,19 @@
 
 package org.squbs.cluster
 
+import java.io.File
 import java.net.{InetAddress, ServerSocket}
 
-import akka.actor.{PoisonPill, Terminated, ActorSelection, ActorSystem}
+import akka.actor.{ActorSelection, ActorSystem, PoisonPill, Terminated}
 import akka.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
-import org.apache.zookeeper.server.quorum.QuorumPeerMain
+import org.apache.curator.test.TestingServer
+import org.squbs.cluster.ZkClusterMultiActorSystemTestKit._
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
+import scala.language.{implicitConversions, postfixOps}
 import scala.util.Random
-import scala.language.postfixOps
-
-import org.squbs.cluster.ZkClusterMultiActorSystemTestKit._
 
 abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
   extends TestKit(ActorSystem(systemName, akkaRemoteConfig withFallback zkConfig)) {
@@ -105,14 +105,12 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
 object ZkClusterMultiActorSystemTestKit {
   lazy val now = System.nanoTime
 
-  new Thread() {
-    override def run(): Unit = {
-      QuorumPeerMain.main(Array[String](this.getClass.getClassLoader.getResource("zoo.cfg").getFile))
-      println("Zookeeper started")
-    }
-  } start()
+  val ZOOKEEPER_STARTUP_TIME = 5000
+  val ZOOKEEPER_DEFAULT_PORT = 8085
 
-  Thread.sleep(5000)
+  new TestingServer(ZOOKEEPER_DEFAULT_PORT, new File("zookeeper"), true)
+
+  Thread.sleep(ZOOKEEPER_STARTUP_TIME)
 
   private def nextPort = {
     val s = new ServerSocket(0)
@@ -170,7 +168,7 @@ object ZkClusterMultiActorSystemTestKit {
   lazy val zkConfig = ConfigFactory.parseString(
     s"""
       |zkCluster {
-      |  connectionString = "127.0.0.1:8085"
+      |  connectionString = "127.0.0.1:$ZOOKEEPER_DEFAULT_PORT"
       |  namespace = "zkclustersystest-$now"
       |  segments = 1
       |}

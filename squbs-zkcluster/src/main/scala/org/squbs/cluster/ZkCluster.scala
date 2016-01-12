@@ -19,7 +19,7 @@ package org.squbs.cluster
 import java.io.ByteArrayInputStream
 import java.net.InetAddress
 import java.util.Properties
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 
 import akka.actor._
 import com.typesafe.config.ConfigFactory
@@ -34,6 +34,8 @@ import org.apache.zookeeper.{CreateMode, WatchedEvent}
 import org.squbs.cluster.rebalance.{DataCenterAwareRebalanceLogic, RebalanceLogic}
 
 import scala.collection.JavaConversions._
+import scala.language.implicitConversions
+import scala.util.Try
 
 case class ZkCluster(zkAddress: Address,
                      initConnStr: String,
@@ -48,8 +50,8 @@ case class ZkCluster(zkAddress: Address,
   val remoteGuardian = system.actorOf(Props[RemoteGuardian], "remoteGuardian")
 
   private[this] implicit val log = logger
-  private[this] var curatorFwk: CuratorFramework = _
-  private[this] var connectionString = initConnStr
+  private[this] val curatorFwk = new AtomicReference[CuratorFramework]()
+  private[this] val connectString = new AtomicReference[String](initConnStr)
   private[this] val stopped = new AtomicBoolean(false)
   private[this] var shutdownListeners = List.empty[(CuratorFramework) => Unit]
 
@@ -71,7 +73,6 @@ case class ZkCluster(zkAddress: Address,
         case ConnectionState.RECONNECTED if !stopped.get =>
           logger.info("[zkCluster] reconnected")
           system.eventStream.publish(ZkReconnected)
-          zkClusterActor ! ZkClientUpdated(curatorFwkWithNs())
         case otherState =>
           logger.warn(s"[zkCluster] connection state changed $otherState. What shall I do?")
       }
@@ -94,24 +95,30 @@ case class ZkCluster(zkAddress: Address,
   initialize()
 
   private def initialize() = synchronized {
-    curatorFwk = CuratorFrameworkFactory.newClient(connectionString, retryPolicy)
-    curatorFwk.getConnectionStateListenable.addListener(connectionStateListener)
-    curatorFwk.start()
-    curatorFwk.blockUntilConnected()
-    connectionString = constructConnectionString(
-      curatorFwk.getConfig.usingWatcher(new CuratorWatcher {
-        override def process(event: WatchedEvent): Unit = {
-          val connStr = constructConnectionString(curatorFwk.getConfig.usingWatcher(this).forEnsemble())
-          if (connectionString != connStr) {
-            system.eventStream.publish(ZkConfigChanged(connStr))
-            connectionString = connStr
-          }
-        }
-      }).forEnsemble()
-    )
+    val client = CuratorFrameworkFactory.newClient(connectString.get(), retryPolicy)
+    client.getConnectionStateListenable.addListener(connectionStateListener)
+    client.start()
+    client.blockUntilConnected()
+    curatorFwk set client
+    updateConnectString(configWatcher)
   }
 
-  private def constructConnectionString(bytes: Array[Byte]) = {
+  private lazy val configWatcher = new CuratorWatcher {
+    override def process(event: WatchedEvent): Unit = updateConnectString(this)
+  }
+
+  private def updateConnectString(watcher: CuratorWatcher) = Try {
+    val connStr: String = curatorFwk.get().getConfig.usingWatcher(watcher).forEnsemble()
+    if (Option(connStr).nonEmpty && connStr.nonEmpty && connectString.get() != connStr) {
+      connectString set connStr
+      system.eventStream.publish(ZkConfigChanged(connStr))
+      logger.warn("[ZkCluster] detected Zookeeper cluster config change {}", connStr)
+    }
+  } recover {
+    case e: Throwable => logger.error(e.getMessage)
+  }
+
+  private implicit def bytesToConnectString(bytes: Array[Byte]): String = {
     val properties = new Properties
     properties.load(new ByteArrayInputStream(bytes))
     val newConfig = new QuorumMaj(properties)
@@ -126,15 +133,14 @@ case class ZkCluster(zkAddress: Address,
   @deprecated("This method should not be accessible to outside.", "0.9.0")
   def zkClientWithNs: CuratorFramework = curatorFwkWithNs()
 
-  private def curatorFwkWithNs(): CuratorFramework = synchronized {
+  private[cluster] def curatorFwkWithNs() = synchronized {
     try {
-      curatorFwk.usingNamespace(zkNamespace)
+      curatorFwk.get().usingNamespace(zkNamespace)
     } catch {
       case e: IllegalStateException =>
-        curatorFwk.close()
-        curatorFwk = CuratorFrameworkFactory.newClient(connectionString, retryPolicy)
+        curatorFwk.get().close()
         initialize()
-        curatorFwk.usingNamespace(zkNamespace)
+        curatorFwk.get().usingNamespace(zkNamespace)
     }
   }
   
@@ -142,9 +148,10 @@ case class ZkCluster(zkAddress: Address,
   
   private[cluster] def close() = {
     stopped set true
-    curatorFwk.getConnectionStateListenable.removeListener(connectionStateListener)
+    val client = curatorFwk.get()
+    client.getConnectionStateListenable.removeListener(connectionStateListener)
     shutdownListeners foreach (_(curatorFwkWithNs()))
-    curatorFwk.close()
+    client.close()
   }
 }
 

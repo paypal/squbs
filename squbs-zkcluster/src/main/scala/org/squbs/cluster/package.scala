@@ -27,6 +27,8 @@ import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.KeeperException.{NoNodeException, NodeExistsException}
 
+import scala.language.implicitConversions
+
 package object cluster {
 
   trait SegmentationLogic {
