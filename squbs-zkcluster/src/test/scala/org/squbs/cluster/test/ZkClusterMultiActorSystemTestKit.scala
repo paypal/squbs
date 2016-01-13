@@ -14,24 +14,27 @@
  *  limitations under the License.
  */
 
-package org.squbs.cluster
+package org.squbs.cluster.test
 
+import java.io.File
 import java.net.{InetAddress, ServerSocket}
 
-import akka.actor.{PoisonPill, Terminated, ActorSelection, ActorSystem}
+import akka.actor.{ActorSelection, ActorSystem, PoisonPill, Terminated}
 import akka.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
-import org.apache.zookeeper.server.quorum.QuorumPeerMain
+import com.typesafe.scalalogging.LazyLogging
+import org.apache.commons.io.FileUtils
+import org.apache.curator.test.TestingServer
+import org.squbs.cluster.ZkCluster
+import ZkClusterMultiActorSystemTestKit._
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
-import scala.util.Random
-import scala.language.postfixOps
-
-import org.squbs.cluster.ZkClusterMultiActorSystemTestKit._
+import scala.language.{implicitConversions, postfixOps}
+import scala.util.{Failure, Success, Try, Random}
 
 abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
-  extends TestKit(ActorSystem(systemName, akkaRemoteConfig withFallback zkConfig)) {
+  extends TestKit(ActorSystem(systemName, akkaRemoteConfig)) with LazyLogging {
 
   val timeout: FiniteDuration
 
@@ -51,22 +54,24 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
     // start the lazy actor
     zkClusterExts foreach { ext =>
       watch(ext._2.zkClusterActor)
-      ext._2.addShutdownListener((_) => actorSystems(ext._1).shutdown)
     }
     
     Thread.sleep(timeout.toMillis / 10)
-    println()
-    println("*********************************** Cluster Started ***********************************")
   }
 
+  protected lazy val zkConfig = ConfigFactory.parseString(
+    s"""
+       |zkCluster {
+       |  connectionString = "127.0.0.1:$ZOOKEEPER_DEFAULT_PORT"
+       |  namespace = "zkclustersystest-${System.currentTimeMillis()}"
+       |  segments = 1
+       |}
+    """.stripMargin)
+
   def shutdownCluster(): Unit = {
-    println("*********************************** Shutting Down the Cluster ***********************************")
-    val exts = zkClusterExts
-    val head = exts.head
-    head._2.addShutdownListener((zkClient) => zkClient.delete.guaranteed.deletingChildrenIfNeeded.forPath("/"))
-    exts.tail.foreach(ext => killSystem(ext._1))
-    killSystem(head._1)
+    zkClusterExts.foreach(ext => killSystem(ext._1))
     system.shutdown()
+    Thread.sleep(timeout.toMillis / 10)
   }
 
   implicit protected def int2SystemName(num: Int): String = s"member-$num"
@@ -75,17 +80,17 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
     system.actorSelection(zkCluster.zkClusterActor.path.toStringWithAddress(zkCluster.zkAddress))
 
   def killSystem(sysName: String): Unit = {
+    zkClusterExts(sysName).addShutdownListener((_) => actorSystems(sysName).shutdown)
     zkClusterExts(sysName).zkClusterActor ! PoisonPill
     expectMsgType[Terminated](timeout)
     actorSystems -= sysName
-    println(s"system $sysName got killed")
+    logger.info("system {} got killed", sysName)
   }
 
   def bringUpSystem(sysName: String): Unit = {
     actorSystems += sysName -> ActorSystem(sysName, akkaRemoteConfig withFallback zkConfig)
     watch(zkClusterExts(sysName).zkClusterActor)
-    zkClusterExts(sysName).addShutdownListener((_) => actorSystems(sysName).shutdown)
-    println(s"system $sysName is up")
+    logger.info("system {} is up", sysName)
     Thread.sleep(timeout.toMillis / 5)
   }
 
@@ -103,29 +108,25 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
 }
 
 object ZkClusterMultiActorSystemTestKit {
-  lazy val now = System.nanoTime
 
-  new Thread() {
-    override def run(): Unit = {
-      QuorumPeerMain.main(Array[String](this.getClass.getClassLoader.getResource("zoo.cfg").getFile))
-      println("Zookeeper started")
-    }
-  } start()
+  val ZOOKEEPER_STARTUP_TIME = 5000
+  val ZOOKEEPER_DEFAULT_PORT = 8085
 
-  Thread.sleep(5000)
+  val zookeeperDir = new File("zookeeper")
+  FileUtils.deleteQuietly(zookeeperDir)
+
+  new TestingServer(ZOOKEEPER_DEFAULT_PORT, zookeeperDir, true)
+
+  Thread.sleep(ZOOKEEPER_STARTUP_TIME)
 
   private def nextPort = {
     val s = new ServerSocket(0)
-    try {
-      s.getLocalPort
+    val p = Try(s.getLocalPort) match {
+      case Success(port) => port
+      case Failure(e) => throw e
     }
-    catch {
-      case e:Throwable =>
-        throw new Exception("Couldn't find an open port: %s".format(e.getMessage))
-    }
-    finally {
-      s.close()
-    }
+    s.close()
+    p
   }
 
   def akkaRemoteConfig: Config = ConfigFactory.parseString(
@@ -166,14 +167,4 @@ object ZkClusterMultiActorSystemTestKit {
        |  }
        |}
      """.stripMargin)
-
-  lazy val zkConfig = ConfigFactory.parseString(
-    s"""
-      |zkCluster {
-      |  connectionString = "127.0.0.1:8085"
-      |  namespace = "zkclustersystest-$now"
-      |  segments = 1
-      |}
-    """.stripMargin)
-  
 }

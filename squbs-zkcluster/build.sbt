@@ -1,6 +1,6 @@
-name := "squbs-zkcluster"
+import Versions._
 
-val akkaV = "2.3.10"
+name := "squbs-zkcluster"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaV,
@@ -10,9 +10,11 @@ libraryDependencies ++= Seq(
   "org.apache.curator" % "curator-framework" % "3.0.0" exclude("org.jboss.netty", "netty"),
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
-  "org.scalatest" %% "scalatest" % "2.2.1" % "test->*" exclude("org.jboss.netty", "netty"),
+  "org.scalatest" %% "scalatest" % "2.2.6" % "test->*",
   "org.mockito" % "mockito-core" % "1.9.5" % "test",
-  "org.apache.zookeeper" % "zookeeper" % "3.5.1-alpha" % "test"
+  "org.apache.curator" % "curator-test" % "3.0.0" % "test",
+  "org.testng" % "testng" % "6.1.1" % "test",
+  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 )
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
