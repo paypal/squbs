@@ -31,7 +31,7 @@ import ZkClusterMultiActorSystemTestKit._
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
-import scala.util.Random
+import scala.util.{Failure, Success, Try, Random}
 
 abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
   extends TestKit(ActorSystem(systemName, akkaRemoteConfig)) with LazyLogging {
@@ -121,16 +121,12 @@ object ZkClusterMultiActorSystemTestKit {
 
   private def nextPort = {
     val s = new ServerSocket(0)
-    try {
-      s.getLocalPort
+    val p = Try(s.getLocalPort) match {
+      case Success(port) => port
+      case Failure(e) => throw e
     }
-    catch {
-      case e:Throwable =>
-        throw new Exception("Couldn't find an open port: %s".format(e.getMessage))
-    }
-    finally {
-      s.close()
-    }
+    s.close()
+    p
   }
 
   def akkaRemoteConfig: Config = ConfigFactory.parseString(
