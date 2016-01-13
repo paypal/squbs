@@ -16,26 +16,10 @@
 
 package org.squbs.cluster
 
-import akka.testkit.ImplicitSender
 import akka.util.ByteString
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpecLike, Matchers}
-import org.squbs.testkit.Timeouts._
+import org.squbs.cluster.test.{ZkClusterMultiActorSystemTestKit, ZkClusterTestHelper}
 
-class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterEdgeCaseTest")
-  with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with BeforeAndAfterEach {
-
-  override val timeout = awaitMax
-
-  override val clusterSize: Int = 3
-
-  override def afterEach(): Unit = {
-    println("------------------------------------------------------------------------------------------")
-    Thread.sleep(timeout.toMillis / 10)
-  }
-
-  override def beforeAll() = startCluster()
-
-  override def afterAll() = shutdownCluster()
+class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterEdgeCaseTest") with ZkClusterTestHelper {
 
   "ZkCluster" should "respond to partition creation query whose size is larger than the cluster" in {
     val parKey = ByteString("myPar")
@@ -113,38 +97,31 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
 
   "ZkCluster" should "rebalance if the full member partition if follower dies" in {
     // query the leader
-    zkClusterExts(pickASystemRandomly()) tell (ZkQueryLeadership, self)
-    val leaderName = expectMsgType[ZkLeadership](timeout).address.system
-    println(s"Now leader is $leaderName")
+    val leader = getLeader(pickASystemRandomly())
     // kill any follower
-    val unluckyGuy = pickASystemRandomly(Some(leaderName))
-    killSystem(unluckyGuy)
-    Thread.sleep(timeout.toMillis / 10)
+    val killed = killFollower(leader)
     // rebalanced partition should be consistent across cluster
     val parKey = ByteString("myPar")
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(parKey), self)
         val members = expectMsgType[ZkPartition](timeout).members
         members should have size (clusterSize - 1)
-        members.map(_.system) should not contain unluckyGuy
+        members.map(_.system) should not contain killed
     }
   }
 
   "ZkCluster" should "rebalance the full member partition if leader dies" in {
     // query the leader
-    zkClusterExts(pickASystemRandomly()) tell (ZkQueryLeadership, self)
-    val leaderName = expectMsgType[ZkLeadership](timeout).address.system
-    println(s"Now leader is $leaderName")
+    val leader = getLeader(pickASystemRandomly())
     // kill the leader
-    killSystem(leaderName)
-    Thread.sleep(timeout.toMillis / 10)
+    val killed = killLeader(leader)
     // rebalanced partition should be consistent across cluster
     val parKey = ByteString("myPar")
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkQueryPartition(parKey), self)
         val members = expectMsgType[ZkPartition](timeout).members
         members should have size (clusterSize - 2)
-        members.map(_.system) should not contain leaderName
+        members.map(_.system) should not contain killed
     }
   }
 }

@@ -25,18 +25,19 @@ import akka.util.ByteString
 import com.typesafe.scalalogging.Logger
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.CreateMode
-import org.apache.zookeeper.KeeperException.{NoNodeException, NodeExistsException}
+import org.apache.zookeeper.KeeperException.NodeExistsException
 
 import scala.language.implicitConversions
+import scala.util.Try
 
 package object cluster {
 
   trait SegmentationLogic {
     val segmentsSize:Int
-    def segmentation(partitionKey:ByteString) = s"segment-${Math.abs(partitionKey.hashCode()) % segmentsSize}"
-    def partitionZkPath(partitionKey:ByteString) = s"/segments/${segmentation(partitionKey)}/${keyToPath(partitionKey)}"
-    def sizeOfParZkPath(partitionKey:ByteString) = s"${partitionZkPath(partitionKey)}/$$size"
-    def servantsOfParZkPath(partitionKey:ByteString) = s"${partitionZkPath(partitionKey)}/servants"
+    def segmentation(partitionKey:ByteString): String = s"segment-${Math.abs(partitionKey.hashCode()) % segmentsSize}"
+    def partitionZkPath(partitionKey:ByteString): String = s"/segments/${segmentation(partitionKey)}/${keyToPath(partitionKey)}"
+    def sizeOfParZkPath(partitionKey:ByteString): String = s"${partitionZkPath(partitionKey)}/$$size"
+    def servantsOfParZkPath(partitionKey:ByteString): String = s"${partitionZkPath(partitionKey)}/servants"
   }
 
   case class DefaultSegmentationLogic(segmentsSize:Int) extends SegmentationLogic
@@ -61,50 +62,12 @@ package object cluster {
     }
   }
 
-  def safelyDiscard(path:String, recursive: Boolean = true)(implicit zkClient: CuratorFramework):String = {
+  def safelyDiscard(path:String, recursive: Boolean = true)(implicit zkClient: CuratorFramework): String = Try {
     import scala.collection.JavaConversions._
-    try{
-      if(recursive)
-        zkClient.getChildren.forPath(path).foreach(child => safelyDiscard(s"$path/$child", recursive))
-      zkClient.delete.forPath(path)
-      path
-    }
-    catch{
-      case e: NoNodeException =>
-        path
-      case e: Throwable =>
-        path
-    }
-  }
-
-//  private[cluster] def orderByAge(partitionKey:ByteString, members:Set[Address])
-//      (implicit zkClient:CuratorFramework, zkSegmentationLogic:SegmentationLogic):Seq[Address] = {
-//
-//    if(members.isEmpty)
-//      Seq.empty[Address]
-//    else {
-//      val zkPath = zkSegmentationLogic.partitionZkPath(partitionKey)
-//      val servants:Seq[String] = try{
-//        zkClient.getChildren.forPath(zkPath)
-//      }
-//      catch {
-//        case e:Exception => Seq.empty[String]
-//      }
-//
-//      val ages:Map[Address, Long] = servants.filterNot(_ == "$size").map(child => try{
-//          AddressFromURIString.parse(pathToKey(child)) -> zkClient.checkExists.forPath(s"$zkPath/$child").getCtime
-//        }
-//        catch{
-//          case e:Exception =>
-//            AddressFromURIString.parse(pathToKey(child)) -> -1L
-//        }).filterNot(_._2 == -1L).toMap
-//      //this is to ensure that the partitions query result will always give members in the order of oldest to youngest
-//      //this should make data sync easier, the newly on-board member should always consult with the 1st member in the
-//      //query result to sync with.
-//      members.toSeq.sortBy(ages.getOrElse(_, 0L))
-//    }
-//    members.toSeq
-//  }
+    if(recursive) zkClient.getChildren.forPath(path).foreach(child => safelyDiscard(s"$path/$child", recursive))
+    zkClient.delete.forPath(path)
+    path
+  } getOrElse path
 
   def keyToPath(name:String):String = URLEncoder.encode(name, "utf-8")
 
@@ -132,13 +95,9 @@ package object cluster {
 
     def toByteString: ByteString = ByteString(bytes)
 
-    def toAddressSet: Set[Address] = {
-      try {
-        new String(bytes, UTF_8).split("[,]").map(seg => AddressFromURIString(seg.trim)).toSet
-      }catch {
-        case _: Throwable => Set.empty
-      }
-    }
+    def toAddressSet: Set[Address] = Try {
+      new String(bytes, UTF_8).split("[,]").map(seg => AddressFromURIString(seg.trim)).toSet
+    } getOrElse Set.empty
   }
 
 

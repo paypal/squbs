@@ -16,27 +16,17 @@
 
 package org.squbs.cluster
 
-import akka.testkit.ImplicitSender
 import akka.util.ByteString
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.CuratorFrameworkFactory
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.zookeeper.CreateMode
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpecLike, Matchers}
-import org.squbs.testkit.Timeouts._
+import org.squbs.cluster.test.{ZkClusterMultiActorSystemTestKit, ZkClusterTestHelper}
 
-class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitTest") with LazyLogging
-  with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with BeforeAndAfterEach {
-  import org.squbs.cluster.ZkClusterMultiActorSystemTestKit._
+import scala.language.implicitConversions
 
-  override val timeout = awaitMax
-
-  override val clusterSize: Int = 6
-
-  override def afterEach(): Unit = {
-    println("------------------------------------------------------------------------------------------")
-    Thread.sleep(1000)
-  }
+class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitTest")
+  with LazyLogging with ZkClusterTestHelper {
 
   val par1 = ByteString("myPar1")
   val par2 = ByteString("myPar2")
@@ -44,14 +34,15 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
 
   implicit val log = logger
   implicit def string2ByteArray(s: String): Array[Byte] = s.toCharArray map (c => c.toByte)
-  implicit def ByteArray2String(array: Array[Byte]): String = array.map(_.toChar).mkString
+  implicit def byteArray2String(array: Array[Byte]): String = array.map(_.toChar).mkString
 
-  override def beforeAll() = {
+  override def beforeAll(): Unit = {
     // Don't need to start the cluster for now
     // We preset the data in Zookeeper instead.
     val zkClient = CuratorFrameworkFactory.newClient(
       zkConfig.getString("zkCluster.connectionString"),
-      new ExponentialBackoffRetry(1000, 3))
+      new ExponentialBackoffRetry(ZkCluster.DEFAULT_BASE_SLEEP_TIME_MS, ZkCluster.DEFAULT_MAX_RETRIES)
+    )
     zkClient.start()
     zkClient.blockUntilConnected()
     implicit val zkClientWithNS = zkClient.usingNamespace(zkConfig.getString("zkCluster.namespace"))
@@ -71,13 +62,11 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
     zkClient.close()
   }
 
-  override def afterAll() = shutdownCluster()
-
   "ZkCluster" should "list the partitions" in {
     startCluster()
     zkClusterExts foreach {
       case (_, ext) => ext tell (ZkListPartitions(ext.zkAddress), self)
-        println(expectMsgType[ZkPartitions](timeout))
+        expectMsgType[ZkPartitions](timeout)
     }
   }
 

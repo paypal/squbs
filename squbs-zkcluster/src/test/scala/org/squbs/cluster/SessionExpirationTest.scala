@@ -16,21 +16,21 @@
 
 package org.squbs.cluster
 
-import akka.actor.{Terminated, PoisonPill}
-import akka.testkit.ImplicitSender
 import org.apache.curator.test.KillSession
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.squbs.cluster.test.{ZkClusterMultiActorSystemTestKit, ZkClusterTestHelper}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class SessionExpirationTest extends ZkClusterMultiActorSystemTestKit("SessionExpirationTest")
-  with ImplicitSender with FlatSpecLike with Matchers {
+  with ZkClusterTestHelper {
+
   override val timeout: FiniteDuration = 60 seconds
   override val clusterSize: Int = 1
 
+
   "ZkCluster" should "response to session expiration" in {
-    val cluster = ZkCluster(system)
+    val cluster = zkClusterExts.values.head
 
     cluster.zkClusterActor ! ZkQueryLeadership
     val leader = expectMsgType[ZkLeadership](timeout)
@@ -41,10 +41,5 @@ class SessionExpirationTest extends ZkClusterMultiActorSystemTestKit("SessionExp
 
     cluster.zkClusterActor ! ZkQueryLeadership
     expectMsgType[ZkLeadership](timeout) should be (leader)
-
-    cluster.addShutdownListener((zkClient) => zkClient.delete.guaranteed.deletingChildrenIfNeeded.forPath("/"))
-    watch(cluster.zkClusterActor)
-    cluster.zkClusterActor ! PoisonPill
-    expectMsgType[Terminated](timeout)
   }
 }

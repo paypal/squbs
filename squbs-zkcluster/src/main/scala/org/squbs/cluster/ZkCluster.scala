@@ -19,6 +19,7 @@ package org.squbs.cluster
 import java.io.ByteArrayInputStream
 import java.net.InetAddress
 import java.util.Properties
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 
 import akka.actor._
@@ -53,7 +54,7 @@ case class ZkCluster(zkAddress: Address,
   private[this] val curatorFwk = new AtomicReference[CuratorFramework]()
   private[this] val connectString = new AtomicReference[String](initConnStr)
   private[this] val stopped = new AtomicBoolean(false)
-  private[this] var shutdownListeners = List.empty[(CuratorFramework) => Unit]
+  private[this] val shutdownListeners = new ConcurrentLinkedQueue[(CuratorFramework => Unit)]()
 
   private[this] val connectionStateListener: ConnectionStateListener = new ConnectionStateListener {
     override def stateChanged(client: CuratorFramework, newState: ConnectionState): Unit = {
@@ -134,17 +135,16 @@ case class ZkCluster(zkAddress: Address,
   def zkClientWithNs: CuratorFramework = curatorFwkWithNs()
 
   private[cluster] def curatorFwkWithNs() = synchronized {
-    try {
+    Try {
       curatorFwk.get().usingNamespace(zkNamespace)
-    } catch {
-      case e: IllegalStateException =>
-        curatorFwk.get().close()
-        initialize()
-        curatorFwk.get().usingNamespace(zkNamespace)
+    } getOrElse {
+      curatorFwk.get().close()
+      initialize()
+      curatorFwk.get().usingNamespace(zkNamespace)
     }
   }
   
-  def addShutdownListener(listener: CuratorFramework => Unit): Unit = shutdownListeners = listener :: shutdownListeners
+  def addShutdownListener(listener: CuratorFramework => Unit): Unit = shutdownListeners offer listener
   
   private[cluster] def close() = {
     stopped set true
