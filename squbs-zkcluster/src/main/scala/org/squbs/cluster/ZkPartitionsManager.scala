@@ -28,7 +28,7 @@ import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
 import scala.collection.JavaConversions._
 import scala.language.postfixOps
-import scala.util.Try
+import scala.util.{Failure, Try}
 
 private[cluster] case class ZkRebalance(planedPartitions: Map[ByteString, ZkPartitionData])
 private[cluster] case class ZkPartitionsChanged(segment:String, partitions: Map[ByteString, ZkPartitionData])
@@ -117,11 +117,12 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
         curatorFwk.getData.usingWatcher(partitionWatcher).forPath(servantsOfParZkPath(partitionKey)).toAddressSet
       val expectedSize =
         curatorFwk.getData.usingWatcher(partitionWatcher).forPath(sizeOfParZkPath(partitionKey)).toInt
-      Some(ZkPartitionData(partitionKey, servants, partitionSize(partitionKey), expectedSize))
-    } recover {
-      case t: Throwable => log.error("partitions refresh failed due to unknown reason: {}", t.getMessage)
-        None
-    } get
+      ZkPartitionData(partitionKey, servants, partitionSize(partitionKey), expectedSize)
+    } recoverWith {
+      case t: Throwable =>
+        log.error("partitions refresh failed due to unknown reason: {}", t.getMessage)
+        Failure(t)
+    } toOption
   }
 
   private def whenPartitionChanged(segment: String, change: ZkPartitionData) = {
