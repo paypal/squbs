@@ -55,6 +55,7 @@ TODO: Reference to template projects
 * [Timeout Policy](docs/timeoutpolicy.md)
 * [Validation](docs/validation.md)
 * [Console](docs/console.md)
+* [Application Lifecycle Management](docs/packaging.md)
 
 ##Contributing to squbs
 Thank you very much for contributing to squbs. Please read the [contribution guidelines](CONTRIBUTING.md) for the process.
