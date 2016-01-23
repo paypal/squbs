@@ -17,7 +17,7 @@
 package org.squbs.unicomplex
 
 import akka.actor.ActorSystem
-import org.squbs.lifecycle.GracefulStop
+import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop}
 
 
 object Bootstrap extends App {
@@ -38,4 +38,14 @@ object Shutdown extends App {
   val preConfig = UnicomplexBoot.getFullConfig(None)
   val actorSystemName = preConfig.getString("squbs.actorsystem-name")
   Unicomplex(actorSystemName) ! GracefulStop
+}
+
+class JvmShutdownHook extends ExtensionLifecycle {
+  override def init(): Unit = {
+    Runtime.getRuntime.addShutdownHook(new Thread() {
+      override def run() {
+        Unicomplex(boot.actorSystem).uniActor ! GracefulStop
+      }
+    })
+  }
 }
