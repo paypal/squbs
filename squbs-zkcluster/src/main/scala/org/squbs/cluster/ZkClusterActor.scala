@@ -21,8 +21,10 @@ import java.util
 import akka.actor._
 import akka.util.ByteString
 import com.typesafe.scalalogging.LazyLogging
+import org.apache.curator.framework.CuratorFramework
 import org.squbs.cluster.JMX._
 
+import scala.language.postfixOps
 import scala.util.Try
 
 private[cluster] sealed trait ZkClusterState
@@ -37,7 +39,8 @@ private[cluster] case class ZkPartitionData(partitionKey: ByteString,
                                             props: Array[Byte] = Array.empty)
 private[cluster] case class ZkClusterData(leader: Option[Address],
                                           members: Set[Address],
-                                          partitions: Map[ByteString, ZkPartitionData])
+                                          partitions: Map[ByteString, ZkPartitionData],
+                                          curatorFwk: Option[CuratorFramework])
 
 /**
  * The main Actor of ZkCluster
@@ -66,7 +69,9 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       zkMembershipMonitor ! updatedEvent
       zkPartitionsManager ! updatedEvent
       whenZkClientUpdated.foreach(_ ! updatedEvent)
-      stay using zkClusterData.copy(partitions = ZkPartitionsManager.loadPartitions())
+      implicit val curatorFwk = updated
+      val partitions = ZkPartitionsManager.loadPartitions()
+      stay using zkClusterData.copy(partitions = partitions, curatorFwk = Some(updated))
     case Event(ZkMonitorClient, _) =>
       whenZkClientUpdated = whenZkClientUpdated :+ sender()
       stay()
@@ -103,15 +108,15 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
   }
   
   //the reason we put startWith into #preStart is to allow postRestart to trigger new FSM actor when recover from error
-  override def preStart() = {
+  override def preStart(): Unit = {
     Try{
       register(new MembersInfoBean, prefix + membersInfoName)
       register(new PartitionsInfoBean, prefix + partitionsInfoName)
     }
-    startWith(ZkClusterUninitialized, ZkClusterData(None, Set.empty[Address], Map.empty))
+    startWith(ZkClusterUninitialized, ZkClusterData(None, Set.empty[Address], Map.empty, None))
   }
   
-  override def postStop() = {
+  override def postStop(): Unit = {
     Try{
       unregister(prefix + membersInfoName)
       unregister(prefix + partitionsInfoName)
@@ -122,12 +127,15 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
   when(ZkClusterUninitialized)(mandatory orElse {
     case Event(ZkLeaderElected(Some(address)), zkClusterData) =>
       log.info("[uninitialized] leader elected:{} and my zk address:{}", address, zkAddress)
-      val partitions = ZkPartitionsManager.loadPartitions()
+      val partitions = zkClusterData.curatorFwk map {implicit fwk =>
+        ZkPartitionsManager.loadPartitions()
+      } getOrElse zkClusterData.partitions
       if(address.hostPort == zkAddress.hostPort) {
         val rebalanced = rebalance(partitions, partitions, zkClusterData.members)
         goto(ZkClusterActiveAsLeader) using zkClusterData.copy(leader = Some(address), partitions = rebalanced)
-      } else
+      } else {
         goto(ZkClusterActiveAsFollower) using zkClusterData.copy(leader = Some(address), partitions = partitions)
+      }
     case Event(ZkMembersChanged(members), zkClusterData) =>
       log.info("[uninitialized] membership updated:{}", members)
       stay using zkClusterData.copy(members = members)
@@ -141,11 +149,14 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       if(address.hostPort == zkAddress.hostPort) {
         // in case of leader dies before follower get the whole picture of partitions
         // the follower get elected need to read from Zookeeper
-        val partitions = ZkPartitionsManager.loadPartitions()
+        val partitions = zkClusterData.curatorFwk map {implicit fwk =>
+          ZkPartitionsManager.loadPartitions()
+        } getOrElse zkClusterData.partitions
         val rebalanced = rebalance(zkClusterData.partitions, partitions, zkClusterData.members)
         goto(ZkClusterActiveAsLeader) using zkClusterData.copy(leader = Some(address), partitions = rebalanced)
-      } else
+      } else {
         goto(ZkClusterActiveAsFollower) using zkClusterData.copy(leader = Some(address))
+      }
     case Event(ZkQueryLeadership, zkClusterData) =>
       log.info("[follower] leadership query answered:{} to:{}", zkClusterData.leader, sender().path)
       zkClusterData.leader.foreach(address => sender() ! ZkLeadership(address))
@@ -202,7 +213,9 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
         notifyPartitionDiffs(zkClusterData.partitions, newPartitions)("follower")
         // For the partitions without any members, we remove them from the memory map
         stay using zkClusterData.copy(partitions = newPartitions)
-      } else stay()
+      } else {
+        stay()
+      }
     case Event(remove:ZkRemovePartition, zkClusterData) =>
       zkClusterData.leader.foreach(address => {
         context.actorSelection(self.path.toStringWithAddress(address)) forward remove
@@ -212,10 +225,11 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
   
   when(ZkClusterActiveAsLeader)(mandatory orElse {
     case Event(ZkLeaderElected(Some(address)), zkClusterData) =>
-      if (address.hostPort == zkAddress.hostPort)
+      if (address.hostPort == zkAddress.hostPort) {
         stay()
-      else
+      } else {
         goto(ZkClusterActiveAsFollower) using zkClusterData.copy(leader = Some(address))
+      }
     case Event(ZkQueryLeadership, zkClusterData) =>
       log.info("[leader] leadership query answered:{} to:{}", zkClusterData.leader, sender().path)
       zkClusterData.leader.foreach(address => sender() ! ZkLeadership(address))
@@ -228,12 +242,13 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       }
       else {
         val membersLeft = zkClusterData.members.diff(members)
-        val partitionWithMemberLost = if(membersLeft.nonEmpty)
+        val partitionWithMemberLost = if(membersLeft.nonEmpty) {
           zkClusterData.partitions.mapValues { partition =>
             partition.copy(members = partition.members.diff(membersLeft))
           }
-        else
+        } else {
           zkClusterData.partitions
+        }
         val rebalanced = rebalance(zkClusterData.partitions, partitionWithMemberLost, members)
         stay using zkClusterData.copy(members = members, partitions = rebalanced)
       }
@@ -262,7 +277,9 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
               partitions = zkClusterData.partitions
                 + (key -> existence.copy(expectedSize = sizeOpt.getOrElse(originalExpectedSize)))
             )
-          }else stay()
+          } else {
+            stay()
+          }
         case None if sizeOpt.isEmpty => // 2
           log.info("[leader] partition does not exists:{}", keyToPath(partitionKey))
           sender() ! ZkPartitionNotFound(partitionKey)
@@ -310,15 +327,15 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
   private[cluster] def rebalance(current: Map[ByteString, ZkPartitionData],
                                  base: Map[ByteString, ZkPartitionData],
                                  members:Set[Address]): Map[ByteString, ZkPartitionData] = {
-    if (base.isEmpty) return Map.empty
     //spareLeader only when there are more than 1 VMs in the cluster
-    val candidates = if(rebalanceLogic.spareLeader && members.size > 1)
-      members.filterNot{ candidate => stateData.leader contains candidate }
-    else
+    val candidates = if(rebalanceLogic.spareLeader && members.size > 1) {
+      members.filterNot { candidate => stateData.leader contains candidate }
+    } else {
       members
+    }
     val plan = rebalanceLogic.rebalance(
       rebalanceLogic.compensate(
-        base.map{case(key, value) => key -> value.members},
+        base map { case(key, value) => key -> value.members },
         candidates.toSeq,
         (key) => base.get(key).get.expectedSize
       ),
@@ -352,10 +369,11 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
         val originalMembers = originalPartitions.get(partitionKey).map(_.members).getOrElse(Set.empty[Address])
         val onBoardMembers = newMembers diff originalMembers
         val dropOffMembers = originalMembers diff newMembers
-        if (onBoardMembers.nonEmpty || dropOffMembers.nonEmpty)
+        if (onBoardMembers.nonEmpty || dropOffMembers.nonEmpty) {
           Some(ZkPartitionDiff(partitionKey, onBoardMembers, dropOffMembers, props))
-        else
+        } else {
           None
+        }
     } collect {
       case Some(diff) => diff
     } toList) ++ partitionsToRemove

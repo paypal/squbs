@@ -20,20 +20,19 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor.{Actor, Address, AddressFromURIString}
 import com.typesafe.scalalogging.LazyLogging
+import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.api.CuratorWatcher
-import org.apache.curator.framework.recipes.leader.LeaderLatch
+import org.apache.curator.framework.recipes.leader.{LeaderLatch, LeaderLatchListener}
 import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
 import scala.collection.JavaConversions._
-import scala.concurrent.duration._
 
-private[cluster] case object ZkAcquireLeadership
 private[cluster] case class ZkLeaderElected(address: Option[Address])
 private[cluster] case class ZkMembersChanged(members: Set[Address])
 
 /**
- * the membership monitor has a few responsibilities, 
+ * the membership monitor has a few responsibilities,
  * most importantly to enroll the leadership competition and get membership,
  * leadership information immediately after change
  */
@@ -41,58 +40,42 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
 
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._
-  
+
   private[this] implicit val log = logger
   private[this] var zkLeaderLatch: Option[LeaderLatch] = None
   private[this] val stopped = new AtomicBoolean(false)
   
-  def initialize() = {
+  private def initialize()(implicit curatorFwk: CuratorFramework) = {
     //watch over leader changes
-    val leader = Option(zkClientWithNs.getData.usingWatcher(new CuratorWatcher {
+    curatorFwk.getData.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
         log.debug("[membership] leader watch event:{} when stopped:{}", event, stopped.toString)
-        if(!stopped.get) {
-          event.getType match {
-            case EventType.NodeCreated | EventType.NodeDataChanged =>
-              zkClusterActor ! ZkLeaderElected(zkClientWithNs.getData.usingWatcher(this).forPath("/leader").toAddress)
-            case EventType.NodeDeleted =>
-              self ! ZkAcquireLeadership
-            case _ =>
-          }
+        if(!stopped.get && event.getType == EventType.NodeDataChanged) {
+          zkClusterActor ! ZkLeaderElected(curatorFwk.getData.usingWatcher(this).forPath("/leader").toAddress)
         }
       }
-    }).forPath("/leader"))
+    }).forPath("/leader")
 
     //watch over my self
     val me = guarantee(s"/members/${keyToPath(zkAddress.toString)}", Some(Array[Byte]()), CreateMode.EPHEMERAL)
     // Watch and recreate member node because it's possible for ephemeral node to be deleted while session is
     // still alive (https://issues.apache.org/jira/browse/ZOOKEEPER-1740)
-    zkClientWithNs.getData.usingWatcher(new CuratorWatcher {
+    curatorFwk.getData.usingWatcher(new CuratorWatcher {
       def process(event: WatchedEvent): Unit = {
         log.debug("[membership] self watch event: {} when stopped:{}", event, stopped.toString)
-        if(!stopped.get) {
-          event.getType match {
-            case EventType.NodeDeleted =>
-              log.info("[membership] member node was deleted unexpectedly, recreate")
-              zkClientWithNs.getData.usingWatcher(this).forPath(
-                guarantee(me, Some(Array[Byte]()), CreateMode.EPHEMERAL)
-              )
-            case _ =>
-          }
+        if(!stopped.get && event.getType == EventType.NodeDeleted) {
+          log.info("[membership] member node was deleted unexpectedly, recreate")
+          curatorFwk.getData.usingWatcher(this).forPath(guarantee(me, Some(Array[Byte]()), CreateMode.EPHEMERAL))
         }
       }
     }).forPath(me)
 
     //watch over members changes
-    lazy val members = zkClientWithNs.getChildren.usingWatcher(new CuratorWatcher {
+    lazy val members = curatorFwk.getChildren.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
         log.debug("[membership] membership watch event:{} when stopped:{}", event, stopped.toString)
-        if(!stopped.get) {
-          event.getType match {
-            case EventType.NodeChildrenChanged =>
-              refresh(zkClientWithNs.getChildren.usingWatcher(this).forPath("/members"))
-            case _ =>
-          }
+        if(!stopped.get && event.getType == EventType.NodeChildrenChanged) {
+          refresh(curatorFwk.getChildren.usingWatcher(this).forPath("/members"))
         }
       }
     }).forPath("/members")
@@ -100,15 +83,12 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
     def refresh(members: Seq[String]) = {
       // tell the zkClusterActor to update the memory snapshot
       zkClusterActor ! ZkMembersChanged(members.map(m => AddressFromURIString(pathToKey(m))).toSet)
-      // member changed, try to acquire the leadership
-      self ! ZkAcquireLeadership
     }
 
     refresh(members)
-    leader foreach { l => zkClusterActor ! ZkLeaderElected(l.toAddress) }
   }
   
-  override def postStop() = {
+  override def postStop(): Unit = {
     //stop the leader latch to quit the competition
     stopped set true
     zkLeaderLatch foreach (_.close())
@@ -118,20 +98,22 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
   def receive: Actor.Receive = {
     case ZkClientUpdated(updated) =>
       // differentiate first connected to ZK or reconnect after connection lost
+      implicit val curatorFwk = updated
       zkLeaderLatch foreach (_.close())
-      zkLeaderLatch = Some(new LeaderLatch(zkClientWithNs, "/leadership"))
-      zkLeaderLatch foreach (_.start())
+      zkLeaderLatch = Option(new LeaderLatch(curatorFwk, "/leadership"))
       initialize()
-    case ZkAcquireLeadership =>
-      //repeatedly enroll in the leadership competition once the last attempt fails
-      val oneSecond = 1.second
-      zkLeaderLatch foreach {
-        _.await(oneSecond.length, oneSecond.unit) match {
-          case true =>
+      zkLeaderLatch foreach {latch =>
+        latch.addListener(new LeaderLatchListener {
+          override def isLeader(): Unit = {
             log.info("[membership] leadership acquired @ {}", zkAddress)
-            guarantee("/leader", Some(zkAddress))
-          case false =>
-        }
+            guarantee("/leader", Some(zkAddress))(curatorFwk, log)
+          }
+          override def notLeader(): Unit = {
+            zkClusterActor ! ZkLeaderElected(curatorFwk.getData.forPath("/leader").toAddress)
+          }
+        }, context.dispatcher)
+        latch.start()
+        zkClusterActor ! ZkLeaderElected(curatorFwk.getData.forPath("/leader").toAddress)
       }
   }
 }
