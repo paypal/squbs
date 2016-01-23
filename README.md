@@ -32,6 +32,8 @@ squbs (pronounced "skewbs")is a software container and a suite of components ena
 8. **Pipeline**: An infrastructure allowing sequencing and plugging in of request/response filters. These are used, for instance, for security, rate limiting, logging, etc.
 Each of the components have virtually no dependency on each others. They are truly loosely coupled. Developers and organizations are free to pick and choose the components needed for their environment.
 
+9. **Console**: A drop-in module allowing web access to system and application stats through a simple web and service interface returning pretty-printed JSON.
+
 ##Getting Started
 
 The easiest way to getting started is to create a project from one of our templates. The followings are currently available templates:
@@ -54,6 +56,7 @@ TODO: Reference to template projects
 * [The ActorRegistry](docs/registry.md)
 * [Timeout Policy](docs/timeoutpolicy.md)
 * [Validation](docs/validation.md)
+* [Console](docs/console.md)
 
 ##Contributing to squbs
 Thank you very much for contributing to squbs. Please read the [contribution guidelines](CONTRIBUTING.md) for the process.

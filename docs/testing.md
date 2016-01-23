@@ -3,7 +3,7 @@ All tests on squbs have been written using ScalaTest 2.x. Specs2 has not yet bee
 
 Depending on the test requirements, squbs provides two traits to help write test cases:
 
-1. `org.squbs.testkit.SimpleTestKit` The SimpleTestKit is used for starting a full blown squbs instance needed for testing bits and pieces of applications in a single Unicomplex instance and single ActorSystem. SimpleTestKit is simple to use and needs minimal configuration. It is however not suited for parallel tests that need different squbs configurations for each test case. Also, tests based on SimpleTestKit needs to be forked. It cannot run directly inside sbt.
+1. `org.squbs.testkit.SimpleTestKit` The SimpleTestKit is used for starting a full blown squbs instance needed for testing bits and pieces of applications in a single Unicomplex instance and single ActorSystem. SimpleTestKit is simple to use and needs minimal configuration. It is however not suited for parallel tests that need different squbs configurations for each test case. Also, tests based on SimpleTestKit needs to be forked as a separate JVM. You have to make sure to set `fork in (Test,run) := true` in sbt. Please see the [sbt documentation](http://www.scala-sbt.org/0.13/docs/Forking.html) for more detail on forking.
 
 2. `org.squbs.testkit.CustomTestKit` For those who need ultimate power and flexibility to control your tests and be able to run different test cases needing different configurations together and in parallel, CustomTestKit is the right answer. You can start any number of ActorSystems and Unicomplex instances, one per ActorSystem, with different configurations - all on the same JVM. You just have to ensure the ActorSystem and Unicomplex instances do not conflict.
 
@@ -15,7 +15,6 @@ You can use SimpleTestKit by just extending the test case from it. squbs is goin
 ```scala
 package com.myorg.mypkg
 import org.scalatest.{FunSpecLike, Matchers}
-
 import org.squbs.testkit.SimpleTestKit
 
 class ActorCalLogTest extends SqubsTestKit with FunSpecLike with Matchers {
@@ -24,7 +23,6 @@ class ActorCalLogTest extends SqubsTestKit with FunSpecLike with Matchers {
 
 }
 ```
-
 
 ##CustomTestKit example:
 
@@ -55,16 +53,18 @@ object MyTest {
   // to force prefixing the JMX bean registration or JMX names will collide.
   // To do so, set the config entry "squbs." + JMX.prefixConfig to true.
   
-  val mapConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name"    -> "myTest",
-      "squbs.external-config-dir" -> configDir,
-      "squbs." + JMX.prefixConfig -> Boolean.box(true)
-    )
+  val config = ConfigFactory.parseString(
+    s"""
+       |squbs {
+       |  actorsystem-name = myTest
+       |  external-config-dir = $configDir
+       |  ${JMX.prefixConfig} = true
+       |}
+    """.stripMargin
   )
 
   // Now, start the boot with the given config.
-  val boot = UnicomplexBoot(mapConfig)
+  val boot = UnicomplexBoot(config)
     .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
     .initExtensions
     .start()
@@ -127,3 +127,11 @@ class MyRouteTest extends FlatSpecLike with Matchers with ScalatestRouteTest {
   }
 }
 ```
+
+Alternatively, you may also want to pass a web context to your route. This can be done by passing it to `TestRoute` as follows:
+
+```scala
+  val route = TestRoute[MyRoute](webContext = "mycontext")
+```
+
+or just pass `"mycontext"` without the parameter name. The `TestRoute` signature without parameters is equivalent to passing the root context `""`.

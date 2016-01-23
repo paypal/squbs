@@ -19,42 +19,28 @@ package org.squbs.cluster
 import akka.actor._
 import akka.remote.QuarantinedEvent
 
-import scala.util.Try
+/**
+ * Created by zhuwang on 2/8/15.
+ */
 
 /**
  * The RemoteGuardian subscribe to QuarantinedEvent
- * If it cannot reach a number of remote systems, probably itself runs into problems
- * Then close the Zookeeper connection and terminate the entire system
+ * If a QuarantinedEvent arrives, it will close the connection to Zookeeper and exit the JVM using code 99
+ * External monitor tool like JSW can be configured to restart the app according to the exist code
  */
 class RemoteGuardian extends Actor with ActorLogging {
   
   val zkCluster= ZkCluster(context.system)
-  import zkCluster._
   
-  val suicideThreshold = Try {
-    context.system.settings.config.getInt("zkCluster.suicide-threshold")
-  } getOrElse 3
-  
-  override def preStart() = context.system.eventStream.subscribe(self, classOf[QuarantinedEvent])
-  
-  private[this] var quarantinedRemotes = Set.empty[Address]
-  
+  override def preStart: Unit = context.system.eventStream.subscribe(self, classOf[QuarantinedEvent])
+
+  val EXIT_CODE = 99
+
   override def receive: Receive = {
     case QuarantinedEvent(remote, uid) => // first QuarantinedEvent arrived
-      log.error("[RemoteGuardian] get Quarantined event for remote {} uid {}", remote, uid)
-      quarantinedRemotes += remote
-      zkClusterActor ! ZkQueryMembership
-      context become {
-        case ZkMembership(members) => members -- quarantinedRemotes foreach {address =>
-          context.actorSelection(self.path.toStringWithAddress(address)) ! Identify("ping")
-        }
-        case QuarantinedEvent(qRemote, _) => quarantinedRemotes += qRemote
-          if (quarantinedRemotes.size >= suicideThreshold) {
-            log.error("[RemoteGuardian] cannot reach {} any more. Performing a suicide ... ", quarantinedRemotes)
-            zkCluster.addShutdownListener(context.system.shutdown)
-            zkClusterActor ! PoisonPill
-          }
-        case other => // don't care
-      }
+      log.error("[RemoteGuardian] get Quarantined event for remote {} uid {}. Performing a suicide ...", remote, uid)
+      zkCluster.addShutdownListener((_) => context.system.shutdown)
+      zkCluster.addShutdownListener((_) => System.exit(EXIT_CODE))
+      zkCluster.zkClusterActor ! PoisonPill
   }
 }

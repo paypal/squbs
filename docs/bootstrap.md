@@ -1,8 +1,7 @@
 #Unicomplex & Cube Bootstrapping
 
-squbs comes with a default bootstrap class `org.squbs.unicomplex.Bootstrap`. This can be started from IDEs, command line, sbt, or even Maven. Bootstrap scans the classpath and finds META-INF/squbs-meta.&lt;ext&gt; in each classpath entry.
-If squbs metadata is available, the jar is treated as squbs cube or extension and initialized according to the
-metadata declarations. The bootstrap then first initializes extensions, cubes, then service routes last regardless of
+squbs comes with a default bootstrap class `org.squbs.unicomplex.Bootstrap`. This can be started from IDEs, command line, sbt, or even Maven. Bootstrap scans the class loader and finds META-INF/squbs-meta.&lt;ext&gt; in each loaded jar resource.
+If squbs metadata is available, the jar resource is treated as squbs cube or extension and initialized according to the metadata declarations. The bootstrap then first initializes extensions, cubes, then service routes last regardless of
 their sequence in the classpath.
 
 Given normal circumstances, bootstrapping detail are of not much significance. However, one may need to programmatically bootstrap squbs in different ways. This is especially common in test cases needing custom configuration and needing to run in parallel. Please see [Testing](testing.md) for more information. The syntax for bootstrapping squbs is as follows:
@@ -30,14 +29,14 @@ UnicomplexBoot {(name, config) => ActorSystem(name, config)}
 
 Lets take a look at each component.
 
-1. Creating the UnicomplexBoot (boot) object. This can be done by passing a custom config or an actor system creator function to `UnicomplexBoot.apply()`.
+1. Creating the UnicomplexBoot (boot) object. This can be done by passing a custom config or an actor system creator closure to `UnicomplexBoot.apply()`.
 
-2. The configuration object shown as customConfig in the example above. This is a configuration object obtained from the Typesafe Config library's parse functions. This config object is not yet merged with `reference.conf`. It is optional and substitutes other `application.conf` configurations defined.
+2. The configuration object shown as `customConfig` in the example above. This is a configuration object obtained from the Typesafe Config library's parse functions. This config object is not yet merged with `reference.conf`. It is optional and substitutes other `application.conf` configurations defined.
 
-3. The ActorSystem creator passes a function to create the ActorSystem. The actual creation happens in the start phase (item 7, below). The default function is `{(name, config) => ActorSystem(name, config)}`. The name passed in is the intended ActorSystem name read from the configuration. The config is the loaded configuration object after merging with any provided config. Most use cases would want to create the ActorSystem this way and thus the function need not be provided.
+3. The ActorSystem creator passes a function or closure to create the ActorSystem. The actual creation happens in the start phase (item 7, below). The default function is `{(name, config) => ActorSystem(name, config)}`. The input name is the intended ActorSystem name read from the configuration. The config is the loaded configuration object after merging with any provided config. Most use cases would want to create the ActorSystem this way and thus the function need not be provided. `createUsing` can be avoided altogether.
 
 4. Scanning components looking for cubes, services, or extensions using the `scanResources()` function. This is
-mandatory as there would be no components to start. Normally, the squbs bootstrap will scan the class loader. 
+mandatory as there would otherwise be no components to start. If no arguments are passed, the squbs bootstrap will scan its class loader. 
 Test cases may want to target certain components to scan only. This can be done by passing the location of additional
 `squbs-meta.conf` file locations (as a variable argument to scanResources), such as
 `.scanResources("component1/META-INF/squbs-meta.conf", "component2/META-INF/squbs-meta.conf")`. This will scan your
@@ -45,12 +44,12 @@ classpath and the given resources in addition. If you do not want classpath to b
 `withClassPath = false` or just `false` as the first argument before the resource list: 
 `.scanResources(withClassPath = false, "component1/META-INF/squbs-meta.conf", "component2/META-INF/squbs-meta.conf")`
 
-5. Initialize the extensions using the `initExtentension` function. This will initialize the extensions scanned. Extension initialization is done before the ActorSystem is created. For multiple Unicomplex cases (multiple ActorSystems), the same extension must not be initialized more than once. An extension can only be used by one test case. In some cases we do not want to initialize the extensions at all and would not call `initExtension`
+5. Initialize the extensions using the `initExtension` function. This will initialize the extensions scanned. Extension initialization is done before the ActorSystem is created. For multiple Unicomplex cases (multiple ActorSystems), the same extension must not be initialized more than once. An extension can only be used by one test case. In some test cases we do not want to initialize the extensions at all and would not call `initExtension` altogether.
 
 6. Stopping the JVM on exit. This is enabled by calling the `stopJVMOnExit` function. This option should generally not be used for test cases. It is used by squbs' bootstrap to make sure squbs shuts down and exits properly.
 
-7. Starting the Unicomplex by calling `start()`. This is a mandatory step. Without it no ActorSystems start and no 
-Actor would be able to run. The start call will block until the system is fully up and running, or a timeout occurs.
+7. Starting the Unicomplex by calling `start()`. This is a mandatory step. Without it no ActorSystem starts and no 
+Actor would be able to run. The start call blocks until the system is fully up and running, or a timeout occurs.
 When start times out, some components may still be initializing, leaving the system in `Initializing` state. However,
 any single component failure will flip the system state to `Failed` at timeout. This would allow for system components
 like system diagnostics to run and complete. The default start timeout is set to 60 seconds. For tests that expect
@@ -66,7 +65,7 @@ squbs chooses one application configuration and merges it with the aggregated ap
 
 2. If an `application.conf` file is provided in the external config directory, this `application.conf` is chosen. The external config dir is configured by setting the config property `squbs.external-config-dir` and defaults to `squbsconfig`. Not that this directory cannot be changed or overridden by supplied configuration or an external configuration (as the directory itself is determined using the config property.)
 
-3. Otherwise, the `application.conf` provided with the application, if any, will be used. This then falls back to the reference.conf.
+3. Otherwise, the `application.conf` provided with the application, if any, will be used. This then falls back to the `reference.conf`.
 
 #Drop-in Modular System 
 
@@ -74,9 +73,7 @@ squbs divides applications into modules called cubes. Modules in squbs are inten
 well as on a flat classpath. Modular isolation is intended for true loose coupling of the modules, without incurring
 any classpath conflicts due to the dependencies.
 
-The current implementation bootstraps from a flat classpath. Modular isolation is planned for a future version of squbs.
-
-On bootstrapping, squbs will automatically detect the modules by classpath scanning. Scanned cubes are detected and started automatically.
+The current implementation bootstraps from a flat classpath. On bootstrapping, squbs will automatically detect the modules by classpath scanning. Scanned cubes are detected and started automatically.
 
 ##Cube Jars
 
@@ -93,13 +90,15 @@ the followings:
 
 *Extension*: Identifies a squbs framework extension. The extension entry point has to extend from
     org.squbs.lifecycle.ExtensionInit trait.
+    
+##Configuration Resolution
 
+Providing `application.conf` for a cube may cause issues when multiple cubes try to provide their internal `application.conf`. The precedence rules for merging such configuration is undefined. It is recommended cubes only provide a `reference.conf` and can be overridden by an external `application.conf` for deployment.
 
 ##Well Known Actors
 
-Well known actors are just [Akka actors](http://doc.akka.io/docs/akka/2.2.3/scala/actors.html) as defined by the
-[Akka documentation](http://doc.akka.io/docs/akka/2.2.3/scala/actors.html). They are started by a supervisor actor that
-is created for each cube. The supervisor carries the name of the cube. Therefore any well known actor has a path of
+Well known actors are just [Akka actors](http://doc.akka.io/docs/akka/2.3.13/scala/actors.html) as defined by the
+[Akka documentation](http://doc.akka.io/docs/akka/2.3.13/scala.html). They are started by a supervisor actor that is created for each cube. The supervisor carries the name of the cube. Therefore any well known actor has a path of
 /&lt;CubeName&gt;/&lt;ActorName&gt; and can be looked up using the ActorSelection call under /user/&lt;CubeName&gt;/&lt;ActorName&gt;.
 
 A well known actor can be started as a singleton actor or with a router. To declare a well known actor as a router,
@@ -128,7 +127,7 @@ The `init-required` parameter is used for actors that need to signal back their 
 If an actor is configured `with-router` (with-router = true) and a non-default dispatcher, the intention is usually to
 schedule the actor (routee) on the non-default dispatcher. The router will assume the well known actor name, not the
 routee (your actor implementation). A dispatcher set on the router will only affect the router, not the routee. To
-affect the routee, you need to create a separate configuration for the routees (by appending "/*" to the name) and
+affect the routee, you need to create a separate configuration for the routees and append "/*" to the name. Next you want to
 configure the dispatcher in the routee section as the following example.
 
 ```
@@ -151,18 +150,18 @@ akka.actor.deployment {
 ```
 
 Router concepts, examples, and configuration, are documented in the
-[Akka documentation](http://doc.akka.io/docs/akka/2.2.3/scala/routing.html).
+[Akka documentation](http://doc.akka.io/docs/akka/2.3.13/scala/routing.html).
 
 ##Services
 
-Each service entry point is bound to a unique web context which is the leading path segments separated by the `/` character. For instance, the url `http://mysite.com/my-context/index` would match the context `"my-context"`, if registered. It can also match the root context if `"my-context"` is not registered. Web contexts are not necessarily the first slash-separated segment of the path. Dependent on the context registration, it may match multiple such segments. A concrete example would be a URL with service versioning. The URL `http://mysite.com/my-context/v2/index` may have either `my-context` or `my-context/v2` as the web context, depending on what contexts are registered. If both `my-context` and `my-context/v2` are registered, the longest match - in this case `my-context/v2` will apply.
+Each service entry point is bound to a unique web context which is the leading path segments separated by the `/` character. For instance, the url `http://mysite.com/my-context/index` would match the context `"my-context"`, if registered. It can also match the root context if `"my-context"` is not registered. Web contexts are not necessarily the first slash-separated segment of the path. Dependent on the context registration, it may match multiple such segments. A concrete example would be a URL with service versioning. The URL `http://mysite.com/my-context/v2/index` may have either `my-context` or `my-context/v2` as the web context, depending on what contexts are registered. If both `my-context` and `my-context/v2` are registered, the longest match - in this case `my-context/v2` will be used for routing the request.
 
 Service implementations can have two flavors:
 
-1. A spray-can style server request handler actor as documented at [http://spray.io/documentation/1.2.1/spray-can/http-server/](http://spray.io/documentation/1.2.1/spray-can/http-server/). The actor handles all but the `Connected` message and must not take any constructor arguments. The whole request or request part is passed on to this actor unchanged.
+1. A spray-can style server request handler actor as documented at [http://spray.io/documentation/1.2.3/spray-can/http-server/](http://spray.io/documentation/1.2.3/spray-can/http-server/). The actor handles all but the `Connected` message and must not take any constructor arguments. The whole request or request part is passed on to this actor unchanged.
 
 2. A spray-routing style route definition. These are classes extending from the `org.squbs.unicomplex.RouteDefinition` trait, must not take any constructor arguments (zero-argument constructor) and have to provide the route member which is a Spray route according to the
-   [spray-routing documentation](http://spray.io/documentation/1.3.1/spray-routing/key-concepts/routes/). In contrast to the actor implementation, the path matching of the route matches the path **AFTER** the registered web context. For instance, a route definition registered under the web context `"my-context"` would match `/segment1/segment2` for the url `http://mysite.com/my-context/segment1/segment2` not including the web context string itself.
+   [spray-routing documentation](http://spray.io/documentation/1.2.3/spray-routing/key-concepts/routes/). In contrast to the actor implementation, the path matching of the route matches the path **AFTER** the registered web context. For instance, a route definition registered under the web context `"my-context"` would match `/segment1/segment2` for the url `http://mysite.com/my-context/segment1/segment2` not including the web context string itself.
       
 Service metadata is declared in META-INF/squbs-meta.conf as shown in the following example.
 
@@ -174,11 +173,14 @@ squbs-services = [
     class-name = org.squbs.bottlesvc.BottleSvc
     web-context = bottles # You can also specify bottles/v1, for instance.
     
-    # The listeners entry is optional, and defaults to 'default-listener'
+    # The listeners entry is optional, and defaults to 'default-listener'.
     listeners = [ default-listener, my-listener ]
     
-    init-required = false # Optional, only applies to actors
-
+    # Optional, defaults to a default proxy. Specify "" for no proxy.
+    proxy-name = some-proxy                
+    
+    # Optional, only applies to actors.
+    init-required = false
   }
 ]
 ```
@@ -188,6 +190,8 @@ The class-name parameter identifies either the actor or route class.
 The web-context is a string that uniquely identifies the web context of a request to be dispatched to this service. It **MUST NOT** start with a `/` character. It can have `/` characters inside as segment separators in case of multi-segment contexts. And it is allowed to be `""` for root context. If multiple services match the request, the longest context match takes precedence.
 
 Optionally, the listeners parameter declares a list of listeners to bind this service. Listener binding is discussed in the following section, below.
+
+A proxy is a pipelined request pre-processor before the request gets processed by the route. The proxy name can be specified by a `proxy-name` parameter. Unless `""` is specified, a default proxy will be used. Please refer to [Request/Response Pipeline Proxy](pipeline.md) for more information.
 
 Only actors can have another optional `init-required` parameter which allows the actor to feed back its state to the system. Please refer to the [Startup Hooks](lifecycle.md#startup-hooks) section of the [Runtime Lifecycles & API](lifecycle.md) documentation for a full discussion of startup/initialization hooks.
 
@@ -223,7 +227,7 @@ class MySvcActor extends Actor with WebContext {
 }
 ```
 
-The `webContext` field will automatically be made available to the logic in this class
+The `webContext` field will automatically be made available to this class
 
 ##Extensions
 
@@ -232,12 +236,11 @@ has to extend from the org.squbs.lifecycle.ExtensionInit trait and override the 
 has great capabilities to introspect the system and provide additional functionality squbs by itself does not provide.
 An extension must not be combined with an actor or a service in the same cube.
 
-Extensions are started serially, one after another. Providers of extensions can provide a sequence for the extension by
-specifying:
+Extensions are started serially, one after another. Providers of extensions can provide a sequence number for the extension startup by specifying:
     sequence = [number]
 in the extension declaration. If the sequence is not specified, it defaults to Int.maxValue. This means it will start
-after all extensions that provide a sequence number. If there is more than one extension not specifying the sequence,
-the order between them is indeterministic.
+after all extensions that provide a sequence number. If there is more than one extension not specifying the sequence or specifying the same sequence number,
+the order between starting these is indeterministic. The shutdown order is the reverse of the startup order.
 
 #Shutting Down squbs
 
