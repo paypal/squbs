@@ -16,6 +16,7 @@
 
 package org.squbs.httpclient.pipeline
 
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 
 import akka.actor._
@@ -88,7 +89,7 @@ trait PipelineManager extends LazyLogging {
     val pipelineSetting = client.endpoint.config.pipeline.getOrElse(PipelineSetting.default)
     val pipeConfig = pipelineSetting.pipelineConfig
     implicit val timeout: Timeout =
-      client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
+      Timeout(client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis, TimeUnit.MILLISECONDS)
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
     val headers = reqSettings.toList flatMap (setting => setting.headers)
     val updatedPipeConfig = if (headers.nonEmpty) {
