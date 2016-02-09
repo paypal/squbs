@@ -13,9 +13,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package org.squbs.stream;
 
-object Versions {
-  val akkaV = "2.3.13"
-  val sprayV = "1.3.3"
-  val akkaStreamV = "2.0.3"
+public enum TriggerEvent {
+    ENABLE(true),
+    DISABLE(false);
+
+    final public Boolean value;
+
+    TriggerEvent(Boolean value) {
+        this.value = value;
+    }
 }
