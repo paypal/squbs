@@ -28,12 +28,7 @@ private[actorregistry] object ActorRegistryBean {
   val Pattern  = "org.squbs.unicomplex:type=ActorRegistry,name="
   val Total = Pattern + "*"
 
-  def registerBean(actor: ActorRef) (implicit context: ActorContext) = register(new ActorRegistryBean(actor) , objName(actor))
-
-  def unregisterBean(actor: ActorRef) (implicit context: ActorContext) = unregister(objName(actor))
-
   def objName(actor: ActorRef) (implicit context: ActorContext)= prefix + Pattern + actor.path.toString.split(s"${actor.path.root}user/").mkString("")
-
   def totalBeans(implicit context: ActorContext) = ManagementFactory.getPlatformMBeanServer.queryNames(prefix + Total, null)
 }
 
@@ -41,13 +36,6 @@ private[actorregistry] object ActorRegistryBean {
 private[actorregistry] trait ActorRegistryMXBean {
   def getPath : String
   def getActorMessageTypeList: java.util.List[String]
-}
-
-private[actorregistry] class ActorRegistryBean(actor: ActorRef) extends ActorRegistryMXBean {
-  import ActorRegistry._
-  import scala.collection.JavaConversions._
-  def getPath = actor.path.toString
-  def getActorMessageTypeList = registry.get(actor).getOrElse(List.empty[CubeActorMessageType]).map(_.toString)
 }
 
 @MXBean

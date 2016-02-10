@@ -123,7 +123,7 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
     "5.1) ActorLookup().resolveOne" in {
       val vFuture = ActorLookup().resolveOne(FiniteDuration(100, MILLISECONDS))
       Try(Await.result(vFuture, awaitMax)) should matchPattern {
-        case Failure(org.squbs.actorregistry.ActorNotFound(ActorLookup(None,None,None))) =>
+        case Failure(org.squbs.actorregistry.ActorNotFound(ActorLookup(_, None, None, false))) =>
       }
     }
 
@@ -134,14 +134,28 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
       }
     }
 
-    "5.3) new ActorLookup(requestClass=Some(Class[TestRequest])).resolveOne" in {
-      val l= new ActorLookup(requestClass=Some(classOf[TestRequest]))
+    "5.3) ActorLookup(requestClass=classOf[TestRequest]).resolveOne" in {
+      val l = ActorLookup(requestClass = classOf[TestRequest])
       val vFuture = l.resolveOne(FiniteDuration(100, MILLISECONDS))
       Try(Await.result(vFuture, awaitMax)) should matchPattern {
         case Success(actor: ActorRef) if actor.path.name === "TestActor" =>
       }
     }
 
+    "5.4) ActorLookup(requestClass=Option(classOf[TestRequest]),Option('TestActor')).resolveOne" in {
+      val l = ActorLookup(requestClass = Option(classOf[TestRequest]), actorName = Option("TestActor"))
+      val vFuture = l.resolveOne(FiniteDuration(100, MILLISECONDS))
+      Try(Await.result(vFuture, awaitMax)) should matchPattern {
+        case Success(actor: ActorRef) if actor.path.name === "TestActor" =>
+      }
+    }
+
+    "5.5) ActorLookup('InvalidActor').resolveOne returns Failure(ActorNotFound)" in {
+      val vFuture = ActorLookup("InvalidActor").resolveOne(awaitMax)
+      Try(Await.result(vFuture, awaitMax)) should matchPattern {
+        case Failure(nf: ActorNotFound) =>
+      }
+    }
 
     "6.0) ActorLookup[TestResponse].resolveOne" in {
       val vFuture = ActorLookup[TestResponse].resolveOne
@@ -191,7 +205,12 @@ class ActorRegistrySpec extends TestKit(ActorRegistrySpec.boot.actorSystem) with
       receiveOne(awaitMax) should be (TestResponse)
     }
 
-    "12) ActorLookup[String] ! NotExist " in {
+    "12.0) ActorLookup[String] ! NotExist " in {
+      ActorLookup[String] ! "NotExist"
+      receiveOne(awaitMax) shouldBe an [ActorNotFound]
+    }
+
+    "12.1) ActorLookup[Long] ! NotExist " in {
       ActorLookup[String] ! "NotExist"
       receiveOne(awaitMax) shouldBe an [ActorNotFound]
     }

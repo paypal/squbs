@@ -510,6 +510,8 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
 
   def scanComponents(jarNames: Seq[String]): UnicomplexBoot = scan(jarNames)(this)
 
+  def scanComponents(jarNames: Array[String]): UnicomplexBoot = scan(jarNames.toSeq)(this)
+
   def scanResources(withClassPath: Boolean, resources: String*): UnicomplexBoot =
     UnicomplexBoot.scanResources(resources map (new File(_).toURI.toURL), withClassPath)(this)
 
