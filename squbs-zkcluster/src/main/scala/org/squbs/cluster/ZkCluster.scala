@@ -143,7 +143,7 @@ case class ZkCluster(zkAddress: Address,
       curatorFwk.get().usingNamespace(zkNamespace)
     }
   }
-  
+
   def addShutdownListener(listener: CuratorFramework => Unit): Unit = shutdownListeners offer listener
   
   private[cluster] def close() = {

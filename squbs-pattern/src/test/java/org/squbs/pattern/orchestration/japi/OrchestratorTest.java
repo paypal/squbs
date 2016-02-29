@@ -30,17 +30,20 @@ import org.squbs.unicomplex.UnicomplexBoot;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.junit.Assert.*;
+
 import static org.squbs.pattern.orchestration.japi.Messages.*;
 
 public class OrchestratorTest {
 
-    static CustomTestKit testKit;
+    private static CustomTestKit testKit;
 
     @BeforeClass
     public static void beforeAll() {
         Map<String, Object> configMap = new HashMap<>();
-        configMap.put("squbs.actorsystem-name", "CustomTestKitTest");
-        configMap.put("squbs.external-config-dir", "actorCalLogTestConfig");
+        configMap.put("squbs.actorsystem-name", "OrchestratorTest");
+        configMap.put("squbs.external-config-dir", "orchestratorTestConfig");
+        configMap.put("squbs.prefix-jmx-name", Boolean.TRUE);
 
         Config testConfig = ConfigFactory.parseMap(configMap);
         UnicomplexBoot boot = UnicomplexBoot.apply(testConfig).start();
@@ -62,41 +65,16 @@ public class OrchestratorTest {
             SubmittedOrchestration submitted = expectMsgClass(SubmittedOrchestration.class);
             long submitTime = submitted.timeNs / 1000L;
             System.out.println("Submission took " + submitTime + " microseconds.");
-            assert(submitTime / 1000L < 230000L);
-            assert(submitted.message.equals("test"));
+            assertTrue(submitTime / 1000L < 230000L);
+            assertEquals("test", submitted.message);
 
             // Check for the finished message
             FinishedOrchestration finished = expectMsgClass(FinishedOrchestration.class);
             long finishTime = finished.timeNs / 1000L;
             System.out.println("Orchestration took " + finishTime + " microseconds.");
-            assert(finishTime > 30000L); // 3 orchestrations with 10 millisecond delay each
-            assert(finished.message.equals("test"));
-            assert(finished.lastId == 6);
+            assertTrue(finishTime > 30000L); // 3 orchestrations with 10 millisecond delay each
+            assertEquals("test", finished.message);
+            assertEquals(6L, finished.lastId);
         }};
-
     }
-
-//    @Test
-//    public void testFutureResult() {
-//        new DebugTimingTestKit(testKit.actorSystem()) {{
-//            getSystem().actorOf(Props.create(TestAskOrchestrator]) ! OrchestrationRequest("test")
-//        }};
-//
-//        // Check for the submitted message
-//        val submitted = expectMsgType[SubmittedOrchestration]
-//        val submitTime = submitted.timeNs / 1000l
-//        println(s"Submission took $submitTime microseconds.")
-//        (submitTime / 1000l) should be < 230000l
-//        submitted.request should be ("test")
-//
-//        // Check for the future of finish message
-//        val finishedF = expectMsgType[Future[FinishedOrchestration]]
-//        val finished = Await.result(finishedF, awaitMax)
-//        val finishTime = finished.timeNs / 1000l
-//        println(s"Orchestration took $finishTime microseconds.")
-//        finishTime should be > 230000l // 23 orchestrations with 10 millisecond delay each + 22 Future resolutions
-//        finished.request should be ("test")
-//        finished.lastId should be (45)
-//
-//    }
 }

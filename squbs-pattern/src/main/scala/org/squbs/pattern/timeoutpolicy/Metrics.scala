@@ -62,5 +62,4 @@ case class Metrics(name: Option[String], initial: FiniteDuration, startOverCount
     val slidePoint = if (newStartOverCount > 0) newStartOverCount else this.startOverCount
     Metrics(name, init, slidePoint)
   }
-
 }

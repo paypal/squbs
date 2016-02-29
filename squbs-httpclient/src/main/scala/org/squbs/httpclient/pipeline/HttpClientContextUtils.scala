@@ -28,5 +28,4 @@ object HttpClientContextUtils {
 
     def getEndpoint: Option[Endpoint] = ctx.attribute[Endpoint]("HttpClient.Endpoint")
   }
-
 }

@@ -651,7 +651,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
             val hostActor = context.actorOf(props, name) // disable proxy
             (hostActor, SimpleActor(hostActor))
           case Some(proc) =>
-            val hostActor = context.actorOf(props)
+            val hostActor = context.actorOf(props, name + "target")
             (hostActor, ProxiedActor(context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name)))
         }
       } catch {

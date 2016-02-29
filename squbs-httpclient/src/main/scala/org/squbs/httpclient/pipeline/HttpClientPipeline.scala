@@ -41,10 +41,11 @@ object HttpClientUnmarshal{
 
     def unmarshalTo[T: FromResponseUnmarshaller]: Try[T] = {
       Try{
-        if (response.status.isSuccess)
+        if (response.status.isSuccess && response.status.allowsEntity && response.entity.nonEmpty)
           response.as[T] match {
             case Right(value) ⇒ value
-            case Left(error) ⇒ throw new PipelineException(error.toString)
+            case Left(error) ⇒
+              throw new PipelineException(error.toString, cause = new UnsuccessfulResponseException(response))
           }
         else throw new UnsuccessfulResponseException(response)
       }
@@ -69,12 +70,19 @@ trait PipelineManager extends LazyLogging {
     }
 
     import client.endpoint.config.settings.hostSettings.connectionSettings
+    val defaultTimeout = Configuration.defaultRequestSettings(client.endpoint.config, client.config).timeout
     val clientConnectionSettings = reqSettings match {
       case None =>
-        val reqTimeout = Configuration.defaultRequestSettings(client.endpoint.config, client.config).timeout
-        connectionSettings.copy(requestTimeout = reqTimeout.duration)
+        defaultTimeout match {
+          case Some(timeout) => connectionSettings.copy(requestTimeout = timeout.duration)
+          case None => connectionSettings
+        }
       case Some(settings) =>
-        connectionSettings.copy(requestTimeout = settings.timeout.duration)
+        val timeout = if (settings.timeout.isDefined) settings.timeout else defaultTimeout
+        timeout match {
+          case Some(t) => connectionSettings.copy(requestTimeout = t.duration)
+          case None => connectionSettings
+        }
     }
     import client.endpoint._
     val hostSettings = config.settings.hostSettings.copy(connectionSettings = clientConnectionSettings)
@@ -87,7 +95,7 @@ trait PipelineManager extends LazyLogging {
     import actorFactory.dispatcher
     val pipelineSetting = client.endpoint.config.pipeline.getOrElse(PipelineSetting.default)
     val pipeConfig = pipelineSetting.pipelineConfig
-    implicit val timeout: Timeout =
+    implicit val timeout: Timeout = // TODO: See whether we can honor the request setigns timeout.
       client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis
     val pipeline = spray.client.pipelining.sendReceive(actorRef)
     val headers = reqSettings.toList flatMap (setting => setting.headers)

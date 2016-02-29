@@ -16,9 +16,8 @@
 
 package org.squbs.httpclient.json
 
+import org.json4s.{ShortTypeHints, _}
 import spray.httpx.Json4sSupport
-import org.json4s._
-import org.json4s.ShortTypeHints
 
 object Json4sNativeNoTypeHintsProtocol extends Json4sSupport {
   override implicit def json4sFormats: Formats = DefaultFormats.withHints(NoTypeHints)

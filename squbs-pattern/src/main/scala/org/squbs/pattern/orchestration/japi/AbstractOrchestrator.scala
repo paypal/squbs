@@ -13,12 +13,50 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.squbs.pattern.orchestration.japi
 
-import akka.actor.AbstractActor
+import java.util.concurrent.CompletableFuture
+
+import akka.actor.{AbstractActor, ActorRef, ActorSelection}
+import akka.pattern.{AskableActorRef, AskableActorSelection}
+
+//import akka.pattern.ask
+import akka.util.Timeout
 import org.squbs.pattern.orchestration.Orchestrator
 
+import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
+
 abstract class AbstractOrchestrator extends AbstractActor with Orchestrator {
-  override def receive = super.receive;
+
+  override def receive = super.receive
+
+  def ask(actor: ActorRef, message: Any, timeout: Timeout): Ask = {
+    val future = new AskableActorRef(actor).ask(message)(timeout)
+    new Ask(future)
+  }
+
+  def ask(actor: ActorSelection, message: Any, timeout: Timeout): Ask = {
+    val future = new AskableActorSelection(actor).ask(message)(timeout)
+    new Ask(future)
+  }
+
+  class Ask private[japi](private val future: Future[Any]) {
+
+    def thenComplete[T](cFuture: CompletableFuture[T]): Unit = {
+      // Dragons here: DO NOT call nextMessageId from inside future.onComplete as that executes
+      // outside the context of the actor. Instead, obtain the (val) id eagerly inside the actor and
+      // give it to the function so it becomes pre-assigned.
+      val nextId = nextMessageId
+      import context.dispatcher
+      future onComplete { self ! UniqueTryWrapper(nextId, _) }
+      expectOnce {
+        case UniqueTryWrapper(`nextId`, tt: Try[_]) =>
+          tt match {
+            case Success(t) => cFuture.complete(t.asInstanceOf[T])
+            case Failure(e) => cFuture.completeExceptionally(e)
+          }
+      }
+    }
+  }
 }

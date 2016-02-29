@@ -21,6 +21,4 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules" %% "scala-java8-compat" % "0.7.0"
 )
 
-org.scalastyle.sbt.ScalastylePlugin.Settings
-
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")

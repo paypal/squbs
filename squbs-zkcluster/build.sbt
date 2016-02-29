@@ -17,8 +17,6 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 )
 
-org.scalastyle.sbt.ScalastylePlugin.Settings
-
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-zkcluster")
 
 parallelExecution := false

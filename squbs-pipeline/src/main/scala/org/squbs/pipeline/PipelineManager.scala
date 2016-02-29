@@ -26,7 +26,9 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 
 
-case class PipelineManager(configs: Map[String, RawPipelineSetting], pipelines: Agent[Map[String, Either[Option[Processor], PipelineSetting]]]) extends Extension with LazyLogging {
+case class PipelineManager(configs: Map[String, RawPipelineSetting],
+                           pipelines: Agent[Map[String, Either[Option[Processor], PipelineSetting]]])
+  extends Extension with LazyLogging {
 
   def default(implicit actorRefFactory: ActorRefFactory) : Option[Processor] = getProcessor("default-proxy")
 
@@ -43,13 +45,15 @@ case class PipelineManager(configs: Map[String, RawPipelineSetting], pipelines: 
   def getPipelineSetting(name: String)(implicit actorRefFactory: ActorRefFactory): Option[PipelineSetting] = {
     get(name) match {
       case Some(Right(v)) => Option(v)
-      case Some(Left(v)) => throw new IllegalArgumentException(s"squbs.proxy found with name of $name, but the factory should implement PipelineProcessorFactory")
+      case Some(Left(v)) => throw new IllegalArgumentException(
+        s"squbs.proxy found with name of $name, but the factory should implement PipelineProcessorFactory")
       case None => throw new IllegalArgumentException(s"No registered pipeline found with name: $name")
     }
 
   }
 
-  private def get(name: String)(implicit actorRefFactory: ActorRefFactory): Option[Either[Option[Processor], PipelineSetting]] = {
+  private def get(name: String)(implicit actorRefFactory: ActorRefFactory):
+      Option[Either[Option[Processor], PipelineSetting]] = {
     pipelines().get(name) match {
       case None =>
         configs.get(name) match {
@@ -74,7 +78,8 @@ case class PipelineManager(configs: Map[String, RawPipelineSetting], pipelines: 
               Option(entry)
             } catch {
               case t: Throwable =>
-                logger.error(s"Can't instantiate squbs.proxy with name of $name and factory class name of ${cfg.factoryClass}", t)
+                logger.error(
+                  s"Can't instantiate squbs.proxy with name of $name and factory class name of ${cfg.factoryClass}", t)
                 throw t
             }
           case None => None
@@ -102,9 +107,11 @@ object PipelineSetting {
 
   val default = PipelineSetting()
 
-  def apply(resolver: PipelineProcessorFactory, config: SimplePipelineConfig): PipelineSetting = PipelineSetting(resolver, Option(config))
+  def apply(resolver: PipelineProcessorFactory, config: SimplePipelineConfig): PipelineSetting =
+    PipelineSetting(resolver, Option(config))
 
-  def apply(resolver: PipelineProcessorFactory, config: SimplePipelineConfig, setting: Config): PipelineSetting = PipelineSetting(resolver, Option(config), Option(setting))
+  def apply(resolver: PipelineProcessorFactory, config: SimplePipelineConfig, setting: Config): PipelineSetting =
+    PipelineSetting(resolver, Option(config), Option(setting))
 }
 
 
@@ -139,7 +146,8 @@ object PipelineManager extends ExtensionId[PipelineManager] with ExtensionIdProv
           key +: aliasNames foreach { name =>
             proxyMap.get(name) match {
               case None => proxyMap += (name -> proxyConf)
-              case Some(value) => throw new IllegalArgumentException("Proxy name is already used by proxy: " + value.name)
+              case Some(value) => throw new IllegalArgumentException(
+                "Proxy name is already used by proxy: " + value.name)
             }
           }
 

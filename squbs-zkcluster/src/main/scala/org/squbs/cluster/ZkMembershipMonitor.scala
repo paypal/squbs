@@ -32,7 +32,7 @@ private[cluster] case class ZkLeaderElected(address: Option[Address])
 private[cluster] case class ZkMembersChanged(members: Set[Address])
 
 /**
- * the membership monitor has a few responsibilities,
+ * The membership monitor has a few responsibilities,
  * most importantly to enroll the leadership competition and get membership,
  * leadership information immediately after change
  */
@@ -94,7 +94,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
     zkLeaderLatch foreach (_.close())
     zkLeaderLatch = None
   }
-  
+
   def receive: Actor.Receive = {
     case ZkClientUpdated(updated) =>
       // differentiate first connected to ZK or reconnect after connection lost
