@@ -59,7 +59,7 @@ class AdminSvc extends RouteDefinition with WebContext {
       path("bean" / Segment) { encName =>
         respondWithMediaType(`application/json`) {
           complete {
-            val name = encName.replace('~', '=')
+            val name = encName.replace('~', '=').replace('%', '/')
             val response: HttpResponse =
               if (exBeans contains name) HttpResponse(StatusCodes.NotFound, StatusCodes.NotFound.defaultMessage)
               else MBeanUtil.asJSON(name, exFields getOrElse (name, Set.empty))

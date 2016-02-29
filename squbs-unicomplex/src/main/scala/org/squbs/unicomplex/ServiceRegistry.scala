@@ -271,7 +271,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
         RouteDefinition.startRoutes(new RejectRoute)
     }
 
-  
+
   implicit val rejectionHandler:RejectionHandler = routeDef.rejectionHandler.getOrElse(PartialFunction.empty[List[Rejection], Route])
   implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.getOrElse(PartialFunction.empty[Throwable, Route])
 

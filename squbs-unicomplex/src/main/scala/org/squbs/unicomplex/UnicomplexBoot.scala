@@ -92,7 +92,7 @@ object UnicomplexBoot extends LazyLogging {
         configNames.add("application")
         val parseOptions = ConfigParseOptions.defaults().setAllowMissing(true)
         val addConfigs = configNames map {
-        	name => ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
+          name => ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
         }
         if (addConfigs.isEmpty) baseConfig
         else ConfigFactory.load((addConfigs :\ baseConfig) (_ withFallback _))
@@ -509,6 +509,8 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
   def createUsing(actorSystemCreator: (String, Config) => ActorSystem) = copy(actorSystemCreator = actorSystemCreator)
 
   def scanComponents(jarNames: Seq[String]): UnicomplexBoot = scan(jarNames)(this)
+
+  def scanComponents(jarNames: Array[String]): UnicomplexBoot = scan(jarNames.toSeq)(this)
 
   def scanResources(withClassPath: Boolean, resources: String*): UnicomplexBoot =
     UnicomplexBoot.scanResources(resources map (new File(_).toURI.toURL), withClassPath)(this)

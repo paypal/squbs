@@ -6,8 +6,6 @@ organization in ThisBuild := "org.squbs"
 
 publishArtifact := false
 
-org.scalastyle.sbt.ScalastylePlugin.Settings
-
 coverageEnabled in ThisBuild := true
 
 coverageMinimum in ThisBuild := 70.0

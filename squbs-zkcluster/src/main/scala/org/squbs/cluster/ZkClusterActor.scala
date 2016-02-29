@@ -49,21 +49,21 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
 
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._
-  
+
   private[this] implicit val segLogic = segmentationLogic
   import segLogic._
-  
+
   private[this] implicit val log = logger
   private[cluster] var whenZkClientUpdated = Seq.empty[ActorRef]
   private[cluster] var whenPartitionUpdated = Set.empty[ActorRef]
-  
+
   //begin the process of electing a leader
   private val zkMembershipMonitor =
     context.actorOf(Props[ZkMembershipMonitor].withDispatcher("ZkMembershipMonitor-dispatcher"), "zkMembership")
-  
+
   //begin the process of partitioning management
   private val zkPartitionsManager = context.actorOf(Props[ZkPartitionsManager], "zkPartitions")
-  
+
   private[this] val mandatory:StateFunction = {
     case Event(updatedEvent @ ZkClientUpdated(updated), zkClusterData) =>
       zkMembershipMonitor ! updatedEvent
@@ -92,21 +92,21 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       }.toSeq)
       stay()
   }
-  
+
   // reflect the current memory snapshot in the MXBean
   class MembersInfoBean extends MembersInfoMXBean {
     import scala.collection.JavaConversions._
     override def getLeader: String = stateData.leader.map(_.toString).toString
     override def getMembers: util.List[String] = stateData.members.map(_.toString).toList
   }
-  
+
   class PartitionsInfoBean extends PartitionsInfoMXBean {
     import scala.collection.JavaConversions._
     override def getPartitions: util.List[PartitionInfo] = stateData.partitions map {
       case (key, data) => PartitionInfo(key, partitionZkPath(key), data.members.mkString(","))
     } toList
   }
-  
+
   //the reason we put startWith into #preStart is to allow postRestart to trigger new FSM actor when recover from error
   override def preStart(): Unit = {
     Try{
@@ -123,7 +123,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
     }
     zkCluster.close()
   }
-  
+
   when(ZkClusterUninitialized)(mandatory orElse {
     case Event(ZkLeaderElected(Some(address)), zkClusterData) =>
       log.info("[uninitialized] leader elected:{} and my zk address:{}", address, zkAddress)
@@ -143,7 +143,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       stash()
       stay()
   })
-  
+
   when(ZkClusterActiveAsFollower)(mandatory orElse {
     case Event(ZkLeaderElected(Some(address)), zkClusterData) =>
       if(address.hostPort == zkAddress.hostPort) {
@@ -222,7 +222,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       })
       stay()
   })
-  
+
   when(ZkClusterActiveAsLeader)(mandatory orElse {
     case Event(ZkLeaderElected(Some(address)), zkClusterData) =>
       if (address.hostPort == zkAddress.hostPort) {
@@ -314,7 +314,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       notifyPartitionDiffs(zkClusterData.partitions, newPartitions)("leader")
       stay using zkClusterData.copy(partitions = newPartitions)
   })
-  
+
   onTransition {
     case ZkClusterUninitialized -> ZkClusterActiveAsFollower =>
       //unstash all messages uninitialized state couldn't handle
@@ -323,7 +323,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       //unstash all messages uninitialized state couldn't handle
       unstashAll()
   }
-  
+
   private[cluster] def rebalance(current: Map[ByteString, ZkPartitionData],
                                  base: Map[ByteString, ZkPartitionData],
                                  members:Set[Address]): Map[ByteString, ZkPartitionData] = {
@@ -353,7 +353,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
     if (updates.nonEmpty) zkPartitionsManager ! ZkRebalance(updates)
     rebalanced
   }
-  
+
   private[cluster] def notifyPartitionDiffs(originalPartitions: Map[ByteString, ZkPartitionData],
                                             changes: Map[ByteString, ZkPartitionData])
                                            (role: String = "follower") = {
@@ -363,7 +363,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
     } collect {
       case Some(remove) => remove
     } toList
-    
+
     val partitionDiffs = (changes map {
       case(partitionKey, ZkPartitionData(_, newMembers, _, props)) =>
         val originalMembers = originalPartitions.get(partitionKey).map(_.members).getOrElse(Set.empty[Address])
@@ -377,7 +377,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
     } collect {
       case Some(diff) => diff
     } toList) ++ partitionsToRemove
-    
+
     if (partitionDiffs.nonEmpty) {
       log.debug("[{}] notify {} about the the partition changes {}",
         role,

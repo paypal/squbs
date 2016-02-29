@@ -29,9 +29,9 @@ import akka.remote.QuarantinedEvent
  * External monitor tool like JSW can be configured to restart the app according to the exist code
  */
 class RemoteGuardian extends Actor with ActorLogging {
-  
+
   val zkCluster= ZkCluster(context.system)
-  
+
   override def preStart: Unit = context.system.eventStream.subscribe(self, classOf[QuarantinedEvent])
 
   val EXIT_CODE = 99

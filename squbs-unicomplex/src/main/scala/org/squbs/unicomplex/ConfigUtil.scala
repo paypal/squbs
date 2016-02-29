@@ -87,9 +87,9 @@ object ConfigUtil {
       Try(Duration.create(underlying.getDuration(path, MILLISECONDS), MILLISECONDS)).toOption
     }
 
-		def getOptionalPattern(path: String): Option[Regex] = {
-			Try(new Regex(underlying.getString(path))).toOption
-		}
+    def getOptionalPattern(path: String): Option[Regex] = {
+      Try(new Regex(underlying.getString(path))).toOption
+    }
   }
 
   def ipv4 = {
@@ -98,5 +98,4 @@ object ConfigUtil {
     }
     addresses.next().getHostAddress
   }
-
 }

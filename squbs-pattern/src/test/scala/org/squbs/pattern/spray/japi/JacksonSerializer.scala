@@ -18,7 +18,6 @@ package org.squbs.pattern.spray.japi
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import spray.http.ContentTypes
 import spray.httpx.marshalling.Marshaller
 
 object JacksonSerializer {
@@ -30,6 +29,6 @@ object JacksonSerializer {
 
 
   def marshaller[T <: AnyRef](clazz: Class[T]): Marshaller[T] =
-    Marshaller.delegate[T, String](ContentTypes.`application/json`)(defaultMapper.writeValueAsString(_))
+    Marshaller.delegate[T, String](ContentTypes.APPLICATION_JSON)(defaultMapper.writeValueAsString(_))
 
 }

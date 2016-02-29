@@ -24,7 +24,7 @@ import org.squbs.httpclient.HttpClientActorMessage.{MarkDownSuccess, MarkUpSucce
 import org.squbs.httpclient.endpoint.EndpointRegistry
 import org.squbs.httpclient.env.{Default, Environment, EnvironmentRegistry}
 import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
-import org.squbs.pipeline.PipelineSetting
+import org.squbs.pipeline.{SimplePipelineConfig, PipelineSetting}
 import spray.http.{HttpResponse, Uri}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling._
@@ -171,7 +171,7 @@ class HttpClient private[httpclient] (val name: String, val env: Environment = D
 
   def withConfig(config: Configuration): HttpClient = {
     implicit val timeout = defaultFutureTimeout
-    val newAskTimeout = toTimeout(config.settings.hostSettings.connectionSettings.requestTimeout).askTimeout
+    val newAskTimeout = defaultRequestTimeout.askTimeout
     new HttpClient(name, env, newAskTimeout)( (_) =>
       fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateConfig(config)).mapTo[ActorRef] }
     )
@@ -179,7 +179,7 @@ class HttpClient private[httpclient] (val name: String, val env: Environment = D
 
   def withSettings(settings: Settings): HttpClient = {
     implicit val timeout = defaultFutureTimeout
-    val newAskTimeout = toTimeout(settings.hostSettings.connectionSettings.requestTimeout).askTimeout
+    val newAskTimeout = defaultRequestTimeout.askTimeout
     new HttpClient(name, env, newAskTimeout)( (_) =>
       fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateSettings(settings)).mapTo[ActorRef] }
     )
@@ -190,6 +190,11 @@ class HttpClient private[httpclient] (val name: String, val env: Environment = D
     new HttpClient(name, env, askTimeout)( (_) =>
       fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdatePipeline(pipelineSetting)).mapTo[ActorRef] }
     )
+  }
+
+  @deprecated
+  def withPipeline(pipeline: Option[SimplePipelineConfig]): HttpClient = {
+    withPipelineSetting(Some(PipelineSetting(config = pipeline)))
   }
 
   def withCircuitBreakerSettings(circuitBreakerSettings: CircuitBreakerSettings): HttpClient = {
@@ -354,7 +359,7 @@ object HttpClientFactory {
       EndpointRegistry(system).resolve(name, env) getOrElse   { throw HttpClientEndpointNotExistException(name, env) }
 
     val clientAskTimeout =
-      toTimeout(endpoint.config.settings.hostSettings.connectionSettings.requestTimeout).askTimeout
+      Some(toTimeout(endpoint.config.settings.hostSettings.connectionSettings.requestTimeout)).askTimeout
 
 
     implicit val timeout = defaultFutureTimeout

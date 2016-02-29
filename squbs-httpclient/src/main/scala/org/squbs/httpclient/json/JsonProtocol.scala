@@ -15,15 +15,12 @@
  */
 package org.squbs.httpclient.json
 
-import spray.httpx.marshalling.{ToResponseMarshaller, Marshaller, ToResponseMarshallable}
+import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.UnmarshallerLifting._
 import spray.httpx.unmarshalling._
 
 import scala.reflect.ManifestFactory
 
-/**
- * Created by lma on 6/17/2015.
- */
 object JsonProtocol {
 
   import org.squbs.httpclient.json.ReflectHelper._

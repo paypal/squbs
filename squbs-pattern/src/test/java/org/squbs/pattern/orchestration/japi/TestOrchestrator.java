@@ -28,7 +28,7 @@ import static org.squbs.pattern.orchestration.japi.Messages.*;
 
 public class TestOrchestrator extends AbstractOrchestrator {
 
-    ActorRef service = getContext().actorOf(Props.create(ServiceEmulator.class));
+    protected ActorRef service = getContext().actorOf(Props.create(ServiceEmulator.class));
 
     public TestOrchestrator() {
         expectOnce(ReceiveBuilder.match(TestRequest.class,
@@ -36,7 +36,7 @@ public class TestOrchestrator extends AbstractOrchestrator {
         ).build());
     }
 
-    void orchestrate(TestRequest request, ActorRef requester) {
+    protected void orchestrate(TestRequest request, ActorRef requester) {
 
         FiniteDuration delay = new FiniteDuration(10, TimeUnit.MILLISECONDS);
 

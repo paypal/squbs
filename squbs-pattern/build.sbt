@@ -37,6 +37,4 @@ libraryDependencies ++= Seq(
 // however, it is added due to an intelliJ warning
 Boilerplate.settings : Seq[sbt.Def.Setting[_]]
 
-org.scalastyle.sbt.ScalastylePlugin.Settings
-
 // (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pattern")

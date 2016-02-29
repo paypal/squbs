@@ -21,16 +21,16 @@ import scala.concurrent.duration.FiniteDuration;
 public class Messages {
 
     public static class TestRequest {
-        final String message;
+        public final String message;
         public TestRequest(String message) {
             this.message = message;
         }
     }
 
     public static class FinishedOrchestration {
-        final long lastId;
-        final String message;
-        final long timeNs;
+        public final long lastId;
+        public final String message;
+        public final long timeNs;
         public FinishedOrchestration(long lastId, String message, long timeNs) {
             this.lastId = lastId;
             this.message = message;
@@ -39,8 +39,8 @@ public class Messages {
     }
 
     public static class ServiceRequest {
-        final long id;
-        final FiniteDuration delay;
+        public final long id;
+        public final FiniteDuration delay;
 
         public ServiceRequest(long id, FiniteDuration delay) {
             this.id = id;
@@ -49,7 +49,7 @@ public class Messages {
     }
 
     public static class ServiceResponse {
-        final long id;
+        public final long id;
 
         public ServiceResponse(long id) {
             this.id = id;
@@ -57,18 +57,13 @@ public class Messages {
 
         @Override
         public boolean equals(Object o) {
-            if (o instanceof ServiceResponse) {
-                if (((ServiceResponse) o).id == id) {
-                    return true;
-                }
-            }
-            return false;
+            return o instanceof ServiceResponse && ((ServiceResponse) o).id == id;
         }
     }
 
     public static class SubmittedOrchestration {
-        final String message;
-        final long timeNs;
+        public final String message;
+        public final long timeNs;
 
         public SubmittedOrchestration(String message, long timeNs) {
             this.message = message;
