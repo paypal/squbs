@@ -6,8 +6,6 @@ organization in ThisBuild := "org.squbs"
 
 publishArtifact := false
 
-org.scalastyle.sbt.ScalastylePlugin.Settings
-
 coverageEnabled in ThisBuild := true
 
 coverageMinimum in ThisBuild := 70.0
@@ -61,6 +59,8 @@ lazy val `squbs-pattern` = (project dependsOn `squbs-testkit` % "test")
 lazy val `squbs-actorregistry` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
 
 lazy val `squbs-actormonitor` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
+
+lazy val `squbs-admin` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
 
 publishTo in ThisBuild := {
   val nexus = "https://oss.sonatype.org/"

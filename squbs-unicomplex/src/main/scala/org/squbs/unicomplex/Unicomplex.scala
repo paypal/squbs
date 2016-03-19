@@ -33,6 +33,7 @@ import org.squbs.pipeline.streaming.PipelineSetting
 import org.squbs.proxy.CubeProxyActor
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 
+import scala.annotation.varargs
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -108,7 +109,10 @@ case class Extension(info: Cube, extLifecycle: Option[ExtensionLifecycle],
 case class Extensions(extensions: Seq[Extension])
 
 
-sealed trait LifecycleState
+sealed trait LifecycleState {
+  // for Java
+  def instance = this
+}
 case object Starting extends LifecycleState // uniActor starts from Starting state
 case object Initializing extends LifecycleState // Cubes start from Initializing state
 case object Active extends LifecycleState
@@ -122,11 +126,18 @@ case object ReportStatus
 case class StatusReport(state: LifecycleState, cubes: Map[ActorRef, (CubeRegistration, Option[InitReports])],
                         extensions: Seq[Extension])
 case class Timestamp(nanos: Long, millis: Long)
-case object SystemState
+case object SystemState {
+  // for Java
+  def instance = this
+}
 case object LifecycleTimesRequest
 case class LifecycleTimes(start: Option[Timestamp], started: Option[Timestamp],
                           active: Option[Timestamp], stop: Option[Timestamp])
 case class ObtainLifecycleEvents(states: LifecycleState*)
+// for Java
+object ObtainLifecycleEvents {
+  @varargs def create(states: LifecycleState*) = new ObtainLifecycleEvents(states : _*)
+}
 case class StopTimeout(timeout: FiniteDuration)
 case class StopCube(name: String)
 case class StartCube(name: String)
@@ -393,6 +404,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
           updateSystemState(checkInitState())
           context.unbecome()
           unstashAll()
+
         case _ => stash()
       },
       discardOld = false)
@@ -471,7 +483,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       case Some(reports) => reports.state
     }
   }
-  
+
   val checkStateFailed: PartialFunction[Iterable[LifecycleState], LifecycleState] = {
     case states if states exists (_ == Failed) =>
       if (systemState != Failed) log.warning("Some cubes failed to initialize. Marking system state as Failed")
@@ -544,8 +556,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 }
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
-  import scala.collection.JavaConversions._
   import context.dispatcher
+
+  import scala.collection.JavaConversions._
 
   val cubeName = self.path.name
   val pipelineManager = PipelineManager(context.system)
@@ -622,7 +635,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
             val hostActor = context.actorOf(props, name) // disable proxy
             (hostActor, SimpleActor(hostActor))
           case Some(proc) =>
-            val hostActor = context.actorOf(props)
+            val hostActor = context.actorOf(props, name + "target")
             (hostActor, ProxiedActor(context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name)))
         }
       } catch {

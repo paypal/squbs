@@ -16,20 +16,28 @@
 package org.squbs.pattern.spray.japi
 
 import spray.http.{ContentType, HttpEntity}
+import spray.httpx.marshalling._
 
 /**
  * Java API to support HttpEntity
  */
 object HttpEntityFactory {
 
-  def create(string : String) = HttpEntity(string)
+  val empty = HttpEntity.Empty
 
-  def create(bytes: Array[Byte]) = HttpEntity(bytes)
+  def create(string : String): HttpEntity = HttpEntity(string)
 
-  def create(contentType: ContentType, string: String) = HttpEntity(contentType, string)
+  def create(bytes: Array[Byte]): HttpEntity = HttpEntity(bytes)
 
-  def create(contentType: ContentType, bytes: Array[Byte]) = HttpEntity(contentType, bytes)
+  def create(contentType: ContentType, string: String): HttpEntity = HttpEntity(contentType, string)
 
+  def create(contentType: ContentType, bytes: Array[Byte]): HttpEntity = HttpEntity(contentType, bytes)
 
-
+  def create[T <: AnyRef](responseObject: T, marshaller: Marshaller[T]): HttpEntity = {
+    implicit val iMarshaller = marshaller
+    marshal(responseObject) match {
+      case Left(e) => throw e
+      case Right(entity) => entity
+    }
+  }
 }

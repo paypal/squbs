@@ -111,7 +111,7 @@ case class ActorErrorState @ConstructorProperties(Array("actorPath", "errorCount
                                           @BeanProperty latestException: String)
 
 // $COVERAGE-ON$
-                                          
+
 @MXBean
 trait SystemStateMXBean {
   def getSystemState: String

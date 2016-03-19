@@ -17,8 +17,14 @@
 package org.squbs.unicomplex
 
 import akka.actor.ActorSystem
-import org.squbs.lifecycle.GracefulStop
+import akka.pattern.ask
+import akka.util.Timeout
+import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop}
 
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.sys._
+import scala.util.Try
 
 object Bootstrap extends App {
 
@@ -38,4 +44,18 @@ object Shutdown extends App {
   val preConfig = UnicomplexBoot.getFullConfig(None)
   val actorSystemName = preConfig.getString("squbs.actorsystem-name")
   Unicomplex(actorSystemName) ! GracefulStop
+}
+
+class JvmShutdownHook extends ExtensionLifecycle {
+  override def postInit(): Unit = {
+    import ConfigUtil._
+    implicit val timeout = Timeout(boot.actorSystem.settings.config.getOptionalDuration("squbs.default-stop-timeout").getOrElse(3 seconds))
+    addShutdownHook {
+      val future = Unicomplex(boot.actorSystem).uniActor ? ObtainLifecycleEvents(Stopped)
+      Unicomplex(boot.actorSystem).uniActor ! GracefulStop
+      Try {
+        Await.result(future, timeout.duration)
+      }
+    }
+  }
 }

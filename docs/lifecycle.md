@@ -1,19 +1,21 @@
 
 #Runtime Lifecycle & API
 
-The runtime has the following lifecycle states:
+Lifecycle is really a concern of the infrastructure. Applications rarely have to touch on or even be aware of the system's lifecycle. System components, admin consoles, or even application components or actors that take a long time to initialize, and need to be fully initialized before the system can be made available for traffic will need to be aware of the system lifecycle. The latter includes functions such as cache controllers, cache loaders, device initializers, etc.
 
-* Starting - the initial state when squbs comes up.
+The squbs runtime exposes the following lifecycle states:
 
-* Initializing - Unicomplex started. Services starting. Cubes starting. Waiting for init reports.
+* **Starting** - the initial state when squbs comes up.
 
-* Active - Ready to do work and take service calls.
+* **Initializing** - Unicomplex started. Services starting. Cubes starting. Waiting for init reports.
 
-* Failed - Cubes did not start properly.
+* **Active** - Ready to do work and take service calls.
 
-* Stopping - GracefulStop message received at Unicomplex. Terminating cubes, actors, and unbinding services.
+* **Failed** - Cubes did not start properly.
 
-* Stopped - squbs runtime stopped. Unicomplex terminated. ActorSystem terminated.
+* **Stopping** - GracefulStop message received at Unicomplex. Terminating cubes, actors, and unbinding services.
+
+* **Stopped** - squbs runtime stopped. Unicomplex terminated. ActorSystem terminated.
 
 ##Lifecycle Hooks
 
@@ -52,18 +54,18 @@ squbs-actors = [
   }
 ```
 
-Any actor with init-required set to true needs to send a Initialized(report) message to the cube supervisor, the parent
-actor of these well known actors. The report being of type Try[Option[String]] allows the actor to report both
-initialization success and failure with the proper exception. The squbs runtime is moves to the *Active* state once
+Any actor with init-required set to true needs to send a Initialized(report) message to the cube supervisor which is the parent
+actor of these well known actors. The report being of type `Try[Option[String]]` allows the actor to report both
+initialization success and failure with the proper exception. The squbs runtime is moved to the *Active* state once
 all cubes are successfully initialized. This also means each actor with init-required set to true submitted an
 Initialized(report) with success. If any one cube reports an initialization error via the Initialization(report), the
-squbs runtime will be in *Failed* state instead.
+squbs runtime will end up in *Failed* state instead.
 
 ##Shutdown Hooks
 
 ### Stop Actors
 
-We provide the trait `org.squbs.lifecycle.GracefulStopHelper` to let users achieve a graceful stop in their own actors' code.
+The trait `org.squbs.lifecycle.GracefulStopHelper` lets users achieve graceful stop in their own actors' code.
 You cam mix this trait in your actor in the following way.
 
 ```scala
@@ -75,6 +77,7 @@ class MyActor extends Actor with GracefulStopHelper {
 The trait provides some helper methods to support graceful stop of an actor in Squbs framework.
 
 `StopTimeout`
+
 ```scala
   /**
    * Duration that the actor needs to finish the graceful stop.
@@ -85,15 +88,14 @@ The trait provides some helper methods to support graceful stop of an actor in S
   def stopTimeout: FiniteDuration =
     FiniteDuration(config.getMilliseconds("default-stop-timeout"), TimeUnit.MILLISECONDS)
 ```
+
 You can override the method to indicate how long approximately this actor needs to perform a graceful stop.
 Once the actor is started, it will send the `stopTimeout` to its parent actor in `StopTimeout(stopTimeout)` message.
 You can have the behavior in the parent actor to handle this message if you care about it.
 
 If you mixed this trait in your actors' code, you should have a behavior in the `receive` method to handle the `GracefulStop`
 message, because only in this case you can hook your code to perform a graceful stop
-(You cannot add custom behavior towards `PoisonPill`).
-In addition, you need to deal with the actor structure in your cube, since the cube supervisors will only propagate
-the `GracefulStop` message to all its children who mixed this trait.
+(You cannot add custom behavior towards `PoisonPill`). Supervisors will only propagate the `GracefulStop` message to children that mixed in the `GracefulStopHelper` trait. The implementation of the children is expected to handle this message in their `receive` block.
 
 We also provides the following 2 default strategies in the trait.
 
@@ -149,8 +151,90 @@ We also provides the following 2 default strategies in the trait.
   }
 ```
 
-### Stop Extensions
+### Stopping squbs Extensions
 
-By overriding the `def shutdown(jarConfig: Seq[(String, Config)]) {}` method in `org.squbs.lifecycle.ExtensionLifecycle`,
-you can add your custom behavior to shut down an extension. Please notice that this method of all extensions will be executed
-after the actor system gets terminated. If any extension throws exceptions during shutdown, JVM will exit with -1.
+You can add custom behavior at extension shutdown by overriding the `shutdown()` method in `org.squbs.lifecycle.ExtensionLifecycle`. Note that this method in all installed extensions will be executed after termination of the actor system. If any extension throws exceptions during shutdown, JVM will exit with -1.
+
+### JVM shutdown hook extension
+
+During JVM termination, if you want to attach a shutdown hook, you can register in your `squbs-meta.conf`, which will gracefully shutdown the actor system.
+ 
+```
+squbs-extensions = [
+  {
+    class-name = org.squbs.unicomplex.JvmShutdownHook
+  }
+]
+```
+
+## Stream integration
+Reactive stream needs to be integrated with runtime lifecycle events. So the flow can start/stop gracefully.
+
+### Aggregated source
+Original source aggregates with lifecylce events, the aggregated source does not emit from original source until lifecycle becomes `Active`, and stop emitting element after lifecycle `Stopping` is received.
+This will get a current state initially, then receive unicomplex updates afterwards.
+For example below, you in turn use `aggregatedSource` in stead of original `inSource`,
+
+```scala
+
+val inSource = <your-original-source>
+val aggregatedSource = LifecycleManaged().source(inSource)
+
+```
+
+```java
+
+final Source inSource = <your-original-source>
+final Source aggregatedSource = new LifecycleManaged(system).source(inSource)
+
+```
+
+### Custom aggregated triggered source
+If you want your flow to enable/disable to custom events, you can integrate with a custom trigger source, element `true` will enable, `false` will disable.
+
+```scala
+
+  import org.squbs.stream.TriggerEvent._
+
+  val inSource = <your-original-source>
+  val trigger = <your-custom-trigger-source>.collect {
+    case 0 => DISABLE
+    case 1 => ENABLE
+  }
+
+  val aggregatedSource = new Trigger().source(inSource, trigger)
+
+```
+
+```java
+
+        import static org.squbs.stream.TriggerEvent.DISABLE;
+        import static org.squbs.stream.TriggerEvent.ENABLE;
+
+        final Source<?, ?> inSource = <your-original-source>;
+        final Source<?, ?> trigger = <your-custom-trigger-source>.collect(new PFBuilder<Integer, TriggerEvent>()
+          .match(Integer.class, p -> p == 1, p -> ENABLE)
+          .match(Integer.class, p -> p == 0, p -> DISABLE)
+          .build());
+
+        final Source aggregatedSource = new Trigger().source(inSource, trigger);
+
+```
+
+### Custom lifecycle event(s) for trigger
+If you want to respond to more lifecycle events beyond `Active` and `Stopping`, for example you want `Failed` to also stop the flow, you can modify the lifecylce event mapping.
+
+```scala
+
+  import org.squbs.stream.TriggerEvent._
+
+  val inSource = <your-original-source>
+  val trigger = Source.actorPublisher[LifecycleState](Props.create(classOf[UnicomplexActorPublisher]))
+    .collect {
+      case Active => ENABLE
+      case Stopping | Failed => DISABLE
+    }
+
+  val aggregatedSource = new Trigger().source(inSource, trigger)
+
+```

@@ -15,14 +15,17 @@
  */
 package org.squbs
 
-import akka.actor.{ActorContext, ActorSystem, ActorRefFactory}
+import java.util.concurrent.TimeUnit
+
+import akka.actor.{ActorContext, ActorRefFactory, ActorSystem}
 import akka.util.Timeout
 
 import scala.concurrent.duration._
-import scala.language.implicitConversions
-import scala.language.postfixOps
+import scala.language.{implicitConversions, postfixOps}
 
 package object httpclient {
+
+  val defaultRequestTimeout: Option[Timeout] = None
 
   implicit def refFactoryToSystem(refFactory: ActorRefFactory): ActorSystem = refFactory match {
     case sys: ActorSystem => sys
@@ -31,10 +34,17 @@ package object httpclient {
       throw new IllegalArgumentException(s"Cannot create HttpClient with ActorRefFactory Impl ${other.getClass}")
   }
 
-  implicit class RequestToAskTimeout(val requestTimeout: Timeout) extends AnyVal {
+  implicit def toTimeout(d: Duration): Timeout = Timeout(d match {
+    case f: FiniteDuration => f
+    case Duration.Inf => Duration.fromNanos(Long.MaxValue)
+    case _ => Duration.Zero
+  })
 
-    def askTimeout: Timeout = {
-      val Timeout(d) = requestTimeout
+  implicit class RequestToAskTimeout(val reqTimeout: Option[Timeout]) extends AnyVal {
+
+    def askTimeout(implicit refFactory: ActorRefFactory): Timeout = {
+      import Configuration._
+      val Timeout(d) = reqTimeout getOrElse Timeout(requestTimeout(defaultHostSettings), TimeUnit.MILLISECONDS)
       if (d < 1.second) d + 100.millis
       else if (d > 10.second) d + 1.second
       else {

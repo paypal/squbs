@@ -104,7 +104,7 @@ class LoadActor extends Actor {
         val timeInSteady = System.nanoTime() - steadyStart
         if (timeInSteady < 0) sender() ! LoadStats(0d)
         else if (timeInSteady >= steady.toNanos) sender() ! LoadStats(steadyRequests.toDouble / steady.toSeconds)
-        else sender() ! LoadStats(1000000000l * steadyRequests.toDouble / timeInSteady)
+        else sender() ! LoadStats(1000000000L * steadyRequests.toDouble / timeInSteady)
     }
   }
 }
@@ -142,20 +142,21 @@ class CPULoad {
   val mbs    = ManagementFactory.getPlatformMBeanServer
   val name    = ObjectName.getInstance("java.lang:type=OperatingSystem")
 
-  var count = 0l
+  var count = 0L
   var sum = 0d
   var sumSquares = 0d
 
   def current: Option[Double] = {
     val list = mbs.getAttributes(name, Array("ProcessCpuLoad"))
 
-    if (list.isEmpty)     return None
+    if (list.isEmpty) None
+    else {
+      val att = list.get(0).asInstanceOf[Attribute]
+      val value = att.getValue.asInstanceOf[java.lang.Double]
 
-    val att = list.get(0).asInstanceOf[Attribute]
-    val value  = att.getValue.asInstanceOf[java.lang.Double]
-
-    if (value == -1.0) None  // usually takes a couple of seconds before we get real values
-    else Some(value)   // returns the percentage
+      if (value == -1.0) None // usually takes a couple of seconds before we get real values
+      else Some(value) // returns the percentage
+    }
   }
 
   def record(): Unit = {

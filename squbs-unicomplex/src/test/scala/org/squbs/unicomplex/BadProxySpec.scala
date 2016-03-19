@@ -21,6 +21,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, Matchers, SequentialNestedSuiteExecution, WordSpecLike}
 import org.squbs.lifecycle.GracefulStop
+import org.squbs.unicomplex.Timeouts.awaitMax
 import spray.util.Utils
 
 object BadProxySpec {
@@ -51,21 +52,14 @@ class BadProxySpec extends TestKit(BadProxySpec.boot.actorSystem) with ImplicitS
 with WordSpecLike with Matchers with BeforeAndAfterAll with SequentialNestedSuiteExecution {
 
   override def beforeAll() {
-    while (true) {
-      try {
-        Thread.sleep(5)
-      } catch {
-        case e: Throwable =>
-      }
-
-      val uniActor = Unicomplex(system).uniActor
-      println(uniActor)
+    awaitAssert({
       Unicomplex(system).uniActor ! ReportStatus
-
-      val StatusReport(state, _, _) = expectMsgType[StatusReport]
-
-      if (Seq(Active, Stopped, Failed) contains state) return
-    }
+      receiveOne(awaitMax) match {
+        case StatusReport(state, _, _) =>
+          Seq(Active, Stopped, Failed) should contain (state)
+        case _ => fail()
+      }
+    }, awaitMax)
   }
 
   override def afterAll() {

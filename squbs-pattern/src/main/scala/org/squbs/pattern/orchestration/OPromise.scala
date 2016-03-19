@@ -140,5 +140,4 @@ object OPromise {
     *  @return         the newly created `Promise` object
     */
   def successful[T](result: T): OPromise[T] = new impl.OPromise.KeptOPromise[T](Success(result))
-
 }

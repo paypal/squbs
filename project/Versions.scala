@@ -17,4 +17,5 @@
 object Versions {
   val akkaV = "2.4.2"
   val sprayV = "1.3.3"
+  val akkaStreamV = "2.0.3"
 }

@@ -71,10 +71,10 @@ class CubeActorErrorStatesSpec extends TestKit(
 //    val state = errorStates.get("akka://squbs/user/CubeActorErrorStates/$b")
 //    val state = errorStates.values()
     errorStates.size should be(2)
-    val state1 = errorStates.find(_.get("actorPath").equals("/user/CubeActorErrorStates/$a")).get
+    val state1 = errorStates.find(_.get("actorPath").equals("/user/CubeActorErrorStates/test1-CubeActorTest-handlertarget")).get
     state1.get("errorCount") should be(2)
     state1.get("latestException").asInstanceOf[String] should include ("test1:2")
-    val state2 = errorStates.find(_.get("actorPath").equals("/user/CubeActorErrorStates/$b")).get
+    val state2 = errorStates.find(_.get("actorPath").equals("/user/CubeActorErrorStates/test2-CubeActorTest-handlertarget")).get
     state2.get("errorCount") should be(1)
     state2.get("latestException").asInstanceOf[String] should include ("test2:1")
   }

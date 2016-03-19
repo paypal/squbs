@@ -13,33 +13,41 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.squbs.actorregistry
 
 
 import akka.actor._
-import org.squbs.unicomplex.{JMX, Initialized}
-import scala.collection.mutable
+import org.squbs.actorregistry.ActorRegistryBean._
+import org.squbs.unicomplex.Initialized
+import org.squbs.unicomplex.JMX._
+
+import scala.collection.JavaConversions._
+import scala.language.existentials
 import scala.util.Success
-import ActorRegistryBean._
-import JMX._
-import collection.JavaConversions._
 
 private[actorregistry] case class StartActorRegister(cubeNameList: Seq[CubeActorInfo], timeout: Int)
 private[actorregistry] case class CubeActorInfo(actorPath: String ,messageTypeList: Seq[CubeActorMessageType])
 private[actorregistry] case class CubeActorMessageType(requestClassName: Option[String] = None,
                                                        responseClassName: Option[String] = None)
-private[actorregistry] case class ActorLookupMessage(actorLookup: ActorLookup, msg: Any)
+private[actorregistry] case class ActorLookupMessage(actorLookup: ActorLookup[_], msg: Any)
+
+private[actorregistry] case object ObtainRegistry
 
 private[actorregistry] object ActorRegistry {
   val path = "/user/ActorRegistryCube/ActorRegistry"
-  val registry = mutable.HashMap.empty[ActorRef, Seq[CubeActorMessageType]]
   val configBean =  "org.squbs.unicomplex:type=ActorRegistry"
-
 }
 
 private[actorregistry] class ActorRegistry extends Actor with Stash {
+
+  var registry = Map.empty[ActorRef, Seq[CubeActorMessageType]]
   var cubeCount =0
+
+  private class ActorRegistryBean(actor: ActorRef) extends ActorRegistryMXBean {
+    import scala.collection.JavaConversions._
+    def getPath = actor.path.toString
+    def getActorMessageTypeList = registry.getOrElse(actor, List.empty[CubeActorMessageType]).map(_.toString)
+  }
 
   override def postStop() {
     unregister(prefix + ActorRegistry.configBean)
@@ -51,8 +59,8 @@ private[actorregistry] class ActorRegistry extends Actor with Stash {
 
   def startupReceive: Receive = {
     case ActorIdentity(cubeActorInfo : CubeActorInfo, Some(actor))=>
-      registry += (actor -> cubeActorInfo.messageTypeList)
-      registerBean(actor)
+      registry += actor -> cubeActorInfo.messageTypeList
+      register(new ActorRegistryBean(actor) , objName(actor))
       context.watch(actor)
       cubeCount -= 1
       if (cubeCount <= 0) {
@@ -82,27 +90,32 @@ private[actorregistry] class ActorRegistry extends Actor with Stash {
         case result if result.isEmpty =>
           sender() ! org.squbs.actorregistry.ActorNotFound(lookupObj)
         case result =>
-          result.keys foreach { _ tell (msg, sender()) }
+          result.keys foreach { _ forward msg }
       }
 
     case Terminated(actor) =>
-      registry.remove(actor)
-      unregisterBean(actor)
+      registry -= actor
+      unregister(objName(actor))
   }
 
-  def processActorLookup(lookupObj: ActorLookup) : Map[ActorRef, Seq[CubeActorMessageType]]= {
+  def processActorLookup(lookupObj: ActorLookup[_]) : Map[ActorRef, Seq[CubeActorMessageType]]= {
     val requestClass = lookupObj.requestClass map (_.getCanonicalName)
-    val responseClass = lookupObj.responseClass map (_.getCanonicalName)
+    val responseClass = if (lookupObj.explicitType) Option(lookupObj.responseClass.getCanonicalName) else None
     (requestClass, responseClass, lookupObj.actorName) match {
+
       case (requestClassName, Some("scala.runtime.Nothing$") | None, None) =>
-        registry.toMap.filter(_._2.exists(_.requestClassName == requestClassName))
+        registry filter { case (_, messageTypes) => messageTypes.exists(_.requestClassName == requestClassName) }
+
       case (_,  Some("scala.runtime.Nothing$")| None , Some(actorName)) =>
-        registry.toMap.filter(_._1.path.name == actorName)
+        registry filter { case (actorRef, _) => actorRef.path.name == actorName }
+
       case (_, responseClassName, actorName) =>
-        registry.toMap.filter(x=>x._1.path.name == actorName.getOrElse(x._1.path.name))
-        .filter(_._2.exists(_.responseClassName == responseClassName))
-      case obj =>
-        Map.empty[ActorRef, Seq[CubeActorMessageType]]
+        registry.filter { case (actorRef, messageTypes) =>
+          actorRef.path.name == actorName.getOrElse(actorRef.path.name) &&
+            messageTypes.exists(_.responseClassName == responseClassName)
+        }
+
+      case _ => Map.empty
     }
   }
 }

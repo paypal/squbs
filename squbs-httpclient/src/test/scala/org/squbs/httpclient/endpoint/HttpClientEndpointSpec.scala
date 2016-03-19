@@ -16,12 +16,19 @@
 
 package org.squbs.httpclient.endpoint
 
+import java.util.Optional
+
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import org.scalatest.{BeforeAndAfterEach, FlatSpecLike, Matchers}
 import org.squbs.httpclient.dummy.DummyLocalhostResolver
 import org.squbs.httpclient.env._
-import org.squbs.httpclient.{HttpClientException, HttpClientTestKit}
+import org.squbs.httpclient.{CircuitBreakerSettings, Settings, HttpClientException, HttpClientTestKit}
+import spray.can.Http.ClientConnectionType
+import spray.http.HttpResponse
+
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class HttpClientEndpointSpec extends TestKit(ActorSystem("HttpClientEndpointSpec")) with FlatSpecLike
     with HttpClientTestKit with Matchers with BeforeAndAfterEach {
@@ -92,7 +99,7 @@ class HttpClientEndpointSpec extends TestKit(ActorSystem("HttpClientEndpointSpec
     EndpointRegistry(system).resolve("abcService") should be (Some(Endpoint("http://localhost:9090")))
   }
 
-  "It" should "fallback to the previous EndpointResolver if latter one cannot be resolve" in {
+  it should "fallback to the previous EndpointResolver if latter one cannot be resolve" in {
     EndpointRegistry(system).register(new DummyLocalhostResolver)
     EndpointRegistry(system).register(new EndpointResolver {
       override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
@@ -132,5 +139,29 @@ class HttpClientEndpointSpec extends TestKit(ActorSystem("HttpClientEndpointSpec
     EndpointRegistry(system).unregister("DummyLocalhostResolver")
     EndpointRegistry(system).endpointResolvers should have size 1
     EndpointRegistry(system).resolve("unique") should be (Some(Endpoint("http://www.ebay.com")))
+  }
+
+  "setting endpoint settings" should "be verifiable" in {
+    val settings = Settings(connectionType = ClientConnectionType.Direct)
+    val endpoint = Endpoint("foo").withSettings(settings)
+    endpoint.config.settings shouldBe settings
+  }
+
+  "setting endpoint circuit breaker settings" should "be verifiable" in {
+    val cbSettings = CircuitBreakerSettings(callTimeout = 3 seconds)
+    val endpoint = Endpoint("foo").withCircuitBreakerSettings(cbSettings)
+    endpoint.config.settings.circuitBreakerConfig shouldBe cbSettings
+  }
+
+  "setting endpoint fallback response" should "be verifiable" in {
+    val fallback = HttpResponse(entity = """{ "defaultResponse" : "Some default" }""")
+    val endpoint = Endpoint("foo").withFallbackResponse(Some(fallback))
+    endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse shouldBe Some(fallback)
+  }
+
+  "setting endpoint fallback response through Java API" should "be verifiable" in {
+    val fallback = HttpResponse(entity = """{ "defaultResponse" : "Some default" }""")
+    val endpoint = Endpoint("foo").withFallbackResponse(Optional.of(fallback))
+    endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse shouldBe Some(fallback)
   }
 }

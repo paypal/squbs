@@ -19,10 +19,13 @@ package org.squbs.httpclient
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import org.scalatest._
+import org.scalatest.OptionValues._
 import org.squbs.httpclient.dummy.DummyServiceEndpointResolver
 import org.squbs.httpclient.endpoint.EndpointRegistry
+import org.squbs.testkit.Timeouts._
 
 import scala.annotation.tailrec
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -45,49 +48,61 @@ with Matchers with CircuitBreakerSupport with HttpClientTestKit with BeforeAndAf
 
   "HttpClient with Success ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
-    import httpClient.cbMetrics
+    Await.ready(httpClient.readyFuture, awaitMax)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    val cbMetrics = clientState.value.cbMetrics
     cbMetrics.total.successTimes should be (0)
+
+    import cbMetrics.metrics._
     val time = System.nanoTime
-    cbMetrics.currentBucket(time).successTimes should be (0)
-    httpClient.cbMetrics.add(ServiceCallStatus.Success, time)
-    1 should (be (cbMetrics.currentBucket(time).successTimes) or be (
-        cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).successTimes))
+    currentBucket(time).successTimes should be (0)
+    cbMetrics.add(ServiceCallStatus.Success, time)
+    1 should (be (currentBucket(time).successTimes) or be (bucketAt(1, time).successTimes))
     cbMetrics.total.successTimes should be (1)
   }
 
   "HttpClient with Fallback ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
-    import httpClient.cbMetrics
+    Await.ready(httpClient.readyFuture, awaitMax)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    val cbMetrics = clientState.value.cbMetrics
     cbMetrics.total.fallbackTimes should be (0)
+
+    import cbMetrics.metrics._
     val time = System.nanoTime
-    cbMetrics.currentBucket(time).fallbackTimes should be (0)
-    httpClient.cbMetrics.add(ServiceCallStatus.Fallback, time)
-    1 should (be (cbMetrics.currentBucket(time).fallbackTimes) or be (
-      cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).fallbackTimes))
+    currentBucket(time).fallbackTimes should be (0)
+    cbMetrics.add(ServiceCallStatus.Fallback, time)
+    1 should (be (currentBucket(time).fallbackTimes) or be (bucketAt(1, time).fallbackTimes))
     cbMetrics.total.fallbackTimes should be (1)
   }
 
   "HttpClient with FailFast ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
-    import httpClient.cbMetrics
+    Await.ready(httpClient.readyFuture, awaitMax)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    val cbMetrics = clientState.value.cbMetrics
     cbMetrics.total.failFastTimes should be (0)
+
+    import cbMetrics.metrics._
     val time = System.nanoTime
-    cbMetrics.currentBucket(time).failFastTimes should be (0)
-    httpClient.cbMetrics.add(ServiceCallStatus.FailFast, time)
-    1 should (be (cbMetrics.currentBucket(time).failFastTimes) or be (
-      cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).failFastTimes))
+    currentBucket(time).failFastTimes should be (0)
+    cbMetrics.add(ServiceCallStatus.FailFast, time)
+    1 should (be (currentBucket(time).failFastTimes) or be (bucketAt(1, time).failFastTimes))
     cbMetrics.total.failFastTimes should be (1)
   }
 
   "HttpClient with Exception ServiceCallStatus" should "go through the correct logic" in {
     val httpClient = HttpClientFactory.get("DummyService")
-    import httpClient.cbMetrics
+    Await.ready(httpClient.readyFuture, awaitMax)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.name, httpClient.env))
+    val cbMetrics = clientState.value.cbMetrics
     cbMetrics.total.exceptionTimes should be (0)
+
+    import cbMetrics.metrics._
     val time = System.nanoTime
-    cbMetrics.currentBucket(time).exceptionTimes should be (0)
-    httpClient.cbMetrics.add(ServiceCallStatus.Exception, time)
-    1 should (be (cbMetrics.currentBucket(time).exceptionTimes) or be (
-      cbMetrics.buckets((cbMetrics.currentIndex(time) + 1) % cbMetrics.bucketCount).exceptionTimes))
+    currentBucket(time).exceptionTimes should be (0)
+    cbMetrics.add(ServiceCallStatus.Exception, time)
+    1 should (be (currentBucket(time).exceptionTimes) or be (bucketAt(1, time).exceptionTimes))
     cbMetrics.total.exceptionTimes should be (1)
   }
 }
@@ -97,29 +112,15 @@ with Matchers with BeforeAndAfterAll {
 
   describe ("CircuitBreakerMetrics") {
 
-    it ("should index the buckets correctly near and around 0") {
-      val bucketSize = 1 minute
-      val bucketSizeNanos = bucketSize.toNanos
-      val metrics = new CircuitBreakerMetrics(5, bucketSize)(system)
-      val indexes =
-        for (testMinute <- -10 to 10) yield {
-          val time = bucketSizeNanos * testMinute + (bucketSizeNanos / 2)
-          val idx = metrics.currentIndex(time)
-          println(s"minute: $testMinute, time: $time, index: $idx")
-          idx
-        }
-      metrics.cancel()
-      indexes should contain theSameElementsAs Seq(2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4)
-    }
-
     it ("should add stats and clear the next bucket ahead of time") {
       val bucketSize = 1 second
       val bucketSizeNanos = bucketSize.toNanos
       val buckets = 5
-      val metrics = new CircuitBreakerMetrics(buckets, bucketSize)(system)
+      val metrics = new CircuitBreakerMetrics(buckets, bucketSize)
 
       // Make sure we go through each bucket twice.
-      for (i <- 0 until (metrics.bucketCount * 2)) {
+      import metrics.metrics._
+      for (i <- 0 until (bucketCount * 2)) {
         // wait for the time beyond half way past the next second.
         val currentTime = System.nanoTime
         val timeLeftInBucket =
@@ -145,14 +146,13 @@ with Matchers with BeforeAndAfterAll {
         sleepAndAddStatsUntil(checkTime)
 
         val t2 = System.nanoTime
-        val clearedIndex = (metrics.currentIndex(t2) + 1) % metrics.bucketCount
-        val clearedBucket = metrics.buckets(clearedIndex)
-        val currentBucket = metrics.currentBucket(t2)
+        val clearedBucket = bucketAt(1, t2)
+        val cBucket = currentBucket(t2)
 
-        currentBucket.successTimes should be > 0
-        currentBucket.fallbackTimes should be > 0
-        currentBucket.failFastTimes should be > 0
-        currentBucket.exceptionTimes should be > 0
+        cBucket.successTimes should be > 0
+        cBucket.fallbackTimes should be > 0
+        cBucket.failFastTimes should be > 0
+        cBucket.exceptionTimes should be > 0
 
         clearedBucket.successTimes shouldBe 0
         clearedBucket.fallbackTimes shouldBe 0

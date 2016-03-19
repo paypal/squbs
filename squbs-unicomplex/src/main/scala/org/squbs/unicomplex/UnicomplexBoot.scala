@@ -93,7 +93,7 @@ object UnicomplexBoot extends LazyLogging {
         configNames.add("application")
         val parseOptions = ConfigParseOptions.defaults().setAllowMissing(true)
         val addConfigs = configNames map {
-        	name => ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
+          name => ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
         }
         if (addConfigs.isEmpty) baseConfig
         else ConfigFactory.load((addConfigs :\ baseConfig) (_ withFallback _))
@@ -359,20 +359,11 @@ object UnicomplexBoot extends LazyLogging {
       }
     }
 
-    def getProxyName(serviceConfig: Config): Option[String] = {
-      Try {
-        serviceConfig.getString("proxy-name").trim
-      } match {
-        case Success(proxyName) => Some(proxyName)
-        case Failure(t) => None // not defined
-      }
-    }
-
     def startService(serviceConfig: Config): Option[(String, String, String, Class[_])] =
     try {
       val className = serviceConfig.getString("class-name")
       val clazz = Class.forName(className, true, getClass.getClassLoader)
-      val proxyName = getProxyName(serviceConfig)
+      val proxyName = serviceConfig.getOptionalString("proxy-name") map (_.trim)
       val webContext = serviceConfig.getString("web-context")
       val pipeline = serviceConfig.getOptionalString("pipeline")
       val defaultFlowsOn = serviceConfig.getOptionalBoolean("defaultPipelineOn")
@@ -532,6 +523,8 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
   def createUsing(actorSystemCreator: (String, Config) => ActorSystem) = copy(actorSystemCreator = actorSystemCreator)
 
   def scanComponents(jarNames: Seq[String]): UnicomplexBoot = scan(jarNames)(this)
+
+  def scanComponents(jarNames: Array[String]): UnicomplexBoot = scan(jarNames.toSeq)(this)
 
   def scanResources(withClassPath: Boolean, resources: String*): UnicomplexBoot =
     UnicomplexBoot.scanResources(resources map (new File(_).toURI.toURL), withClassPath)(this)

@@ -1,123 +1,131 @@
 #Request/Response Pipeline Proxy
 
 ### Overview
-Sometimes, we may have common biz logic across different squbs-services.
-For example: CAL, Authentication/Authorization, tracking, cookie management, A/B testing, etc.
+We often need to have common infrastructure functionality across different squbs
+services, or as organizational standards. Such infrastructure includes, but is not
+limited to logging, request tracing, authentication/authorization, tracking,
+cookie management, A/B testing, etc.
 
-Usually we don't want the service owner to take care of these common stuffs in their Actor/Router.
-That's why we introduce the squbs proxy to facilitate it.
+As squbs promotes separation of concerns, such logic would belong to infrastructure
+and not service implementation. The squbs proxy allows infrastructure to provide
+components installed into a service without service owner having to worry about such
+aspects in their service or actors.
 
-Generally speaking, a squbs proxy is an actor which acting like a bridge in between the responder and the squbs service.
-That is to say:
-* All messages sent from resonder to squbs service will go thru the proxy actor
-* Vice versa, all messages sent from squbs service to responder will go thru the proxy actor.
+Generally speaking, a squbs proxy is an actor acting as a bridge in between the
+service (Spray) responder and the squbs service. That is to say:
+
+* All request messages sent from resonder to squbs service will go thru the proxy actor
+* Vice versa, all response messages sent from squbs service to responder will go thru the proxy actor.
 
 
-Below section will describe how to enable a proxy for squbs service.
+### Proxy Binding
 
-### Proxy declaration
-
-In your squbs-meta.conf, you can specify proxy for your service:
+In your `squbs-meta.conf`, you can specify proxy for your service as follows:
 
 ```
-
 squbs-services = [
   {
-    class-name = com.ebay.myapp.MyActor
+    class-name = com.myorg.myapp.MyActor
     web-context = mypath
     proxy-name = myProxy
   }
 ]
-
 ```
 
-Here're some rules about proxy-name:
-* If you don't specify any proxy-name, i.e.: omit the proxy-name, squbs will try to load a proxy named "default-proxy"
-* If you use empty string for proxy-name, which means you don't want any proxy applied for your serivce.
-* For any other name, squbs will try to load proxy config in .conf files
+Please check out [Unicomplex & Cube Bootstrapping](bootstrap.md) for more
+information about `squbs-meta.conf`.
+
+**Proxy resolution rules**:
+
+* If you don't specify any proxy-name, i.e.: omit the proxy-name, squbs will install
+a proxy named "default-proxy" provided with your system configuration in some `reference.conf` or `application.conf`.
+* If you set an empty string `""` for proxy-name, no proxy is applied to the
+requests/responses for your service.
+* For any other name, squbs will try to load proxy the proxy definition and configuration from the system configuration provided through the merged `reference.conf` and `application.conf` files.
 
 
-### Proxy Configuration
+### Proxy Definition & Configuration
+
+Following is the proxy definition required in the conf files:
+
 
 ```
 myProxy {
-
   type = squbs.proxy
-
-  processorFactory = org.myorg.app.SomeProcessorFactory
-
+  processorFactory = org.myorg.myapp.SomeProcessorFactory
   settings = {
-    
+    // Proxy-specific configuration/settings here.  
   }
-
 }
 
 ```
 
-Here're some explanation for above configurations:
+Explaining the fields:
 
-* proxy name:  As you can see from above, myProxy is the name of the proxy which is align with the definition in squbs-meta.conf
-* type :  must be squbs.proxy
-* processorFactory: A factory impl which can be used to create a proxy processor. (Processor will be discussed in later section)
-```scala
-trait ProcessorFactory {
-  def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor]
-}
-```
-* settings : an optional config object which can be used by processorFactory.(As you can tell from the above create method)
+* `myProxy` is the name of the proxy which aligns with the binding in `squbs-meta.conf`.
+* `type` must be `squbs.proxy` to be recognized as a proxy declaration.
+* `processorFactory` is factory impl which can be used to create a proxy processor (`Processor` is discussed in a later section of this document).
+
+   ```scala
+   trait ProcessorFactory {
+     def create(settings: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Processor]
+   }
+   ```
+* `settings` is an optional config object which can be used by processorFactory (as you can tell from the above create method).
 
 
 ### Proxy Processor
 
-Proxy Processor is used to describe the behaviour of the proxy, like how to handle HttpRequest, HttpResponse, chunked request/chunked response, etc. It provides some method hooks which allows user to define his own biz logic.
+Proxy Processor is used to describe the behavior of the proxy, like how to handle HttpRequest, HttpResponse, chunked request/chunked response, etc.  It provides method hooks that allow implementers to define their own logic.
 
-You can check the [Processor definition](../squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala#L31)
+You can check the [Processor definition](../squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala).
 
-This Processor will be used along with the proxy actor (Here, it's PipelineProcessorActor) to perform the proxy behaviour:
+This Processor will be used along with the proxy actor (in this case it is `PipelineProcessorActor`) to perform the proxy behavior:
 
 ![Processor](./img/Processor.jpg)
 
-You might feel that this Processor trait is kind of complex, but for most of the users, you don't have create an impl of your own.
-
-Because squbs already provides a very lightweight pipeline based processor for you. 
+Implementation of this processor is optional. In most cases you don't have to create an implementation of your own. squbs already provides a very lightweight pipeline based processor for you. This is described in the sections below.
 
 
 ### RequestContext
 
-As you might see from Processor definition, a class called RequestContext is widely used.
-This class is an **immutable** data container which host all useful information accross the request-response lifecycle.
+As you might see from Processor definition, a class called `RequestContext` is widely used.
+This class is an **immutable** data container which hosts all useful information across the request/response lifecycle.
 
-Below is a basic structure of the RequestContext and corresponding response wrapper class information:
+Below is a basic structure of the `RequestContext` and corresponding response wrapper class information:
 
 ![RequestContext](./img/RequestContext.jpg)
 
 
 #Pipeline Proxy
 
-As described above, squbs has a default simple pipeline processor implementation.
+Touched upon above, squbs has a default simple pipeline processor implementation.
 
-With this impl, user can simply setup a proxy by:
+With this implementation, you can simply setup a proxy by:
 
-#### implementing handlers
+#### 1. Implementing handlers
 
 Handler definition:
+
 ```scala
 trait Handler {
-	def process(reqCtx: RequestContext)(implicit executor: ExecutionContext, context: ActorContext): Future[RequestContext]
+  def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext]
 }
-
 ```
+
 HandlerFactory definition:
+
 ```scala
 trait HandlerFactory {
   def create(config: Option[Config])(implicit actorRefFactory: ActorRefFactory): Option[Handler]
 }
-
 ```
 
-Usually, you need to implement your own HandlerFactory to create your own handler.
+You need to implement a HandlerFactory to create your handler instances.
 
-####  Make configuration
+#### 2. Configuring the pipeline
+
+Once you implemented the handler factory, it needs to be added to the configuration.
 
 ```
 myProxy {
@@ -152,33 +160,32 @@ handler4 {
 	type = pipeline.handler
 	factory = com.myorg.myhandler4
 }
-
 ```
+
 Or you might check [sample config with description](../squbs-unicomplex/src/main/resources/reference.conf#L23)
 
-In above config:
+For the above configuration:
 
-* processorFactory: must be org.squbs.proxy.SimpleProcessorFactory.
-* settings.inbound: sequence of request handlers
-* settings.outbound: sequence of response handlers
-* handlerX.type : must be pipeline.handler
-* handlerX.factory : name of a class that implements HandlerFactory
+* `processorFactory` must be `org.squbs.proxy.SimpleProcessorFactory`.
+* `settings.inbound` is the sequence of request handlers.
+* `settings.outbound` is the sequence of response handlers.
+* `handlerX.type` must be `pipeline.handler`.
+* `handlerX.factory` is the name of a class that implements HandlerFactory
 
-Again, if you want to have customized logic for other phase like preInbound or postOutbound, you can extends [SimpleProcessor](../squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L30) and create your own factory just like [SimpleProcessorFactory](../squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L46)
+Again, if you want to have custom logic for other phases like preInbound or postOutbound, you can extend [SimpleProcessor](../squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L30) and create your own factory just like [SimpleProcessorFactory](../squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L46)
 
 ####  Default proxy
 
 Squbs has a [default proxy](../squbs-unicomplex/src/main/resources/reference.conf#L23) defined in squbs-unicomplex
 
 So in your application, you can simply define your proxy config like this:
+
 ```
 default-proxy {
-
   settings = {
     inbound = [handler1, handler2]
     outbound = [handler3, handler4]
   }
-
 }
 
 handler1 {
@@ -202,6 +209,3 @@ handler4 {
 }
 
 ```
-
-
-

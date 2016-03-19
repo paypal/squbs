@@ -24,6 +24,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.PropertyAccessor
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import org.scalatest.OptionValues._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.httpclient.Configuration._
 import org.squbs.httpclient._
@@ -35,9 +36,11 @@ import org.squbs.httpclient.json.{JacksonProtocol, Json4sJacksonNoTypeHintsProto
 import org.squbs.pipeline.{PipelineSetting, SimplePipelineConfig}
 import org.squbs.testkit.Timeouts._
 import spray.http.HttpHeaders.RawHeader
-import spray.http.{HttpHeader, StatusCodes}
+import spray.http.{HttpResponse, MediaTypes, StatusCodes}
+import spray.httpx.UnsuccessfulResponseException
 
 import scala.concurrent.Await
+import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Success
 
@@ -123,7 +126,7 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
   }
 
   "HttpClient with correct Endpoint calling raw.get and pass requestSettings" should "get the correct response" in {
-    val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), awaitMax)
+    val reqSettings = RequestSettings.headers(RawHeader("req1-name", "test123456"))
     //val response = HttpClientFactory.get("DummyService").raw.get("/view", reqSettings)
     val response = HttpClientJ.rawGet("DummyService", system, "/view", reqSettings)
     val result = Await.result(response, awaitMax)
@@ -135,12 +138,14 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
   }
 
   "HttpClient with correct Endpoint calling raw.post and pass requestSettings" should "get the correct response" in {
-    val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), awaitMax)
+    val reqSettings = RequestSettings.headers(RawHeader("req1-name", "test123456"))
+      .headers(RawHeader("req2-name", "test34567"))
     //val response = HttpClientFactory.get("DummyService").raw.post[Employee]("/view", None, reqSettings)
     val response = HttpClientJ.rawPost("DummyService", system, "/view", Optional.empty[Employee], reqSettings)
     val result = Await.result(response, awaitMax)
     result.status should be(StatusCodes.OK)
     result.headers should contain(RawHeader("res-req1-name", "res-test123456"))
+    result.headers should contain(RawHeader("res-req2-name", "res2-test34567"))
     result.entity should not be empty
     result.entity.data should not be empty
     result.entity.data.asString should be(fullTeamJson)
@@ -148,7 +153,7 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
 
   "HttpClient with correct Endpoint calling raw.post with marshaller and pass requestSettings" should "get the " +
     "correct response" in {
-    val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), awaitMax)
+    val reqSettings = RequestSettings.headers(RawHeader("req1-name", "test123456"), RawHeader("req2-name", "test34567"))
     //val response = HttpClientFactory.get("DummyService").raw.post[Employee]("/view", None, reqSettings)
     import JsonProtocol.ClassSupport._
     val response =
@@ -156,6 +161,7 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     val result = Await.result(response, awaitMax)
     result.status should be(StatusCodes.OK)
     result.headers should contain(RawHeader("res-req1-name", "res-test123456"))
+    result.headers should contain(RawHeader("res-req2-name", "res2-test34567"))
     result.entity should not be empty
     result.entity.data should not be empty
     result.entity.data.asString should be(fullTeamJson)
@@ -227,9 +233,15 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     result should be(fullTeam)
   }
 
+  "HttpClient deserializing data into object hierarchy" should " get the correct deserialization" in {
+    val response = HttpClientJ.get("DummyService", system, "/paged", classOf[PageData])
+    val result = Await.result(response, awaitMax)
+    result should be (pageTest)
+  }
+
   "HttpClient with correct Endpoint calling get with setting" should "get the correct response" in {
 
-    val reqSettings = RequestSettings(List[HttpHeader](RawHeader("req1-name", "test123456")), awaitMax)
+    val reqSettings = RequestSettings.headers(RawHeader("req1-name", "test123456"))
     val response = HttpClientJ.get("DummyService", system, "/view", classOf[Team], reqSettings)
     val result = Await.result(response, awaitMax)
     result should be(fullTeam)
@@ -247,6 +259,12 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     val response = HttpClientJ.get("DummyService", system, "/view", unmarshaller, RequestSettings())
     val result = Await.result(response, awaitMax)
     result should be(fullTeam)
+  }
+
+  "HttpClient deserialization call resulting in NO_CONTENT" should "get the correct exception" in {
+    val response = HttpClientJ.get("DummyService", system, "/emptyresponse", classOf[Team])
+    val thrown = the [UnsuccessfulResponseException] thrownBy Await.result(response, awaitMax)
+    thrown.response.status should be (StatusCodes.NoContent)
   }
 
   "HttpClient with correct Endpoint calling raw.head" should "get the correct response" in {
@@ -356,7 +374,8 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
   }
 
   "HttpClient with correct Endpoint calling delete with settings" should "get the correct response" in {
-    val response = HttpClientJ.delete("DummyService", system, "/del/4", classOf[Team], RequestSettings())
+    val response = HttpClientJ.delete("DummyService", system, "/del/4", classOf[Team],
+      RequestSettings.accept(MediaTypes.`application/json`))
     val result = Await.result(response, awaitMax)
     result should be(fullTeamWithDel)
   }
@@ -423,7 +442,8 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
   "HttpClient with correct Endpoint calling post with settings" should "get the correct response" in {
     //val response = HttpClientFactory.get("DummyService").post[Employee, Team]("/add", Some(newTeamMember))
     val response =
-      HttpClientJ.post("DummyService", system, "/add", Some(newTeamMember).asJava, classOf[Team], RequestSettings())
+      HttpClientJ.post("DummyService", system, "/add", Some(newTeamMember).asJava, classOf[Team],
+        RequestSettings.accept(MediaTypes.`application/json`));
     val result = Await.result(response, awaitMax)
     result should be(fullTeamWithAdd)
   }
@@ -510,7 +530,7 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
 
   "HttpClient with correct Endpoint calling put with settings" should "get the correct response" in {
     val response = HttpClientJ.put("DummyService", system, "/add", Some(newTeamMember).asJava,
-      classOf[Team], RequestSettings())
+      classOf[Team], RequestSettings.accept(MediaTypes.`application/json`))
     val result = Await.result(response, awaitMax)
     result should be(fullTeamWithAdd)
   }
@@ -528,7 +548,7 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     "settings" should "get the correct response" in {
     import JsonProtocol.ClassSupport._
     val response = HttpClientJ.put("DummyService", system, "/addj", Some(newTeamMemberBean).asJava,
-      classOf[EmployeeBean], classOf[TeamBean], RequestSettings())
+      classOf[EmployeeBean], classOf[TeamBean], RequestSettings.accept(MediaTypes.`application/json`))
     val result = Await.result(response, awaitMax)
     result should be(fullTeamBeanWithAdd)
   }
@@ -548,16 +568,21 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     val newConfig = Configuration(settings = Settings(hostSettings =
       Configuration.defaultHostSettings.copy(maxRetries = 11)))
     val updatedHttpClient = httpClient.withConfig(newConfig)
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
     EndpointRegistry(system).resolve("DummyService") should be(Some(Endpoint(dummyServiceEndpoint)))
-    updatedHttpClient.endpoint should be(Endpoint(dummyServiceEndpoint, newConfig))
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.delegate.name, httpClient.delegate.env))
+    clientState shouldBe defined
+    clientState.value.endpoint should be (Endpoint(dummyServiceEndpoint, newConfig))
   }
 
   "HttpClient update settings" should "get the correct behaviour" in {
     val httpClient = HttpClientFactory.get("DummyService")
     val settings = Settings(hostSettings = Configuration.defaultHostSettings.copy(maxRetries = 20))
     val updatedHttpClient = httpClient.withSettings(settings)
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
     EndpointRegistry(system).resolve("DummyService") should be(Some(Endpoint(dummyServiceEndpoint)))
-    updatedHttpClient.endpoint.config.settings should be(settings)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.delegate.name, httpClient.delegate.env))
+    clientState.value.endpoint.config.settings should be (settings)
   }
 
   "HttpClient update pipeline" should "get the correct behaviour" in {
@@ -565,16 +590,40 @@ with DummyService with HttpClientTestKit with Matchers with BeforeAndAfterAll {
     val pipeline: Option[SimplePipelineConfig] = Some(DummyRequestPipeline)
     val pipelineSetting: Option[PipelineSetting] = pipeline
     val updatedHttpClient = httpClient.withPipeline(pipeline.asJava)
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
     EndpointRegistry(system).resolve("DummyService") should be(Some(Endpoint(dummyServiceEndpoint)))
-    updatedHttpClient.endpoint.config.pipeline should be(pipelineSetting)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.delegate.name, httpClient.delegate.env))
+    clientState.value.endpoint.config.pipeline should be (pipelineSetting)
   }
 
   "HttpClient update pipeline setting" should "get the correct behaviour" in {
     val httpClient = HttpClientFactory.get("DummyService")
     val pipelineSetting: Option[PipelineSetting] = Some(DummyRequestPipeline)
     val updatedHttpClient = httpClient.withPipelineSetting(pipelineSetting.asJava)
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
     EndpointRegistry(system).resolve("DummyService") should be(Some(Endpoint(dummyServiceEndpoint)))
-    updatedHttpClient.endpoint.config.pipeline should be(pipelineSetting)
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.delegate.name, httpClient.delegate.env))
+    clientState.value.endpoint.config.pipeline should be (pipelineSetting)
+  }
+
+  "HttpClient update circuit breaker settings" should "actually set the circuit breaker settings" in {
+    val httpClient = HttpClientFactory.get("DummyService")
+    val cbSettings = CircuitBreakerSettings(callTimeout = 3 seconds)
+    val updatedHttpClient = httpClient.withCircuitBreakerSettings(cbSettings)
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
+    EndpointRegistry(system).resolve("DummyService") should be(Some(Endpoint(dummyServiceEndpoint)))
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.delegate.name, httpClient.delegate.env))
+    clientState.value.endpoint.config.settings.circuitBreakerConfig should be (cbSettings)
+  }
+
+  "HttpClient update fallback response" should "actually set the circuit breaker settings" in {
+    val httpClient = HttpClientFactory.get("DummyService")
+    val fallback = HttpResponse(entity = """{ "defaultResponse" : "Some default" }""")
+    val updatedHttpClient = httpClient.withFallbackResponse(Optional.of(fallback))
+    Await.ready(updatedHttpClient.readyFuture, awaitMax)
+    EndpointRegistry(system).resolve("DummyService") should be(Some(Endpoint(dummyServiceEndpoint)))
+    val clientState = HttpClientManager(system).httpClientMap.get((httpClient.delegate.name, httpClient.delegate.env))
+    clientState.value.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse should be (Option(fallback))
   }
 
   "HttpClient with the correct endpoint sleep 10s" should "restablish the connection and get response" in {

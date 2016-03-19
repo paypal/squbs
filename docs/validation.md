@@ -1,12 +1,20 @@
 #Validation
 
-squbs Validation provides a [Spray](http://spray.io) directive for data validation by using [Accord Validation Library](http://wix.github.io/accord/).
+squbs Validation provides a [Spray](http://spray.io) directive for data validation by using [Accord Validation Library](http://wix.github.io/accord/). Since Spray directives are currently Scala only, there is no equivalent in Java code until future versions of squbs.
+  
+##Dependencies
+
+Add the following dependency to your build.sbt or scala build file:
+
+```
+"org.squbs" %% "squbs-pattern" % squbsVersion
+```  
   
 ##Usage
   
 Given that an implicit `Person` validator is in the scope, `validate` directive can be used as other [Spray Directives](http://spray.io/documentation/1.2.3/spray-routing/key-concepts/directives/):     
   
-```
+```scala
 import ValidationDirectives._
 validate(person) { 
     ...
@@ -17,7 +25,7 @@ validate(person) {
 
 Here is a sample `Person` class and corresponding validator (please see [Accord Validation Library](http://wix.github.io/accord/) for more validator usage examples).
 
-```
+```scala
 case class Person(firstName: String, lastName: String, middleName: Option[String] = None, age: Int)
 
 object SampleValidators {
@@ -34,7 +42,7 @@ object SampleValidators {
 
 Now you can use the `validate` directive as follows: 
  
- ```
+ ```scala
  def route =
      path("person") {
        post {

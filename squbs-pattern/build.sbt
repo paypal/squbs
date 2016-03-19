@@ -26,13 +26,15 @@ libraryDependencies ++= Seq(
   "org.apache.commons"         %  "commons-math3"       % "3.3"   % "test->*",
   "org.scala-lang.modules"     %% "scala-java8-compat"  % "0.7.0" % "test",
   "com.novocode" % "junit-interface" % "0.11" % "test->default",
-  "com.wix" %% "accord-core" % "0.5"
+  "com.wix" %% "accord-core" % "0.5",
+  "org.json4s"                %% "json4s-jackson"               % "3.3.0",
+  "com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.6.3",
+  "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % "2.6.3",
+  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 )
 
 // : Seq[sbt.Def.Setting[_]] in the line below is not required for a successful build
 // however, it is added due to an intelliJ warning
 Boilerplate.settings : Seq[sbt.Def.Setting[_]]
-
-org.scalastyle.sbt.ScalastylePlugin.Settings
 
 // (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pattern")
