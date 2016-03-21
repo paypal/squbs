@@ -26,6 +26,7 @@ import akka.actor.SupervisorStrategy._
 import akka.actor.{Extension => AkkaExtension, _}
 import akka.agent.Agent
 import akka.pattern._
+import akka.util.Timeout
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
 import org.squbs.pipeline.PipelineManager
@@ -37,7 +38,7 @@ import scala.annotation.varargs
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.{Failure, Try}
+import scala.util.{Success, Failure, Try}
 
 class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
 
@@ -389,25 +390,28 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       }
 
     case RegisterContext(listeners, webContext, actor, ps) =>
-      serviceRegistry.registerContext(listeners, webContext, actor, ps)
+      sender() ! Try { serviceRegistry.registerContext(listeners, webContext, actor, ps) }
 
     case StartListener(name, conf) => // Sent from Bootstrap to start the web service infrastructure.
 
-      val startupBehavior = serviceRegistry.startListener(name, conf, notifySender = sender())
+      Try { serviceRegistry.startListener(name, conf, notifySender = sender()) } match {
+        case Success(startupBehavior) =>
+          context.become(startupBehavior orElse {
+            case HttpBindSuccess =>
+              if (serviceRegistry.isListenersBound) updateSystemState(checkInitState())
+              context.unbecome()
+              unstashAll()
+            case HttpBindFailed =>
+              updateSystemState(checkInitState())
+              context.unbecome()
+              unstashAll()
 
-      context.become(startupBehavior orElse {
-        case HttpBindSuccess =>
-          if (serviceRegistry.isListenersBound) updateSystemState(checkInitState())
-          context.unbecome()
-          unstashAll()
-        case HttpBindFailed =>
-          updateSystemState(checkInitState())
-          context.unbecome()
-          unstashAll()
+            case _ => stash()
+          },
+            discardOld = false)
 
-        case _ => stash()
-      },
-      discardOld = false)
+        case Failure(t) => updateSystemState(checkInitState())
+      }
 
     case Started => // Bootstrap startup and extension init done
       updateSystemState(Initializing)
@@ -647,8 +651,15 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       }
 
       if (initRequired && !(initMap contains cubeActor)) initMap += cubeActor -> None
-      Unicomplex() ! RegisterContext(listeners, webContext, serviceActor, ps)
-      log.info(s"Started service actor ${cubeActor.path} for context $webContext")
+
+      implicit val timeout = Timeout(1 seconds) // TODO Check with Akara
+      (Unicomplex() ? RegisterContext(listeners, webContext, serviceActor, ps)).mapTo[Try[_]] onSuccess {
+        case Success(a) => log.info(s"Started service actor ${cubeActor.path} for context $webContext")
+        case Failure(t) =>
+          initMap += cubeActor -> Some(Failure(t))
+          cubeState = Failed
+          Unicomplex() ! InitReports(cubeState, initMap.toMap)
+      }
 
     case Started => // Signals end of StartCubeActor messages. No more allowed after this.
       if (initMap.isEmpty) {

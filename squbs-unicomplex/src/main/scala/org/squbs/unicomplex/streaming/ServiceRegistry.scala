@@ -31,7 +31,7 @@ import akka.stream.{BindFailedException, ActorMaterializer}
 import akka.stream.TLSClientAuth.{Want, Need}
 import akka.stream.scaladsl.Sink
 import com.typesafe.config.Config
-import org.squbs.pipeline.streaming.PipelineSetting
+import org.squbs.pipeline.streaming.{PipelineExtension, PipelineSetting}
 import org.squbs.unicomplex._
 import org.squbs.unicomplex.streaming.StatsSupport.StatsHolder
 
@@ -63,6 +63,13 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     import context.system
     import context.dispatcher
 
+    val handler = try { Handler(listenerRoutes(name), localPort) } catch { case e =>
+      serverBindigs = serverBindigs + (name -> None)
+      log.error(s"Failed to build streaming flow handler.  System may not function properly.")
+      notifySender ! e
+      throw e
+    }
+
     val uniSelf = context.self
     val serverFlow = (sslContext match {
       case Some(sslCtx) =>
@@ -72,10 +79,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
       case None => Http().bind(interface, port)
     })
 
-
     val statsHolder = new StatsHolder
-    val handler = Handler(listenerRoutes(name), localPort)
-
     serverFlow.to(Sink.foreach { conn =>
 
       conn.flow.transform(() => statsHolder.watchRequests())
@@ -94,22 +98,30 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
       case ActorFailure(ex) if ex.isInstanceOf[BindFailedException] =>
         serverBindigs = serverBindigs + (name -> None)
         log.error(s"Failed to bind listener $name. Cleaning up. System may not function properly.")
-        notifySender ! Ack
+        notifySender ! ex
         uniSelf ! HttpBindFailed
     }
   }
 
-  override private[unicomplex] def isListenersBound = serverBindigs.size == listenerRoutes.size
+  override private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ActorWrapper,
+                                                   ps: PipelineSetting)(implicit context: ActorContext) {
 
-  override private[unicomplex] def prepListeners(listenerNames: Iterable[String])(implicit context: ActorContext) {
-    import context.dispatcher
-    listenerRoutes = listenerNames.map { listener =>
-      listener -> Agent[Seq[(Path, ActorWrapper, PipelineSetting)]](Seq.empty)
-    }.toMap
+    // Calling this here just to see if it would throw an exception.
+    // We do not want it to be thrown at materialization time, instead face it during startup.
+    PipelineExtension(context.system).getFlow(ps)
 
-    import org.squbs.unicomplex.JMX._
-    register(new ListenerBean(listenerRoutes), prefix + listenersName)
+    listeners foreach { listener =>
+      val agent = listenerRoutes(listener)
+      agent.send {
+        currentSeq =>
+          merge(currentSeq, webContext, servant, ps, {
+            log.warning(s"Web context $webContext already registered on $listener. Override existing registration.")
+          })
+      }
+    }
   }
+
+  override private[unicomplex] def isListenersBound = serverBindigs.size == listenerRoutes.size
 
   case class Unbound(sb: ServerBinding)
 

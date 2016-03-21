@@ -150,6 +150,19 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
       }
   }
 
+  override private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ActorWrapper,
+                                                   ps: PipelineSetting)(implicit context: ActorContext) {
+    listeners foreach { listener =>
+      val agent = listenerRoutes(listener)
+      agent.send {
+        currentSeq =>
+          merge(currentSeq, webContext, servant, ps, {
+            log.warning(s"Web context $webContext already registered on $listener. Override existing registration.")
+          })
+      }
+    }
+  }
+
   override private[unicomplex] def stopAll()(implicit context: ActorContext): Unit = {
     serviceListeners foreach {
       case (name, Some((_, httpListener))) =>

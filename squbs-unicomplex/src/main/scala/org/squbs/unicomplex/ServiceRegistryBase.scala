@@ -47,17 +47,7 @@ trait ServiceRegistryBase[A] {
   }
 
   private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ActorWrapper,
-                                          ps: PipelineSetting) {
-    listeners foreach { listener =>
-      val agent = listenerRoutes(listener)
-      agent.send {
-        currentSeq =>
-          merge(currentSeq, webContext, servant, ps, {
-            log.warning(s"Web context $webContext already registered on $listener. Override existing registration.")
-          })
-      }
-    }
-  }
+                                          ps: PipelineSetting)(implicit context: ActorContext): Unit
 
   protected def pathCompanion(s: String): A
 

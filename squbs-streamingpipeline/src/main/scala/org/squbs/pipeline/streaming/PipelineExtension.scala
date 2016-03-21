@@ -45,8 +45,7 @@ class PipelineExtensionImpl(flowMap: Map[String, PipelineFlow],
 
   private def buildPipeline(flowNames: Seq[String]) = {
 
-    // TODO Make sure we handle this in Unicomplex..
-    val flows = flowNames.toList collect { case (name)  =>
+    val flows = flowNames.toList collect { case name =>
       flowMap.getOrElse(name, throw new IllegalArgumentException(s"Invalid pipeline name $name")) }
 
     @tailrec
