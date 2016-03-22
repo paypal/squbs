@@ -29,6 +29,18 @@ object RouteSelectorStage {
   }
 }
 
+/**
+  * Fan-out the stream to several streams emitting each incoming upstream element to the right downstream
+  * based on the [[extractItemToMatch]] and [[isMatch]] calls
+  *
+  * '''Emits when''' all of the outputs stops backpressuring and there is an input element available
+  *
+  * '''Backpressures when''' any of the outputs backpressures
+  *
+  * '''Completes when''' upstream completes
+  *
+  * '''Cancels when''' any downstream cancels
+  */
 final class RouteSelectorStage[A, B](routes: Seq[B], extractItemToMatch: A => B, isMatch: (B, B) => Boolean) extends GraphStage[UniformFanOutShape[A, A]] {
 
   val numOfRoutes = routes.size
@@ -39,44 +51,27 @@ final class RouteSelectorStage[A, B](routes: Seq[B], extractItemToMatch: A => B,
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
     new GraphStageLogic(shape) {
 
-      // TODO This needs to be outputspecific so that we should not emit without a pull.
-      private var pullCount = 0
-      private var hasPulled = false
+      private val outportPulled = Array.ofDim[Boolean](numOfRoutes + 1)
 
       setHandler(in, new InHandler {
         override def onPush(): Unit = {
 
           val elem = grab[A](in)
-          val itemToMatch = extractItemToMatch(elem)
-
-          val matchedRoute = routes.zipWithIndex.find { case (p1, i) =>
-              isMatch(itemToMatch, p1)
-          }
-
+          val matchedRoute = routes.zipWithIndex.find { case (p1, i) => isMatch(extractItemToMatch(elem), p1) }
           // If no match, give the last port's index (which is the NOT_FOUND use case)
           val outPortIndex = matchedRoute map { case(_, index) => index} getOrElse numOfRoutes
-          emit(out(outPortIndex), elem)
-
-          if(pullCount > 0) {
-            tryPull(in)
-            pullCount = pullCount - 1
-          }
+          push(out(outPortIndex), elem)
+          outportPulled(outPortIndex) = false
         }
       })
 
-      out.foreach { o ⇒
+      out.zipWithIndex.foreach { case(o, i) ⇒
         setHandler(o, new OutHandler {
 
           override def onPull(): Unit = {
-            if(!hasPulled) {
-              tryPull(in)
-              hasPulled = true
-            } else {
-              pullCount = pullCount + 1
-            }
+            outportPulled(i) = true
+            if(outportPulled.forall(b => b)) tryPull(in)
           }
-
-          // TODO onDownstreamFinish
         })
       }
     }

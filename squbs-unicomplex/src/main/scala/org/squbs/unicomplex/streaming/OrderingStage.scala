@@ -22,6 +22,19 @@ import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import scala.annotation.tailrec
 import scala.collection.mutable
 
+/**
+  * Takes an element and emits downstream if the [[getState(elem)]] matches the current state, if not enqueues to
+  * a priority queue.  When an element is emitted, the state is updated by calling [[updateState]] and an element is
+  * dequeued from the priority queue and emitted if it matches the updated state.
+  *
+  * '''Emits when''' [[getState(elem)]] matches the current state, if not enqueues it to priority queue
+  *
+  * '''Backpressures when''' downstream backpressures
+  *
+  * '''Completes when''' upstream completes
+  *
+  * '''Cancels when''' downstream cancels
+  */
 class OrderingStage[A, B](initialState: B, updateState: B => B, getState: A => B)(implicit val ordering: Ordering[A])
   extends GraphStage[FlowShape[A, A]] {
 
