@@ -18,13 +18,14 @@ package org.squbs.unicomplex
 
 import javax.net.ssl.SSLContext
 
+import akka.actor.Actor.Receive
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.agent.Agent
 import akka.event.LoggingAdapter
 import akka.io.IO
 import com.typesafe.config.Config
-import org.squbs.unicomplex.ConfigUtil._
+import org.squbs.pipeline.streaming.PipelineSetting
 import spray.can.Http
 import spray.can.server.ServerSettings
 import spray.http.StatusCodes.NotFound
@@ -38,8 +39,9 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
+import akka.pattern._
 
-case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorWrapper)
+case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorWrapper, ps: PipelineSetting)
 
 object RegisterContext {
 
@@ -59,34 +61,6 @@ object RegisterContext {
       innerMatch(path, target)
     }
   }
-
-  private[unicomplex] def merge[T](oldRegistry: Seq[(Path, T)], webContext: String, servant: T,
-                                   overrideWarning: => Unit = {}): Seq[(Path, T)] = {
-    val newMember = (Path(webContext), servant)
-    if (oldRegistry.isEmpty) Seq(newMember)
-    else {
-      val buffer = ListBuffer[(Path, T)]()
-      var added = false
-      oldRegistry foreach {
-        entry =>
-          if (added) buffer += entry
-          else
-          if (entry._1.equals(newMember._1)) {
-            overrideWarning
-            buffer += newMember
-            added = true
-          } else {
-            if (newMember._1.length >= entry._1.length) {
-              buffer += newMember += entry
-              added = true
-            } else buffer += entry
-          }
-      }
-      if (!added) buffer += newMember
-      buffer.toSeq
-    }
-  }
-
 }
 
 case class SqubsRawHeader(name: String, value: String, lowercaseName: String) extends HttpHeader {
@@ -112,74 +86,32 @@ object LocalPortHeader {
 
 class LocalPortHeader(port: Int) extends SqubsRawHeader(LocalPortHeader.name, port.toString, LocalPortHeader.lowerName)
 
-class ServiceRegistry(log: LoggingAdapter) {
+/**
+  * Spray based [[ServiceRegistryBase]] implementation.
+  */
+class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path] {
 
-  var listenerRoutes = Map.empty[String, Agent[Seq[(Path, ActorWrapper)]]]
+  private var serviceListeners = Map.empty[String, Option[(ActorRef, ActorRef)]] // Service actor and HttpListener actor
 
-  class ListenerBean extends ListenerMXBean {
+  private var listenerRoutesVar = Map.empty[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]]
 
-    override def getListeners: java.util.List[ListenerInfo] = {
-      import scala.collection.JavaConversions._
-      listenerRoutes.flatMap { case (listenerName, agent) =>
-        agent() map { case (webContext, servant) =>
-          ListenerInfo(listenerName, webContext.toString(), servant.actor.toString())
-        }
-      }.toSeq
-    }
-  }
+  override protected def listenerRoutes: Map[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]] = listenerRoutesVar
 
-  private[unicomplex] def prepListeners(listenerNames: Iterable[String])(implicit context: ActorContext) {
-    import context.dispatcher
-    listenerRoutes = listenerNames.map { listener =>
-      listener -> Agent[Seq[(Path, ActorWrapper)]](Seq.empty)
-    }.toMap
+  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Agent[Seq[(B, ActorWrapper, PipelineSetting)]]]): Unit =
+    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]]]
 
-    import org.squbs.unicomplex.JMX._
-    register(new ListenerBean, prefix + listenersName)
-  }
+  override protected def pathCompanion(s: String) = Path(s)
 
-  private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ActorWrapper) {
-    listeners foreach { listener =>
-      val agent = listenerRoutes(listener)
-      agent.send {
-        currentSeq =>
-          RegisterContext.merge(currentSeq, webContext, servant, {
-            log.warning(s"Web context $webContext already registered on $listener. Override existing registration.")
-          })
-      }
-    }
-  }
-
-  private[unicomplex] def deregisterContext(webContexts: Seq[String])
-                                           (implicit ec: ExecutionContext): Future[Ack.type] = {
-    val futures = listenerRoutes flatMap {
-      case (_, agent) => webContexts map { ctx => agent.alter {
-        oldEntries =>
-          val buffer = ListBuffer[(Path, ActorWrapper)]()
-          val path = Path(ctx)
-          oldEntries.foreach {
-            entry => if (!entry._1.equals(path)) buffer += entry
-          }
-          buffer.toSeq
-      }
-      }
-    }
-    Future.sequence(futures) map { _ => Ack}
-  }
+  override protected def pathLength(p: Path) = p.length
 
   /**
    * Starts the web service. This should be called from the Unicomplex actor
    * upon seeing the first service registration.
    */
-  private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
-                                       (implicit context: ActorContext) = {
-    val interface = if (config getBoolean "full-address") ConfigUtil.ipv4
-    else config getString "bind-address"
-    val port = config getInt "bind-port"
-    // assign the localPort only if local-port-header is true
-    val localPort = config getOptionalBoolean "local-port-header" flatMap { useHeader =>
-      if (useHeader) Some(port) else None
-    }
+  override private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
+                                       (implicit context: ActorContext): Receive = {
+
+    val (interface, port, localPort, sslContext, needClientAuth) = bindConfig(config)
     val props = Props(classOf[ListenerActor], name, listenerRoutes(name), localPort)
     val listenerRef = context.actorOf(props, name)
 
@@ -189,41 +121,60 @@ class ServiceRegistry(log: LoggingAdapter) {
     implicit val self = context.self
     implicit val system = context.system
 
-    // SSL use case
-    if (config.getBoolean("secure")) {
-      val settings = ServerSettings(system).copy(sslEncryption = true)
-
-      val sslContextClassName = config.getString("ssl-context")
-      implicit def sslContext: SSLContext =
-        if (sslContextClassName == "default") SSLContext.getDefault
-        else {
-          try {
-            val clazz = Class.forName(sslContextClassName)
-            clazz.getMethod("getServerSslContext").invoke(clazz.newInstance()).asInstanceOf[SSLContext]
-          } catch {
-            case e: Throwable =>
-              System.err.println(s"WARN: Failure obtaining SSLContext from $sslContextClassName. " +
-                "Falling back to default.")
-              SSLContext.getDefault
-          }
+    sslContext match {
+      case Some(sslCtx) =>
+        val settings = ServerSettings(system).copy(sslEncryption = true)
+        implicit val serverEngineProvider = ServerSSLEngineProvider { engine =>
+          engine.setNeedClientAuth(needClientAuth)
+          engine
         }
+        IO(Http) ! Http.Bind(listenerRef, interface, port, settings = Option(settings))
 
-      val needClientAuth = config.getBoolean("need-client-auth")
+      case None => IO(Http) ! Http.Bind(listenerRef, interface, port) // Non-SSL
+    }
 
-      implicit val serverEngineProvider = ServerSSLEngineProvider { engine =>
-        engine.setNeedClientAuth(needClientAuth)
-        engine
+    val serviceRef = context.watch(listenerRef)
+
+    {
+      case _: Http.Bound =>
+        import org.squbs.unicomplex.JMX._
+        JMX.register(new ServerStats(name, context.sender()), prefix + serverStats + name)
+        serviceListeners = serviceListeners + (name -> Some((serviceRef, context.sender())))
+        context.self ! HttpBindSuccess
+      case _: Http.CommandFailed =>
+        serviceListeners = serviceListeners + (name -> None)
+        log.error(s"Failed to bind listener $name. Cleaning up. System may not function properly.")
+        context.unwatch(serviceRef)
+        serviceRef ! PoisonPill
+        context.self ! HttpBindFailed
       }
+  }
 
-      IO(Http) ! Http.Bind(listenerRef, interface, port, settings = Option(settings))
+  override private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ActorWrapper,
+                                                   ps: PipelineSetting)(implicit context: ActorContext) {
+    listeners foreach { listener =>
+      val agent = listenerRoutes(listener)
+      agent.send {
+        currentSeq =>
+          merge(currentSeq, webContext, servant, ps, {
+            log.warning(s"Web context $webContext already registered on $listener. Override existing registration.")
+          })
+      }
+    }
+  }
 
-    } else IO(Http) ! Http.Bind(listenerRef, interface, port) // Non-SSL
-
-    context.watch(listenerRef)
+  override private[unicomplex] def stopAll()(implicit context: ActorContext): Unit = {
+    serviceListeners foreach {
+      case (name, Some((_, httpListener))) =>
+        stopListener(name, httpListener)
+        import JMX._
+        JMX.unregister(prefix + serverStats + name)
+      case _ =>
+    }
   }
 
   // In very rare cases, we block. Shutdown is one where we want to make sure it is stopped.
-  private[unicomplex] def stopListener(name: String, httpListener: ActorRef)(implicit context: ActorContext) = {
+  private def stopListener(name: String, httpListener: ActorRef)(implicit context: ActorContext) = {
     implicit val self = context.self
     implicit val system = context.system
     listenerRoutes = listenerRoutes - name
@@ -235,6 +186,28 @@ class ServiceRegistry(log: LoggingAdapter) {
       unregister(prefix + listenersName)
     }
   }
+
+  override private[unicomplex] def isShutdownComplete = serviceListeners.isEmpty
+
+  override private[unicomplex] def isAnyFailedToInitialize = serviceListeners.values exists (_ == None)
+
+  override private[unicomplex] def shutdownState: Receive = {
+    case Http.ClosedAll =>
+      serviceListeners.values foreach {
+        case Some((svcActor, _)) => svcActor ! PoisonPill
+        case None =>
+      }
+  }
+
+  override private[unicomplex] def listenerTerminated(listenerActor: ActorRef): Unit = {
+    serviceListeners = serviceListeners.filterNot {
+      case (_, Some((`listenerActor`, _))) => true
+      case _ => false
+    }
+  }
+
+  override private[unicomplex] def isListenersBound = serviceListeners.size == listenerRoutes.size
+
 }
 
 private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
@@ -288,7 +261,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
   }
 }
 
-private[unicomplex] class ListenerActor(name: String, routes: Agent[Seq[(Path, ActorWrapper)]],
+private[unicomplex] class ListenerActor(name: String, routes: Agent[Seq[(Path, ActorWrapper, PipelineSetting)]],
                                         localPort: Option[Int] = None) extends Actor with ActorLogging {
   import RegisterContext._
 
@@ -300,11 +273,11 @@ private[unicomplex] class ListenerActor(name: String, routes: Agent[Seq[(Path, A
 
     import request.uri.path
     val normPath = if (path.startsWithSlash) path.tail else path //normalize it to make sure not start with '/'
-    val routeOption = routes() find { case (contextPath, _) => pathMatch(normPath, contextPath) }
+    val routeOption = routes() find { case (contextPath, _, _) => pathMatch(normPath, contextPath) }
 
     routeOption flatMap {
-      case (webCtx, ProxiedActor(actor)) => Some(patchHeaders(request, Some(webCtx.toString())), actor)
-      case (_, SimpleActor(actor)) => Some(patchHeaders(request), actor)
+      case (webCtx, ProxiedActor(actor), _) => Some(patchHeaders(request, Some(webCtx.toString())), actor)
+      case (_, SimpleActor(actor), _) => Some(patchHeaders(request), actor)
       case _ => None
     }
   }
@@ -418,26 +391,6 @@ class RejectRoute extends RouteDefinition {
 
   import spray.routing.directives.RouteDirectives.reject
   val route: Route = reject
-}
-
-object WebContext {
-
-  private[unicomplex] val localContext = new ThreadLocal[Option[String]] {
-    override def initialValue(): Option[String] = None
-  }
-
-  def createWithContext[T](webContext: String)(fn: => T): T = {
-    localContext.set(Some(webContext))
-    val r = fn
-    localContext.set(None)
-    r
-
-  }
-}
-
-
-trait WebContext {
-  protected final val webContext: String = WebContext.localContext.get.get
 }
 
 /**

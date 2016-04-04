@@ -70,7 +70,7 @@ object CorrelateRoundRobinRoutingLogic {
 
 }
 
-final case class CorrelateRoundRobinGroup[C](override val paths: immutable.Iterable[String],
+final case class CorrelateRoundRobinGroup[C](val routerPaths: (ActorSystem) => immutable.Iterable[String],
                                              override val routerDispatcher: String = Dispatchers.DefaultDispatcherId,
                                              zkAddress:Address,
                                              correlation:Correlation[C] = DefaultCorrelation()) extends Group {
@@ -84,6 +84,7 @@ final case class CorrelateRoundRobinGroup[C](override val paths: immutable.Itera
    */
   def withDispatcher(dispatcherId: String): CorrelateRoundRobinGroup[C] = copy(routerDispatcher = dispatcherId)
 
+  override def paths(system: ActorSystem): immutable.Iterable[String] = routerPaths(system)
 }
 
 
