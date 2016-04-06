@@ -17,8 +17,7 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-client" % sprayV % "test",
   "io.spray" %% "spray-json" % "1.3.2" % "test",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
-  "com.typesafe.akka" %% "akka-stream-experimental" % akkaStreamV,
-  "com.typesafe.akka" %% "akka-stream-testkit-experimental" % akkaStreamV % "test",
+  "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % "test",
   "org.scala-lang.modules" %% "scala-java8-compat" % "0.7.0"
 )
 
