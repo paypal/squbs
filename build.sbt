@@ -62,6 +62,8 @@ lazy val `squbs-actormonitor` = project dependsOn (`squbs-unicomplex`, `squbs-te
 
 lazy val `squbs-admin` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
 
+lazy val `squbs-admin-exp` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
+
 publishTo in ThisBuild := {
   val nexus = "https://oss.sonatype.org/"
   if (version.value.trim.endsWith("SNAPSHOT"))
