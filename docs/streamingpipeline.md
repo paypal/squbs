@@ -59,14 +59,14 @@ dummyflow {
 ```
 
 * type: to idenfity the configuration as a `squbs.pipelineflow`.
-* factory: the factor class to create the `BidiFlow` from.
+* factory: the factory class to create the `BidiFlow` from.
 
 A sample `DummyBidiFlow` looks like below:
 
 ```scala
 class DummyBidiFlow extends PipelineFlowFactory {
 
-  override def create: PipelineFlow = {
+  override def create(implicit system: ActorSystem): PipelineFlow = {
      BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       val inbound = b.add(Flow[RequestContext].map { rc => rc.addRequestHeader(RawHeader("DummyRequest", "ReqValue")) })
       val outbound = b.add(Flow[RequestContext].map{ rc => rc.addResponseHeader(RawHeader("DummyResponse", "ResValue"))})
@@ -87,7 +87,7 @@ In the below `DummyAbortableBidiFlow ` example, `authorization ` is a bidi flow 
 ```scala
 class DummyAbortableBidiFlow extends PipelineFlowFactory {
 
-  override def create: PipelineFlow = {
+  override def create(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._

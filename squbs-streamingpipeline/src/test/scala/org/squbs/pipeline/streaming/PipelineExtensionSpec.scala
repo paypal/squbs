@@ -173,7 +173,7 @@ class PipelineExtensionSpec3 extends TestKit(ActorSystem("PipelineExtensionSpec3
 
 class DummyFlow1 extends PipelineFlowFactory {
 
-  override def create: PipelineFlow = {
+  override def create(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
@@ -199,7 +199,7 @@ class DummyFlow1 extends PipelineFlowFactory {
 
 class PreFlow extends PipelineFlowFactory {
 
-  override def create: PipelineFlow = {
+  override def create(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       val inbound = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyPreInbound", "valPreInbound")) })
@@ -211,7 +211,7 @@ class PreFlow extends PipelineFlowFactory {
 
 class PostFlow extends PipelineFlowFactory {
 
-  override def create: PipelineFlow = {
+  override def create(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       val inbound = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyPostInbound", "valPostInbound")) })

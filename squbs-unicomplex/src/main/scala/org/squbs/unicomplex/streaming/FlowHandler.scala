@@ -16,7 +16,7 @@
 
 package org.squbs.unicomplex.streaming
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.agent.Agent
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model.{StatusCodes, HttpResponse, HttpRequest}
@@ -28,6 +28,7 @@ import org.squbs.unicomplex.ActorWrapper
 import akka.pattern._
 
 import scala.annotation.tailrec
+import scala.language.postfixOps
 
 object Handler {
 
@@ -75,7 +76,10 @@ class Handler(routes: Agent[Seq[(Path, ActorWrapper, PipelineSetting)]], localPo
   // Even then, I am not sure if that would be the right value..
   import scala.concurrent.duration._
   implicit val askTimeOut: Timeout = 5 seconds
-  private def asyncHandler(actorWrapper: ActorWrapper) = (req: HttpRequest) => (actorWrapper.actor ? req).mapTo[HttpResponse]
+  private def asyncHandler(routeActor: ActorRef) = (req: HttpRequest) => (routeActor ? req).mapTo[HttpResponse]
+  def runRoute(routeActor: ActorRef, rc: RequestContext) = asyncHandler(routeActor)(rc.request) map {
+    httpResponse => rc.copy(response = Option(httpResponse))
+  }
 
   val notFoundHttpResponse = HttpResponse(StatusCodes.NotFound, entity = StatusCodes.NotFound.defaultMessage)
 
@@ -92,7 +96,7 @@ class Handler(routes: Agent[Seq[(Path, ActorWrapper, PipelineSetting)]], localPo
 
       actorWrappers.zipWithIndex foreach { case (aw, i) =>
         val routeFlow = Flow[RequestContext].mapAsync(akkaHttpConfig.getInt("server.pipelining-limit")) {
-          rc => asyncHandler(aw)(rc.request) map (httpResponse => rc.copy(response = Option(httpResponse)))
+          rc => runRoute(aw.actor, rc)
         }
 
         pipelineExtension.getFlow(pipelineSettings(i)) match {
