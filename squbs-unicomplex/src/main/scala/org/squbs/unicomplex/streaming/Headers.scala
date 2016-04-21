@@ -22,7 +22,7 @@ import scala.util.Try
 
 object LocalPortHeader extends ModeledCustomHeaderCompanion[LocalPortHeader] {
 
-  override def name: String = "LocalPortHeader"
+  override def name: String = classOf[LocalPortHeader].getName
 
   override def parse(value: String): Try[LocalPortHeader] = Try(new LocalPortHeader(value.toInt))
 }
@@ -32,6 +32,24 @@ final case class LocalPortHeader(port: Int) extends ModeledCustomHeader[LocalPor
   override def companion: ModeledCustomHeaderCompanion[LocalPortHeader] = LocalPortHeader
 
   override def value(): String = port.toString
+
+  override def renderInResponses(): Boolean = false
+
+  override def renderInRequests(): Boolean = false
+}
+
+object WebContextHeader extends ModeledCustomHeaderCompanion[WebContextHeader] {
+
+  override def name: String = classOf[WebContextHeader].getName
+
+  override def parse(value: String): Try[WebContextHeader] = Try(new WebContextHeader(value))
+}
+
+final case class WebContextHeader(webCtx: String) extends ModeledCustomHeader[WebContextHeader] {
+
+  override def companion: ModeledCustomHeaderCompanion[WebContextHeader] = WebContextHeader
+
+  override def value(): String = webCtx
 
   override def renderInResponses(): Boolean = false
 

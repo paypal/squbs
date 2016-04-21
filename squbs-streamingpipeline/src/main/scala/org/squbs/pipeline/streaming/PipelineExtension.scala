@@ -25,7 +25,7 @@ import scala.annotation.tailrec
 
 trait PipelineFlowFactory {
 
-  def create: BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]
+  def create(implicit system: ActorSystem): BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]
 }
 
 class PipelineExtensionImpl(flowMap: Map[String, PipelineFlow],
@@ -77,7 +77,7 @@ object PipelineExtension extends ExtensionId[PipelineExtensionImpl] with Extensi
 
       val flowFactory = Class.forName(factoryClassName).newInstance().asInstanceOf[PipelineFlowFactory]
 
-      flowMap = flowMap + (name -> flowFactory.create)
+      flowMap = flowMap + (name -> flowFactory.create(system))
     }
 
     val pre = system.settings.config.getOptionalString("squbs.pipeline.streaming.defaults.pre-flow")

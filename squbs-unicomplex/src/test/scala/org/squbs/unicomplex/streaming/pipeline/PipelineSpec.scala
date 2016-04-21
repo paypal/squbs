@@ -210,7 +210,7 @@ class DummyActor extends Actor {
 
 class DummyFlow extends PipelineFlowFactory {
 
-  override def create: PipelineFlow = {
+  override def create(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
@@ -236,7 +236,7 @@ class DummyFlow extends PipelineFlowFactory {
 
 class PreFlow extends PipelineFlowFactory {
 
-  override def create: PipelineFlow = {
+  override def create(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       val inbound = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyPreInbound", "valPreInbound")) })
@@ -248,7 +248,7 @@ class PreFlow extends PipelineFlowFactory {
 
 class PostFlow extends PipelineFlowFactory {
 
-  override def create: PipelineFlow = {
+  override def create(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       val inbound = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyPostInbound", "valPostInbound")) })

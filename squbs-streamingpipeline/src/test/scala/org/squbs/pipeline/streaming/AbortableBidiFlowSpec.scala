@@ -119,7 +119,7 @@ object AbortableBidiFlowSpec {
 
 class DummyFlow2 extends PipelineFlowFactory {
 
-  override def create: PipelineFlow = {
+  override def create(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
