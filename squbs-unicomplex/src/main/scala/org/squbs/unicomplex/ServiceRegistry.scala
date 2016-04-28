@@ -16,7 +16,7 @@
 
 package org.squbs.unicomplex
 
-import javax.net.ssl.SSLContext
+import java.net.BindException
 
 import akka.actor.Actor.Receive
 import akka.actor.SupervisorStrategy._
@@ -35,11 +35,8 @@ import spray.io.ServerSSLEngineProvider
 import spray.routing.{Route, _}
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
-import scala.util.{Failure, Success}
-import akka.pattern._
+import scala.util.{Try, Failure, Success}
 
 case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorWrapper, ps: PipelineSetting)
 
@@ -91,7 +88,9 @@ class LocalPortHeader(port: Int) extends SqubsRawHeader(LocalPortHeader.name, po
   */
 class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path] {
 
-  private var serviceListeners = Map.empty[String, Option[(ActorRef, ActorRef)]] // Service actor and HttpListener actor
+  case class ServiceListenerInfo(squbsListener: Option[ActorRef], httpListener: Option[ActorRef], exception: Option[Throwable] = None)
+
+  private var serviceListeners = Map.empty[String, ServiceListenerInfo]
 
   private var listenerRoutesVar = Map.empty[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]]
 
@@ -111,7 +110,14 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
   override private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
                                        (implicit context: ActorContext): Receive = {
 
-    val (interface, port, localPort, sslContext, needClientAuth) = bindConfig(config)
+    val BindConfig(interface, port, localPort, sslContext, needClientAuth) = Try { bindConfig(config) } match {
+      case Success(bc) => bc
+      case Failure(ex) =>
+        serviceListeners = serviceListeners + (name -> ServiceListenerInfo(None, None, Some(ex)))
+        notifySender ! Failure(ex)
+        throw ex
+    }
+
     val props = Props(classOf[ListenerActor], name, listenerRoutes(name), localPort)
     val listenerRef = context.actorOf(props, name)
 
@@ -133,19 +139,19 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
       case None => IO(Http) ! Http.Bind(listenerRef, interface, port) // Non-SSL
     }
 
-    val serviceRef = context.watch(listenerRef)
+    context.watch(listenerRef)
 
     {
       case _: Http.Bound =>
         import org.squbs.unicomplex.JMX._
         JMX.register(new ServerStats(name, context.sender()), prefix + serverStats + name)
-        serviceListeners = serviceListeners + (name -> Some((serviceRef, context.sender())))
+        serviceListeners = serviceListeners + (name -> ServiceListenerInfo(Some(listenerRef), Some(context.sender())))
         context.self ! HttpBindSuccess
-      case _: Http.CommandFailed =>
-        serviceListeners = serviceListeners + (name -> None)
+      case failed: Http.CommandFailed =>
+        serviceListeners = serviceListeners + (name -> ServiceListenerInfo(None, None, Some(new BindException(failed.toString))))
         log.error(s"Failed to bind listener $name. Cleaning up. System may not function properly.")
-        context.unwatch(serviceRef)
-        serviceRef ! PoisonPill
+        context.unwatch(listenerRef)
+        listenerRef ! PoisonPill
         context.self ! HttpBindFailed
       }
   }
@@ -165,7 +171,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   override private[unicomplex] def stopAll()(implicit context: ActorContext): Unit = {
     serviceListeners foreach {
-      case (name, Some((_, httpListener))) =>
+      case (name, ServiceListenerInfo(_, Some(httpListener), None)) =>
         stopListener(name, httpListener)
         import JMX._
         JMX.unregister(prefix + serverStats + name)
@@ -189,25 +195,35 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   override private[unicomplex] def isShutdownComplete = serviceListeners.isEmpty
 
-  override private[unicomplex] def isAnyFailedToInitialize = serviceListeners.values exists (_ == None)
+  override private[unicomplex] def isAnyFailedToInitialize = serviceListeners.values exists (_.exception.nonEmpty)
 
   override private[unicomplex] def shutdownState: Receive = {
     case Http.ClosedAll =>
       serviceListeners.values foreach {
-        case Some((svcActor, _)) => svcActor ! PoisonPill
-        case None =>
+        case ServiceListenerInfo(Some(svcActor), Some(_), None) => svcActor ! PoisonPill
+        case _ =>
       }
   }
 
   override private[unicomplex] def listenerTerminated(listenerActor: ActorRef): Unit = {
     serviceListeners = serviceListeners.filterNot {
-      case (_, Some((`listenerActor`, _))) => true
+      case (_, ServiceListenerInfo(Some(`listenerActor`), Some(_), None)) => true
       case _ => false
     }
   }
 
   override private[unicomplex] def isListenersBound = serviceListeners.size == listenerRoutes.size
 
+  override protected def listenerStateMXBean(): ListenerStateMXBean = {
+    new ListenerStateMXBean {
+      import scala.collection.JavaConversions._
+      override def getListenerStates: java.util.List[ListenerState] = {
+        serviceListeners map { case (name, ServiceListenerInfo(squbsListener, httpListener, exception)) =>
+          ListenerState(name, squbsListener.map(_ => "Success").getOrElse("Failed"), exception.getOrElse("").toString)
+        } toSeq
+      }
+    }
+  }
 }
 
 private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
