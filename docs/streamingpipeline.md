@@ -77,10 +77,10 @@ class DummyBidiFlow extends PipelineFlowFactory {
 ```
 
 #### Aborting the flow
-In certain scenarios, a stage in pipeline may have a need to abort the flow immediately and return an `HttpResponse`, e.g., in case of authentication/authorization.  In such scenarios, the rest of the pipeline should be skipped and the request should not reach to the squbs service.  To skip the rest of the flow: 
+In certain scenarios, a stage in pipeline may have a need to abort the flow and return an `HttpResponse`, e.g., in case of authentication/authorization.  In such scenarios, the rest of the pipeline should be skipped and the request should not reach to the squbs service.  To skip the rest of the flow: 
 
 * the flow needs to be added to builder with `abortable`, e.g., `b.add(authorization abortable)`.
-* set the `HttpResponse` on `RequestContext` when you need to abort.
+* call `abortWith` on `RequestContext` with an `HttpResponse` when you need to abort.
 
 In the below `DummyAbortableBidiFlow ` example, `authorization ` is a bidi flow with `abortable` and it aborts the flow is user is not authorized: 
 
@@ -110,9 +110,8 @@ class DummyAbortableBidiFlow extends PipelineFlowFactory {
   val authorization = BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
 
     val authorization = b.add(Flow[RequestContext] map { rc =>
-        if(!isAuthorized) {
-          rc.copy(response = Some(HttpResponse(StatusCodes.Unauthorized, entity = "~> ~> bypassing in inbound")))
-        } else rc
+        if(!isAuthorized) rc.abortWith(HttpResponse(StatusCodes.Unauthorized, entity = "Not Authorized!"))
+        else rc
     })
 
     val noneFlow = b.add(Flow[RequestContext]) // Do nothing
