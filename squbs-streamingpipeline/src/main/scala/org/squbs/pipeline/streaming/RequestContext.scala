@@ -68,4 +68,6 @@ case class RequestContext(request: HttpRequest,
       resp => copy(response = Option(resp.copy(headers = resp.headers ++ headers)))
     }
   }
+
+  def abortWith(httpResponse: HttpResponse): RequestContext = copy(response = Option(httpResponse))
 }
