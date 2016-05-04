@@ -27,6 +27,7 @@ import org.squbs.unicomplex.ConfigUtil._
 
 import scala.concurrent.{Future, ExecutionContext}
 import scala.collection.mutable.ListBuffer
+import scala.util.{Success, Try}
 
 trait ServiceRegistryBase[A] {
 
@@ -44,7 +45,10 @@ trait ServiceRegistryBase[A] {
 
     import org.squbs.unicomplex.JMX._
     register(new ListenerBean(listenerRoutes), prefix + listenersName)
+    register(listenerStateMXBean(), prefix + listenerStateName)
   }
+
+  protected def listenerStateMXBean(): ListenerStateMXBean
 
   private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ActorWrapper,
                                           ps: PipelineSetting)(implicit context: ActorContext): Unit
@@ -85,7 +89,10 @@ trait ServiceRegistryBase[A] {
 
   private[unicomplex] def listenerTerminated(listenerActor: ActorRef): Unit
 
-  protected def bindConfig(config: Config) = {
+  case class BindConfig(interface: String, port: Int, localPort: Option[Int],
+                        ssLContext: Option[SSLContext], needClientAuth: Boolean)
+
+  protected def bindConfig(config: Config): BindConfig = {
     val interface = if (config getBoolean "full-address") ConfigUtil.ipv4
     else config getString "bind-address"
     val port = config getInt "bind-port"
@@ -106,16 +113,15 @@ trait ServiceRegistryBase[A] {
               clazz.getMethod("getServerSslContext").invoke(clazz.newInstance()).asInstanceOf[SSLContext]
             } catch {
               case e: Throwable =>
-                System.err.println(s"WARN: Failure obtaining SSLContext from $sslContextClassName. " +
-                  "Falling back to default.")
-                SSLContext.getDefault
+                log.error(e, s"Failure obtaining SSLContext from $sslContextClassName.")
+                throw e
             }
           }
 
         (Some(sslContext), config.getBoolean("need-client-auth"))
       } else (None, false)
 
-    (interface, port, localPort, sslContext, needClientAuth)
+    BindConfig(interface, port, localPort, sslContext, needClientAuth)
   }
 
   private[unicomplex] def merge[B, C](oldRegistry: Seq[(A, B, C)], webContext: String, servant: B, pipelineSetting: C,

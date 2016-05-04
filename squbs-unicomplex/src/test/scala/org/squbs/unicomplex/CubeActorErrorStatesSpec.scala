@@ -47,7 +47,10 @@ object CubeActorErrorStatesSpec{
   val config = ConfigFactory.parseString(
     s"""
        |default-listener.bind-port = $port
-       |${JMX.prefixConfig} = true
+       |squbs {
+       |  actorsystem-name = cubeActorErrorStatesSpec
+       |  ${JMX.prefixConfig} = true
+       |}
     """.stripMargin
   )
 
