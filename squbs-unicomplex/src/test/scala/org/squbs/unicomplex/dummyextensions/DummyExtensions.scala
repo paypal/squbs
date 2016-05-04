@@ -32,6 +32,10 @@ trait DummyExtension extends ExtensionLifecycle {
     _state += "init"
   }
 
+  override def preCubesInit() {
+    _state += "preCubesInit"
+  }
+
   override def postInit() {
     _state += "postInit"
   }

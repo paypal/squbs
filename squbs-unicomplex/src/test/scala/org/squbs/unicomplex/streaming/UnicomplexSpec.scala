@@ -230,11 +230,11 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       extensions should have size 2
     }
 
-    "preInit, init and postInit all extensions" in {
+    "preInit, init, preCubesInit   and postInit all extensions" in {
       boot.extensions.size should be (2)
       forAll (boot.extensions) { _.extLifecycle.get shouldBe a [DummyExtension]}
-      boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("AstartpreInitinitpostInit")
-      boot.extensions(1).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("BstartpreInitinitpostInit")
+      boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("AstartpreInitinitpreCubesInitpostInit")
+      boot.extensions(1).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("BstartpreInitinitpreCubesInitpostInit")
     }
 
     "ReportStatus" in {

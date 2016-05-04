@@ -137,10 +137,10 @@ with AsyncAssertions {
       attr.asInstanceOf[Array[_]] should have size 1
     }
 
-    "preInit, init and postInit all extensions" in {
+    "preInit, init, preCubesInit and postInit all extensions" in {
       boot.extensions.size should be (2)
       //boot.extensions.forall(_.extLifecycle.get.isInstanceOf[DummyExtension]) should be(true)
-      boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("CstartpreInitpostInit")
+      boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("CstartpreInitpreCubesInitpostInit")
       boot.extensions(1).extLifecycle should be (None)
 
     }
