@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-ackage org.squbs.samples.pubsub.messages
+package org.squbs.samples.pubsub.messages
 
 import akka.util.ByteString
 import spray.routing.RequestContext

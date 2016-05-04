@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-ackage org.squbs.samples.pubsub.svc
+package org.squbs.samples.pubsub.svc
 
 import akka.actor._
 import akka.util.ByteString
