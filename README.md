@@ -34,11 +34,21 @@ Each of the components have virtually no dependency on each others. They are tru
 
 9. **Console**: A drop-in module allowing web access to system and application stats through a simple web and service interface returning pretty-printed JSON.
 
+###Experimental Support for Akka HTTP
+The following components are based on Akka HTTP and are considered experimental at this time. Akka HTTP will ultimately replace Spray as the HTTP engine for squbs as soon as performance, stability, and feature parity is achieved. To enable experimental Akka HTTP support, set the following configuration in `application.conf`: `squbs.experimental-mode-on = true`
+
+1. **StreamingPipeline**: Akka streams version of the Pipeline, based upon Akka Streams' `BidiFlow`. It allows users or infrastructure teams to implement request/response filters as `BidiFlow` elements and registering them to the pipeline. This module may only be used if Akka HTTP experimental mode is enabled.
+
+2. **Console for Akka HTTP**: The `squbs-admin-exp` module replaces `squbs-admin` in Akka HTTP experimental mode. It uses the Akka HTTP interfaces instead of the Spray interfaces. In experimental mode, users have to modify their build.sbt and use this dependency instead of squbs-admin.
+
 ##Getting Started
 
-The easiest way to getting started is to create a project from one of our templates. The followings are currently available templates:
+The easiest way to getting started is to create a project from one of the squbs templates. The followings are currently available Activator templates:
 
-TODO: Reference to template projects
+* [squbs-scala-sample](https://www.lightbend.com/activator/template/squbs-scala-sample): Scala sample application
+* [squbs-java-sample](https://www.lightbend.com/activator/template/squbs-java-sample): Java sample application with only Spray route still Scala
+
+
 
 ##Documentation
 * [Unicomplex & Cube Bootstrapping](docs/bootstrap.md)
