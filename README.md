@@ -35,7 +35,7 @@ Each of the components have virtually no dependency on each others. They are tru
 9. **Console**: A drop-in module allowing web access to system and application stats through a simple web and service interface returning pretty-printed JSON.
 
 ###Experimental Support for Akka HTTP
-The following components are based on Akka HTTP and are considered experimental at this time. Akka HTTP will ultimately replace Spray as the HTTP engine for squbs as soon as performance, stability, and feature parity is achieved. To enable experimental Akka HTTP support, set the following configuration in `application.conf`: `squbs.experimental-mode-on = true`
+The following components are based on Akka HTTP and are considered experimental at this time. These are documented in greater detail under [Experimental Support for Akka HTTP](docs/akka-http-experimental.md).
 
 1. **StreamingPipeline**: Akka streams version of the Pipeline, based upon Akka Streams' `BidiFlow`. It allows users or infrastructure teams to implement request/response filters as `BidiFlow` elements and registering them to the pipeline. This module may only be used if Akka HTTP experimental mode is enabled.
 
@@ -46,7 +46,9 @@ The following components are based on Akka HTTP and are considered experimental 
 The easiest way to getting started is to create a project from one of the squbs templates. The followings are currently available Activator templates:
 
 * [squbs-scala-sample](https://www.lightbend.com/activator/template/squbs-scala-sample): Scala sample application
-* [squbs-java-sample](https://www.lightbend.com/activator/template/squbs-java-sample): Java sample application with only Spray route still Scala
+* [squbs-java-sample](https://www.lightbend.com/activator/template/squbs-java-sample): Java sample application (with only Spray route still Scala)
+
+Also check out these [slightly more advanced samples](https://github.com/paypal/squbs/tree/master/samples).
 
 
 
@@ -68,6 +70,8 @@ The easiest way to getting started is to create a project from one of the squbs 
 * [Validation](docs/validation.md)
 * [Console](docs/console.md)
 * [Application Lifecycle Management](docs/packaging.md)
+* [Experimental Support for Akka HTTP](docs/akka-http-experimental.md)
+* [Streaming Pipeline](docs/streamingpipeline.md)
 
 ##Contributing to squbs
 Thank you very much for contributing to squbs. Please read the [contribution guidelines](CONTRIBUTING.md) for the process.
