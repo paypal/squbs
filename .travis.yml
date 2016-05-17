@@ -3,6 +3,17 @@ scala:
  - 2.11.7
 jdk:
  - oraclejdk8
+
+addons:
+  apt:
+    packages:
+      - oracle-java8-installer
+
+cache:
+  directories:
+  - $HOME/.sbt
+  - $HOME/.ivy2
+
 env:
  global:
   - TRAVIS_JDK_VERSION=oraclejdk8

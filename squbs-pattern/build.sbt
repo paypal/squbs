@@ -11,7 +11,8 @@ testOptions in Test ++= Seq(
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
-  "com.typesafe.akka"          %% "akka-agent"          % akkaV,
+  "com.typesafe.akka"          %% "akka-agent" % akkaV,
+  "com.typesafe.akka" %% "akka-stream" % akkaV,
   "com.typesafe.akka" %% "akka-contrib" % akkaV intransitive(),
   "io.spray"          %% "spray-http" % sprayV,
   "io.spray"          %% "spray-httpx" % sprayV,
@@ -20,6 +21,7 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-httpx" % sprayV % "test",
   "io.spray" %% "spray-json" % "1.3.2" % "test",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+  "net.openhft" % "chronicle-queue" % "4.3.2" % "provided",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test->*",
   "junit" % "junit" % "4.12" % "test",
@@ -38,3 +40,5 @@ libraryDependencies ++= Seq(
 Boilerplate.settings : Seq[sbt.Def.Setting[_]]
 
 // (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pattern")
+
+updateOptions := updateOptions.value.withCachedResolution(true)

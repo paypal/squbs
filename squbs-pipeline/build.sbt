@@ -19,3 +19,5 @@ libraryDependencies ++= Seq(
 )
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pipeline")
+
+updateOptions := updateOptions.value.withCachedResolution(true)

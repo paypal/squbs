@@ -18,7 +18,14 @@ parallelExecution in ThisBuild := false
 
 updateOptions in ThisBuild := updateOptions.value.withCachedResolution(true)
 
-concurrentRestrictions in Global := Seq(Tags.limitAll(4))
+val par = {
+  val travis = sys.env.getOrElse("TRAVIS", default = "false") == "true"
+  val pr = sys.env.getOrElse("TRAVIS_PULL_REQUEST", default = "") != "false"
+  if (travis && pr) 1
+  else sys.runtime.availableProcessors
+}
+
+concurrentRestrictions in Global := Seq(Tags.limitAll(par))
 
 lazy val `squbs-pipeline` = project
 
