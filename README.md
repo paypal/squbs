@@ -24,6 +24,7 @@ squbs (pronounced "skewbs")is a software container and a suite of components ena
   2. Asynchronous systems depend heavily on timeouts and fixed timeouts are never right. TimeoutPolicy allows users to set policy (like 2.5 sigma) instead of fixed timeout values and takes care of the heuristics by itself allowing systems to adapt to their operating conditions.
   3. Spray doesn't have friendly API for Java, the spray.japi package provides a few of Helpers and Factories to help Java developers to construct spray entities easily.
   4. Validation provides a [Spray](http://spray.io) directive for data validation by using [Accord Validation Library](http://wix.github.io/accord/).
+  5. PersistentBuffer provides a high-performance Akka Streams flow buffer component that persists its content to a memory-mapped file and recovers the content after failure and restart.
 
 6. **ActorRegistry**: A core lookup facility allowing actors of loosely-coupled modules to find each others, or even to model different services as actors.
 
@@ -68,6 +69,7 @@ Also check out these [slightly more advanced samples](https://github.com/paypal/
 * [The ActorRegistry](docs/registry.md)
 * [Timeout Policy](docs/timeoutpolicy.md)
 * [Validation](docs/validation.md)
+* [Persistent Buffer](docs/persistent-buffer.md)
 * [Console](docs/console.md)
 * [Application Lifecycle Management](docs/packaging.md)
 * [Experimental Support for Akka HTTP](docs/akka-http-experimental.md)

@@ -17,3 +17,5 @@ libraryDependencies ++= Seq(
 )
 
 testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
+
+updateOptions := updateOptions.value.withCachedResolution(true)

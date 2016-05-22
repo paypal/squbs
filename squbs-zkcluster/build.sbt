@@ -22,3 +22,5 @@ libraryDependencies ++= Seq(
 parallelExecution := false
 
 cleanFiles += baseDirectory.value / "zookeeper"
+
+updateOptions := updateOptions.value.withCachedResolution(true)
