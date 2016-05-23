@@ -8,6 +8,8 @@ testOptions in Test ++= Seq(
   Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 )
 
+javaOptions in Test += "-Xmx512m"
+
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "com.typesafe.akka" %% "akka-actor" % akkaV,

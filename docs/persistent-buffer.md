@@ -7,8 +7,9 @@
 The following example shows the use of `PersistentBuffer` in a stream:
 
 ```scala
+implicit val serializer = QueueSerializer[ByteString]()
 val source = Source(1 to 1000000).map { n => ByteString(s"Hello $n") }
-val buffer = new PersistentBuffer(new File("/tmp/myqueue"))
+val buffer = new PersistentBuffer[ByteString](new File("/tmp/myqueue"))
 val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
 val countFuture = source.via(buffer).runWith(counter)
 
@@ -17,8 +18,9 @@ val countFuture = source.via(buffer).runWith(counter)
 This next version shows the same in a GraphDSL:
 
 ```scala
+implicit val serializer = QueueSerializer[ByteString]()
 val source = Source(1 to 1000000).map { n => ByteString(s"Hello $n") }
-val buffer = new PersistentBuffer(new File("/tmp/myqueue")
+val buffer = new PersistentBuffer[ByteString](new File("/tmp/myqueue")
 val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
 val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit builder =>
   sink =>
@@ -29,12 +31,46 @@ val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit bu
 val countFuture = streamGraph.run()
 ```
 
-##Data Type
+##Serialization
+A `QueueSerializer[T]` needs to be implicitly provided for a `PersistentBuffer[T]`, as seen in the examples above:
 
-For optimal performance, data type supported by `PersistentBuffer` is currently limited to `akka.util.ByteString`. Other data types will need to be serialized/converted to `ByteString` before flowing into the buffer, and deserialized/converted from `ByteString` flowing out of the buffer. This has to be handled as part of the stream.
+```scala
+implicit val serializer = QueueSerializer[ByteString]()
+```
+
+The `QueueSerializer[T]()` call produces a serializer for your target type. It depends on the serialization and deserialization of the underlying infrastructure.
+
+###Implementing a Serializer
+To control the fine-grained persistent format in the queue, you may want to implement your own serializer as follows:
+
+```scala
+case class Person(name: String, age: Int)
+
+class PersonSerializer extends QueueSerializer[Person] {
+
+  override def readElement(wire: WireIn): Option[Person] = {
+    for {
+      name <- Option(wire.read().`object`(classOf[String]))
+      age <- Option(wire.read().int32)
+    } yield { Person(name, age) }
+  }
+
+  override def writeElement(element: Person, wire: WireOut): Unit = {
+    wire.write().`object`(classOf[String], element.name)
+    wire.write().int32(element.age)
+  }
+}
+```
+
+To use this serializer, just declare it implicitly before constructing the `PersistentBuffer` as follows:
+
+```scala
+implicit val serializer = new PersonSerializer()
+val buffer = new PersistentBuffer[Person](new File("/tmp/myqueue")
+```
 
 ##BackPressure
-`PersistentBuffer` does not backpressure upstream. It will take all the stream elements given to it and grow its storage by increasing the number of queue files. It does not have any means to place a limit on the buffer size or determine the storage capacity. Please see **Cleaning Up** below for strategies to manage storage. Downstream backpressure is honored as per Akka Streams and Reactive Streams requirements.
+`PersistentBuffer` does not backpressure upstream. It will take all the stream elements given to it and grow its storage by increasing, or rotating, the number of queue files. It does not have any means to determine a limit on the buffer size or determine the storage capacity. Downstream backpressure is honored as per Akka Streams and Reactive Streams requirements.
 
 ##Failure & Recovery
 
