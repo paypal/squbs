@@ -24,19 +24,30 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.stream.{ActorMaterializer, ClosedShape, ThrottleMode}
 import akka.util.ByteString
+import net.openhft.chronicle.wire.{WireIn, WireOut}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.testkit.Timeouts._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Promise}
 import scala.language.postfixOps
+import scala.reflect._
 import scala.util.Try
 
-class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
+abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manifest](typeName: String) extends FlatSpec
+  with Matchers with BeforeAndAfterAll {
 
-  implicit val system = ActorSystem("PersistentBufferSpec")
+  implicit val system = ActorSystem(s"Persistent${typeName}BufferSpec")
   implicit val mat = ActorMaterializer()
+  implicit val serializer = QueueSerializer[T]()
   import system.dispatcher
+
+  val elementCount = 50000
+  val failTestAt = elementCount * 3 / 10
+  val elementsAfterFail = 100
+  val flowRate = 1000
+  val flowUnit = 10 millisecond
+  val burstSize = 500
 
   override def afterAll = {
     Await.ready(system.terminate(), awaitMax)
@@ -48,24 +59,28 @@ class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     file.delete
   }
 
+  def createElement(n: Int): T
+
+  def format(element: T): String
 
   it should "buffer a stream of one million elements" in {
     val tempPath = Files.createTempDirectory("persistent_queue")
-    val in = Source(1 to 1000000)
-    val transform = Flow[Int].map { n => ByteString(s"Hello $n") }
-    val buffer = new PersistentBuffer(tempPath.toFile)
+    val in = Source(1 to elementCount)
+    val transform = Flow[Int] map createElement
+    val buffer = new PersistentBuffer[T](tempPath.toFile)
+    buffer.queue.serializer shouldBe a [Q]
     val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
     val countFuture = in.via(transform).via(buffer).runWith(counter)
     val count = Await.result(countFuture, awaitMax)
-    count shouldBe 1000000
+    count shouldBe elementCount
     delete(tempPath.toFile)
   }
 
   it should "buffer a stream of one million elements using GraphDSL" in {
     val tempPath = Files.createTempDirectory("persistent_queue")
-    val in = Source(1 to 1000000)
-    val transform = Flow[Int].map { n => ByteString(s"Hello $n") }
-    val buffer = new PersistentBuffer(tempPath.toFile)
+    val in = Source(1 to elementCount)
+    val transform = Flow[Int] map createElement
+    val buffer = new PersistentBuffer[T](tempPath.toFile)
     val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
 
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit builder =>
@@ -76,17 +91,17 @@ class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     })
     val countFuture = streamGraph.run()
     val count = Await.result(countFuture, awaitMax)
-    count shouldBe 1000000
+    count shouldBe elementCount
     delete(tempPath.toFile)
   }
 
   it should "buffer for a throttled stream" in {
     var t1, t2 = Long.MinValue
     val tempPath = Files.createTempDirectory("persistent_queue")
-    val in = Source(1 to 1000000)
-    val transform = Flow[Int].map { n => ByteString(s"Hello $n") }
-    val buffer = new PersistentBuffer(tempPath.toFile)
-    val throttle = Flow[ByteString].throttle(100000, 1 second, 50000, ThrottleMode.shaping)
+    val in = Source(1 to elementCount)
+    val transform = Flow[Int] map createElement
+    val buffer = new PersistentBuffer[T](tempPath.toFile)
+    val throttle = Flow[T].throttle(flowRate, flowUnit, burstSize, ThrottleMode.shaping)
     val t0 = System.nanoTime
     def counter(recordFn: Long => Unit) = Flow[Any].map( _ => 1L).reduce(_ + _).map { s =>
       recordFn(System.nanoTime - t0)
@@ -96,7 +111,7 @@ class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter(t1 = _)) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val bc = builder.add(Broadcast[ByteString](2))
+        val bc = builder.add(Broadcast[T](2))
         in ~> transform ~> bc ~> buffer ~> throttle ~> sink
                            bc ~> counter(t2 = _)
         ClosedShape
@@ -105,7 +120,7 @@ class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     val count = Await.result(countF, awaitMax)
 
     println("Time difference (ms): " + (t1 - t2) / 1000000d)
-    count shouldBe 1000000
+    count shouldBe elementCount
     t1 should be > t2 // Give 6 seconds difference. In fact, it should be closer to 9 seconds.
     delete(tempPath.toFile)
   }
@@ -116,12 +131,12 @@ class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     val recordCount = new AtomicInteger(0)
     val finishedGenerating = Promise[Done]
     val tempPath = Files.createTempDirectory("persistent_queue")
-    val in = Source(1 to 1000000)
-    val transform = Flow[Int].map { n => ByteString(s"Hello $n") }
-    val throttle = Flow[ByteString].throttle(100000, 1 second, 50000, ThrottleMode.shaping)
+    val in = Source(1 to elementCount)
+    val transform = Flow[Int] map createElement
+    val throttle = Flow[T].throttle(flowRate, flowUnit, burstSize, ThrottleMode.shaping)
     val t0 = System.nanoTime
 
-    val buffer = new PersistentBuffer(tempPath.toFile)
+    val buffer = new PersistentBuffer[T](tempPath.toFile)
 
     def fireFinished() = Flow[Any].map( _ => 1L).reduce(_ + _).map { s =>
       t = System.nanoTime - t0
@@ -136,7 +151,7 @@ class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     val graph1 = RunnableGraph.fromGraph(GraphDSL.create(updateCounter()) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val bc = builder.add(Broadcast[ByteString](2))
+        val bc = builder.add(Broadcast[T](2))
         in ~> transform ~> bc ~> buffer ~> throttle ~> sink
                            bc ~> fireFinished()
         ClosedShape
@@ -147,24 +162,24 @@ class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     Thread.sleep(1000) // Wait a sec to make sure the shutdown completed. shutdownF only says shutdown started.
     println("Records processed before shutdown: " + recordCount.get)
     val beforeCrashRecordCount = recordCount.get
-    beforeCrashRecordCount should be < 1000000
+    beforeCrashRecordCount should be < elementCount
 
-    val buffer2 = new PersistentBuffer(tempPath.toFile)
-    val printFirst = Sink.head[ByteString]
+    val buffer2 = new PersistentBuffer[T](tempPath.toFile)
+    val printFirst = Sink.head[T]
     val graph2 = RunnableGraph.fromGraph(
       GraphDSL.create(updateCounter(), printFirst)((a, b) => (a, b)) { implicit builder =>
         (sink, first) =>
           import GraphDSL.Implicits._
-          val bc = builder.add(Broadcast[ByteString](2))
-          Source(1000001 to 1000100) ~> transform ~> buffer2 ~> bc ~> sink
-                                                                bc ~> first
+          val bc = builder.add(Broadcast[T](2))
+          Source((elementCount + 1) to (elementCount + elementsAfterFail)) ~> transform ~> buffer2 ~> bc ~> sink
+                                                                                                     bc ~> first
           ClosedShape
       })
     val (doneF, firstF) = graph2.run()(ActorMaterializer())
     Await.ready(doneF, awaitMax)
     val firstRec = Await.result(firstF, awaitMax)
-    println("First record after recovery: " + firstRec.utf8String)
-    val recordsLost = 1000100 - recordCount.get
+    println("First record after recovery: " + format(firstRec))
+    val recordsLost = elementCount + elementsAfterFail - recordCount.get
     println(s"Number of records lost due to unexpected shutdown: $recordsLost")
     recordsLost should be < 3
     delete(tempPath.toFile)
@@ -174,20 +189,21 @@ class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     val mat2 = ActorMaterializer()
     val inCount = new AtomicInteger(0)
     val outCount = new AtomicInteger(0)
+    val injectCounter = new AtomicInteger(0)
     val tempPath = Files.createTempDirectory("persistent_queue")
-    val in = Source(1 to 1000000).map { i =>
+    val in = Source(1 to elementCount).map { i =>
       inCount.incrementAndGet()
       i
     }
-    val transform = Flow[Int].map { n => ByteString(s"Hello $n") }
-    val throttle = Flow[ByteString].throttle(100000, 1 second, 50000, ThrottleMode.shaping)
-    val injectError = Flow[ByteString].map { n =>
-      if (n == ByteString("Hello 300000")) throw new NumberFormatException("This is a fake exception")
+    val transform = Flow[Int] map createElement
+    val throttle = Flow[T].throttle(flowRate, flowUnit, burstSize, ThrottleMode.shaping)
+    val injectError = Flow[T].map { n =>
+      val count = injectCounter.incrementAndGet()
+      if (count == failTestAt) throw new NumberFormatException("This is a fake exception")
       else n
     }
-    val t0 = System.nanoTime
 
-    val buffer = new PersistentBuffer(tempPath.toFile)
+    val buffer = new PersistentBuffer[T](tempPath.toFile)
 
     def updateCounter() = Flow[Any].map{ _ =>
       outCount.incrementAndGet()
@@ -206,30 +222,30 @@ class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     Thread.sleep(1000) // Wait a sec to make sure the shutdown completed. shutdownF only says shutdown started.
     println("Records processed before shutdown: " + outCount.get)
     val beforeCrashRecordCount = outCount.get
-    beforeCrashRecordCount should be < 1000000
+    beforeCrashRecordCount should be < elementCount
 
-    val buffer2 = new PersistentBuffer(tempPath.toFile)
-    val printFirst = Sink.head[ByteString]
+    val buffer2 = new PersistentBuffer[T](tempPath.toFile)
+    val printFirst = Sink.head[T]
     val graph2 = RunnableGraph.fromGraph(
       GraphDSL.create(updateCounter(), printFirst)((a, b) => (a, b)) { implicit builder =>
         (sink, first) =>
           import GraphDSL.Implicits._
-          val bc = builder.add(Broadcast[ByteString](2))
-          Source(1000001 to 1000100) ~> transform ~> buffer2 ~> bc ~> sink
-                                                                bc ~> first
+          val bc = builder.add(Broadcast[T](2))
+          Source((elementCount + 1) to (elementCount + elementsAfterFail)) ~> transform ~> buffer2 ~> bc ~> sink
+                                                                                                     bc ~> first
           ClosedShape
       })
     val (thisCountF, firstF) = graph2.run()(ActorMaterializer())
     val firstRec = Await.result(firstF, awaitMax)
-    println("First record after recovery: " + firstRec.utf8String)
-    firstRec shouldBe ByteString("Hello 300001")
+    println("First record after recovery: " + format(firstRec))
+    firstRec shouldBe createElement(failTestAt + 1)
 
     val thisCount = Await.result(thisCountF, awaitMax)
     println("Count processed after recovery: " + thisCount)
-    val discrepancy = Math.abs(inCount.get + 100 - 300000 - thisCount)
+    val discrepancy = Math.abs(inCount.get + elementsAfterFail - failTestAt - thisCount)
     discrepancy should be < 3L
 
-    val recordsLost = inCount.get + 100 - outCount.get
+    val recordsLost = inCount.get + elementsAfterFail - outCount.get
     println(s"Number of records lost due to unexpected shutdown: $recordsLost")
     recordsLost should be < 3
     delete(tempPath.toFile)
@@ -239,16 +255,15 @@ class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     val mat2 = ActorMaterializer()
     val recordCount = new AtomicInteger(0)
     val tempPath = Files.createTempDirectory("persistent_queue")
-    val in = Source(1 to 1000000)
-    val transform = Flow[Int].map { n => ByteString(s"Hello $n") }
-    val throttle = Flow[ByteString].throttle(100000, 1 second, 50000, ThrottleMode.shaping)
+    val in = Source(1 to elementCount)
+    val transform = Flow[Int] map createElement
+    val throttle = Flow[T].throttle(flowRate, flowUnit, burstSize, ThrottleMode.shaping)
     val injectError = Flow[Int].map { n =>
-      if (n == 300000) throw new NumberFormatException("This is a fake exception")
+      if (n == failTestAt) throw new NumberFormatException("This is a fake exception")
       else n
     }
-    val t0 = System.nanoTime
 
-    val buffer = new PersistentBuffer(tempPath.toFile)
+    val buffer = new PersistentBuffer[T](tempPath.toFile)
 
     def updateCounter() = Sink.foreach[Any] { _ => recordCount.incrementAndGet() }
 
@@ -264,26 +279,123 @@ class PersistentBufferSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     Thread.sleep(1000) // Wait a sec to make sure the shutdown completed. shutdownF only says shutdown started.
     println("Records processed before shutdown: " + recordCount.get)
     val beforeCrashRecordCount = recordCount.get
-    beforeCrashRecordCount should be < 1000000
+    beforeCrashRecordCount should be < elementCount
 
-    val buffer2 = new PersistentBuffer(tempPath.toFile)
-    val printFirst = Sink.head[ByteString]
+    val buffer2 = new PersistentBuffer[T](tempPath.toFile)
+    val printFirst = Sink.head[T]
     val graph2 = RunnableGraph.fromGraph(
       GraphDSL.create(updateCounter(), printFirst)((a, b) => (a, b)) { implicit builder =>
         (sink, first) =>
           import GraphDSL.Implicits._
-          val bc = builder.add(Broadcast[ByteString](2))
-          Source(300000 to 1000000) ~> transform ~> buffer2 ~> bc ~> sink
-          bc ~> first
+          val bc = builder.add(Broadcast[T](2))
+          Source(failTestAt to elementCount) ~> transform ~> buffer2 ~> bc ~> sink
+                                                               bc ~> first
           ClosedShape
       })
     val (doneF, firstF) = graph2.run()(ActorMaterializer())
     Await.ready(doneF, awaitMax)
     val firstRec = Await.result(firstF, awaitMax)
-    println("First record after recovery: " + firstRec.utf8String)
-    val recordsLost = 1000000 - recordCount.get
+    println("First record after recovery: " + format(firstRec))
+    val recordsLost = elementCount - recordCount.get
     println(s"Number of records lost due to unexpected shutdown: $recordsLost")
     recordsLost should be < 3
     delete(tempPath.toFile)
   }
+}
+
+class PersistentByteStringBufferSpec extends PersistentBufferSpec[ByteString, ByteStringSerializer]("ByteString") {
+
+  def createElement(n: Int): ByteString = ByteString(s"Hello $n")
+
+  def format(element: ByteString): String = element.utf8String
+}
+
+class PersistentStringBufferSpec extends PersistentBufferSpec[String, ObjectSerializer[String]]("Object") {
+
+  def createElement(n: Int): String = s"Hello $n"
+
+  def format(element: String): String = element
+}
+
+class PersistentLongBufferSpec extends PersistentBufferSpec[Long, LongSerializer]("Long") {
+
+  def createElement(n: Int): Long = n
+
+  def format(element: Long): String = element.toString
+}
+
+class PersistentIntBufferSpec extends PersistentBufferSpec[Int, IntSerializer]("Int") {
+
+  def createElement(n: Int): Int = n
+
+  def format(element: Int): String = element.toString
+}
+
+class PersistentShortBufferSpec extends PersistentBufferSpec[Short, ShortSerializer]("Short") {
+
+  def createElement(n: Int): Short = n.toShort
+
+  def format(element: Short): String = element.toString
+}
+
+class PersistentByteBufferSpec extends PersistentBufferSpec[Byte, ByteSerializer]("Byte") {
+
+  def createElement(n: Int): Byte = n.toByte
+
+  def format(element: Byte): String = element.toString
+}
+
+class PersistentCharBufferSpec extends PersistentBufferSpec[Char, CharSerializer]("Char") {
+
+  def createElement(n: Int): Char = n.toChar
+
+  def format(element: Char): String = element.toString
+}
+
+class PersistentDoubleBufferSpec extends PersistentBufferSpec[Double, DoubleSerializer]("Double") {
+
+  def createElement(n: Int): Double = n.toDouble
+
+  def format(element: Double): String = element.toString
+}
+
+class PersistentFloatBufferSpec extends PersistentBufferSpec[Float, FloatSerializer]("Float") {
+
+  def createElement(n: Int): Float = n.toFloat
+
+  def format(element: Float): String = element.toString
+}
+
+class PersistentBooleanBufferSpec extends PersistentBufferSpec[Boolean, BooleanSerializer]("Boolean") {
+
+  def createElement(n: Int): Boolean = n % 2 == 0
+
+  def format(element: Boolean): String = element.toString
+}
+
+
+case class Person(name: String, age: Int)
+
+class PersonSerializer extends QueueSerializer[Person] {
+
+  override def readElement(wire: WireIn): Option[Person] = {
+    for {
+      name <- Option(wire.read().`object`(classOf[String]))
+      age <- Option(wire.read().int32)
+    } yield { Person(name, age) }
+  }
+
+  override def writeElement(element: Person, wire: WireOut): Unit = {
+    wire.write().`object`(classOf[String], element.name)
+    wire.write().int32(element.age)
+  }
+}
+
+class PersistentPersonBufferSpec extends PersistentBufferSpec[Person, PersonSerializer]("Person") {
+
+  override implicit val serializer = new PersonSerializer()
+
+  def createElement(n: Int): Person = Person(s"John Doe $n", 20)
+
+  def format(element: Person): String = element.toString
 }

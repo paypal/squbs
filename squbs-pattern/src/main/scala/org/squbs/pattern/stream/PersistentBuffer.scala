@@ -19,18 +19,17 @@ import java.io.File
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import akka.util.ByteString
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
+class PersistentBuffer[T](persistDir: File)(implicit serializer: QueueSerializer[T])
+  extends GraphStage[FlowShape[T, T]] {
 
-class PersistentBuffer(persistDir: File)
-    extends GraphStage[FlowShape[ByteString, ByteString]] {
+  private[stream] val in = Inlet[T]("PersistentBuffer.in")
+  private[stream] val out = Outlet[T]("PersistentBuffer.out")
+  val shape: FlowShape[T, T] = FlowShape.of(in, out)
 
-  val in = Inlet[ByteString]("PersistentBuffer.in")
-  val out = Outlet[ByteString]("PersistentBuffer.out")
-  val shape: FlowShape[ByteString, ByteString] = FlowShape.of(in, out)
-  val queue = new PersistentQueue(persistDir)
+  private[stream] val queue: PersistentQueue[T] = new PersistentQueue[T](persistDir)
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 

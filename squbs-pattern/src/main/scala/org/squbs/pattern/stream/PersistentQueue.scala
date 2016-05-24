@@ -17,18 +17,16 @@ package org.squbs.pattern.stream
 
 import java.io.{File, FileNotFoundException}
 
-import akka.util.ByteString
 import net.openhft.chronicle.bytes.MappedBytesStore
 import net.openhft.chronicle.core.OS
 import net.openhft.chronicle.queue.ChronicleQueueBuilder
 import net.openhft.chronicle.wire.{ReadMarshallable, WireIn, WireOut, WriteMarshallable}
-
 /**
-  * Creates a persistent queue. This implementation is based on Chronicle Queue.
+  * Persistent queue using Chronicle Queue as implementation.
   *
-  * @param persistDir The directory where this queue should be persisted.
+  * @tparam T The type of elements to be stored in the queue.
   */
-class PersistentQueue(persistDir: File) {
+class PersistentQueue[T](persistDir: File)(implicit val serializer: QueueSerializer[T]) {
 
   if (!persistDir.isDirectory && !persistDir.mkdirs()) throw new FileNotFoundException(persistDir.getAbsolutePath)
 
@@ -60,14 +58,9 @@ class PersistentQueue(persistDir: File) {
     *
     * @param element The element to be added.
     */
-  def enqueue(element: ByteString): Unit = {
+  def enqueue(element: T): Unit = {
     appender.writeDocument(new WriteMarshallable {
-      override def writeMarshallable(wire: WireOut): Unit = {
-        val bb = element.asByteBuffer
-        val output = new Array[Byte](bb.remaining)
-        bb.get(output)
-        wire.write().bytes(output)
-      }
+      override def writeMarshallable(wire: WireOut): Unit = serializer.writeElement(element, wire)
     })
     written = true
   }
@@ -77,13 +70,10 @@ class PersistentQueue(persistDir: File) {
     *
     * @return The first element in the queue, or None if the queue is empty.
     */
-  def dequeue: Option[ByteString] = {
-    var output: Option[ByteString] = None
+  def dequeue: Option[T] = {
+    var output: Option[T] = None
     if (reader.readDocument(new ReadMarshallable {
-      override def readMarshallable(wire: WireIn): Unit = {
-        // TODO: wire.read() may need some optimization. It uses a StringBuilder underneath
-        output = Option(wire.read().bytes) map (ByteString(_))
-      }
+      override def readMarshallable(wire: WireIn): Unit = output = serializer.readElement(wire)
     })) {
       if (!indexMounted) mountIndexFile()
       indexStore.writeLong(0L, reader.index)
