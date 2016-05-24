@@ -3,11 +3,17 @@ Publish-Subscribe Sample
 
 The publish-subscribe sample reflects real needs for push-broadcasting events over the web. Very commonly, a web page served by a different application would open an SSE channel to this server to listen for events. Applications will make a rest call to this server to publish events that will be listened to by all the browsers. The design center of this application is around small events (few bytes to about 1 kilobyte in size) that are pushed out at very low latency. It is not designed for transfer of large messages.
 
+**Getting Started:**
+
+1. `cd samples/pubsub`
+1. `sbt pubsubsvc/run`
+1. Go to `http://localhost:8080/pubsub/index.html` for the list of services available
+
 **Concepts**:
 
 * *Channel* is an event stream clients can subscribe and listen to.
 * *Category* is a group of channels that publish similar events. A channel belongs to a category.
-* *Event* is a single event to be published and listened to by browsers.
+* *Event* is a single event to be published and listened to by browsers/clients.
 
 **Services**:
 

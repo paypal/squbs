@@ -594,13 +594,16 @@ case class UnicomplexBoot private[unicomplex] (startTime: Timestamp,
     // Signal started to Unicomplex.
     uniActor ! Started
 
+    val preCubesInitExtensions = extensions map extensionOp("preCubesInit", _.preCubesInit())
+    uniActor ! Extensions(preCubesInitExtensions)
+
     // Start all actors
     val actors = cubes.flatMap(startComponents(_, listenerAliases))
 
     // Start the service infrastructure if services are enabled and registered.
     if (startServices) startServiceInfra(this)
 
-    val postInitExtensions = extensions map extensionOp("postInit", _.postInit())
+    val postInitExtensions = preCubesInitExtensions map extensionOp("postInit", _.postInit())
 
     // Update the extension errors in Unicomplex actor, in case there are errors.
     uniActor ! Extensions(postInitExtensions)

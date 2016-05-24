@@ -22,3 +22,5 @@ libraryDependencies ++= Seq(
 javacOptions += "-parameters"
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-httpclient")
+
+updateOptions := updateOptions.value.withCachedResolution(true)

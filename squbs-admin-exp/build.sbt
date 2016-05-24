@@ -19,4 +19,6 @@ libraryDependencies ++= Seq(
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")
 
+updateOptions := updateOptions.value.withCachedResolution(true)
+
 mainClass in (Compile, run) := Some("org.squbs.unicomplex.Bootstrap")

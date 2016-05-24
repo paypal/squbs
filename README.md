@@ -24,6 +24,7 @@ squbs (pronounced "skewbs")is a software container and a suite of components ena
   2. Asynchronous systems depend heavily on timeouts and fixed timeouts are never right. TimeoutPolicy allows users to set policy (like 2.5 sigma) instead of fixed timeout values and takes care of the heuristics by itself allowing systems to adapt to their operating conditions.
   3. Spray doesn't have friendly API for Java, the spray.japi package provides a few of Helpers and Factories to help Java developers to construct spray entities easily.
   4. Validation provides a [Spray](http://spray.io) directive for data validation by using [Accord Validation Library](http://wix.github.io/accord/).
+  5. PersistentBuffer provides a high-performance Akka Streams flow buffer component that persists its content to a memory-mapped file and recovers the content after failure and restart.
 
 6. **ActorRegistry**: A core lookup facility allowing actors of loosely-coupled modules to find each others, or even to model different services as actors.
 
@@ -34,11 +35,23 @@ Each of the components have virtually no dependency on each others. They are tru
 
 9. **Console**: A drop-in module allowing web access to system and application stats through a simple web and service interface returning pretty-printed JSON.
 
+###Experimental Support for Akka HTTP
+The following components are based on Akka HTTP and are considered experimental at this time. These are documented in greater detail under [Experimental Support for Akka HTTP](docs/akka-http-experimental.md).
+
+1. **StreamingPipeline**: Akka streams version of the Pipeline, based upon Akka Streams' `BidiFlow`. It allows users or infrastructure teams to implement request/response filters as `BidiFlow` elements and registering them to the pipeline. This module may only be used if Akka HTTP experimental mode is enabled.
+
+2. **Console for Akka HTTP**: The `squbs-admin-exp` module replaces `squbs-admin` in Akka HTTP experimental mode. It uses the Akka HTTP interfaces instead of the Spray interfaces. In experimental mode, users have to modify their build.sbt and use this dependency instead of squbs-admin.
+
 ##Getting Started
 
-The easiest way to getting started is to create a project from one of our templates. The followings are currently available templates:
+The easiest way to getting started is to create a project from one of the squbs templates. The followings are currently available Activator templates:
 
-TODO: Reference to template projects
+* [squbs-scala-sample](https://www.lightbend.com/activator/template/squbs-scala-sample): Scala sample application
+* [squbs-java-sample](https://www.lightbend.com/activator/template/squbs-java-sample): Java sample application (with only Spray route still Scala)
+
+Also check out these [slightly more advanced samples](https://github.com/paypal/squbs/tree/master/samples).
+
+
 
 ##Documentation
 * [Unicomplex & Cube Bootstrapping](docs/bootstrap.md)
@@ -56,8 +69,11 @@ TODO: Reference to template projects
 * [The ActorRegistry](docs/registry.md)
 * [Timeout Policy](docs/timeoutpolicy.md)
 * [Validation](docs/validation.md)
+* [Persistent Buffer](docs/persistent-buffer.md)
 * [Console](docs/console.md)
 * [Application Lifecycle Management](docs/packaging.md)
+* [Experimental Support for Akka HTTP](docs/akka-http-experimental.md)
+* [Streaming Pipeline](docs/streamingpipeline.md)
 
 ##Contributing to squbs
 Thank you very much for contributing to squbs. Please read the [contribution guidelines](CONTRIBUTING.md) for the process.

@@ -40,6 +40,7 @@ object JMX {
   val extensionsName  = "org.squbs.unicomplex:type=Extensions"
   val cubeStateName   = "org.squbs.unicomplex:type=CubeState,name="
   val listenersName    = "org.squbs.unicomplex:type=Listeners"
+  val listenerStateName = "org.squbs.unicomplex:type=ListenerState"
   val serverStats = "org.squbs.unicomplex:type=ServerStats,listener="
   val systemSettingName   = "org.squbs.unicomplex:type=SystemSetting"
   val forkJoinStatsName = "org.squbs.unicomplex:type=ForkJoinPool,name="
@@ -90,6 +91,11 @@ case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", 
                                           @BeanProperty fullName: String,
                                           @BeanProperty version: String,
                                           @BeanProperty supervisor: String)
+
+case class ListenerState @ConstructorProperties(Array("listener", "state", "error"))(
+                                          @BeanProperty listener: String,
+                                          @BeanProperty state: String,
+                                          @BeanProperty error: String)
 
 case class ListenerInfo @ConstructorProperties(Array("listener", "context", "actor"))(
                                           @BeanProperty listener: String,
@@ -147,6 +153,11 @@ trait CubeStateMXBean {
   def getCubeState: String
   def getWellKnownActors : String
   def getActorErrorStates: util.List[ActorErrorState]
+}
+
+@MXBean
+trait ListenerStateMXBean {
+  def getListenerStates: java.util.List[ListenerState]
 }
 
 @MXBean

@@ -119,7 +119,7 @@ object AbortableBidiFlowSpec {
 
 class DummyFlow2 extends PipelineFlowFactory {
 
-  override def create: PipelineFlow = {
+  override def create(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
@@ -142,7 +142,7 @@ class DummyFlow2 extends PipelineFlowFactory {
 
   val dummyAborterFlow = Flow[RequestContext].map { rc =>
     rc.request.headers.find(_.is("abort")) match {
-      case Some(_) => rc.copy(response = Some(HttpResponse(entity = s"${rc.request.headers.sortBy(_.name).mkString(",")}")))
+      case Some(_) => rc.abortWith(HttpResponse(entity = s"${rc.request.headers.sortBy(_.name).mkString(",")}"))
       case _ => rc
     }
   }

@@ -17,7 +17,8 @@
 package org.squbs.testkit.streaming
 
 import akka.actor.{Actor, ActorSystem}
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{ExceptionHandler, RejectionHandler, Route}
+import akka.http.scaladsl.settings.RoutingSettings
 import akka.testkit.TestActorRef
 import akka.http.scaladsl.server.directives.PathDirectives._
 import org.squbs.unicomplex.WebContext
@@ -54,8 +55,13 @@ object TestRoute {
         clazz.asSubclass(classOf[RouteDefinition]).newInstance()
       }
     }
-    if (webContext.length > 0) pathPrefix(separateOnSlashes(webContext)) {routeDef.route}
-    else routeDef.route
+
+    implicit val routingSettings = RoutingSettings(system.settings.config)
+    implicit val rejectionHandler:RejectionHandler = routeDef.rejectionHandler.getOrElse(RejectionHandler.default)
+    implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.getOrElse(PartialFunction.empty)
+
+    if (webContext.length > 0) pathPrefix(separateOnSlashes(webContext)) { Route.seal(routeDef.route) }
+    else { Route.seal(routeDef.route) }
   }
 
   private class TestRouteActor extends Actor {

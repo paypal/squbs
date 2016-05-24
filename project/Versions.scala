@@ -15,6 +15,6 @@
  */
 
 object Versions {
-  val akkaV = "2.4.2"
+  val akkaV = "2.4.4"
   val sprayV = "1.3.3"
 }

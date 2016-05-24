@@ -36,11 +36,28 @@ trait ExtensionLifecycle {
 
   protected implicit val boot = ExtensionLifecycle.tlBoot.get.get
 
+  /**
+    * Before the [[init]] phase, to let extensions to influence each other
+    */
   def preInit() {}
 
+  /**
+    * Before unicomplex starts (actor system has not been created yet)
+    */
   def init() {}
 
+  /**
+    * After unicomplex starts, but before any cubes are initialized
+    */
+  def preCubesInit() {}
+
+  /**
+    * After cubes are initialized
+    */
   def postInit() {}
 
+  /**
+    * [[akka.actor.ActorSystem.registerOnTermination]]
+    */
   def shutdown() {}
 }

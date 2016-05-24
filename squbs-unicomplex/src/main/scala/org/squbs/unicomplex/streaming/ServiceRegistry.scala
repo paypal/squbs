@@ -35,8 +35,7 @@ import org.squbs.pipeline.streaming.{PipelineExtension, PipelineSetting}
 import org.squbs.unicomplex._
 import org.squbs.unicomplex.streaming.StatsSupport.StatsHolder
 
-import scala.util.Failure
-import scala.util.Success
+import scala.util.{Try, Failure, Success}
 import akka.pattern.pipe
 import akka.actor.Status.{Failure => ActorFailure}
 
@@ -45,7 +44,9 @@ import akka.actor.Status.{Failure => ActorFailure}
   */
 class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path] {
 
-  private var serverBindigs = Map.empty[String, Option[(ServerBinding)]] // Service actor and HttpListener actor
+  case class ServerBindingInfo(serverBinding: Option[ServerBinding], exception: Option[Throwable] = None)
+
+  private var serverBindings = Map.empty[String, ServerBindingInfo] // Service actor and HttpListener actor
 
   var listenerRoutesVar = Map.empty[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]]
 
@@ -57,27 +58,33 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
   override private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
                                                 (implicit context: ActorContext): Receive = {
 
-    val (interface, port, localPort, sslContext, needClientAuth) = bindConfig(config)
+    val BindConfig(interface, port, localPort, sslContext, needClientAuth) = Try { bindConfig(config) } match {
+      case Success(bc) => bc
+      case Failure(ex) =>
+        serverBindings = serverBindings + (name -> ServerBindingInfo(None, Some(ex)))
+        notifySender ! Failure(ex)
+        throw ex
+    }
 
     implicit val am = ActorMaterializer()
     import context.system
     import context.dispatcher
 
-    val handler = try { Handler(listenerRoutes(name), localPort) } catch { case e =>
-      serverBindigs = serverBindigs + (name -> None)
+    val handler = try { Handler(listenerRoutes(name), localPort) } catch { case e: Throwable =>
+      serverBindings = serverBindings + (name -> ServerBindingInfo(None, Some(e)))
       log.error(s"Failed to build streaming flow handler.  System may not function properly.")
-      notifySender ! e
+      notifySender ! Failure(e)
       throw e
     }
 
     val uniSelf = context.self
-    val serverFlow = (sslContext match {
+    val serverFlow = sslContext match {
       case Some(sslCtx) =>
         val httpsCtx = ConnectionContext.https(sslCtx, clientAuth = Some { if(needClientAuth) Need else Want })
         Http().bind(interface, port, connectionContext = httpsCtx )
 
       case None => Http().bind(interface, port)
-    })
+    }
 
     val statsHolder = new StatsHolder
     serverFlow.to(Sink.foreach { conn =>
@@ -92,11 +99,11 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
       case sb: ServerBinding =>
         import org.squbs.unicomplex.JMX._
         JMX.register(new ServerStats(name, statsHolder), prefix + serverStats + name)
-        serverBindigs = serverBindigs + (name -> Some(sb))
+        serverBindings = serverBindings + (name -> ServerBindingInfo(Some(sb)))
         notifySender ! Ack
         uniSelf ! HttpBindSuccess
       case ActorFailure(ex) if ex.isInstanceOf[BindFailedException] =>
-        serverBindigs = serverBindigs + (name -> None)
+        serverBindings = serverBindings + (name -> ServerBindingInfo(None, Some(ex)))
         log.error(s"Failed to bind listener $name. Cleaning up. System may not function properly.")
         notifySender ! ex
         uniSelf ! HttpBindFailed
@@ -121,14 +128,14 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     }
   }
 
-  override private[unicomplex] def isListenersBound = serverBindigs.size == listenerRoutes.size
+  override private[unicomplex] def isListenersBound = serverBindings.size == listenerRoutes.size
 
   case class Unbound(sb: ServerBinding)
 
   override private[unicomplex] def shutdownState: Receive = {
     case Unbound(sb) =>
-      serverBindigs = serverBindigs.filterNot {
-        case (_, Some(`sb`)) => true
+      serverBindings = serverBindings.filterNot {
+        case (_, ServerBindingInfo(Some(`sb`), None)) => true
         case _ => false
       }
   }
@@ -143,8 +150,8 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     val uniSelf = context.self
 
 //    Http().shutdownAllConnectionPools() andThen { case _ =>
-      serverBindigs foreach {
-        case (name, Some(sb)) =>
+      serverBindings foreach {
+        case (name, ServerBindingInfo(Some(sb), None)) =>
           listenerRoutes(name)() foreach {case (_, aw, _) => aw.actor ! PoisonPill}
           listenerRoutes = listenerRoutes - name
           sb.unbind() andThen { case _ => uniSelf ! Unbound(sb) }
@@ -158,13 +165,24 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 //    }
   }
 
-  override private[unicomplex] def isAnyFailedToInitialize: Boolean = serverBindigs.values exists (_ == None)
+  override private[unicomplex] def isAnyFailedToInitialize: Boolean = serverBindings.values exists (_.exception.nonEmpty)
 
-  override private[unicomplex] def isShutdownComplete: Boolean = serverBindigs.isEmpty
+  override private[unicomplex] def isShutdownComplete: Boolean = serverBindings.isEmpty
 
   override protected def pathCompanion(s: String): Path = Path(s)
 
   override protected def pathLength(p: Path) = p.length
+
+  override protected def listenerStateMXBean(): ListenerStateMXBean = {
+    new ListenerStateMXBean {
+      import scala.collection.JavaConversions._
+      override def getListenerStates: java.util.List[ListenerState] = {
+        serverBindings map { case (name, ServerBindingInfo(sb, exception)) =>
+          ListenerState(name, sb.map(_ => "Success").getOrElse("Failed"), exception.getOrElse("").toString)
+        } toSeq
+      }
+    }
+  }
 }
 
 private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
