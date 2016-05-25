@@ -26,7 +26,7 @@ class PersistentQueueSpec extends FlatSpec with Matchers with BeforeAndAfterAll 
 
   val tempPath = Files.createTempDirectory("persistent_queue")
   implicit val serializer = QueueSerializer[ByteString]()
-  val queue = new PersistentQueue[ByteString](tempPath.toFile)
+  val queue = new PersistentQueue[ByteString](QueueConfig(tempPath.toFile))
 
   def delete(file: File) {
     if (file.isDirectory)
@@ -72,14 +72,14 @@ class PersistentQueueSpec extends FlatSpec with Matchers with BeforeAndAfterAll 
 
     val tempPath2 = Files.createTempDirectory("persistent_queue")
 
-    val queue2 = new PersistentQueue[ByteString](tempPath2.toFile)
+    val queue2 = new PersistentQueue[ByteString](QueueConfig(tempPath2.toFile))
     for { i <- 1 to 700000 } {
       val element = ByteString(s"Hello $i")
       queue2.enqueue(element)
     }
     queue2.close()
 
-    val queue3 = new PersistentQueue[ByteString](tempPath2.toFile)
+    val queue3 = new PersistentQueue[ByteString](QueueConfig(tempPath2.toFile))
     for { i <- 1 to 500000 } {
       val element = ByteString(s"Hello $i")
       val elementOption = queue3.dequeue
@@ -87,7 +87,7 @@ class PersistentQueueSpec extends FlatSpec with Matchers with BeforeAndAfterAll 
     }
     queue3.close()
 
-    val queue4 = new PersistentQueue[ByteString](tempPath2.toFile)
+    val queue4 = new PersistentQueue[ByteString](QueueConfig(tempPath2.toFile))
     for { i <- 700001 to 1000000 } {
       val element = ByteString(s"Hello $i")
       queue4.enqueue(element)
@@ -95,7 +95,7 @@ class PersistentQueueSpec extends FlatSpec with Matchers with BeforeAndAfterAll 
     // We only read 500000, so there should be 500000 left.
     queue4.close()
 
-    val queue5 = new PersistentQueue[ByteString](tempPath2.toFile)
+    val queue5 = new PersistentQueue[ByteString](QueueConfig(tempPath2.toFile))
     for { i <- 500001 to 1000000 } {
       val element = ByteString(s"Hello $i")
       val elementOption = queue5.dequeue
@@ -106,7 +106,7 @@ class PersistentQueueSpec extends FlatSpec with Matchers with BeforeAndAfterAll 
 
   it should "throw the appropriate exception if queue file cannot be created" in {
     val badPath = Files.createTempFile("testException", "test")
-    a [FileNotFoundException] should be thrownBy new PersistentQueue[ByteString](badPath.toFile)
+    a [FileNotFoundException] should be thrownBy new PersistentQueue[ByteString](QueueConfig(badPath.toFile))
     Files.delete(badPath)
   }
 }

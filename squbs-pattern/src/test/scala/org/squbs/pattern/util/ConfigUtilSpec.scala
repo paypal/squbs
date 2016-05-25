@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.unicomplex
+package org.squbs.pattern.util
 
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{FunSpecLike, Matchers}
@@ -111,17 +111,17 @@ class ConfigUtilSpec extends FunSpecLike with Matchers {
 			config.getOptionalDuration("non-timeout") shouldBe None
 		}
 
-    it ("should get provide at least one IPv$ address for any host") {
-      ipv4 should fullyMatch regex """\d+\.\d+\.\d+\.\d+"""
-      println(ipv4)
-    }
-
     it ("should get a proper memory size") {
       config.getOptionalMemorySize("testConfig.mem-size") map (_.toBytes) shouldBe Some(4L * 1024 * 1024)
     }
 
     it ("should get none for non-existing memory size") {
       config.getOptionalMemorySize("mem-size") shouldBe None
+    }
+
+    it ("should get provide at least one IPv$ address for any host") {
+      ipv4 should fullyMatch regex """\d+\.\d+\.\d+\.\d+"""
+      println(ipv4)
     }
   }
 }
