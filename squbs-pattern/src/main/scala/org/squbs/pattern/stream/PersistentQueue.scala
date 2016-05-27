@@ -17,6 +17,7 @@ package org.squbs.pattern.stream
 
 import java.io.{File, FileNotFoundException}
 
+import com.typesafe.config.Config
 import net.openhft.chronicle.bytes.MappedBytesStore
 import net.openhft.chronicle.core.OS
 import net.openhft.chronicle.queue.ChronicleQueueBuilder
@@ -26,11 +27,25 @@ import net.openhft.chronicle.wire.{ReadMarshallable, WireIn, WireOut, WriteMarsh
   *
   * @tparam T The type of elements to be stored in the queue.
   */
-class PersistentQueue[T](persistDir: File)(implicit val serializer: QueueSerializer[T]) {
+class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSerializer[T]) {
 
-  if (!persistDir.isDirectory && !persistDir.mkdirs()) throw new FileNotFoundException(persistDir.getAbsolutePath)
+  def this(config: Config)(implicit serializer: QueueSerializer[T]) = this(QueueConfig.from(config))
 
-  private val queue = ChronicleQueueBuilder.single(persistDir.getAbsolutePath).build()
+  def this(persistDir: File)(implicit serializer: QueueSerializer[T]) = this(QueueConfig(persistDir))
+
+  import config._
+  if (!persistDir.isDirectory && !persistDir.mkdirs())
+    throw new FileNotFoundException(persistDir.getAbsolutePath)
+
+  private val queue = ChronicleQueueBuilder
+    .single(persistDir.getAbsolutePath)
+    .wireType(wireType)
+    .rollCycle(rollCycle)
+    .blockSize(blockSize.toInt)
+    .indexSpacing(indexSpacing)
+    .indexCount(indexCount)
+    .build()
+
   private val appender = queue.createAppender
   private val reader = queue.createTailer
 

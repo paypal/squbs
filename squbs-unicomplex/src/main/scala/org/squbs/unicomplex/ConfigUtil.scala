@@ -17,7 +17,7 @@ package org.squbs.unicomplex
 
 import java.net.{Inet4Address, NetworkInterface}
 
-import com.typesafe.config.{Config, ConfigException}
+import com.typesafe.config.{Config, ConfigException, ConfigMemorySize}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration.FiniteDuration
@@ -89,6 +89,14 @@ object ConfigUtil {
 
     def getOptionalPattern(path: String): Option[Regex] = {
       Try(new Regex(underlying.getString(path))).toOption
+    }
+
+    def getOptionalMemorySize(path: String): Option[ConfigMemorySize] = {
+      try {
+        Some(underlying.getMemorySize(path))
+      } catch {
+        case e: ConfigException.Missing => None
+      }
     }
   }
 

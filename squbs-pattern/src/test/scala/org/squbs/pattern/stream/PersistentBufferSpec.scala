@@ -24,6 +24,7 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.stream.{ActorMaterializer, ClosedShape, ThrottleMode}
 import akka.util.ByteString
+import com.typesafe.config.ConfigFactory
 import net.openhft.chronicle.wire.{WireIn, WireOut}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.testkit.Timeouts._
@@ -76,11 +77,12 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     delete(tempPath.toFile)
   }
 
-  it should "buffer a stream of one million elements using GraphDSL" in {
-    val tempPath = Files.createTempDirectory("persistent_queue")
+  it should "buffer a stream of one million elements using GraphDSL and custom config" in {
+    val tempPath = Files.createTempDirectory("persistent_queue").toFile
+    val config = ConfigFactory.parseString(s"persist-dir = ${tempPath.getAbsolutePath}")
     val in = Source(1 to elementCount)
     val transform = Flow[Int] map createElement
-    val buffer = new PersistentBuffer[T](tempPath.toFile)
+    val buffer = new PersistentBuffer[T](config)
     val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
 
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit builder =>
@@ -92,7 +94,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val countFuture = streamGraph.run()
     val count = Await.result(countFuture, awaitMax)
     count shouldBe elementCount
-    delete(tempPath.toFile)
+    delete(tempPath)
   }
 
   it should "buffer for a throttled stream" in {
@@ -172,7 +174,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
           import GraphDSL.Implicits._
           val bc = builder.add(Broadcast[T](2))
           Source((elementCount + 1) to (elementCount + elementsAfterFail)) ~> transform ~> buffer2 ~> bc ~> sink
-                                                                                                     bc ~> first
+                                                                                                      bc ~> first
           ClosedShape
       })
     val (doneF, firstF) = graph2.run()(ActorMaterializer())
@@ -232,7 +234,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
           import GraphDSL.Implicits._
           val bc = builder.add(Broadcast[T](2))
           Source((elementCount + 1) to (elementCount + elementsAfterFail)) ~> transform ~> buffer2 ~> bc ~> sink
-                                                                                                     bc ~> first
+                                                                                                      bc ~> first
           ClosedShape
       })
     val (thisCountF, firstF) = graph2.run()(ActorMaterializer())
@@ -289,7 +291,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
           import GraphDSL.Implicits._
           val bc = builder.add(Broadcast[T](2))
           Source(failTestAt to elementCount) ~> transform ~> buffer2 ~> bc ~> sink
-                                                               bc ~> first
+                                                                        bc ~> first
           ClosedShape
       })
     val (doneF, firstF) = graph2.run()(ActorMaterializer())
