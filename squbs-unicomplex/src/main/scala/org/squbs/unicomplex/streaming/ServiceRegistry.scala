@@ -183,6 +183,12 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
       }
     }
   }
+
+  override private[unicomplex] def portBindings: Map[String, Int] = {
+    serverBindings map { case (name, ServerBindingInfo(Some(sb), None)) =>
+      name -> sb.localAddress.getPort
+    }
+  }
 }
 
 private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
