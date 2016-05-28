@@ -59,4 +59,29 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
     the [IllegalStateException] thrownBy actorReports.values.head.value.get should have message
       "Materialized value not available before streamGraph is started!"
   }
+
+  it should "recover from upstream failure" in {
+    val classPaths = Array("ThrowExceptionStream") map (dummyJarsDir + "/" + _)
+
+    val config = ConfigFactory.parseString(
+      s"""
+         |squbs {
+         |  actorsystem-name = ThrowExceptionStream
+         |  ${JMX.prefixConfig} = true
+         |}
+    """.stripMargin
+    )
+
+    val boot = UnicomplexBoot(config)
+      .createUsing {
+        (name, config) => ActorSystem(name, config)
+      }
+      .scanComponents(classPaths)
+      .start()
+
+    import Timeouts._
+
+    val reportF = (Unicomplex(boot.actorSystem).uniActor ? ReportStatus).mapTo[StatusReport]
+    val StatusReport(state, cubes, _) = Await.result(reportF, awaitMax)
+  }
 }
