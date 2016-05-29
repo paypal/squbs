@@ -85,8 +85,10 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
     import Timeouts._
     import ThrowExceptionStream._
 
-    val doneF = actorSystem.actorSelection("/user/ThrowExceptionStream/ThrowExceptionStream") ? NotifyWhenDone
-    Await.ready(doneF, awaitMax)
+    val countF = (actorSystem.actorSelection("/user/ThrowExceptionStream/ThrowExceptionStream") ? NotifyWhenDone)
+      .mapTo[Int]
+    val count = Await.result(countF, awaitMax)
+    count shouldBe (limit - 1)
     recordCount.get shouldBe (limit - 1)
 
     Unicomplex(actorSystem).uniActor ! GracefulStop

@@ -17,11 +17,11 @@ package org.squbs.stream
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import akka.NotUsed
 import akka.actor.ActorContext
 import akka.stream.ClosedShape
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
-import akka.{Done, NotUsed}
 
 import scala.concurrent.Future
 import scala.language.postfixOps
@@ -35,7 +35,7 @@ object ThrowExceptionStream {
   val recordCount = new AtomicInteger(0)
 }
 
-class ThrowExceptionStream extends PerpetualStream[Future[Done]] {
+class ThrowExceptionStream extends PerpetualStream[Future[Int]] {
 
   import ThrowExceptionStream._
 
@@ -50,7 +50,7 @@ class ThrowExceptionStream extends PerpetualStream[Future[Done]] {
     else n
   }
 
-  def counter = Sink.foreach[Any] { _ => recordCount.incrementAndGet() }
+  def counter = Flow[Any].map{ _ => recordCount.incrementAndGet(); 1 }.reduce{ _ + _ }.toMat(Sink.head)(Keep.right)
 
   override def receive = {
     case NotifyWhenDone =>
