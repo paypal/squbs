@@ -17,31 +17,52 @@ package org.squbs.stream
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import akka.{Done, NotUsed}
 import akka.actor.ActorContext
 import akka.stream.ClosedShape
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
+import akka.{Done, NotUsed}
 
 import scala.concurrent.Future
 import scala.language.postfixOps
 
+case object NotifyWhenDone
+
+object ThrowExceptionStream {
+
+  val limit = 50000
+  val exceptionAt = limit * 3 / 10
+  val recordCount = new AtomicInteger(0)
+}
+
 class ThrowExceptionStream extends PerpetualStream[Future[Done]] {
 
-  def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(updateCounter()) {implicit builder =>
-    sink => startSource ~> injectError ~> sink
+  import ThrowExceptionStream._
+
+  def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit builder =>
+    sink =>
+      startSource ~> injectError ~> sink
       ClosedShape
   })
 
   val injectError = Flow[Int].map { n =>
-    if (n == 30000) throw new NumberFormatException("This is a fake exception")
+    if (n == exceptionAt) throw new NumberFormatException("This is a fake exception")
     else n
   }
-  val recordCount = new AtomicInteger(0)
-  def updateCounter() = Sink.foreach[Any] { _ => recordCount.incrementAndGet() }
 
-  private def startSource(implicit context: ActorContext): Source[Int, NotUsed] = Source(1 to 100000)
+  def counter = Sink.foreach[Any] { _ => recordCount.incrementAndGet() }
 
-  override def shutdownHook() = { print ("Neo Stream Result " +  recordCount.get + "\n\n") }
+  override def receive = {
+    case NotifyWhenDone =>
+      import context.dispatcher
+      val target = sender()
+      matValue foreach { v => target ! v }
+  }
+
+  private def startSource(implicit context: ActorContext): Source[Int, NotUsed] = Source(1 to limit)
+
+  override def shutdownHook() = {
+    println("Neo Stream Result " + recordCount.get + "\n\n")
+  }
 
 }

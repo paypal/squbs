@@ -20,6 +20,7 @@ import akka.pattern._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
 import org.scalatest.{FlatSpec, Matchers}
+import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex._
 
 import scala.concurrent.Await
@@ -58,6 +59,7 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
     cubeState shouldBe Failed
     the [IllegalStateException] thrownBy actorReports.values.head.value.get should have message
       "Materialized value not available before streamGraph is started!"
+    Unicomplex(boot.actorSystem).uniActor ! GracefulStop
   }
 
   it should "recover from upstream failure" in {
@@ -79,9 +81,14 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
       .scanComponents(classPaths)
       .start()
 
+    import boot.actorSystem
     import Timeouts._
+    import ThrowExceptionStream._
 
-    val reportF = (Unicomplex(boot.actorSystem).uniActor ? ReportStatus).mapTo[StatusReport]
-    val StatusReport(state, cubes, _) = Await.result(reportF, awaitMax)
+    val doneF = actorSystem.actorSelection("/user/ThrowExceptionStream/ThrowExceptionStream") ? NotifyWhenDone
+    Await.ready(doneF, awaitMax)
+    recordCount.get shouldBe (limit - 1)
+
+    Unicomplex(actorSystem).uniActor ! GracefulStop
   }
 }
