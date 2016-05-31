@@ -15,34 +15,37 @@
  */
 package org.squbs.stream
 
-import akka.NotUsed
 import akka.actor.ActorContext
 import akka.stream.ClosedShape
 import akka.stream.scaladsl.GraphDSL.Implicits._
 import akka.stream.scaladsl._
-import org.squbs.unicomplex.Initialized
+import akka.NotUsed
 
 import scala.concurrent.Future
 import scala.language.postfixOps
-import scala.util.Try
 
-class IllegalStateStream extends PerpetualStream[Future[Int]] {
-    def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(endSink) {implicit builder =>
+object ProperShutdownStream {
+  val sourceElement = 1
+}
+
+class ProperShutdownStream extends PerpetualStream[Future[Int]] {
+  import ProperShutdownStream._
+
+  def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(endSink) {implicit builder =>
     sink => startSource ~> sink
-  ClosedShape
+      ClosedShape
   })
 
-  // By accessing matValue here, it should generate an IllegalStateException.
-  // Reporting it to the parent would cause the cube and the system to be at state Failed.
-  val t = Try { Option(matValue.toString) }
-  context.parent ! Initialized(t)
+  private def startSource(implicit context: ActorContext): Source[Int, NotUsed] = Source.repeat(sourceElement)
 
-  private def startSource(implicit context: ActorContext): Source[Int, NotUsed] = Source(1 to 10).map(_ * 1)
-
-  private def endSink(implicit context: ActorContext): Sink[Int, Future[Int]] = {
-    val sink = Sink.fold[Int, Int](0)(_ + _)
+  def endSink(implicit context: ActorContext): Sink[Int, Future[Int]] = {
+    val sink = Sink.head[Int]
     sink
-   }
-  override def shutdownHook() = { println ("Neo IllegalStateStream Result " +  matValue.value.get.get) }
+  }
 
+  override def shutdownHook() = {
+    import context.dispatcher
+    val target = sender()
+    matValue foreach { v => target ! v }
+  }
 }

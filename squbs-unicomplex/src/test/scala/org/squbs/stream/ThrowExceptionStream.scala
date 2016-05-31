@@ -62,7 +62,7 @@ class ThrowExceptionStream extends PerpetualStream[Future[Int]] {
   private def startSource(implicit context: ActorContext): Source[Int, NotUsed] = Source(1 to limit)
 
   override def shutdownHook() = {
-    println("Neo Stream Result " + recordCount.get + "\n\n")
+    println("Neo ThrowExceptionStream Result " + recordCount.get )
   }
 
 }

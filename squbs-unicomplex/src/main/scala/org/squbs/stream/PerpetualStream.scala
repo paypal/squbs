@@ -57,8 +57,8 @@ trait PerpetualStream[T] extends Actor with ActorLogging {
 
   final def running: Receive = {
     case Stopping =>
-      shutdownHook()
       materializer.shutdown()
+      shutdownHook()
   }
 
   def receive: Receive = PartialFunction.empty
