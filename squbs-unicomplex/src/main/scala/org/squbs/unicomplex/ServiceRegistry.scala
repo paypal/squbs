@@ -88,7 +88,7 @@ class LocalPortHeader(port: Int) extends SqubsRawHeader(LocalPortHeader.name, po
   */
 class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path] {
 
-  case class ServiceListenerInfo(squbsListener: Option[ActorRef], httpListener: Option[ActorRef], exception: Option[Throwable] = None)
+  case class ServiceListenerInfo(squbsListener: Option[ActorRef], httpListener: Option[ActorRef], serverBinding: Option[Http.Bound], exception: Option[Throwable] = None)
 
   private var serviceListeners = Map.empty[String, ServiceListenerInfo]
 
@@ -113,7 +113,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     val BindConfig(interface, port, localPort, sslContext, needClientAuth) = Try { bindConfig(config) } match {
       case Success(bc) => bc
       case Failure(ex) =>
-        serviceListeners = serviceListeners + (name -> ServiceListenerInfo(None, None, Some(ex)))
+        serviceListeners = serviceListeners + (name -> ServiceListenerInfo(None, None, None, Some(ex)))
         notifySender ! Failure(ex)
         throw ex
     }
@@ -142,13 +142,13 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     context.watch(listenerRef)
 
     {
-      case _: Http.Bound =>
+      case serverBinding: Http.Bound =>
         import org.squbs.unicomplex.JMX._
         JMX.register(new ServerStats(name, context.sender()), prefix + serverStats + name)
-        serviceListeners = serviceListeners + (name -> ServiceListenerInfo(Some(listenerRef), Some(context.sender())))
+        serviceListeners = serviceListeners + (name -> ServiceListenerInfo(Some(listenerRef), Some(context.sender()), Some(serverBinding)))
         context.self ! HttpBindSuccess
       case failed: Http.CommandFailed =>
-        serviceListeners = serviceListeners + (name -> ServiceListenerInfo(None, None, Some(new BindException(failed.toString))))
+        serviceListeners = serviceListeners + (name -> ServiceListenerInfo(None, None, None, Some(new BindException(failed.toString))))
         log.error(s"Failed to bind listener $name. Cleaning up. System may not function properly.")
         context.unwatch(listenerRef)
         listenerRef ! PoisonPill
@@ -171,7 +171,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   override private[unicomplex] def stopAll()(implicit context: ActorContext): Unit = {
     serviceListeners foreach {
-      case (name, ServiceListenerInfo(_, Some(httpListener), None)) =>
+      case (name, ServiceListenerInfo(_, Some(httpListener), _, None)) =>
         stopListener(name, httpListener)
         import JMX._
         JMX.unregister(prefix + serverStats + name)
@@ -200,14 +200,14 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
   override private[unicomplex] def shutdownState: Receive = {
     case Http.ClosedAll =>
       serviceListeners.values foreach {
-        case ServiceListenerInfo(Some(svcActor), Some(_), None) => svcActor ! PoisonPill
+        case ServiceListenerInfo(Some(svcActor), Some(_), Some(_), None) => svcActor ! PoisonPill
         case _ =>
       }
   }
 
   override private[unicomplex] def listenerTerminated(listenerActor: ActorRef): Unit = {
     serviceListeners = serviceListeners.filterNot {
-      case (_, ServiceListenerInfo(Some(`listenerActor`), Some(_), None)) => true
+      case (_, ServiceListenerInfo(Some(`listenerActor`), Some(_), Some(_), None)) => true
       case _ => false
     }
   }
@@ -218,10 +218,16 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     new ListenerStateMXBean {
       import scala.collection.JavaConversions._
       override def getListenerStates: java.util.List[ListenerState] = {
-        serviceListeners map { case (name, ServiceListenerInfo(squbsListener, httpListener, exception)) =>
+        serviceListeners map { case (name, ServiceListenerInfo(squbsListener, httpListener, _, exception)) =>
           ListenerState(name, squbsListener.map(_ => "Success").getOrElse("Failed"), exception.getOrElse("").toString)
         } toSeq
       }
+    }
+  }
+
+  override private[unicomplex] def portBindings: Map[String, Int] = {
+    serviceListeners map { case(name, ServiceListenerInfo(_, _, Some(serverBinding), None)) =>
+      name -> serverBinding.localAddress.getPort
     }
   }
 }

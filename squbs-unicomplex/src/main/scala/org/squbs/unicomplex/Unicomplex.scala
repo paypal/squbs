@@ -146,6 +146,8 @@ case class StartCube(name: String)
 private[unicomplex] case object HttpBindSuccess
 private[unicomplex] case object HttpBindFailed
 
+case object PortBindings
+
 sealed trait ActorWrapper {
   val actor: ActorRef
 }
@@ -467,6 +469,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     case LifecycleTimesRequest => // Obtain all timestamps.
       sender() ! LifecycleTimes(systemStart, systemStarted, systemActive, systemStop)
+
+    case PortBindings => // Obtain listener names and port bindings, mainly used for tests
+      sender() ! serviceRegistry.portBindings
   }
 
   def updateCubes(reports: InitReports) {

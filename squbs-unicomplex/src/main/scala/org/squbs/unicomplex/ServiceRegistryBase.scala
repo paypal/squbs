@@ -27,7 +27,6 @@ import org.squbs.unicomplex.ConfigUtil._
 
 import scala.concurrent.{Future, ExecutionContext}
 import scala.collection.mutable.ListBuffer
-import scala.util.{Success, Try}
 
 trait ServiceRegistryBase[A] {
 
@@ -88,6 +87,8 @@ trait ServiceRegistryBase[A] {
   private[unicomplex] def isListenersBound: Boolean
 
   private[unicomplex] def listenerTerminated(listenerActor: ActorRef): Unit
+
+  private[unicomplex] def portBindings: Map[String, Int]
 
   case class BindConfig(interface: String, port: Int, localPort: Option[Int],
                         ssLContext: Option[SSLContext], needClientAuth: Boolean)
