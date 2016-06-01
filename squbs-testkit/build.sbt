@@ -19,3 +19,13 @@ libraryDependencies ++= Seq(
 testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 
 updateOptions := updateOptions.value.withCachedResolution(true)
+
+// SimpleTestKitTest is causing actor system conflict with SimpleTestKitSpec.  Forking logic is specific to
+// test name to minimize the duration of forked process (Travis CI limitations).
+def groupBySimpleTestKitTest(tests: Seq[TestDefinition]) =
+  tests groupBy (_.name == "org.squbs.testkit.japi.SimpleTestKitTest") map {
+    case (letter, tests) => new Tests.Group(letter.toString, tests, Tests.SubProcess(ForkOptions()))
+  } toSeq
+
+testGrouping in Test := groupBySimpleTestKitTest((definedTests in Test).value)
+
