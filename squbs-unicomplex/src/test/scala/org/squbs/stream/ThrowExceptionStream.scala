@@ -17,7 +17,7 @@ package org.squbs.stream
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import akka.actor.ActorContext
 import akka.stream.ClosedShape
 import akka.stream.scaladsl.GraphDSL.Implicits._
@@ -63,6 +63,7 @@ class ThrowExceptionStream extends PerpetualStream[Future[Int]] {
 
   override def shutdownHook() = {
     println("Neo Stream Result " + recordCount.get + "\n\n")
+    Future.successful(Done)
   }
 
 }

@@ -23,7 +23,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex._
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 
 class PerpetualStreamSpec extends FlatSpec with Matchers {
 
@@ -81,9 +81,9 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
       .scanComponents(classPaths)
       .start()
 
-    import boot.actorSystem
-    import Timeouts._
     import ThrowExceptionStream._
+    import Timeouts._
+    import boot.actorSystem
 
     val countF = (actorSystem.actorSelection("/user/ThrowExceptionStream/ThrowExceptionStream") ? NotifyWhenDone)
       .mapTo[Int]
@@ -92,5 +92,41 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
     recordCount.get shouldBe (limit - 1)
 
     Unicomplex(actorSystem).uniActor ! GracefulStop
+  }
+
+  it should "properly drain the stream on shutdown" in {
+    val classPaths = Array("ProperShutdownStream") map (dummyJarsDir + "/" + _)
+
+    val config = ConfigFactory.parseString(
+      s"""
+         |squbs {
+         |  actorsystem-name = ProperShutdownStream
+         |  ${JMX.prefixConfig} = true
+         |}
+    """.stripMargin
+    )
+
+    val boot = UnicomplexBoot(config)
+      .createUsing {
+        (name, config) => ActorSystem(name, config)
+      }
+      .scanComponents(classPaths)
+      .start()
+
+    import ProperShutdownStream._
+    import Timeouts._
+    import boot.actorSystem
+
+    // NOTE: Must use global execution context as it does not shutdown with ActorSystem
+    // and the Future callback will likely execute at ActorSystem shutdown.
+
+    val countFF = (actorSystem.actorSelection("/user/ProperShutdownStream/ProperShutdownStream") ? NotifyWhenDone)
+      .mapTo[Future[Long]]
+    val countF = Await.result(countFF, awaitMax)
+    Thread.sleep(500) // Let the stream run a bit.
+    Unicomplex(actorSystem).uniActor ! GracefulStop
+    val count = Await.result(countF, awaitMax)
+    println(s"Counts -> src: ${genCount.get} dest: $count")
+    (genCount.get - count) should be < 3L
   }
 }
