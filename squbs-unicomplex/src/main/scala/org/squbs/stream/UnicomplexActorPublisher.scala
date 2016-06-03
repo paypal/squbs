@@ -46,7 +46,7 @@ case class LifecycleManaged[T, M](implicit system: ActorSystem) {
       case Stopping => DISABLE
     }
 
-  val source = (in: Source[T, M]) => new Trigger().source(in, trigger)
+  val source = (in: Source[T, M]) => new Trigger(eagerComplete = true).source(in, trigger)
 
   // for Java
   def source(in: javadsl.Source[T, M]): javadsl.Source[T, akka.japi.Pair[M, ActorRef]] = source(in.asScala)

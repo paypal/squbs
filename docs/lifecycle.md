@@ -190,7 +190,12 @@ final Source aggregatedSource = new LifecycleManaged(system).source(inSource)
 ```
 
 ### Custom aggregated triggered source
-If you want your flow to enable/disable to custom events, you can integrate with a custom trigger source, element `true` will enable, `false` will disable.
+If you want your flow to enable/disable to custom events, you can integrate with a custom trigger source,
+element `true` will enable, `false` will disable.
+
+Note that Trigger takes an argument `eagerComplete` which is defaulted to `false` in Scala but has to be
+passed in Java. If `eagerComplete` is set to `false`, completion and/or termination of the trigger source actor
+will detach the trigger. If set to `true`, such termination will complete the stream.
 
 ```scala
 
@@ -235,6 +240,6 @@ If you want to respond to more lifecycle events beyond `Active` and `Stopping`, 
       case Stopping | Failed => DISABLE
     }
 
-  val aggregatedSource = new Trigger().source(inSource, trigger)
+  val aggregatedSource = new Trigger(false).source(inSource, trigger)
 
 ```

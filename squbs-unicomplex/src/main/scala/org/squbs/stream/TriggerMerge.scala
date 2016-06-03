@@ -93,7 +93,7 @@ final class TriggerMerge[T](eagerComplete: Boolean = false) extends GraphStage[F
   override def toString = "TriggerMerge"
 }
 
-class Trigger[T, M1, M2] {
+class Trigger[T, M1, M2](eagerComplete: Boolean = false) {
 
   import GraphDSL.Implicits._
 
@@ -101,7 +101,7 @@ class Trigger[T, M1, M2] {
     (in: Graph[SourceShape[T], M1], trigger: Graph[SourceShape[TriggerEvent], M2]) => Source.fromGraph(
       GraphDSL.create(in, trigger)((_, _)) { implicit builder =>
         (sIn, sTrigger) =>
-          val merge = builder.add(new TriggerMerge[T](eagerComplete = true))
+          val merge = builder.add(new TriggerMerge[T](eagerComplete))
           sIn ~> merge.in0
           sTrigger ~> merge.in1
           SourceShape(merge.out)
