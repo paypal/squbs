@@ -17,7 +17,7 @@ package org.squbs.stream
 import java.util.concurrent.atomic.AtomicLong
 
 import akka.Done
-import akka.actor.{ActorRef, PoisonPill}
+import akka.actor.ActorRef
 import akka.stream.ClosedShape
 import akka.stream.ThrottleMode.Shaping
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
@@ -33,13 +33,16 @@ object ProperShutdownStream {
 class ProperShutdownStream extends PerpetualStream[(ActorRef, Future[Long])] {
   import ProperShutdownStream._
   import context.system
+  import org.squbs.unicomplex.Timeouts._
 
-  val generator = Iterator.iterate(0){ p =>
+  override def stopTimeout = awaitMax
+
+  def generator = Iterator.iterate(0){ p => if (p == Int.MaxValue) 0 else p + 1 } map { v =>
     genCount.incrementAndGet()
-    if (p == Int.MaxValue) 0 else p + 1
+    v
   }
 
-  val managedSource = LifecycleManaged().source(Source.fromIterator { () => generator })
+  val managedSource = LifecycleManaged().source(Source fromIterator generator _)
 
   val throttle = Flow[Int].throttle(5000, 1 second, 1000, Shaping)
 
@@ -56,13 +59,17 @@ class ProperShutdownStream extends PerpetualStream[(ActorRef, Future[Long])] {
   override def receive = {
     case NotifyWhenDone =>
       val (_, fCount) = matValue
+
+      // Send back the future directly here, don't map the future. The map will likely happen after ActorSystem
+      // shutdown so we cannot use context.dispatcher as execution context for the map as it won't be there when
+      // the map is supposed to happen.
       sender() ! fCount
   }
 
   override def shutdownHook() = {
     import context.dispatcher
     val (actorRef, fCount) = matValue
-    actorRef ! PoisonPill    // Cancel the stream head.
-    fCount map { _ => Done } // Return a Future[Done] indicating the stream is finished.
+    val fStopped = gracefulStop(actorRef, awaitMax)
+    for { _ <- fCount; _ <- fStopped } yield Done
   }
 }

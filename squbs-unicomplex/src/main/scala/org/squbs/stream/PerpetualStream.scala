@@ -16,7 +16,7 @@
 package org.squbs.stream
 
 import akka.Done
-import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, Stash, Terminated}
 import akka.stream.Supervision._
 import akka.stream.scaladsl.RunnableGraph
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
@@ -25,7 +25,7 @@ import org.squbs.unicomplex._
 
 import scala.concurrent.Future
 
-trait PerpetualStream[T] extends Actor with ActorLogging with GracefulStopHelper {
+trait PerpetualStream[T] extends Actor with ActorLogging with Stash with GracefulStopHelper {
 
   def streamGraph: RunnableGraph[T]
 
@@ -57,6 +57,8 @@ trait PerpetualStream[T] extends Actor with ActorLogging with GracefulStopHelper
     case Active =>
       context.become(running orElse receive)
       matValueOption = Option(streamGraph.run())
+      unstashAll()
+    case _ => stash()
   }
 
   final def running: Receive = {
@@ -64,11 +66,12 @@ trait PerpetualStream[T] extends Actor with ActorLogging with GracefulStopHelper
       import context.dispatcher
       val children = context.children
       children foreach context.watch
-      shutdownHook() onComplete { _ => materializer.shutdown() }
+      shutdownHook() onComplete { _ => self ! Done }
       context.become(stopped(children))
   }
 
   final def stopped(children: Iterable[ActorRef]): Receive = {
+    case Done => materializer.shutdown()
     case Terminated(ref) =>
       val remaining = children filterNot ( _ == ref )
       if (remaining.nonEmpty) context.become(stopped(remaining))

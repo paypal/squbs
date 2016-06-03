@@ -117,9 +117,9 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
     import Timeouts._
     import boot.actorSystem
 
-    // NOTE: Must use global execution context as it does not shutdown with ActorSystem
-    // and the Future callback will likely execute at ActorSystem shutdown.
-
+    // To avoid map at shutdown so the NotifyWhenDone obtains a Future[Long] right away.
+    // Combined with "ask", we now have a Future[Future[Long]] in countFF. Then we have to do the very short await
+    // to obtain the Future[Long] that will complete at or after shutdown.
     val countFF = (actorSystem.actorSelection("/user/ProperShutdownStream/ProperShutdownStream") ? NotifyWhenDone)
       .mapTo[Future[Long]]
     val countF = Await.result(countFF, awaitMax)
@@ -127,6 +127,6 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
     Unicomplex(actorSystem).uniActor ! GracefulStop
     val count = Await.result(countF, awaitMax)
     println(s"Counts -> src: ${genCount.get} dest: $count")
-    (genCount.get - count) should be < 3L
+    count shouldBe genCount.get
   }
 }

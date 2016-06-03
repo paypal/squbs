@@ -30,7 +30,7 @@ import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
  * '''Emits when''' the input stream has an element available, and the triggered is true
  * Note that, trigger only impact the future input element(s), always allowing the in-flight element to go through
  */
-final class TriggerMerge[T](eagerComplete: Boolean = true) extends GraphStage[FanInShape2[T, TriggerEvent, T]] {
+final class TriggerMerge[T](eagerComplete: Boolean = false) extends GraphStage[FanInShape2[T, TriggerEvent, T]] {
   override val shape: FanInShape2[T, TriggerEvent, T] = new FanInShape2[T, TriggerEvent, T]("TriggerMerge")
   val in: Inlet[T] = shape.in0
   val trigger: Inlet[TriggerEvent] = shape.in1
@@ -101,7 +101,7 @@ class Trigger[T, M1, M2] {
     (in: Graph[SourceShape[T], M1], trigger: Graph[SourceShape[TriggerEvent], M2]) => Source.fromGraph(
       GraphDSL.create(in, trigger)((_, _)) { implicit builder =>
         (sIn, sTrigger) =>
-          val merge = builder.add(new TriggerMerge[T])
+          val merge = builder.add(new TriggerMerge[T](eagerComplete = true))
           sIn ~> merge.in0
           sTrigger ~> merge.in1
           SourceShape(merge.out)
