@@ -3,7 +3,7 @@
 We love your contributions. Please use the steps below to determine the path of contribution.
 
 ##Discussions/Proposals
-We all should discuss new ideas before they turn into code. The [squbs-user forum](https://groups.google.com/forum/#!forum/squbs-user) is a great starting point for such discussions. Once we get to a certain conclusion, please file an issue in the [issue tracker](https://github.com/paypal/squbs/issues) with reference to the forum discussion.
+We all should discuss new ideas before they turn into code. The [squbs gitter chat](https://gitter.im/paypal/squbs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) is a great starting point for such discussions. Once we get to a certain conclusion, please file an issue in the [issue tracker](https://github.com/paypal/squbs/issues) with reference to the forum discussion.
 
 ##Bugs
 If you have determined you are facing a bug or defect, please log the bug in the [issue tracker](https://github.com/paypal/squbs/issues). If the bug has any reference to forum discussions, please add the reference to the forum discussion.
