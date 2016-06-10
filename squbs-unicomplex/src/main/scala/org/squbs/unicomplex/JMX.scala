@@ -66,7 +66,7 @@ object JMX {
     (prefixes.get(system) orElse Option {
       import ConfigUtil._
       val p =
-        if (Unicomplex(system).config.getOptionalBoolean(prefixConfig).getOrElse(false) || isRegistered(systemStateName))
+        if (Unicomplex(system).config.get[Boolean](prefixConfig, false) || isRegistered(systemStateName))
           system.name + '.'
         else ""
       prefixes += system -> p

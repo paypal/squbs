@@ -17,15 +17,17 @@ package org.squbs.unicomplex
 
 import java.net.{Inet4Address, NetworkInterface}
 
+import com.typesafe.config.ConfigException.{Missing, WrongType}
 import com.typesafe.config.{Config, ConfigException, ConfigMemorySize}
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 import scala.util.matching.Regex
 import scala.reflect.runtime.universe._
 
-object ConfigUtil {
+object ConfigUtil extends LazyLogging {
 
   private val StringTag = typeTag[String]
   private val StringListTag = typeTag[Seq[String]]
@@ -33,30 +35,49 @@ object ConfigUtil {
   private val ConfigListTag = typeTag[Seq[Config]]
   private val RegexTag = typeTag[Regex]
   private val ConfigMemorySizeTag = typeTag[ConfigMemorySize]
-  private val DurationTag = typeTag[FiniteDuration]
+  private val DurationTag = typeTag[Duration]
+  private val FiniteDurationTag = typeTag[FiniteDuration]
 
   implicit class RichConfig(val underlying: Config) extends AnyVal {
 
-    def getOption[T](path: String)(implicit tag: TypeTag[T]): Option[T] =
-      if (underlying.hasPath(path))
-        (tag match {
-          case StringTag => Some(underlying.getString(path))
-          case StringListTag => Some(underlying.getStringList(path).toSeq)
-          case TypeTag.Int => Some(underlying.getInt(path))
-          case TypeTag.Boolean => Some(underlying.getBoolean(path))
-          case TypeTag.Double => Some(underlying.getDouble(path))
-          case ConfigTag => Some(underlying.getConfig(path))
-          case ConfigListTag => Some(underlying.getConfigList(path).toSeq)
-          case RegexTag => Try(new Regex(underlying.getString(path))).toOption
-          case ConfigMemorySizeTag => Some(underlying.getMemorySize(path))
-          case DurationTag => Some(Duration.create(underlying.getDuration(path, MILLISECONDS), MILLISECONDS))
-          case _ => throw new IllegalArgumentException(s"Configuration option type $tag not implemented")
-        }).asInstanceOf[Option[T]]
-      else None
+    def getTry[T: TypeTag](path: String): Try[T] = Try {
+      (typeTag[T] match {
+        case StringTag => underlying.getString(path)
+        case StringListTag => underlying.getStringList(path).toSeq
+        case TypeTag.Int => underlying.getInt(path)
+        case TypeTag.Boolean => underlying.getBoolean(path)
+        case TypeTag.Double => underlying.getDouble(path)
+        case ConfigTag => underlying.getConfig(path)
+        case ConfigListTag => underlying.getConfigList(path).toSeq
+        case RegexTag => new Regex(underlying.getString(path))
+        case ConfigMemorySizeTag => underlying.getMemorySize(path)
+        case FiniteDurationTag => Duration(underlying.getString(path)).asInstanceOf[FiniteDuration]
+        case DurationTag => Duration(underlying.getString(path))
+        case _ =>
+          throw new IllegalArgumentException(s"Configuration option type ${typeTag[T].tpe} not implemented")
+      }).asInstanceOf[T]
+    } recover {
+      case e: IllegalArgumentException => throw e
+      case e: Missing => throw e
+      case e: WrongType => throw e
+      case e => throw new WrongType(underlying.origin,
+        s"Path: $path, value ${underlying.getString(path)} is not a ${typeTag[T].tpe}", e)
+    }
+
+    def getOption[T: TypeTag](path: String): Option[T] =
+      getTry[T](path) match {
+        case Success(value) => Some(value)
+        case Failure(e: ConfigException.Missing) => None
+        case Failure(e: IllegalArgumentException) => throw e
+        case Failure(e) =>
+          logger.warn("Value at path {} has an illegal format for type{}: {}",
+            path,  typeTag[T].tpe, underlying.getString(path))
+          None
+      }
 
     def get[T: TypeTag](path: String, default: => T) = getOption[T](path).getOrElse(default)
 
-    def get[T: TypeTag](path: String) = getOption[T](path).getOrElse(throw new ConfigException.Missing(path))
+    def get[T: TypeTag](path: String) = getTry[T](path).get
 
     def getOptionalString(path: String): Option[String] = {
       try {

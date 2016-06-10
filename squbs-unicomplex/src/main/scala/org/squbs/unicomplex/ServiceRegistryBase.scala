@@ -98,8 +98,8 @@ trait ServiceRegistryBase[A] {
     else config getString "bind-address"
     val port = config getInt "bind-port"
     // assign the localPort only if local-port-header is true
-    val localPort = config getOptionalBoolean "local-port-header" flatMap { useHeader =>
-      if (useHeader) Some(port) else None
+    val localPort = config.getOption[Boolean]("local-port-header") collect {
+      case true => port
     }
 
     val (sslContext, needClientAuth) =
