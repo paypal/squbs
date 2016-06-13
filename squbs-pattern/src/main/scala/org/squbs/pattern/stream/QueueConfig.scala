@@ -17,7 +17,7 @@ package org.squbs.pattern.stream
 
 import java.io.File
 
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigMemorySize}
 import net.openhft.chronicle.queue.{RollCycle, RollCycles}
 import net.openhft.chronicle.wire.WireType
 import org.squbs.pattern.util.ConfigUtil._
@@ -30,15 +30,15 @@ object QueueConfig {
 
   def from(config: Config): QueueConfig = {
     val persistDir = new File(config getString "persist-dir")
-    val cycle = config getOptionalString "roll-cycle" map {
+    val cycle = config.getOption[String]("roll-cycle") map {
       s => RollCycles.valueOf(s.toUpperCase)
     } getOrElse defaultCycle
-    val wireType = config getOptionalString "wire-type" map {
+    val wireType = config.getOption[String]("wire-type") map {
       s => WireType.valueOf(s.toUpperCase)
     } getOrElse defaultWireType
-    val blockSize = config getOptionalMemorySize "block-size" map (_.toBytes) getOrElse defaultBlockSize
-    val indexSpacing = config getOptionalMemorySize "index-spacing" map (_.toBytes.toInt) getOrElse cycle.defaultIndexSpacing
-    val indexCount = config getOptionalInt "index-count" getOrElse cycle.defaultIndexCount
+    val blockSize = config.getOption[ConfigMemorySize]("block-size") map (_.toBytes) getOrElse defaultBlockSize
+    val indexSpacing = config.getOption[ConfigMemorySize]("index-spacing") map (_.toBytes.toInt) getOrElse cycle.defaultIndexSpacing
+    val indexCount = config.get[Int]("index-count", cycle.defaultIndexCount)
     QueueConfig(persistDir, cycle, wireType, blockSize, indexSpacing, indexCount)
   }
 }

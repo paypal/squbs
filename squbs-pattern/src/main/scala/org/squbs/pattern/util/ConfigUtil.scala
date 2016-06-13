@@ -20,11 +20,39 @@ import java.net.{Inet4Address, NetworkInterface}
 import com.typesafe.config.{Config, ConfigException, ConfigMemorySize}
 
 import scala.collection.JavaConversions._
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
+import scala.reflect.runtime.universe._
 
 object ConfigUtil {
 
+  private val StringTag = typeTag[String]
+  private val StringListTag = typeTag[Seq[String]]
+  private val ConfigTag = typeTag[Config]
+  private val ConfigListTag = typeTag[Seq[Config]]
+  private val DurationTag = typeTag[FiniteDuration]
+  private val ConfigMemorySizeTag = typeTag[ConfigMemorySize]
+
   implicit class RichConfig(val underlying: Config) extends AnyVal {
+
+    def getOption[T](path: String)(implicit tag: TypeTag[T]): Option[T] =
+      if (underlying.hasPath(path))
+        (tag match {
+            case StringTag => Some(underlying.getString(path))
+            case StringListTag => Some(underlying.getStringList(path).toSeq)
+            case TypeTag.Int => Some(underlying.getInt(path))
+            case TypeTag.Boolean => Some(underlying.getBoolean(path))
+            case TypeTag.Double => Some(underlying.getDouble(path))
+            case ConfigTag => Some(underlying.getConfig(path))
+            case ConfigListTag => Some(underlying.getConfigList(path).toSeq)
+            case DurationTag => Some(Duration.create(underlying.getDuration(path, MILLISECONDS), MILLISECONDS))
+            case ConfigMemorySizeTag => Some(underlying.getMemorySize(path))
+            case _ => throw new IllegalArgumentException(s"Configuration option type $tag not implemented")
+          }).asInstanceOf[Option[T]]
+      else None
+
+    def get[T: TypeTag](path: String, default: => T) = getOption[T](path).getOrElse(default)
+
+    def get[T: TypeTag](path: String) = getOption[T](path).getOrElse(throw new ConfigException.Missing(path))
 
     def getOptionalString(path: String): Option[String] = {
       try {
