@@ -27,7 +27,7 @@ import org.squbs.unicomplex.Timeouts._
 import scala.concurrent.Await
 import scala.language.postfixOps
 
-object UnicomplexTestModeOnSpec {
+object UnicomplexPortAutoSelectSpec {
 
   val dummyJarsDir = getClass.getClassLoader.getResource("classpaths/streaming").getPath
 
@@ -54,7 +54,7 @@ object UnicomplexTestModeOnSpec {
 
 }
 
-class UnicomplexTestModeOnSpec extends TestKit(UnicomplexTestModeOnSpec.boot.actorSystem) with ImplicitSender
+class UnicomplexPortAutoSelectSpec extends TestKit(UnicomplexPortAutoSelectSpec.boot.actorSystem) with ImplicitSender
   with FlatSpecLike with Matchers with BeforeAndAfterAll  {
 
   import akka.pattern.ask

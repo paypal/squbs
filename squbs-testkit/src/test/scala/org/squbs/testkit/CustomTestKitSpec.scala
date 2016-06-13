@@ -16,13 +16,8 @@
 
 package org.squbs.testkit
 
-import java.io.File
-
-import akka.actor.{Actor, Props}
-import akka.testkit.ImplicitSender
+import akka.actor.{ActorSystem, Actor, Props}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.concurrent.Eventually
-import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{FlatSpecLike, Matchers}
 import org.squbs.testkit.Timeouts._
 import org.squbs.unicomplex.{JMX, RouteDefinition, UnicomplexBoot}
@@ -33,16 +28,19 @@ import spray.util.Utils._
 
 import scala.concurrent.Await
 
-class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot)
-with ImplicitSender with FlatSpecLike with Matchers with Eventually {
-
-  override implicit val patienceConfig = new PatienceConfig(timeout = Span(3, Seconds))
+class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatSpecLike with Matchers {
 
   import system.dispatcher
 
   it should "return OK" in {
     val pipeline = sendReceive
     val result = Await.result(pipeline(Get(s"http://127.0.0.1:${CustomTestKitSpec.port}/test")), awaitMax)
+    result.entity.asString should include ("success")
+  }
+
+  it should "return OK with the port from PortGetter" in {
+    val pipeline = sendReceive
+    val result = Await.result(pipeline(Get(s"http://127.0.0.1:$port/test")), awaitMax)
     result.entity.asString should include ("success")
   }
 
@@ -68,8 +66,153 @@ object CustomTestKitSpec {
   )
 
   lazy val boot = UnicomplexBoot(testConfig)
-    .scanComponents(Seq(new File("src/test/resources/CustomTestKitTest").getAbsolutePath))
+    .scanResources(getClass.getClassLoader.getResource("").getPath + "/CustomTestKitTest/META-INF/squbs-meta.conf")
     .start()
+}
+
+class CustomTestKitDefaultSpec extends CustomTestKit with FlatSpecLike with Matchers {
+
+  it should "start default-listener" in {
+    noException should be thrownBy port
+    port shouldEqual port("default-listener")
+  }
+
+  it should "set actor system name to package-class name" in {
+    system.name should equal ("org-squbs-testkit-CustomTestKitDefaultSpec")
+  }
+
+  it should "use the default configuration" in {
+    system.settings.config.getInt("default-listener.bind-port") should be(0)
+    system.settings.config.getBoolean(s"squbs.${JMX.prefixConfig}") should be(true)
+  }
+}
+
+class CustomTestKitDefaultWithActorSystemNameSpec extends CustomTestKit("CustomTestKitDefaultWithActorSystemNameSpec")
+with FlatSpecLike with Matchers {
+
+  it should "start default-listener" in {
+    noException should be thrownBy port
+    port shouldEqual port("default-listener")
+  }
+
+  it should "set actor system name to the value passed in constructor" in {
+    system.name should equal ("CustomTestKitDefaultWithActorSystemNameSpec")
+  }
+
+  it should "use the default configuration" in {
+    system.settings.config.getInt("default-listener.bind-port") should be(0)
+    system.settings.config.getBoolean(s"squbs.${JMX.prefixConfig}") should be(true)
+  }
+}
+
+object CustomTestKitConfigSpec {
+  val config = ConfigFactory.parseString {
+      """
+        |squbs {
+        |  actorsystem-name = CustomTestKitConfigSpecInConfig
+        |}
+      """.stripMargin
+  }
+}
+
+class CustomTestKitConfigSpec extends CustomTestKit(CustomTestKitConfigSpec.config)
+with FlatSpecLike with Matchers {
+
+  it should "set actor system name to the value defined in config" in {
+    system.name should equal ("CustomTestKitConfigSpecInConfig")
+  }
+
+  it should "start default-listener" in {
+    noException should be thrownBy port
+    port shouldEqual port("default-listener")
+  }
+
+  it should "give priority to custom config" in {
+    system.settings.config.getString("squbs.actorsystem-name") should equal ("CustomTestKitConfigSpecInConfig")
+  }
+
+  it should "merge the custom config and default config" in {
+    system.settings.config.getBoolean(s"squbs.${JMX.prefixConfig}") should be(true)
+  }
+}
+
+object CustomTestKitResourcesSpec {
+
+  val resources = Seq(getClass.getClassLoader.getResource("").getPath + "/CustomTestKitTest/META-INF/squbs-meta.conf")
+}
+
+class CustomTestKitResourcesSpec extends CustomTestKit(CustomTestKitResourcesSpec.resources,
+                                                       false)
+with FlatSpecLike with Matchers {
+
+  it should "set actor system name to package-class" in {
+    system.name should equal ("org-squbs-testkit-CustomTestKitResourcesSpec")
+  }
+
+  it should "start default-listener" in {
+    noException should be thrownBy port
+    port shouldEqual port("default-listener")
+  }
+}
+
+class CustomTestKitResourcesWithActorSystemNameSpec extends CustomTestKit("CustomTestKitResourcesWithActorSystemNameSpec",
+                                                                          CustomTestKitResourcesSpec.resources,
+                                                                          withClassPath = false)
+with FlatSpecLike with Matchers {
+
+  it should "set actor system name to the value passed in constructor" in {
+    system.name should equal ("CustomTestKitResourcesWithActorSystemNameSpec")
+  }
+
+  it should "start default-listener" in {
+    noException should be thrownBy port
+    port shouldEqual port("default-listener")
+  }
+}
+
+class CustomTestKitEmptyResourcesSpec extends CustomTestKit(Seq.empty, false)
+with FlatSpecLike with Matchers {
+
+  it should "not bind to any port when resources is empty" in {
+    an [NoSuchElementException] should be thrownBy port
+  }
+}
+
+class CustomTestKitWithClassPathSpec extends CustomTestKit(Seq.empty, true)
+with FlatSpecLike with Matchers {
+
+  it should "start default-listener" in {
+    noException should be thrownBy port
+    port shouldEqual port("default-listener")
+  }
+}
+
+object CustomTestKitConfigAndResourcesSpec {
+
+  val resources = Seq(getClass.getClassLoader.getResource("").getPath + "/CustomTestKitTest/META-INF/squbs-meta.conf")
+
+  val config = ConfigFactory.parseString {
+    """
+      |squbs {
+      |  actorsystem-name = CustomTestKitConfigAndResourcesSpecInConfig
+      |}
+    """.stripMargin
+  }
+}
+
+class CustomTestKitConfigAndResourcesSpec extends CustomTestKit(CustomTestKitConfigAndResourcesSpec.config,
+                                                                CustomTestKitConfigAndResourcesSpec.resources,
+                                                                false)
+with FlatSpecLike with Matchers {
+
+  it should "set actor system name to the value defined in config" in {
+    system.name should equal ("CustomTestKitConfigAndResourcesSpecInConfig")
+  }
+
+  it should "start default-listener" in {
+    noException should be thrownBy port
+    port shouldEqual port("default-listener")
+  }
 }
 
 class Service extends RouteDefinition with Directives {

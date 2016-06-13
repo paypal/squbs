@@ -50,6 +50,7 @@ object SimpleTestKit {
  * the component scanning from the classpath (as in the regular squbs runtime). The test process must be forked and
  * no parallel tests with different squbs configurations are allowed.
  */
+@deprecated("use org.squbs.testkit.CustomTestKit instead")
 abstract class SimpleTestKit extends TestKit(SimpleTestKit.boot.actorSystem)
   with DebugTiming with ImplicitSender with Suite with BeforeAndAfterAll {
 

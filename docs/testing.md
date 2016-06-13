@@ -1,81 +1,121 @@
 #Testing squbs Applications
 All tests on squbs have been written using ScalaTest 2.x. Specs2 has not yet been tested.
 
-Depending on the test requirements, squbs provides two traits to help write test cases:
+##CustomTestKit
 
-1. `org.squbs.testkit.SimpleTestKit` The SimpleTestKit is used for starting a full blown squbs instance needed for testing bits and pieces of applications in a single Unicomplex instance and single ActorSystem. SimpleTestKit is simple to use and needs minimal configuration. It is however not suited for parallel tests that need different squbs configurations for each test case. Also, tests based on SimpleTestKit needs to be forked as a separate JVM. You have to make sure to set `fork in (Test,run) := true` in sbt. Please see the [sbt documentation](http://www.scala-sbt.org/0.13/docs/Forking.html) for more detail on forking.
+The `CustomTestKit` is used for starting a full blown squbs instance needed for testing bits and pieces of applications.  `CustomTestKit` is simple to use and needs no configuration by default, yet allows customizations and flexibility for your tests.  With `CustomTestKit` you can start any number of `ActorSystem` and `Unicomplex` instances (one per `ActorSystem`) with different configurations - all on the same JVM.  Here are some features:
 
-2. `org.squbs.testkit.CustomTestKit` For those who need ultimate power and flexibility to control your tests and be able to run different test cases needing different configurations together and in parallel, CustomTestKit is the right answer. You can start any number of ActorSystems and Unicomplex instances, one per ActorSystem, with different configurations - all on the same JVM. You just have to ensure the ActorSystem and Unicomplex instances do not conflict.
+   * It automatically sets actor system name to spec/test class name for simplicity and also to ensure `ActorSystem` instances do not conflict.  But, it also allows actor system name to be passed in the constructor.
+   * Tests extending `CustomTestKit` can run in parallel in the same JVM.
+   * Starts and stops squbs automatically.
+   * Starts well-known actors and service in `src/test/resources/META-INF/squbs-meta.conf` by default.  But, allows passing `resources` to be scanned in the constructor.
+   * Allows custom configuration to be passed in the constructor.
 
-The examples below show how each of the TestKit traits can be used.
-
-##SimpleTestKit examples:
-You can use SimpleTestKit by just extending the test case from it. squbs is going to be started and stopped automatically. Tests can run in parallel but only one squbs instance is allowed inside a forked VM.
+Here is an example usage of `CustomTestKit`:
 
 ```scala
-package com.myorg.mypkg
-import org.scalatest.{FunSpecLike, Matchers}
-import org.squbs.testkit.SimpleTestKit
+class SampleSpec extends CustomTestKit with FlatSpecLike with Matchers {
+   it should "start the system" in {
+      system.startTime should be > 0L
+   }
+}
+``` 
 
-class ActorCalLogTest extends SqubsTestKit with FunSpecLike with Matchers {
+###Passing configuration to `CustomTestKit`
 
-  // Write your tests here.
+If you would like to customize the actor system configuration, you can pass a `Config` object to `CustomTestKit`:
 
+```scala
+object SampleSpec {
+  val config = ConfigFactory.parseString {
+      """
+        |akka {
+        |  loglevel = "DEBUG"
+        |}
+      """.stripMargin
+  }
+}
+
+class SampleSpec extends CustomTestKit(SampleSpec.config) with FlatSpecLike with Matchers {
+
+  it should "set akka log level to the value defined in config" in {
+    system.settings.config.getString("akka.loglevel") shouldEqual "DEBUG"
+  }
+}
+```
+###Starting well-known actors and services with `CustomTestKit`
+
+`CustomTestKit` will automatically start well-known actors and services in `src/test/resources/META-INF/squbs-meta.conf` (see [Bootstrapping squbs](bootstrap.md#well-known-actors)).  However, if you would like provide different resource paths, you can do so by passing a `Seq` of resources to the constructor.  `withClassPath` controls whether to scan entire test classpath for `META-INF/squbs-meta.conf` files or not.
+
+```scala
+object SampleSpec {
+	val resources = Seq(getClass.getClassLoader.getResource("").getPath + "/SampleSpec/META-INF/squbs-meta.conf")
+}
+
+class SampleSpec extends CustomTestKit(SampleSpec.resources, withClassPath = false)
+  with FlatSpecLike with Matchers {
+	
+  // Write tests here	
 }
 ```
 
-##CustomTestKit example:
+Please note, `CustomTestKit` allows passing `config` and `resources` together as well.
 
-CustomTestKit is a more elaborate example allowing/requiring the developer to provide a configuration. Then use that configuration to boot the Unicomplex. Please see [Bootstrapping squbs](bootstrap.md) for more information on booting the Unicomplex.
+####Port binding in tests
+
+Starting services requires port binding.  To prevent port conflicts, we should let the system pick a port by setting listeners' `bind-port` to 0, e.g., `default-listener.bind-port = 0` (this is what `CustomTestKit` sets by default).  `squbs-testkit` comes with a `trait` named `PortGetter` that allows retrieving the port picked by the system.  `CustomTestKit` comes with `PortGetter` already mixed in, so you can use `port` value.  
 
 ```scala
-package com.myorg.mypkg
-
-import akka.actor.{ActorRef, Props}
-import com.typesafe.config.ConfigFactory
-import org.scalatest.{FunSpecLike, Matchers}
-import org.squbs.testkit.CustomTestKit
-import org.squbs.unicomplex.{UnicomplexBoot, JMX}
-
-// First, setup an object that configures and creates the
-// UnicomplexBoot (boot, in short) for this test.
-
-object MyTest {
-
-  import collection.JavaConversions._
-
-  val configDir = "actorCalLogTestConfig"
-
-  // Many forms to provide the configuration. A map is one simple way.
-  // 1) You want to make sure the name of the ActorSystem does not collide
-  // with other tests. Using the test class name is a sensible choice.
-  // 2) If multiple Unicomplexes are running in the same JVM, make sure
-  // to force prefixing the JMX bean registration or JMX names will collide.
-  // To do so, set the config entry "squbs." + JMX.prefixConfig to true.
+class SampleSpec extends CustomTestKit(SampleSpec.resources)
   
+  "PortGetter" should "retrieve the port" in {
+    port should be > 0
+  }
+}
+
+```
+
+By default, `PortGetter` returns `default-listener`'s port, which is the most common one.  If you need to retrieve another listener's bind port, you can either override `listener` method or pass listener name to `port` method:
+
+```scala
+class SampleSpec extends CustomTestKit(SampleSpec.resources)
+
+  override def listener = "my-listener"
+
+  "PortGetter" should "return the specified listener's port" in {
+    port should not equal port("default-listener")
+    port shouldEqual port("my-listener")
+  }
+}
+```
+
+###Manual `UnicomplexBoot` initialization
+
+`CustomTestKit` allows a `UnicomplexBoot` instance to be passed as well.  This allows full customization of the bootrap.  Please see [Bootstrapping squbs](bootstrap.md) for more information on booting the Unicomplex.
+
+```scala
+object SampleSpec {
   val config = ConfigFactory.parseString(
     s"""
        |squbs {
-       |  actorsystem-name = myTest
-       |  external-config-dir = $configDir
-       |  ${JMX.prefixConfig} = true
+       |  actorsystem-name = SampleSpec # should be unique to prevent collision with other tests running in parallel
+       |  ${JMX.prefixConfig} = true # to prevent JMX name collision, if you are doing any JMX testing
        |}
     """.stripMargin
   )
 
-  // Now, start the boot with the given config.
+  val resource = getClass.getClassLoader.getResource("").getPath + "/SampleSpec/META-INF/squbs-meta.conf"	
+	
   val boot = UnicomplexBoot(config)
-    .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
-    .initExtensions
-    .start()
+    .createUsing {(name, config) => ActorSystem(name, config)}
+    .scanResources(resource)
+    .initExtensions.start()
 }
 
-class MyTest extends CustomTestKit(MyTest.boot)
-      with FunSpecLike with Matchers {
-  
-  // Write your tests here.      
-}
+class SampleSpec extends CustomTestKit(SampleSpec.boot) with FunSpecLike with Matchers {
 
+  // Write your tests here.
+}
 ```
 
 ##Testing Spray Routes using Spray TestKit
