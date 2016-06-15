@@ -1,4 +1,3 @@
-
 /*
  *  Copyright 2015 PayPal
  *
@@ -18,7 +17,6 @@
 package org.squbs.pattern.validation
 
 import org.scalatest.{FlatSpecLike, Matchers}
-import org.squbs.pattern.validation.SampleValidators._
 import spray.http.MediaTypes._
 import spray.http._
 import spray.httpx.SprayJsonSupport._
@@ -43,6 +41,7 @@ class ValidationDirectivesTest extends FlatSpecLike with Matchers with Scalatest
   val invalidData3 = Person("John", "", Some(""), age = -1)
 
   import MyJsonProtocol._
+  import org.squbs.pattern.validation.SampleValidators._
 
   val route =
     path("person") {
