@@ -5,20 +5,29 @@ name := "squbs-unicomplex"
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "org.scalatest" %% "scalatest" % "2.2.1" % "test->*",
-  "com.typesafe.akka" %% "akka-actor" % akkaV,
-  "com.typesafe.akka" %% "akka-agent" % akkaV,
-  "com.typesafe.akka" %% "akka-http-experimental" % akkaV,
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
-  "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
-  "io.spray" %% "spray-can" % sprayV,
-  "io.spray" %% "spray-http" % sprayV,
-  "io.spray" %% "spray-routing-shapeless2" % sprayV,
-  "io.spray" %% "spray-testkit" % sprayV % "test",
-  "io.spray" %% "spray-client" % sprayV % "test",
-  "io.spray" %% "spray-json" % "1.3.2" % "test",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
-  "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % "test",
-  "org.scala-lang.modules" %% "scala-java8-compat" % "0.7.0"
+  "org.scala-lang.modules" %% "scala-java8-compat" % "0.7.0",
+  "com.wix" %% "accord-core" % "0.5"
+) ++ akka(akkaV) ++ spray(sprayV)
+
+def akka(v: String) = Seq(
+  "com.typesafe.akka" %% "akka-actor" % v,
+  "com.typesafe.akka" %% "akka-agent" % v,
+  "com.typesafe.akka" %% "akka-http-experimental" % v,
+  "com.typesafe.akka" %% "akka-http-spray-json-experimental" % v,
+  "com.typesafe.akka" %% "akka-testkit" % v % "test",
+  "com.typesafe.akka" %% "akka-stream-testkit" % v % "test",
+  "com.typesafe.akka" %% "akka-http-testkit-experimental" % "2.4.2-RC3" % "test"
+)
+
+def spray(v: String) = Seq(
+  "io.spray" %% "spray-can" % v,
+  "io.spray" %% "spray-http" % v,
+  "io.spray" %% "spray-routing-shapeless2" % v,
+  "io.spray" %% "spray-testkit" % v % "test",
+  "io.spray" %% "spray-client" % v % "test",
+  "io.spray" %% "spray-json" % "1.3.2" % "test"
 )
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")
