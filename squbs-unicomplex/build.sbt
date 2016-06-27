@@ -15,10 +15,8 @@ def akka(v: String) = Seq(
   "com.typesafe.akka" %% "akka-actor" % v,
   "com.typesafe.akka" %% "akka-agent" % v,
   "com.typesafe.akka" %% "akka-http-experimental" % v,
-  "com.typesafe.akka" %% "akka-http-spray-json-experimental" % v,
   "com.typesafe.akka" %% "akka-testkit" % v % "test",
-  "com.typesafe.akka" %% "akka-stream-testkit" % v % "test",
-  "com.typesafe.akka" %% "akka-http-testkit-experimental" % "2.4.2-RC3" % "test"
+  "com.typesafe.akka" %% "akka-stream-testkit" % v % "test"
 )
 
 def spray(v: String) = Seq(

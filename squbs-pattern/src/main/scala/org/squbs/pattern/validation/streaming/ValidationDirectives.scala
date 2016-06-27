@@ -14,10 +14,10 @@
  *  limitations under the License.
  */
 
-package org.squbs.unicomplex.streaming
+package org.squbs.pattern.validation.streaming
 
-import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, ValidationRejection}
+import akka.http.scaladsl.server.Directives._
 import com.wix.accord.Validator
 
 trait ValidationDirectives {

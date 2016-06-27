@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.unicomplex.streaming
+package org.squbs.pattern.validation.streaming
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
@@ -23,19 +23,19 @@ import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.MethodDirectives
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalatest.{FunSpecLike, Matchers}
-import org.squbs.unicomplex.streaming.validation.{Person, SampleValidators}
+import org.squbs.pattern.validation.Person
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object MyJsonProtocol extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val PersonFormat: RootJsonFormat[Person] = jsonFormat4(Person)
 }
 
-class ValidationDirectivesSpec extends FunSpecLike with Matchers with ScalatestRouteTest {
+class ValidationDirectivesSpec extends FunSpecLike with Matchers with ScalatestRouteTest{
 
   val ValidationPassed = "Validation Passed"
 
   import MyJsonProtocol._
-  import SampleValidators._
+  import org.squbs.pattern.validation.SampleValidators._
 
   val route: Route =
     (path("person") & MethodDirectives.post) {
