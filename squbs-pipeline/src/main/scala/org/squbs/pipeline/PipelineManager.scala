@@ -17,18 +17,19 @@
 package org.squbs.pipeline
 
 import akka.actor._
-import akka.agent.Agent
 import com.typesafe.config.{Config, ConfigObject}
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.pipeline.ConfigHelper._
 
 import scala.collection.JavaConversions._
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
 
-case class PipelineManager(configs: Map[String, RawPipelineSetting],
-                           pipelines: Agent[Map[String, Either[Option[Processor], PipelineSetting]]])
+case class PipelineManager(configs: Map[String, RawPipelineSetting])
   extends Extension with LazyLogging {
+
+  val pipelines = TrieMap.empty[String, Either[Option[Processor], PipelineSetting]]
 
   def default(implicit actorRefFactory: ActorRefFactory) : Option[Processor] = getProcessor("default-proxy")
 
@@ -53,8 +54,8 @@ case class PipelineManager(configs: Map[String, RawPipelineSetting],
   }
 
   private def get(name: String)(implicit actorRefFactory: ActorRefFactory):
-      Option[Either[Option[Processor], PipelineSetting]] = {
-    pipelines().get(name) match {
+  Option[Either[Option[Processor], PipelineSetting]] = {
+    pipelines.get(name) match {
       case None =>
         configs.get(name) match {
           case Some(cfg) =>
@@ -68,13 +69,7 @@ case class PipelineManager(configs: Map[String, RawPipelineSetting],
                   Left(f.create(cfg.settings))
                 case f => throw new IllegalArgumentException(s"Unsupported processor factory: ${cfg.factoryClass}")
               }
-              pipelines.send {
-                currentMap =>
-                  currentMap.get(name) match {
-                    case Some(ref) => currentMap
-                    case None => currentMap + (name -> entry) ++ cfg.aliases.map(_ -> entry)
-                  }
-              }
+              if (!pipelines.contains(name)) pipelines += (name -> entry) ++= cfg.aliases.map(_ -> entry)
               Option(entry)
             } catch {
               case t: Throwable =>
@@ -126,8 +121,7 @@ object PipelineManager extends ExtensionId[PipelineManager] with ExtensionIdProv
     val allMatches = config.root.toSeq collect {
       case (n, v: ConfigObject) if v.toConfig.getOptionalString("type") == Some("squbs.proxy") => (n, v.toConfig)
     }
-    import system.dispatcher
-    PipelineManager(genConfigs(allMatches), Agent(Map.empty[String, Either[Option[Processor], PipelineSetting]]))
+    PipelineManager(genConfigs(allMatches))
   }
 
   private def genConfigs(configs: Seq[(String, Config)]): Map[String, RawPipelineSetting] = {
@@ -160,6 +154,3 @@ object PipelineManager extends ExtensionId[PipelineManager] with ExtensionIdProv
     proxyMap.toMap
   }
 }
-
-
-

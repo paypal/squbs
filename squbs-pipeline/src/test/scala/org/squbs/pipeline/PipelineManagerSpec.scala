@@ -20,7 +20,6 @@ import akka.actor.{ActorRefFactory, ActorSystem}
 import akka.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{FlatSpecLike, Matchers}
-import org.squbs.pipeline.Timeouts._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -109,14 +108,12 @@ class PipelineManagerSpec extends TestKit(ActorSystem("PipelineManagerSpec", Con
 
     manager.getProcessor("proxy1") should not be None
     manager.getProcessor("proxy2") should be (None)
-    awaitAssert({
-      manager.getProcessor("proxy1") should not be None
-      manager.getProcessor("aaa") should not be None
-      manager.getProcessor("bbb") should not be None
-      manager.getProcessor("proxy2") should be(None)
-      manager.getProcessor("ccc") should be(None)
-      manager.getProcessor("ddd") should be(None)
-    }, awaitMax)
+    manager.getProcessor("proxy1") should not be None
+    manager.getProcessor("aaa") should not be None
+    manager.getProcessor("bbb") should not be None
+    manager.getProcessor("proxy2") should be(None)
+    manager.getProcessor("ccc") should be(None)
+    manager.getProcessor("ddd") should be(None)
 
     import org.squbs.pipeline.Tracking._
 
@@ -147,13 +144,11 @@ class PipelineManagerSpec extends TestKit(ActorSystem("PipelineManagerSpec", Con
     pipe.get.config.get.respPipe.size should be (2)
 
     manager.getPipelineSetting("pipe2") should not be None
-    awaitAssert({
-      manager.getPipelineSetting("pipe1") should not be None
-      manager.getPipelineSetting("111") should not be None
-      manager.getPipelineSetting("222") should not be None
-      manager.getPipelineSetting("333") should not be None
-      manager.getPipelineSetting("444") should not be None
-    }, awaitMax)
+    manager.getPipelineSetting("pipe1") should not be None
+    manager.getPipelineSetting("111") should not be None
+    manager.getPipelineSetting("222") should not be None
+    manager.getPipelineSetting("333") should not be None
+    manager.getPipelineSetting("444") should not be None
 
 
     the[ClassNotFoundException] thrownBy {
@@ -194,11 +189,11 @@ object Tracking {
 object TestProcessor extends Processor {
   //inbound processing
   def inbound(reqCtx: RequestContext)(implicit context: ActorRefFactory):
-      Future[RequestContext] = Future.successful(reqCtx)
+  Future[RequestContext] = Future.successful(reqCtx)
 
   //outbound processing
   def outbound(reqCtx: RequestContext)(implicit context: ActorRefFactory):
-      Future[RequestContext] = Future.successful(reqCtx)
+  Future[RequestContext] = Future.successful(reqCtx)
 }
 
 class TestProcessorFactory1 extends ProcessorFactory {
@@ -245,8 +240,3 @@ class TestHandlerFactory extends HandlerFactory with Handler {
   override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] =
     Future.successful(reqCtx)
 }
-
-
-
-
-
