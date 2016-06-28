@@ -12,19 +12,8 @@ javaOptions in Test += "-Xmx512m"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  "com.typesafe.akka" %% "akka-actor" % akkaV,
-  "com.typesafe.akka"          %% "akka-agent" % akkaV,
-  "com.typesafe.akka" %% "akka-stream" % akkaV,
-  "com.typesafe.akka" %% "akka-contrib" % akkaV intransitive(),
-  "io.spray"          %% "spray-http" % sprayV,
-  "io.spray"          %% "spray-httpx" % sprayV,
-  "io.spray" %% "spray-routing-shapeless2" % sprayV,
-  "io.spray" %% "spray-testkit" % sprayV % "test",
-  "io.spray" %% "spray-httpx" % sprayV % "test",
-  "io.spray" %% "spray-json" % "1.3.2" % "test",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
   "net.openhft" % "chronicle-queue" % "4.3.2" % "provided",
-  "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test->*",
   "junit" % "junit" % "4.12" % "test",
   "org.apache.commons"         %  "commons-math3"       % "3.3"   % "test->*",
@@ -35,6 +24,26 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.6.3",
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % "2.6.3",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
+) ++ akkaDependencies(akkaV) ++ sprayDependencies(sprayV)
+
+def akkaDependencies(v: String) = Seq(
+  "com.typesafe.akka" %% "akka-actor" % v,
+  "com.typesafe.akka" %% "akka-agent" % v,
+  "com.typesafe.akka" %% "akka-stream" % v,
+  "com.typesafe.akka" %% "akka-testkit" % v % "test",
+  "com.typesafe.akka" %% "akka-contrib" % v intransitive(),
+  "com.typesafe.akka" %% "akka-http-experimental" % v,
+  "com.typesafe.akka" %% "akka-http-spray-json-experimental" % v,
+  "com.typesafe.akka" %% "akka-http-testkit" % v % "test"
+)
+
+def sprayDependencies(v: String) = Seq(
+  "io.spray" %% "spray-http" % v,
+  "io.spray" %% "spray-httpx" % v,
+  "io.spray" %% "spray-routing-shapeless2" % v,
+  "io.spray" %% "spray-json" % "1.3.2" % "test",
+  "io.spray" %% "spray-testkit" % v % "test",
+  "io.spray" %% "spray-httpx" % v % "test"
 )
 
 // : Seq[sbt.Def.Setting[_]] in the line below is not required for a successful build
