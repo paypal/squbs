@@ -107,7 +107,7 @@ trait PerpetualStream[T] extends Actor with ActorLogging with Stash with Gracefu
     import context.dispatcher
     matValue match {
       case f: Future[_] => f.map(_ => Done)
-      case p: Product => p.productElement(p.productArity - 1) match {
+      case p: Product if p.productArity > 0 => p.productElement(p.productArity - 1) match {
           case f: Future[_] => f.map(_ => Done)
           case _ => Future.successful { Done }
         }
