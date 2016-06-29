@@ -129,4 +129,77 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
     println(s"Counts -> src: ${genCount.get} dest: $count")
     count shouldBe genCount.get
   }
+
+  it should "properly drain the stream with KillSwitch shutdown" in {
+    val classPaths = Array("KillSwitchStream") map (dummyJarsDir + "/" + _)
+
+    val config = ConfigFactory.parseString(
+      s"""
+         |squbs {
+         |  actorsystem-name = KillSwitchStream
+         |  ${JMX.prefixConfig} = true
+         |}
+    """.stripMargin
+    )
+
+    val boot = UnicomplexBoot(config)
+      .createUsing {
+        (name, config) => ActorSystem(name, config)
+      }
+      .scanComponents(classPaths)
+      .start()
+
+    import KillSwitchStream._
+    import Timeouts._
+    import boot.actorSystem
+
+    // To avoid map at shutdown so the NotifyWhenDone obtains a Future[Long] right away.
+    // Combined with "ask", we now have a Future[Future[Long]] in countFF. Then we have to do the very short await
+    // to obtain the Future[Long] that will complete at or after shutdown.
+    val countFF = (actorSystem.actorSelection("/user/KillSwitchStream/KillSwitchStream") ? NotifyWhenDone)
+      .mapTo[Future[Long]]
+    val countF = Await.result(countFF, awaitMax)
+    Thread.sleep(500) // Let the stream run a bit.
+    Unicomplex(actorSystem).uniActor ! GracefulStop
+    val count = Await.result(countF, awaitMax)
+    println(s"Counts -> src: ${genCount.get} dest: $count")
+    count shouldBe genCount.get
+  }
+
+  it should "properly drain the stream with KillSwitch shutdown having other child actor" in {
+    val classPaths = Array("KillSwitchWithChildActorStream") map (dummyJarsDir + "/" + _)
+
+    val config = ConfigFactory.parseString(
+      s"""
+         |squbs {
+         |  actorsystem-name = KillSwitchWithChildActorStream
+         |  ${JMX.prefixConfig} = true
+         |}
+    """.stripMargin
+    )
+
+    val boot = UnicomplexBoot(config)
+      .createUsing {
+        (name, config) => ActorSystem(name, config)
+      }
+      .scanComponents(classPaths)
+      .start()
+
+    import KillSwitchWithChildActorStream._
+    import Timeouts._
+    import boot.actorSystem
+
+    // To avoid map at shutdown so the NotifyWhenDone obtains a Future[Long] right away.
+    // Combined with "ask", we now have a Future[Future[Long]] in countFF. Then we have to do the very short await
+    // to obtain the Future[Long] that will complete at or after shutdown.
+    val countFF = (actorSystem.actorSelection("/user/KillSwitchWithChildActorStream/KillSwitchWithChildActorStream") ?
+      NotifyWhenDone)
+      .mapTo[Future[Long]]
+    val countF = Await.result(countFF, awaitMax)
+    Thread.sleep(500) // Let the stream run a bit.
+    Unicomplex(actorSystem).uniActor ! GracefulStop
+    val count = Await.result(countF, awaitMax)
+    println(s"Counts -> src: ${genCount.get} dest: $count")
+    count shouldBe genCount.get
+  }
 }

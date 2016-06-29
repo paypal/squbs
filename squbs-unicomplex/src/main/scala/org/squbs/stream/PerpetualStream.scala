@@ -19,7 +19,7 @@ import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash, Terminated}
 import akka.stream.Supervision._
 import akka.stream.scaladsl.RunnableGraph
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings, KillSwitches, Supervision}
 import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
 import org.squbs.unicomplex._
 
@@ -44,6 +44,14 @@ trait PerpetualStream[T] extends Actor with ActorLogging with Stash with Gracefu
     t.printStackTrace()
     Resume
   }
+
+  /**
+    * The kill switch to integrate into the stream. Override this if you want a different switch
+    * or one that is shared between perpetual streams.
+    * @return The kill switch.
+    */
+  lazy val killSwitch = KillSwitches.shared(getClass.getName)
+
 
   implicit val materializer =
     ActorMaterializer(ActorMaterializerSettings(context.system).withSupervisionStrategy(decider))
@@ -80,5 +88,12 @@ trait PerpetualStream[T] extends Actor with ActorLogging with Stash with Gracefu
 
   def receive: Receive = PartialFunction.empty
 
-  def shutdownHook(): Future[Done] = { Future.successful(Done) }
+  /**
+    * Override the shutdown hook to define your own shutdown process or wait for the sink to finish.
+    * @return A Future[Done] that gets completed when the whole stream is done.
+    */
+  def shutdownHook(): Future[Done] = {
+    killSwitch.shutdown()
+    Future.successful(Done)
+  }
 }
