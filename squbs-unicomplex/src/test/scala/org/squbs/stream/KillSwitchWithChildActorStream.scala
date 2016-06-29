@@ -16,7 +16,6 @@
 package org.squbs.stream
 import java.util.concurrent.atomic.AtomicLong
 
-import akka.Done
 import akka.actor.{Actor, Props}
 import akka.stream.ClosedShape
 import akka.stream.ThrottleMode.Shaping
@@ -71,9 +70,8 @@ class KillSwitchWithChildActorStream extends PerpetualStream[Future[Long]] {
   }
 
   override def shutdownHook() = {
-    super.shutdownHook()
+    val f = super.shutdownHook()
     defaultMidActorStop(Seq(dummyChildActor))
-    import context.dispatcher
-    for { _ <- matValue } yield Done
+    f
   }
 }

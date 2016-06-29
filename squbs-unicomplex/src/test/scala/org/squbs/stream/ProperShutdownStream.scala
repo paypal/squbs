@@ -67,6 +67,7 @@ class ProperShutdownStream extends PerpetualStream[(ActorRef, Future[Long])] {
   }
 
   override def shutdownHook() = {
+    super.shutdownHook()
     import context.dispatcher
     val (actorRef, fCount) = matValue
     val fStopped = gracefulStop(actorRef, awaitMax)

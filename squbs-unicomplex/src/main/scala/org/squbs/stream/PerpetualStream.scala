@@ -48,6 +48,7 @@ trait PerpetualStream[T] extends Actor with ActorLogging with Stash with Gracefu
   /**
     * The kill switch to integrate into the stream. Override this if you want a different switch
     * or one that is shared between perpetual streams.
+    *
     * @return The kill switch.
     */
   lazy val killSwitch = KillSwitches.shared(getClass.getName)
@@ -80,20 +81,37 @@ trait PerpetualStream[T] extends Actor with ActorLogging with Stash with Gracefu
 
   final def stopped(children: Iterable[ActorRef]): Receive = {
     case Done => materializer.shutdown()
+
     case Terminated(ref) =>
       val remaining = children filterNot ( _ == ref )
-      if (remaining.nonEmpty) context.become(stopped(remaining))
-      else context.stop(self)
+      if (remaining.nonEmpty) context become stopped(remaining) else context stop self
   }
 
   def receive: Receive = PartialFunction.empty
 
   /**
     * Override the shutdown hook to define your own shutdown process or wait for the sink to finish.
+    * The default shutdown hook makes the following assumptions:<ol>
+    *   <li>The stream materializes to a Future or a Product (Tuple, List, etc.)
+    *       for which the last element is a Future</li>
+    *   <li>This Future represents the state whether the stream is done</li>
+    *   <li>The stream has the killSwitch as the first processing stage</li>
+    * </ol>In which case you do not need to override this default shutdown hook if there are no further shutdown
+    * requirements. In case you override the shutdown hook, it is recommended that super.shutdownHook() be called
+    * on overrides even if the stream only partially meets the requirements above.
+    *
     * @return A Future[Done] that gets completed when the whole stream is done.
     */
   def shutdownHook(): Future[Done] = {
     killSwitch.shutdown()
-    Future.successful(Done)
+    import context.dispatcher
+    matValue match {
+      case f: Future[_] => f.map(_ => Done)
+      case p: Product => p.productElement(p.productArity - 1) match {
+          case f: Future[_] => f.map(_ => Done)
+          case _ => Future.successful { Done }
+        }
+      case _ => Future.successful { Done }
+    }
   }
 }

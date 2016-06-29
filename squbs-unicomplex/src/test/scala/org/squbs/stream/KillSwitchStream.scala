@@ -16,7 +16,6 @@
 package org.squbs.stream
 import java.util.concurrent.atomic.AtomicLong
 
-import akka.Done
 import akka.stream.ClosedShape
 import akka.stream.ThrottleMode.Shaping
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
@@ -61,11 +60,5 @@ class KillSwitchStream extends PerpetualStream[Future[Long]] {
       // shutdown so we cannot use context.dispatcher as execution context for the map as it won't be there when
       // the map is supposed to happen.
       sender() ! matValue
-  }
-
-  override def shutdownHook() = {
-    super.shutdownHook()
-    import context.dispatcher
-    for { _ <- matValue } yield Done
   }
 }
