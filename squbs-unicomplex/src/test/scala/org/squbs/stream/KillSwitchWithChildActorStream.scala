@@ -69,8 +69,8 @@ class KillSwitchWithChildActorStream extends PerpetualStream[Future[Long]] {
       sender() ! matValue
   }
 
-  override def shutdownHook() = {
-    val f = super.shutdownHook()
+  override def shutdown() = {
+    val f = super.shutdown()
     defaultMidActorStop(Seq(dummyChildActor))
     f
   }

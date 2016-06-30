@@ -25,8 +25,24 @@ import org.squbs.unicomplex._
 
 import scala.concurrent.Future
 
+/**
+  * Traits for perpetual streams that start and stop with the server. The simplest conforming implementation
+  * follows these requirements:<ol>
+  *   <li>The stream materializes to a Future or a Product (Tuple, List, etc.)
+  *       for which the last element is a Future</li>
+  *   <li>This Future represents the state whether the stream is done</li>
+  *   <li>The stream has the killSwitch as the first processing stage right behind the source</li>
+  * </ol>Non-conforming implementations need to implement one or more of the provided hooks while
+  * conforming implementations can well be supported by the default implementations.
+  * @tparam T The type of the materialized value of the stream.
+  */
 trait PerpetualStream[T] extends Actor with ActorLogging with Stash with GracefulStopHelper {
 
+  /**
+    * Describe your graph by implementing streamGraph
+ *
+    * @return The graph.
+    */
   def streamGraph: RunnableGraph[T]
 
   private[this] var matValueOption: Option[T] = None
@@ -75,7 +91,7 @@ trait PerpetualStream[T] extends Actor with ActorLogging with Stash with Gracefu
       import context.dispatcher
       val children = context.children
       children foreach context.watch
-      shutdownHook() onComplete { _ => self ! Done }
+      shutdown() onComplete { _ => self ! Done }
       context.become(stopped(children))
   }
 
@@ -90,19 +106,19 @@ trait PerpetualStream[T] extends Actor with ActorLogging with Stash with Gracefu
   def receive: Receive = PartialFunction.empty
 
   /**
-    * Override the shutdown hook to define your own shutdown process or wait for the sink to finish.
-    * The default shutdown hook makes the following assumptions:<ol>
+    * Override shutdown to define your own shutdown process or wait for the sink to finish.
+    * The default shutdown makes the following assumptions:<ol>
     *   <li>The stream materializes to a Future or a Product (Tuple, List, etc.)
     *       for which the last element is a Future</li>
     *   <li>This Future represents the state whether the stream is done</li>
     *   <li>The stream has the killSwitch as the first processing stage</li>
-    * </ol>In which case you do not need to override this default shutdown hook if there are no further shutdown
-    * requirements. In case you override the shutdown hook, it is recommended that super.shutdownHook() be called
+    * </ol>In which case you do not need to override this default shutdown if there are no further shutdown
+    * requirements. In case you override shutdown, it is recommended that super.shutdown() be called
     * on overrides even if the stream only partially meets the requirements above.
     *
     * @return A Future[Done] that gets completed when the whole stream is done.
     */
-  def shutdownHook(): Future[Done] = {
+  def shutdown(): Future[Done] = {
     killSwitch.shutdown()
     import context.dispatcher
     matValue match {

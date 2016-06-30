@@ -43,7 +43,7 @@ class IllegalStateStream extends PerpetualStream[Future[Int]] {
     val sink = Sink.fold[Int, Int](0)(_ + _)
     sink
    }
-  override def shutdownHook() = {
+  override def shutdown() = {
     print("Neo Stream Result " +  matValue.value.get.get + "\n\n")
     Future.successful(Done)
   }

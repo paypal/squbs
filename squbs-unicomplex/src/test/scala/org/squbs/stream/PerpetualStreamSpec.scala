@@ -39,7 +39,7 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
          |  actorsystem-name = IllegalStateStream
          |  ${JMX.prefixConfig} = true
          |}
-    """.stripMargin
+      """.stripMargin
     )
 
     val boot = UnicomplexBoot(config)
@@ -71,7 +71,7 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
          |  actorsystem-name = ThrowExceptionStream
          |  ${JMX.prefixConfig} = true
          |}
-    """.stripMargin
+      """.stripMargin
     )
 
     val boot = UnicomplexBoot(config)
@@ -103,7 +103,7 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
          |  actorsystem-name = ProperShutdownStream
          |  ${JMX.prefixConfig} = true
          |}
-    """.stripMargin
+      """.stripMargin
     )
 
     val boot = UnicomplexBoot(config)
@@ -139,7 +139,7 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
          |  actorsystem-name = KillSwitchStream
          |  ${JMX.prefixConfig} = true
          |}
-    """.stripMargin
+      """.stripMargin
     )
 
     val boot = UnicomplexBoot(config)
@@ -175,7 +175,7 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
          |  actorsystem-name = KillSwitchWithChildActorStream
          |  ${JMX.prefixConfig} = true
          |}
-    """.stripMargin
+      """.stripMargin
     )
 
     val boot = UnicomplexBoot(config)

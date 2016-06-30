@@ -72,6 +72,7 @@ Also check out these [slightly more advanced samples](https://github.com/paypal/
 * [Persistent Buffer](docs/persistent-buffer.md)
 * [Console](docs/console.md)
 * [Application Lifecycle Management](docs/packaging.md)
+* [Streams Lifecycle](docs/streams-lifecycle.md)
 * [Experimental Support for Akka HTTP](docs/akka-http-experimental.md)
 * [Streaming Pipeline](docs/streamingpipeline.md)
 
