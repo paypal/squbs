@@ -294,7 +294,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   def shutdownBehavior: Receive = {
     case StopTimeout(timeout) => if (shutdownTimeout < timeout) shutdownTimeout = timeout
 
-    case GracefulStop => import org.squbs.unicomplex.JMX._
+    case GracefulStop =>
       log.info(s"got GracefulStop from ${sender().path}.")
       updateSystemState(Stopping)
       if (servicesStarted) {

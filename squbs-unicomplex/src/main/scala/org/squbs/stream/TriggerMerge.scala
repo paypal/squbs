@@ -30,7 +30,7 @@ import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
  * '''Emits when''' the input stream has an element available, and the triggered is true
  * Note that, trigger only impact the future input element(s), always allowing the in-flight element to go through
  */
-final class TriggerMerge[T] extends GraphStage[FanInShape2[T, TriggerEvent, T]] {
+final class TriggerMerge[T](eagerComplete: Boolean = false) extends GraphStage[FanInShape2[T, TriggerEvent, T]] {
   override val shape: FanInShape2[T, TriggerEvent, T] = new FanInShape2[T, TriggerEvent, T]("TriggerMerge")
   val in: Inlet[T] = shape.in0
   val trigger: Inlet[TriggerEvent] = shape.in1
@@ -62,14 +62,16 @@ final class TriggerMerge[T] extends GraphStage[FanInShape2[T, TriggerEvent, T]] 
           }
           flowEnabled = triggerEvent.value
         }
-        if (triggerCompleted) cancel(trigger)
+        if (triggerCompleted) cancelTrigger()
         if (!hasBeenPulled(trigger)) tryPull(trigger)
       }
 
       override def onUpstreamFinish(): Unit = {
-        if (!isAvailable(trigger)) cancel(trigger)
+        if (!isAvailable(trigger)) cancelTrigger()
         triggerCompleted = true
       }
+
+      def cancelTrigger(): Unit = if (eagerComplete) completeStage() else cancel(trigger)
     })
 
     setHandler(out, new OutHandler {
@@ -91,16 +93,19 @@ final class TriggerMerge[T] extends GraphStage[FanInShape2[T, TriggerEvent, T]] 
   override def toString = "TriggerMerge"
 }
 
-class Trigger[T, M1, M2] {
+class Trigger[T, M1, M2](eagerComplete: Boolean = false) {
 
   import GraphDSL.Implicits._
 
-  private[stream] val source = (in: Graph[SourceShape[T], M1], trigger: Graph[SourceShape[TriggerEvent], M2]) => Source.fromGraph(GraphDSL.create(in, trigger)((_, _)) { implicit builder => (sIn, sTrigger) =>
-    val merge = builder.add(new TriggerMerge[T])
-    sIn ~> merge.in0
-    sTrigger ~> merge.in1
-    SourceShape(merge.out)
-  })
+  private[stream] val source =
+    (in: Graph[SourceShape[T], M1], trigger: Graph[SourceShape[TriggerEvent], M2]) => Source.fromGraph(
+      GraphDSL.create(in, trigger)((_, _)) { implicit builder =>
+        (sIn, sTrigger) =>
+          val merge = builder.add(new TriggerMerge[T](eagerComplete))
+          sIn ~> merge.in0
+          sTrigger ~> merge.in1
+          SourceShape(merge.out)
+      })
 
   // for Java
   def source(in: javadsl.Source[T, M1], trigger: javadsl.Source[TriggerEvent, M2]):
