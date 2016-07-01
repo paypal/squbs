@@ -49,7 +49,7 @@ public class TriggerMergeJ {
                         .build()
         );
 
-        return new Trigger<String, TestPublisher.Probe<String>, TestPublisher.Probe<Integer>>()
+        return new Trigger<String, TestPublisher.Probe<String>, TestPublisher.Probe<Integer>>(false)
                 .source(in, trigger)
                 .buffer(1, OverflowStrategy.backpressure()
                 ).toMat(TestSink.<String>probe(system), Keep.both()).run(materializer);
