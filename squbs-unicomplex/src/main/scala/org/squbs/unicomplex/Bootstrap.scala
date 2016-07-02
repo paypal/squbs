@@ -25,6 +25,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.sys._
 import scala.util.Try
+import scala.language.postfixOps
 
 object Bootstrap extends App {
 
@@ -49,7 +50,7 @@ object Shutdown extends App {
 class JvmShutdownHook extends ExtensionLifecycle {
   override def postInit(): Unit = {
     import ConfigUtil._
-    implicit val timeout = Timeout(boot.actorSystem.settings.config.getOptionalDuration("squbs.default-stop-timeout").getOrElse(3 seconds))
+    implicit val timeout = Timeout(boot.actorSystem.settings.config.get[FiniteDuration]("squbs.default-stop-timeout", 3 seconds))
     addShutdownHook {
       val future = Unicomplex(boot.actorSystem).uniActor ? ObtainLifecycleEvents(Stopped)
       Unicomplex(boot.actorSystem).uniActor ! GracefulStop

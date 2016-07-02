@@ -42,9 +42,9 @@ private class ActorRegistryInit extends ExtensionLifecycle with LazyLogging {
         cube.components.getOrElse(StartupType.ACTORS, Seq.empty).map {
           config =>
             val className = config getString "class-name"
-            val actorName = config getOptionalString "name" getOrElse (className substring (className.lastIndexOf('.') + 1))
-            val messageTypeList = config.getOptionalConfigList("message-class").getOrElse(Seq.empty[Config]).map { x =>
-              CubeActorMessageType(x.getOptionalString("request"), x.getOptionalString("response"))
+            val actorName = config.get[String]("name", className.substring(className.lastIndexOf('.') + 1))
+            val messageTypeList = config.get[Seq[Config]]("message-class", Seq.empty[Config]).map { x =>
+              CubeActorMessageType(x.getOption[String]("request"), x.getOption[String]("response"))
             }
 
             val path = s"/user/${cube.info.name}/$actorName"

@@ -62,7 +62,7 @@ class ForkJoinConfigurator(config: Config, prerequisites: DispatcherPrerequisite
     val fjConf = config.getConfig("fork-join-executor")
     import ConfigUtil._
     new ForkJoinExecutorServiceFactory(
-      fjConf.getOptionalString("jmx-name-prefix") getOrElse "",
+      fjConf.get[String]("jmx-name-prefix", ""),
       name,
       validate(tf),
       ThreadPoolConfig.scaledPoolSize(

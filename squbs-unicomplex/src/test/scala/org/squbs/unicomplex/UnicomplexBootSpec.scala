@@ -179,7 +179,7 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
       val config = ConfigFactory.parseString(appConf)
       val listeners = configuredListeners(config)
       listeners.size should be (2)
-      listeners map (_._1) should contain only ("default-listener", "secure-listener")
+      listeners.keys should contain only ("default-listener", "secure-listener")
       listeners.toMap.apply("secure-listener").getInt("bind-port") should be (8443)
     }
 
@@ -238,8 +238,8 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
         CubeInit(Cube("bar", "com.foo.bar", "1.0.0", "don't care"), Map(StartupType.SERVICES -> Seq(route2, route3))))
 
       val (activeAliases, activeListeners, missingListeners) = findListeners(appConf, cubeList)
-      activeAliases map (_._1) should contain only ("secure-listener", "secure2-listener")
-      activeListeners map (_._1) should contain only "secure-listener"
+      activeAliases.keys should contain only ("secure-listener", "secure2-listener")
+      activeListeners.keys should contain only "secure-listener"
       missingListeners should contain only "local-listener"
     }
 
@@ -251,6 +251,11 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
       val finalConfig = UnicomplexBoot.getFullConfig(Some(addOnConfig))
       Try(finalConfig.getConfig("squbs")).toOption should not be (None)
       finalConfig.getBoolean("configTest") should be (true)
+    }
+
+    it ("should resolve duplicates") {
+      val s1 = Seq(("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k2", "v3"), ("k1", "v3"), ("k1", "v2"))
+      resolveDuplicates[String](s1, (k, ass, v) => ()) shouldBe Map("k1" -> "v1", "k2" -> "v2", "k3" -> "v3")
     }
   }
 }

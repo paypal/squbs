@@ -27,11 +27,8 @@ class AdminSvc extends RouteDefinition with WebContext {
 
   val prefix = if (webContext == "") "/bean" else s"/$webContext/bean"
 
-  val exclusions = context.system.settings.config.getOptionalStringList("squbs.admin.exclusions")
-  val (exBeans, exFieldSet) = exclusions map { list =>
-    val (beans, fields) = list partition { x => x.indexOf("::") < 0 }
-    (beans.toSet, fields.toSet)
-  } getOrElse (Set.empty[String], Set.empty[String])
+  val exclusions = context.system.settings.config.get[Seq[String]]("squbs.admin.exclusions", Seq.empty[String]).toSet
+  val (exBeans, exFieldSet) = exclusions partition { !_.contains("::") }
 
   val exFields = exFieldSet map { fieldSpec =>
     val fields = fieldSpec split "::"
