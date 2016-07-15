@@ -19,12 +19,12 @@ package org.squbs.unicomplex
 import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.util.Timeout
-import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop}
+import org.squbs.lifecycle.GracefulStop
+import ConfigUtil._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.sys._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 import scala.language.postfixOps
 
 object Bootstrap extends App {
@@ -38,25 +38,31 @@ object Bootstrap extends App {
     .initExtensions
     .stopJVMOnExit
     .start()
+
+  sys.addShutdownHook { Shutdown.shutdown() }
 }
 
 
 object Shutdown extends App {
   val preConfig = UnicomplexBoot.getFullConfig(None)
-  val actorSystemName = preConfig.getString("squbs.actorsystem-name")
-  Unicomplex(actorSystemName) ! GracefulStop
-}
+  shutdown(actorSystemName = args.headOption)
 
-class JvmShutdownHook extends ExtensionLifecycle {
-  override def postInit(): Unit = {
-    import ConfigUtil._
-    implicit val timeout = Timeout(boot.actorSystem.settings.config.get[FiniteDuration]("squbs.default-stop-timeout", 3 seconds))
-    addShutdownHook {
-      val future = Unicomplex(boot.actorSystem).uniActor ? ObtainLifecycleEvents(Stopped)
-      Unicomplex(boot.actorSystem).uniActor ! GracefulStop
-      Try {
-        Await.result(future, timeout.duration)
-      }
+  def shutdown(delayParameter: Option[FiniteDuration] = None, actorSystemName: Option[String] = None) {
+    val preConfig = UnicomplexBoot.getFullConfig(None)
+    val name = actorSystemName getOrElse preConfig.getString("squbs.actorsystem-name")
+    val actorSystem = UnicomplexBoot.actorSystems(name)
+    val delay = delayParameter orElse
+      actorSystem.settings.config.getOption[FiniteDuration]("squbs.shutdown-delay") getOrElse Duration.Zero
+    implicit val squbsStopTimeout = Timeout(actorSystem.settings.config.get[FiniteDuration]("squbs.default-stop-timeout", 3 seconds))
+    val systemState = (Unicomplex(actorSystem).uniActor ? SystemState).mapTo[LifecycleState]
+
+    import actorSystem.dispatcher
+
+    systemState.onComplete {
+      case Success(Stopping | Stopped) | Failure(_)=> // Termination already started/happened.  Do nothing!
+      case _ => actorSystem.scheduler.scheduleOnce(delay, Unicomplex(name), GracefulStop)
     }
+
+    Try { Await.ready(actorSystem.whenTerminated, delay + squbsStopTimeout.duration + (1 second)) }
   }
 }

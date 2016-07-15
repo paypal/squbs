@@ -244,14 +244,25 @@ the order between starting these is indeterministic. The shutdown order is the r
 
 #Shutting Down squbs
 
-The squbs runtime can be properly shutdown by sending the Unicomplex a GracefulStop message. 
-Or `org.squbs.unicomplex.Shutdown` can be set as the main method in some monitor process like JSW for shutting down the squbs system. 
+The squbs runtime can be properly shutdown by sending the `Unicomplex()` a `GracefulStop` message. 
+ 
+The default startup main method, `org.squbs.unicomplex.Bootstrap`, registers a JVM shutdown hook that sends a `GracefulStop` message to `Unicomplex`.  Accodingly, if a squbs app is started by using the default main method, the system will be shutdown gracefully when JVM receives a `SIGTERM`.  
 
-After receiving the `GracefulStop` message, the Unicomplex actor will stop the service and propagate the `GracefulStop`
+If some other monitor process is responsible for shutting down the app, e.g. JSW, `org.squbs.unicomplex.Shutdown` can be set as the main method to gracefully shutdown the system.  This `Shutdown` main method sends a `GracefulStop` message to `Unicomplex` as well.
+
+In some use cases, it is desirable to add a delay to the shutdown.  For instance, if a load balancer checks the health of the application every 5 seconds and the app is shutdown 1 second after a health check, the app will keep getting requests for the next 4 seconds until the next health check; however, it won't be able to serve these requests.  If you are using one of the methods above, `org.squbs.unicomplex.Bootstrap` or `org.squbs.unicomplex.Shutdown`, you can add a delay to shutdown by adding the following in configuration: 
+
+```
+squbs.shutdown-delay = 5 seconds
+```
+
+With the above configuration, the `GracefulStop` message to `Unicomplex` will be scheduled to be sent with a 5 second delay. 
+
+After receiving the `GracefulStop` message, the `Unicomplex` actor will stop the service and propagate the `GracefulStop`
 message to all cube supervisors. Each supervisor will be responsible for stopping the actors in its cube 
-(by propagating the `GracefulStop` message to its children who wants to perform a gracefull stop), 
+(by propagating the `GracefulStop` message to its children who wants to perform a graceful stop), 
 ensure they stopped successfully or re-send a `PoisonPill` after timeout, and then stop itself. 
-Once all cube supervisors and service are stopped, the squbs system shuts down. Then a shutdown hook will be
+Once all cube supervisors and services are stopped, the squbs system shuts down. Then, a shutdown hook will be
 invoked to stop all the extensions and finally exits the JVM.
 
 There is currently no standard console to a web container allowing users of squbs to build their own. The web console could
