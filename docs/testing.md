@@ -1,6 +1,14 @@
 #Testing squbs Applications
 All tests on squbs have been written using ScalaTest 2.x. Specs2 has not yet been tested.
 
+##Dependencies
+
+To use test utilities mentioned in this documentation,, simply add the following dependencies in your `build.sbt` file or Scala build script:
+
+```
+"org.squbs" %% "squbs-testkit" % squbsVersion
+```
+
 ##CustomTestKit
 
 The `CustomTestKit` is used for starting a full blown squbs instance needed for testing bits and pieces of applications.  `CustomTestKit` is simple to use and needs no configuration by default, yet allows customizations and flexibility for your tests.  With `CustomTestKit` you can start any number of `ActorSystem` and `Unicomplex` instances (one per `ActorSystem`) with different configurations - all on the same JVM.  Here are some features:
@@ -118,11 +126,26 @@ class SampleSpec extends CustomTestKit(SampleSpec.boot) with FunSpecLike with Ma
 }
 ```
 
-##Testing Spray Routes using Spray TestKit
+##Testing Spray/Akka Http Routes using Spray/Akka Http TestKit
 
+The `spray-testkit` or `akka-http-testkit` needs to be added to the dependencies in order to test routes.  Please add the followings to your dependencies:
+
+For Spray:
+
+```
+"io.spray" %% "spray-testkit" % sprayV % "test"
+```
+
+For Akka-Http:
+
+```
+"com.typesafe.akka" %% "akka-http-testkit" % akkaV % "test"
+```
+
+### Usage
 As you specify routes in squbs by extending the `RouteDefinition` trait which squbs will compose with actors behind
-the scenes, it can be difficult to construct routes for use with the Spray TestKit test DSL. `TestRoute` is provided
-for constructing and obtaining routes from the RouteDefinition. To use it, just pass the `RouteDefinition` as a type
+the scenes, it can be difficult to construct routes for use with the Spray/Akka Http TestKit test DSL. `TestRoute` is provided
+for constructing and obtaining routes from the `RouteDefinition`. To use it, just pass the `RouteDefinition` as a type
 parameter to `TestRoute`. This will obtain you a fully configured and functional route for the test DSL as can be seen
 in the example below.
 
@@ -175,3 +198,42 @@ Alternatively, you may also want to pass a web context to your route. This can b
 ```
 
 or just pass `"mycontext"` without the parameter name. The `TestRoute` signature without parameters is equivalent to passing the root context `""`.
+
+###Using TestRoute with CustomTestKit
+
+A need may arise to bootstrap `Unicomplex` while testing with `TestRoute`, such as when:
+
+   * a squbs well-known actor is involved in request handling.
+   * [The Actor Registry](registry) is used during request handling.
+
+Using Akka's `TestKit` together with `ScalatestRouteTest` can be tricky as they have conflicting initialization.  squbs provides a test utility named `CustomRouteTestKit` to solve this problem.  `CustomRouteTestKit` supports all the APIs provided by `CustomTestKit`.  Here is an example usage of `TestRoute` with `CustomRouteTestKit`:  
+
+```scala
+class MyRouteTest extends CustomRouteTestKit with FlatSpecLike with Matchers {
+
+  it should "return response from well-known actor" in {
+    val route = TestRoute[ReverserRoute]
+    Get("/msg/hello") ~> route ~> check {
+      responseAs[String] should be ("hello".reverse)
+    }
+  }
+}
+
+class ReverserRoute extends RouteDefinition {
+  import akka.pattern.ask
+  import Timeouts._
+  import context.dispatcher
+
+  val route =
+    path("msg" / Segment) { msg =>
+      get {
+        onComplete((context.actorSelection("/user/mycube/reverser") ? msg).mapTo[String]) {
+          case Success(value) => complete(value)
+          case Failure(ex)    => complete(s"An error occurred: ${ex.getMessage}")
+        }
+      }
+    }
+}
+```
+
+**Note:** To use `CustomRouteTestKit`, please ensure the Spray or Akka Http testkit is in your dependencies as described [above](#testing-sprayakka-http-routes-using-sprayakka-http-testkit).

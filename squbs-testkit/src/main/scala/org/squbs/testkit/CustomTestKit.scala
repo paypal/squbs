@@ -79,7 +79,7 @@ object CustomTestKit {
  * The custom test kit allows custom configuration of the Unicomplex before boot.  It also does not require the test
  * to run in a separate process and allow for parallel tests.
  */
-abstract class CustomTestKit(boot: UnicomplexBoot) extends TestKit(boot.actorSystem)
+abstract class CustomTestKit(val boot: UnicomplexBoot) extends TestKit(boot.actorSystem)
     with DebugTiming with ImplicitSender with Suite with BeforeAndAfterAll with PortGetter {
 
   def this() {
