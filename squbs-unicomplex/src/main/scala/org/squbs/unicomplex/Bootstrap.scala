@@ -44,12 +44,13 @@ object Bootstrap extends App {
 
 
 object Shutdown extends App {
-  val preConfig = UnicomplexBoot.getFullConfig(None)
   shutdown(actorSystemName = args.headOption)
 
   def shutdown(delayParameter: Option[FiniteDuration] = None, actorSystemName: Option[String] = None) {
-    val preConfig = UnicomplexBoot.getFullConfig(None)
-    val name = actorSystemName getOrElse preConfig.getString("squbs.actorsystem-name")
+    val name = actorSystemName getOrElse {
+      val preConfig = UnicomplexBoot.getFullConfig(None)
+      preConfig.getString("squbs.actorsystem-name")
+    }
     val actorSystem = UnicomplexBoot.actorSystems(name)
     val delay = delayParameter orElse
       actorSystem.settings.config.getOption[FiniteDuration]("squbs.shutdown-delay") getOrElse Duration.Zero
