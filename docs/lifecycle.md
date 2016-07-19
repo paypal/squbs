@@ -154,15 +154,3 @@ We also provides the following 2 default strategies in the trait.
 ### Stopping squbs Extensions
 
 You can add custom behavior at extension shutdown by overriding the `shutdown()` method in `org.squbs.lifecycle.ExtensionLifecycle`. Note that this method in all installed extensions will be executed after termination of the actor system. If any extension throws exceptions during shutdown, JVM will exit with -1.
-
-### JVM shutdown hook extension
-
-During JVM termination, if you want to attach a shutdown hook, you can register in your `squbs-meta.conf`, which will gracefully shutdown the actor system.
- 
-```
-squbs-extensions = [
-  {
-    class-name = org.squbs.unicomplex.JvmShutdownHook
-  }
-]
-```
