@@ -8,7 +8,7 @@ The following dependencies are required for Persistent Buffer to work:
 
 ```scala
 "org.squbs" %% "squbs-pattern" % squbsVersion,
-"net.openhft" % "chronicle-queue" % "4.3.2"
+"net.openhft" % "chronicle-queue" % "4.4.4"
 ```
 
 ##Examples
@@ -24,12 +24,12 @@ val countFuture = source.via(buffer).runWith(counter)
 
 ```
 
-This next version shows the same in a GraphDSL:
+This version shows the same in a GraphDSL:
 
 ```scala
 implicit val serializer = QueueSerializer[ByteString]()
 val source = Source(1 to 1000000).map { n => ByteString(s"Hello $n") }
-val buffer = new PersistentBuffer[ByteString](new File("/tmp/myqueue")
+val buffer = new PersistentBuffer[ByteString](new File("/tmp/myqueue"))
 val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
 val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit builder =>
   sink =>
@@ -49,6 +49,39 @@ Due to it's persistent nature, `PersistentBuffer` can recover from abrupt stream
 
 Since the buffer is backed by local storage, spindles or SSD, the performance and durability of this buffer is also dependent on the durability of this storage. A system malfunction or storage corruption may cause total loss of all elements in the buffer. So it is important to understand and assume the durability of this buffer not at the level of databases or other off-host persistent stores, in exchange for much higher performance.
 
+##Commit Guarantee
+
+In case of any unexpected failure, all intermediate elements emitted out of the buffer until reaching a sink stage in the stream are effectively lost. Sometimes, it might be required to avoid such data loss. Using a commit stage after a sink might possibly help in such case.
+
+By default auto-commit property is set `true` to keep the buffer simple. Using a commit stage with auto-commit set to `false` can help solve the above problem.
+
+This example shows the usage with auto-commit disabled:
+
+```scala
+implicit val serializer = QueueSerializer[ByteString]()
+val source = Source(1 to 1000000).map { n => ByteString(s"Hello $n") }
+val tempPath = new File("/tmp/myqueue")
+val config = ConfigFactory.parseMap {
+    Map(
+      "persist-dir" -> s"${tempPath.getAbsolutePath}",
+      "auto-commit" -> false
+    )
+  }
+val buffer = new PersistentBuffer[ByteString](config)
+val commit = buffer.commit
+val flowSink = // do some transformation or a sink flow with expected failure
+val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
+val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit builder =>
+  sink =>
+    import GraphDSL.Implicits._
+    // ensures that records are reprocessed when something fails at tranform flow
+    source ~> buffer ~> flowSink ~> commit ~> sink 
+    ClosedShape
+})
+val countFuture = streamGraph.run()
+```
+
+
 ##Space Management
 
 A typical directory for persisting the queue looks like the followings:
@@ -59,7 +92,11 @@ $ ls -l
 -rw-r--r--  1 squbs_user     110054053      8192 May 17 20:00 tailer.idx
 ```
 
-Up to 32 of these `*.cq4` files will be created over time. After 32, old files will be recycled and re-used for new data. There is no need to remove these files as long as there is adequate space for all 32 files of static size.
+Queue files that are created for persisting stream elements can be cleaned by calling `clearStorage`. This function cleans resource once all the elements in a particular queue file is consumed. Schedule a periodic call to this function based on your buffer configuration.
+
+```scala
+	buffer.clearStorage()
+```
 
 ##Configuration
 The queue can be created by passing just a location of the persistent directory keeping all default configuration. This is seen in all the examples above. Alternatively, it can be created by passing a `Config` object at construction. The `Config` object is a standard [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md) configuration. The following example shows constructing a `PersistentBuffer` using a `Config`:
@@ -151,6 +188,50 @@ implicit val serializer = new PersonSerializer()
 val buffer = new PersistentBuffer[Person](new File("/tmp/myqueue")
 ```
 
+##Broadcast Buffer
+`BroadcastBuffer` is a variant of persistent buffer. This works similar to `PersistentBuffer` except that stream elements are broadcasted to multiple output ports. Hence it is a combination of buffer and broadcast stages. The configuration takes an additional parameter named `output-ports` which specifies the number of output ports.
+
+A broadcast buffer is specially required when stream elements are to be emitted from each output port at an independent rate depending on the speed of downstream demand.
+
+```scala
+val configText =
+  """
+    | persist-dir = /tmp/myQueue
+    | roll-cycle = xlarge_daily
+    | wire-type = compressed_binary
+    | block-size = 80m
+    | output-ports = 3
+    | auto-commit = false
+  """.stripMargin
+val config = ConfigFactory.parseString(configText)
+
+// Construct the buffer using a Config.
+val bcBuffer = new BroadcastBuffer[ByteString](config)
+``` 
+
+##Examples
+
+```scala
+implicit val serializer = QueueSerializer[ByteString]()
+
+val in = Source(1 to 100000)
+val flowCounter = Flow[Any].map(_ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
+
+val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
+      sink =>
+        import GraphDSL.Implicits._
+        val buffer = new BroadcastBuffer[ByteString](config)
+        val commit = buffer.commit
+        val bcBuffer = builder.add(buffer)
+        val mr = builder.add(merge)
+        in ~> transform ~> bcBuffer ~> commit ~> mr ~> sink
+                           bcBuffer ~> commit ~> mr
+                           bcBuffer ~> commit ~> mr
+        ClosedShape
+    })
+    
+val countFuture = streamGraph.run()
+```
 ##Credits
 
 `PersistentBuffer` utilizes [Chronicle-Queue](https://github.com/OpenHFT/Chronicle-Queue) 4.x as high-performance memory-mapped queue persistence.

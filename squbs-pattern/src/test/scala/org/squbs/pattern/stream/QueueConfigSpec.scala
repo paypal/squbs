@@ -32,6 +32,8 @@ class QueueConfigSpec extends FlatSpec with Matchers {
         | wire-type = compressed_binary
         | block-size = 80m
         | index-spacing = 8k
+        | output-ports = 3
+        | auto-commit = false
       """.stripMargin
     val config = ConfigFactory.parseString(configText)
     val queueConfig = QueueConfig.from(config)
@@ -43,6 +45,8 @@ class QueueConfigSpec extends FlatSpec with Matchers {
     queueConfig.indexCount shouldBe RollCycles.XLARGE_DAILY.defaultIndexCount
     queueConfig.isBuffered shouldBe false
     queueConfig.epoch shouldBe 0L
+    queueConfig.outputPorts shouldBe 3
+    queueConfig.autoCommit shouldBe false
   }
 
   it should "properly assume default configurations" in {
@@ -61,5 +65,7 @@ class QueueConfigSpec extends FlatSpec with Matchers {
     queueConfig.indexCount shouldBe RollCycles.DAILY.defaultIndexCount
     queueConfig.isBuffered shouldBe false
     queueConfig.epoch shouldBe 0L
+    queueConfig.outputPorts shouldBe 1
+    queueConfig.autoCommit shouldBe true
   }
 }
