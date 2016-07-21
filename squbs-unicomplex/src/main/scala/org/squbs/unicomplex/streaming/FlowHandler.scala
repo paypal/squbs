@@ -88,11 +88,16 @@ class Handler(routes: Agent[Seq[(Path, ActorWrapper, PipelineSetting)]], localPo
       import GraphDSL.Implicits._
 
       val (paths, actorWrappers, pipelineSettings) = routes() unzip3
-      val pathExtractor = (rc: RequestContext) => normPath(rc.request.uri.path)
-      val pathMatcher = (p1: Path, p2: Path) => pathMatch(p1, p2)
 
       val routesMerge = b.add(Merge[RequestContext](actorWrappers.size + 1))
-      val rss = b.add(RouteSelectorStage(paths, pathExtractor, pathMatcher))
+
+      def partitioner(rc: RequestContext) = {
+        val index = paths.indexWhere(p => pathMatch(normPath(rc.request.uri.path), p))
+        // If no match, give the last port's index (which is the NOT_FOUND use case)
+        if(index >= 0) index else paths.size
+      }
+
+      val partition = b.add(Partition(paths.size + 1, partitioner))
 
       actorWrappers.zipWithIndex foreach { case (aw, i) =>
         val routeFlow = Flow[RequestContext].mapAsync(akkaHttpConfig.getInt("server.pipelining-limit")) {
@@ -100,8 +105,8 @@ class Handler(routes: Agent[Seq[(Path, ActorWrapper, PipelineSetting)]], localPo
         }
 
         pipelineExtension.getFlow(pipelineSettings(i)) match {
-          case Some(pipeline) => rss.out(i) ~> pipeline.join(routeFlow) ~> routesMerge
-          case None => rss.out(i) ~> routeFlow ~> routesMerge
+          case Some(pipeline) => partition.out(i) ~> pipeline.join(routeFlow) ~> routesMerge
+          case None => partition.out(i) ~> routeFlow ~> routesMerge
         }
       }
 
@@ -110,9 +115,9 @@ class Handler(routes: Agent[Seq[(Path, ActorWrapper, PipelineSetting)]], localPo
       })
 
       // Last output port is for 404
-      rss.out(actorWrappers.size) ~> notFound ~> routesMerge
+      partition.out(actorWrappers.size) ~> notFound ~> routesMerge
 
-      FlowShape(rss.in, routesMerge.out)
+      FlowShape(partition.in, routesMerge.out)
   })
 
   lazy val dispatchFlow: Flow[HttpRequest, HttpResponse, Any] =
