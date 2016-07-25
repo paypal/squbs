@@ -1,6 +1,6 @@
 #Timeout Policy
 
-Timeouts are a key part of every asynchronous system and every distributed system. They are usually configured statically and hard to get right. squbs provides the Timeout Policy facility as part of the squbs-pattern package to help dynamically determine the correct timeout given a policy instead of static setting.
+Timeouts are a key part of every asynchronous system and every distributed system. They are usually configured statically and hard to get right. squbs provides the Timeout Policy facility as part of the squbs-pattern package to help dynamically determine the correct timeout given a policy instead of static setting.  This dynamically determined timeout value from the policy can then be utilized for setting the timeouts.  Please note that timeout policy helps only in deriving timeout values and its usage itself will not cause the timeouts to occur.
 
 ##Dependencies
 
