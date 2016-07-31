@@ -99,7 +99,7 @@ import org.squbs.httpclient.japi.*;
 
 // Need an actor system
 Future<String> getFuture = HttpClientFactory.get("http://foo.com", system).get("/mypath");
-Future<String> postFuture = HttpClientFactory.get("http://foo.com, system").
+Future<String> postFuture = HttpClientFactory.get("http://foo.com", system).
                             post("/mypath", Optional.of("foo=bar"));
 ```
 
