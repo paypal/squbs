@@ -27,6 +27,8 @@ object QueueConfig {
   val defaultCycle: RollCycle = RollCycles.DAILY
   val defaultWireType: WireType = WireType.BINARY
   val defaultBlockSize: Long = 64L << 20
+  val defaultOutputPort: Int = 1
+  val defaultAutoCommit = true
 
   def from(config: Config): QueueConfig = {
     val persistDir = new File(config getString "persist-dir")
@@ -39,7 +41,9 @@ object QueueConfig {
     val blockSize = config.getOption[ConfigMemorySize]("block-size") map (_.toBytes) getOrElse defaultBlockSize
     val indexSpacing = config.getOption[ConfigMemorySize]("index-spacing") map (_.toBytes.toInt) getOrElse cycle.defaultIndexSpacing
     val indexCount = config.get[Int]("index-count", cycle.defaultIndexCount)
-    QueueConfig(persistDir, cycle, wireType, blockSize, indexSpacing, indexCount)
+    val outputPorts = config.get[Int]("output-ports", defaultOutputPort)
+    val autoCommit = config.get[Boolean]("auto-commit", defaultAutoCommit)
+    QueueConfig(persistDir, cycle, wireType, blockSize, indexSpacing, indexCount, outputPorts = outputPorts, autoCommit = autoCommit)
   }
 }
 
@@ -50,4 +54,6 @@ case class QueueConfig(persistDir: File,
                        indexSpacing: Int = QueueConfig.defaultCycle.defaultIndexSpacing,
                        indexCount: Int = QueueConfig.defaultCycle.defaultIndexCount,
                        isBuffered: Boolean = false,
-                       epoch: Long = 0L)
+                       epoch: Long = 0L,
+                       outputPorts: Int = QueueConfig.defaultOutputPort,
+                       autoCommit: Boolean = QueueConfig.defaultAutoCommit)

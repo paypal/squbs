@@ -18,10 +18,18 @@ package org.squbs.pattern.stream
 import java.io.{File, FileNotFoundException}
 
 import com.typesafe.config.Config
+import com.typesafe.scalalogging.Logger
 import net.openhft.chronicle.bytes.MappedBytesStore
 import net.openhft.chronicle.core.OS
 import net.openhft.chronicle.queue.ChronicleQueueBuilder
+import net.openhft.chronicle.queue.impl.RollingResourcesCache.Resource
 import net.openhft.chronicle.wire.{ReadMarshallable, WireIn, WireOut, WriteMarshallable}
+import org.slf4j.LoggerFactory
+
+import scala.annotation.tailrec
+
+case class Entry[T](index: Long, entry: T)
+case class Event[T](outputPortId: Int, commitOffset: Long, entry: T)
 /**
   * Persistent queue using Chronicle Queue as implementation.
   *
@@ -37,6 +45,8 @@ class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSeri
   if (!persistDir.isDirectory && !persistDir.mkdirs())
     throw new FileNotFoundException(persistDir.getAbsolutePath)
 
+  val logger = Logger(LoggerFactory.getLogger(this.getClass))
+
   private val queue = ChronicleQueueBuilder
     .single(persistDir.getAbsolutePath)
     .wireType(wireType)
@@ -47,7 +57,8 @@ class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSeri
     .build()
 
   private val appender = queue.createAppender
-  private val reader = queue.createTailer
+  private val cache = QueueResource.resourceCache(queue)
+  private val reader = Vector.tabulate(outputPorts)(_ => queue.createTailer)
 
   private val path = new File(persistDir, "tailer.idx")
 
@@ -55,6 +66,8 @@ class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSeri
   private var indexMounted = false
   private var indexFile: IndexFile = _
   private var indexStore: MappedBytesStore = _
+
+  val totalOutputPorts = outputPorts
 
   private def mountIndexFile(): Unit = {
     indexFile = IndexFile.of(path, OS.pageSize())
@@ -64,8 +77,12 @@ class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSeri
 
   if (path.isFile) {
     mountIndexFile()
-    val startIdx = indexStore.readLong(0L)
-    reader.moveToIndex(startIdx)
+    0 until outputPorts foreach { outputPortId =>
+      val startIdx = read(outputPortId)
+      logger.info("Setting idx for outputPort {} - {}", outputPortId.toString, startIdx.toString)
+      reader(outputPortId).moveToIndex(startIdx)
+      dequeue(outputPortId) // dequeue the first read element
+    }
   }
 
   /**
@@ -85,25 +102,71 @@ class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSeri
     *
     * @return The first element in the queue, or None if the queue is empty.
     */
-  def dequeue: Option[T] = {
-    var output: Option[T] = None
-    if (reader.readDocument(new ReadMarshallable {
-      override def readMarshallable(wire: WireIn): Unit = output = serializer.readElement(wire)
-    })) {
-      if (!indexMounted) mountIndexFile()
-      indexStore.writeLong(0L, reader.index)
-      output
-    } else None
+  def dequeue(outputPortId: Int = 0): Option[Entry[T]] = {
+    var output: Option[Entry[T]] = None
+    if (reader(outputPortId).readDocument(new ReadMarshallable {
+      override def readMarshallable(wire: WireIn): Unit =
+        output = {
+          val element = serializer.readElement(wire)
+          val index = reader(outputPortId).index
+          element map { e =>
+            if (autoCommit) internalCommit(outputPortId, index)
+            Entry[T](index, e)
+          }
+        }
+    })) output else None
   }
+
+  /**
+    * Commits the queue's index, this index is mounted when
+    * the queue is initialized next time
+    *
+    * @param outputPortId The id of the output port
+    * @param index to be committed for next read
+    */
+  def commit(outputPortId: Int, index: Long): Unit = if (!autoCommit) internalCommit(outputPortId, index)
+
+  private def internalCommit(outputPortId: Int, index: Long) = {
+    if (!indexMounted) mountIndexFile()
+    indexStore.writeLong(outputPortId << 3, index)
+  }
+
+  // Reads the given outputPort's queue index
+  private def read(outputPortId: Int) : Long = {
+    if (!indexMounted) mountIndexFile()
+    indexStore.readLong(outputPortId << 3)
+  }
+
+  private def minIndex() = Iterator.tabulate(outputPorts)(outputPortId => read(outputPortId)).min
 
   /**
     * Closes the queue and all its persistent storage.
     */
   def close(): Unit = {
     if (written) appender.close()
-    reader.close()
+    reader.foreach { m => m.close() }
     queue.close()
     Option(indexStore) foreach { store => if (store.refCount > 0) store.close() }
     Option(indexFile) foreach { file => file.close() }
   }
+
+  /**
+    * Removes processed queue files based on
+    * min read index from all outputPorts
+    */
+  def clearStorage(): Unit = {
+    val reader = queue.createTailer(); reader.moveToIndex(minIndex())
+    val current = cache.resourceFor(reader.cycle)
+    def first() = cache.resourceFor(reader.toStart.cycle)
+
+    @tailrec
+    def delete(previous: Resource) : Unit = {
+      if (current.path != previous.path) {
+        previous.path.delete()
+        delete(first())
+      }
+    }
+    delete(first())
+  }
+
 }

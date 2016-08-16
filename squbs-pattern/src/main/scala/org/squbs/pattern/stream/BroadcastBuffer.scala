@@ -17,21 +17,21 @@ package org.squbs.pattern.stream
 
 import java.io.File
 
+import akka.stream._
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
 /**
-  * Persists all incoming upstream element to a memory mapped queue before publishing it to downstream consumer.
+  * Fan-out the stream to several streams emitting each incoming upstream element to all downstream consumers.
   *
   * '''Emits when''' one of the inputs has an element available
   *
-  * '''Does not Backpressure''' upstream when downstream backpressures, instead buffers the stream element to memory mapped queue
+  * '''Does not back-pressure''' upstream when downstream back-pressures, instead buffers the stream element to memory mapped queue
   *
-  * '''Completes when''' upstream completes
+  * '''Completes when''' upstream completes and all downstream finish consuming stream elements
   *
   * '''Cancels when''' downstream cancels
   *
@@ -39,38 +39,47 @@ import org.slf4j.LoggerFactory
   * to enable this, set the `auto-commit` to `false` and add a commit stage after downstream consumer.
   *
   */
-class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T])
-                                 (implicit serializer: QueueSerializer[T]) extends GraphStage[FlowShape[T, Event[T]]] {
+class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T])(implicit serializer: QueueSerializer[T])
+  extends GraphStage[UniformFanOutShape[T, Event[T]]] {
 
   def this(config: Config)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](config))
 
   def this(persistDir: File)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](persistDir))
 
-  private[stream] val in = Inlet[T]("PersistentBuffer.in")
-  private[stream] val out = Outlet[Event[T]]("PersistentBuffer.out")
-  val shape: FlowShape[T, Event[T]] = FlowShape.of(in, out)
-  val defaultOutputPort = 0
+  private[stream] val outputPorts = queue.totalOutputPorts
+  private[stream] val in = Inlet[T]("BroadcastBuffer.in")
+  private[stream] val out = Vector.tabulate(outputPorts)(i ⇒ Outlet[Event[T]]("BroadcastBuffer.out" + i))
+  val shape: UniformFanOutShape[T, Event[T]] = UniformFanOutShape(in, out: _*)
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 
-    var downstreamWaiting = false
-    var upstreamFinished = false
+    private var upstreamFinished = false
+    private val finished = Array.fill[Boolean](outputPorts)(false)
 
-    override def preStart(): Unit = {
-      // Start upstream demand
-      pull(in)
+    override def preStart(): Unit = pull(in)
+
+    def outHandler(outlet: Outlet[Event[T]], outputPortId: Int) = new OutHandler {
+      override def onPull(): Unit = {
+        queue.dequeue(outputPortId) match {
+          case None => if (upstreamFinished) {
+              finished(outputPortId) = true
+              if(finished.reduce(_ && _)) {
+                queue.close()
+                completeStage()
+              }
+            }
+          case Some(element) => push(outlet, Event(outputPortId, element.index, element.entry))
+        }
+      }
     }
 
     setHandler(in, new InHandler {
-
       override def onPush(): Unit = {
         val element = grab(in)
         queue.enqueue(element)
-        if (downstreamWaiting) {
-          queue.dequeue() foreach { element =>
-            push(out, Event(defaultOutputPort, element.index, element.entry))
-            downstreamWaiting = false
-          }
+        out.iterator.zipWithIndex foreach { case (port, id) =>
+          if (isAvailable(port))
+            queue.dequeue(id) foreach { element => push(out(id), Event(id, element.index, element.entry)) }
         }
         pull(in)
       }
@@ -85,20 +94,9 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T])
       }
     })
 
-    setHandler(out, new OutHandler {
-
-      override def onPull(): Unit = {
-        queue.dequeue() match {
-          case Some(element) =>
-            push(out, Event(defaultOutputPort, element.index, element.entry))
-          case None =>
-            if (upstreamFinished) {
-              queue.close()
-              completeStage()
-            } else downstreamWaiting = true
-        }
-      }
-    })
+    out.zipWithIndex foreach { case (currentOut, outputPortId) =>
+      setHandler(currentOut, outHandler(currentOut, outputPortId))
+    }
   }
 
   val commit = Flow[Event[T]].map { element =>
@@ -108,3 +106,4 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T])
 
   def clearStorage() = queue.clearStorage()
 }
+

@@ -22,40 +22,71 @@ import akka.util.ByteString
 import org.scalatest.OptionValues._
 import org.scalatest._
 
-class PersistentQueueSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
+class PersistentQueueSpec extends FlatSpec with Matchers {
 
-  val tempPath = Files.createTempDirectory("persistent_queue")
   implicit val serializer = QueueSerializer[ByteString]()
-  val queue = new PersistentQueue[ByteString](QueueConfig(tempPath.toFile))
 
   def delete(file: File) {
     if (file.isDirectory)
-      Option(file.listFiles).map(_.toList).getOrElse(Nil).foreach(delete(_))
+      Option(file.listFiles).map(_.toList).getOrElse(Nil).foreach(delete)
     file.delete
   }
 
-  override def afterAll() {
+  it should "dequeue the same entry as it enqueues" in {
+    val tempPath = Files.createTempDirectory("persistent_queue")
+    val queue = new PersistentQueue[ByteString](QueueConfig(tempPath.toFile))
+    val element = ByteString("Hello!")
+    queue.enqueue(element)
+    val elementOption = queue.dequeue()
+    elementOption.value.entry shouldBe element
     queue.close()
     delete(tempPath.toFile)
   }
 
-  it should "dequeue the same entry as it enqueues" in {
+  it should "dequeue the same entry as it enqueues for n outputPorts" in {
+    val tempPath = Files.createTempDirectory("persistent_queue")
+    val queue = new PersistentQueue[ByteString](QueueConfig(tempPath.toFile, outputPorts = 3))
     val element = ByteString("Hello!")
     queue.enqueue(element)
-    val elementOption = queue.dequeue
-    elementOption.value shouldBe element
+    (0 until queue.totalOutputPorts) foreach { outputPortId =>
+      val elementOption = queue.dequeue(outputPortId)
+      elementOption.value.entry shouldBe element
+    }
+    queue.close()
+    delete(tempPath.toFile)
   }
 
   it should "dequeue each entry as it enqueues, one-by-one" in {
+    val tempPath = Files.createTempDirectory("persistent_queue")
+    val queue = new PersistentQueue[ByteString](QueueConfig(tempPath.toFile))
     for { i <- 1 to 1000000 } {
       val element = ByteString(s"Hello $i")
       queue.enqueue(element)
-      val elementOption = queue.dequeue
-      elementOption.value shouldBe element
+      val elementOption = queue.dequeue()
+      elementOption.value.entry shouldBe element
     }
+    queue.close()
+    delete(tempPath.toFile)
+  }
+
+  it should "dequeue each entry as it enqueues, one-by-one for n outputPorts" in {
+    val tempPath = Files.createTempDirectory("persistent_queue")
+    val queue = new PersistentQueue[ByteString](QueueConfig(tempPath.toFile, outputPorts = 3))
+    for { i <- 1 to 1000000 } {
+      val element = ByteString(s"Hello $i")
+      queue.enqueue(element)
+      (0 until queue.totalOutputPorts) foreach { outputPortId =>
+        val elementOption = queue.dequeue(outputPortId)
+        elementOption.value.entry shouldBe element
+      }
+    }
+    queue.close()
+    delete(tempPath.toFile)
   }
 
   it should "dequeue each entry as it enqueues, for all entries" in {
+    val tempPath = Files.createTempDirectory("persistent_queue")
+    val queue = new PersistentQueue[ByteString](QueueConfig(tempPath.toFile, outputPorts = 2))
     for { i <- 1 to 1000000 } {
       val element = ByteString(s"Hello $i")
       queue.enqueue(element)
@@ -63,9 +94,11 @@ class PersistentQueueSpec extends FlatSpec with Matchers with BeforeAndAfterAll 
 
     for { i <- 1 to 1000000 } {
       val element = ByteString(s"Hello $i")
-      val elementOption = queue.dequeue
-      elementOption.value shouldBe element
+      val elementOption = queue.dequeue()
+      elementOption.value.entry shouldBe element
     }
+    queue.close()
+    delete(tempPath.toFile)
   }
 
   it should "dequeue each entry as it enqueues, even if the stream is reopened" in {
@@ -82,8 +115,8 @@ class PersistentQueueSpec extends FlatSpec with Matchers with BeforeAndAfterAll 
     val queue3 = new PersistentQueue[ByteString](QueueConfig(tempPath2.toFile))
     for { i <- 1 to 500000 } {
       val element = ByteString(s"Hello $i")
-      val elementOption = queue3.dequeue
-      elementOption.value shouldBe element
+      val elementOption = queue3.dequeue()
+      elementOption.value.entry shouldBe element
     }
     queue3.close()
 
@@ -98,8 +131,8 @@ class PersistentQueueSpec extends FlatSpec with Matchers with BeforeAndAfterAll 
     val queue5 = new PersistentQueue[ByteString](QueueConfig(tempPath2.toFile))
     for { i <- 500001 to 1000000 } {
       val element = ByteString(s"Hello $i")
-      val elementOption = queue5.dequeue
-      elementOption.value shouldBe element
+      val elementOption = queue5.dequeue()
+      elementOption.value.entry shouldBe element
     }
     queue5.close()
   }
