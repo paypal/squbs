@@ -658,7 +658,7 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
     try {
       val clazz = Class.forName(className, true, getClass.getClassLoader)
       val extLifecycle = ExtensionLifecycle(this) { clazz.asSubclass(classOf[ExtensionLifecycle]).newInstance }
-      Extension(cube.info, Some(extLifecycle), Seq.empty)
+      Extension(cube.info, seqNo, Some(extLifecycle), Seq.empty)
     } catch {
       case e: Exception =>
         import cube.info._
@@ -668,7 +668,7 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
           s"Path: $jarPath\n" +
           s"${t.getClass.getName}: ${t.getMessage}")
         t.printStackTrace()
-        Extension(cube.info, None, Seq("load" -> t))
+        Extension(cube.info, seqNo, None, Seq("load" -> t))
     }
   }
 

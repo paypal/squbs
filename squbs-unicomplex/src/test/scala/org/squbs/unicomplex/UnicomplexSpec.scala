@@ -19,6 +19,7 @@ package org.squbs.unicomplex
 import java.lang.management.ManagementFactory
 import java.util.concurrent.TimeUnit
 import javax.management.ObjectName
+import javax.management.openmbean.CompositeData
 
 import akka.actor.ActorSystem
 import akka.io.IO
@@ -48,7 +49,7 @@ object UnicomplexSpec {
     "DummySvc",
     "DummySvcActor",
     "StashCube",
-    "DummyExtensions.jar"
+    "DummyExtensions"
   ) map (dummyJarsDir + "/" + _)
 
   val (_, port) = Utils.temporaryServerHostnameAndPort()
@@ -268,6 +269,16 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val extensions = xs.asInstanceOf[Array[_]]
       all (extensions) shouldBe a [javax.management.openmbean.CompositeData]
       extensions should have size 2
+      val dummyExtensionA = extensions(0).asInstanceOf[CompositeData]
+      val dummyExtensionB = extensions(1).asInstanceOf[CompositeData]
+      dummyExtensionA.get("cube") should be ("DummyExtensions")
+      dummyExtensionA.get("sequence") should be (30)
+      dummyExtensionA.get("error") should be ("")
+      dummyExtensionA.get("phase") should be ("")
+      dummyExtensionB.get("cube") should be ("DummyExtensions")
+      dummyExtensionB.get("sequence") should be (40)
+      dummyExtensionB.get("error") should be ("")
+      dummyExtensionB.get("phase") should be ("")
     }
 
     "preInit, init, preCubesInit and postInit all extensions" in {
