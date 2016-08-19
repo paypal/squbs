@@ -106,8 +106,9 @@ case class SystemSetting @ConstructorProperties(Array("key", "value"))(
                                           @BeanProperty value: String)
 
 
-case class ExtensionInfo @ConstructorProperties(Array("cube", "phase", "error"))(
+case class ExtensionInfo @ConstructorProperties(Array("cube", "sequence", "phase", "error"))(
                                           @BeanProperty cube: String,
+                                          @BeanProperty sequence: Int,
                                           @BeanProperty phase: String,
                                           @BeanProperty error: String)
 

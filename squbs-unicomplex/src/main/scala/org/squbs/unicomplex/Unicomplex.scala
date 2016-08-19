@@ -105,8 +105,8 @@ private[unicomplex] case object ShutdownTimedOut
 case class Cube(name: String, fullName: String, version: String, jarPath: String)
 case class InitReports(state: LifecycleState, reports: Map[ActorRef, Option[InitReport]])
 case class CubeRegistration(info: Cube, cubeSupervisor: ActorRef)
-case class Extension(info: Cube, extLifecycle: Option[ExtensionLifecycle],
-                                         exceptions: Seq[(String, Throwable)])
+case class Extension(info: Cube, sequence: Int, extLifecycle: Option[ExtensionLifecycle],
+                     exceptions: Seq[(String, Throwable)])
 case class Extensions(extensions: Seq[Extension])
 
 
@@ -242,7 +242,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         val (phase, ex) = e.exceptions.headOption map {
           case (iphase, exception) => (iphase, exception.toString)
         } getOrElse (("", ""))
-        ExtensionInfo(e.info.name, phase, ex)
+        ExtensionInfo(e.info.name, e.sequence, phase, ex)
       }
     }
   }
