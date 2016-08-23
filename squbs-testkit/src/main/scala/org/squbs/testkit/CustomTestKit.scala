@@ -17,6 +17,7 @@
 package org.squbs.testkit
 
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
@@ -39,9 +40,12 @@ object CustomTestKit {
       }
   }
 
+  // JUnit creates a new object for each @Test method.  To prevent actor system name collisions, appending an integer
+  // to the actor system name.
+  val counter = new AtomicInteger(0)
   val stackTraceDepth = 6 // CustomTestKit$ x 3 -> Option -> CustomTestKit$ -> CustomTestKit -> Spec
-
-  def defaultActorSystemName = actorSystemNameFrom((new Exception).getStackTrace.apply(stackTraceDepth).getClassName)
+  def defaultActorSystemName =
+    s"${actorSystemNameFrom((new Exception).getStackTrace.apply(stackTraceDepth).getClassName)}-${counter.getAndIncrement()}"
 
   def actorSystemNameFrom(className: String) =
     className
