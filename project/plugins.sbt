@@ -13,3 +13,5 @@ addSbtPlugin("com.github.gseitz" % "sbt-release" % "0.8.4")
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")
 
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.8.0")
+
+addSbtPlugin("de.johoop" % "sbt-testng-plugin" % "3.0.2")

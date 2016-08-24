@@ -16,14 +16,45 @@
 
 package org.squbs.testkit.japi
 
+import com.typesafe.config.Config
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot}
-import org.squbs.testkit.{CustomTestKit => SCustomTestKit}
+import org.squbs.testkit.{CustomTestKit => SCustomTestKit, PortGetter}
+import scala.collection.JavaConversions.asScalaBuffer
 
-class CustomTestKit(val boot: UnicomplexBoot) {
-  val actorSystem = boot.actorSystem
+@deprecated("use org.squbs.testkit.japi.AbstractCustomTestKit instead")
+class CustomTestKit(override val boot: UnicomplexBoot) extends AbstractCustomTestKit(boot) {
+  val actorSystem = system
+}
 
-  SCustomTestKit.checkInit(actorSystem)
+abstract class AbstractCustomTestKit(val boot: UnicomplexBoot) extends PortGetter {
+  val system = boot.actorSystem
 
-  def shutdown() = Unicomplex(actorSystem).uniActor ! GracefulStop
+  SCustomTestKit.checkInit(system)
+
+  def this() {
+    this(SCustomTestKit.boot())
+  }
+
+  def this(actorSystemName: String) {
+    this(SCustomTestKit.boot(Option(actorSystemName)))
+  }
+
+  def this(config: Config) {
+    this(SCustomTestKit.boot(config = Option(config)))
+  }
+
+  def this(resources: java.util.List[String], withClassPath: Boolean) {
+    this(SCustomTestKit.boot(resources = Option(resources.toList), withClassPath = Option(withClassPath)))
+  }
+
+  def this(actorSystemName: String, resources: java.util.List[String], withClassPath: Boolean) {
+    this(SCustomTestKit.boot(Option(actorSystemName), resources = Option(resources.toList), withClassPath = Option(withClassPath)))
+  }
+
+  def this(config: Config, resources: java.util.List[String], withClassPath: Boolean) {
+    this(SCustomTestKit.boot(config = Option(config), resources = Option(resources.toList), withClassPath = Option(withClassPath)))
+  }
+
+  def shutdown() = Unicomplex(system).uniActor ! GracefulStop
 }

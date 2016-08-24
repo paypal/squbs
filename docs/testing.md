@@ -19,7 +19,7 @@ The `CustomTestKit` is used for starting a full blown squbs instance needed for 
    * Starts well-known actors and service in `src/test/resources/META-INF/squbs-meta.conf` by default.  But, allows passing `resources` to be scanned in the constructor.
    * Allows custom configuration to be passed in the constructor.
 
-Here is an example usage of `CustomTestKit`:
+Here is an example usage of `CustomTestKit` in ScalaTest:
 
 ```scala
 class SampleSpec extends CustomTestKit with FlatSpecLike with Matchers {
@@ -28,6 +28,18 @@ class SampleSpec extends CustomTestKit with FlatSpecLike with Matchers {
    }
 }
 ``` 
+
+Both TestNG and JUnit are supported for Java users:
+
+```java
+public class SampleTest extends AbstractCustomTestKit {
+
+    @Test
+    public void testSystemStartTime() {
+        Assert.assertTrue(system().startTime() > 0L);
+    }
+}
+```
 
 ###Passing configuration to `CustomTestKit`
 
@@ -51,6 +63,31 @@ class SampleSpec extends CustomTestKit(SampleSpec.config) with FlatSpecLike with
   }
 }
 ```
+
+Here is the TestNG/JUnit version of this test:
+
+```java
+public class SampleTest extends AbstractCustomTestKit {
+
+    public SampleTest() {
+        super(TestConfig.config);
+    }
+
+    @Test
+    public void testAkkaLogLevel() {
+        Assert.assertEquals(system().settings().config().getString("akka.loglevel"), "DEBUG");
+    }
+
+    private static class TestConfig {
+        private static Config config = ConfigFactory.parseString("akka.loglevel = DEBUG");
+    }
+}
+```
+
+The following sections show customizations only in ScalaTest; however, all these customizations are supported for TestNG and JUnit as well.  For customizations, provide a `public` constructor in your TestNG/JUnit tests and call `super` with custom parameters.  Check [squbs-testkit/src/test/java/org/squbs/testkit/japi](../squbs-testkit/src/test/java/org/squbs/testkit/japi) for more TestNG and JUnit samples.
+
+Specifically for JUnit, avoid setting actor system name in your tests (letting `CustomTestKit` set the actor system name is in general a good practice though).  JUnit creates a new fixture instance for each `@Test` method which potentially causes actor system conflicts.  `AbstractCustomTestKit` avoids this by appending an incremented integer to each actor system name.
+
 ###Starting well-known actors and services with `CustomTestKit`
 
 `CustomTestKit` will automatically start well-known actors and services in `src/test/resources/META-INF/squbs-meta.conf` (see [Bootstrapping squbs](bootstrap.md#well-known-actors)).  However, if you would like provide different resource paths, you can do so by passing a `Seq` of resources to the constructor.  `withClassPath` controls whether to scan entire test classpath for `META-INF/squbs-meta.conf` files or not.

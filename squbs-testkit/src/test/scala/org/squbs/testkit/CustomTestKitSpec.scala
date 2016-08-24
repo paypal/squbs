@@ -16,7 +16,7 @@
 
 package org.squbs.testkit
 
-import akka.actor.{ActorSystem, Actor, Props}
+import akka.actor.{Actor, Props}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{FlatSpecLike, Matchers}
 import org.squbs.testkit.Timeouts._
@@ -77,8 +77,8 @@ class CustomTestKitDefaultSpec extends CustomTestKit with FlatSpecLike with Matc
     port shouldEqual port("default-listener")
   }
 
-  it should "set actor system name to package-class name" in {
-    system.name should equal ("org-squbs-testkit-CustomTestKitDefaultSpec")
+  it should "set actor system name to package-class-integer" in {
+    system.name should fullyMatch regex ("org-squbs-testkit-CustomTestKitDefaultSpec-\\d+")
   }
 
   it should "use the default configuration" in {
@@ -145,8 +145,8 @@ class CustomTestKitResourcesSpec extends CustomTestKit(CustomTestKitResourcesSpe
                                                        false)
 with FlatSpecLike with Matchers {
 
-  it should "set actor system name to package-class" in {
-    system.name should equal ("org-squbs-testkit-CustomTestKitResourcesSpec")
+  it should "set actor system name to package-class-integer" in {
+    system.name should fullyMatch regex ("org-squbs-testkit-CustomTestKitResourcesSpec-\\d+")
   }
 
   it should "start default-listener" in {

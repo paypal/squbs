@@ -13,7 +13,6 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.6" % "test->*",
   "org.mockito" % "mockito-core" % "1.9.5" % "test",
   "org.apache.curator" % "curator-test" % "3.0.0" % "test",
-  "org.testng" % "testng" % "6.1.1" % "test",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 )
 
