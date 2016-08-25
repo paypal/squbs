@@ -54,7 +54,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val buffer = new PersistentBuffer[T](config)
     buffer.queue.serializer shouldBe a [Q]
     val commit = buffer.commit // makes a dummy flow if autocommit is set to false
-    val countFuture = in.via(transform).via(buffer).via(commit).runWith(flowCounter)
+    val countFuture = in.via(transform).via(buffer.async).via(commit).runWith(flowCounter)
     val count = Await.result(countFuture, awaitMax)
     count shouldBe elementCount
     clean()
@@ -69,7 +69,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        in ~> transform ~> buffer ~> commit ~> sink
+        in ~> transform ~> buffer.async ~> commit ~> sink
         ClosedShape
     })
     val countFuture = streamGraph.run()
@@ -95,7 +95,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
         val bc1 = builder.add(Broadcast[T](2))
         val bc2 = builder.add(Broadcast[Event[T]](2))
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
-        in ~> transform ~> bc1 ~> buffer ~> throttle ~> commit ~> bc2 ~> sink
+        in ~> transform ~> bc1 ~> buffer.async ~> throttle ~> commit ~> bc2 ~> sink
         bc2 ~> total
         bc1 ~> counter(t2 = _)
         ClosedShape
@@ -139,7 +139,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
       val bc = builder.add(Broadcast[T](2))
 
-        in ~> transform ~> bc ~> buffer ~> throttle ~> commit ~> sink
+        in ~> transform ~> bc ~> buffer.async ~> throttle ~> commit ~> sink
         bc ~> fireFinished()
 
         ClosedShape
@@ -180,7 +180,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
         import GraphDSL.Implicits._
         val buffer = new PersistentBuffer[T](config)
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
-        in ~> transform ~> buffer ~> throttle ~> injectError ~> commit ~> sink
+        in ~> transform ~> buffer.async ~> throttle ~> injectError ~> commit ~> sink
         ClosedShape
     })
     val countF = graph.run()(mat)
@@ -209,7 +209,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
         import GraphDSL.Implicits._
         val buffer = new PersistentBuffer[T](config)
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
-        in ~> injectError ~> transform ~> buffer ~> throttle ~> commit ~> sink
+        in ~> injectError ~> transform ~> buffer.async ~> throttle ~> commit ~> sink
         ClosedShape
     })
     val countF = graph.run()(mat)
@@ -228,7 +228,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
           val commit = buffer.commit // makes a dummy flow if autocommit is set to false
         val bc = builder.add(Broadcast[Event[T]](2))
           Source(restartFrom to (elementCount + elementsAfterFail)) ~> transform ~>
-            buffer ~> commit ~> bc ~> sink
+            buffer.async ~> commit ~> bc ~> sink
           bc ~> first
           ClosedShape
       })

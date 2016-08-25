@@ -57,7 +57,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
         import GraphDSL.Implicits._
         val buffer = new BroadcastBuffer[T](config)
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
-        val bcBuffer = builder.add(buffer)
+        val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
         in ~> transform ~> bcBuffer ~> commit ~> mr ~> sink
         bcBuffer ~> mr
@@ -89,7 +89,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
         val buffer = new BroadcastBuffer[T](config)
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
         val bc = builder.add(Broadcast[T](2))
-        val bcBuffer = builder.add(buffer)
+        val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
         val throttle = builder.add(throttleShape)
         in ~> transform ~> bc ~> bcBuffer ~> commit ~> mr ~> throttle ~> sink
@@ -131,7 +131,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
         import GraphDSL.Implicits._
         val buffer = new BroadcastBuffer[T](config)
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
-        val bcBuffer = builder.add(buffer)
+        val bcBuffer = builder.add(buffer.async)
         val bc = builder.add(Broadcast[T](2))
 
         in ~> transform ~> bc ~> bcBuffer ~> throttle ~> commit ~> incrementFlow(atomicCounter(0)) ~> count1
@@ -174,7 +174,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
           import GraphDSL.Implicits._
           val buffer = new BroadcastBuffer[T](config)
           val commit = buffer.commit // makes a dummy flow if autocommit is set to false
-          val bcBuffer = builder.add(buffer)
+          val bcBuffer = builder.add(buffer.async)
 
           in ~> transform ~> bcBuffer ~> throttle ~> injectError ~> commit ~> sink1
                              bcBuffer ~> throttle ~> injectError ~> commit ~> sink2
@@ -210,7 +210,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
           import GraphDSL.Implicits._
           val buffer = new BroadcastBuffer[T](config)
           val commit = buffer.commit // makes a dummy flow if autocommit is set to false
-          val bcBuffer = builder.add(buffer)
+          val bcBuffer = builder.add(buffer.async)
 
           in ~> injectError ~> transform ~> bcBuffer ~> throttle ~> commit ~> sink1
                                             bcBuffer ~> throttle ~> commit ~> sink2
@@ -236,7 +236,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
         flowCounter, flowCounter)((_,_,_,_)) { implicit builder =>
         (first1, first2, last1, last2) =>
           import GraphDSL.Implicits._
-          val bcBuffer = builder.add(buffer)
+          val bcBuffer = builder.add(buffer.async)
           val commit = buffer.commit // makes a dummy flow if autocommit is set to false
           val bc1 = builder.add(Broadcast[Event[T]](2))
           val bc2 = builder.add(Broadcast[Event[T]](2))

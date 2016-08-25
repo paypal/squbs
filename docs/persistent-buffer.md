@@ -20,7 +20,7 @@ implicit val serializer = QueueSerializer[ByteString]()
 val source = Source(1 to 1000000).map { n => ByteString(s"Hello $n") }
 val buffer = new PersistentBuffer[ByteString](new File("/tmp/myqueue"))
 val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
-val countFuture = source.via(buffer).runWith(counter)
+val countFuture = source.via(buffer.async).runWith(counter)
 
 ```
 
@@ -34,7 +34,7 @@ val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
 val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit builder =>
   sink =>
     import GraphDSL.Implicits._
-    source ~> buffer ~> sink
+    source ~> buffer.async ~> sink
     ClosedShape
 })
 val countFuture = streamGraph.run()
@@ -42,6 +42,8 @@ val countFuture = streamGraph.run()
 
 ##Back-Pressure
 `PersistentBuffer` does not back-pressure upstream. It will take all the stream elements given to it and grow its storage by increasing, or rotating, the number of queue files. It does not have any means to determine a limit on the buffer size or determine the storage capacity. Downstream back-pressure is honored as per Akka Streams and Reactive Streams requirements.
+
+If the `PersistentBuffer` stage gets fused with the downstream, `PersistentBuffer` would not buffer and it would actually back-pressure.  To make sure `PersistentBuffer` actually runs in its own pace, add an `async` boundary just after it. 
 
 ##Failure & Recovery
 
@@ -222,7 +224,7 @@ val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implici
         import GraphDSL.Implicits._
         val buffer = new BroadcastBuffer[ByteString](config)
         val commit = buffer.commit
-        val bcBuffer = builder.add(buffer)
+        val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
         in ~> transform ~> bcBuffer ~> commit ~> mr ~> sink
                            bcBuffer ~> commit ~> mr

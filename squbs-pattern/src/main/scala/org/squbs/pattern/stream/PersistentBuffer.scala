@@ -75,7 +75,14 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T])
         pull(in)
       }
 
-      override def onUpstreamFinish(): Unit = upstreamFinished = true
+      override def onUpstreamFinish(): Unit = {
+        upstreamFinished = true
+
+        if (downstreamWaiting) {
+          queue.close()
+          completeStage()
+        }
+      }
 
       override def onUpstreamFailure(ex: Throwable): Unit = {
         val logger = Logger(LoggerFactory.getLogger(this.getClass))
