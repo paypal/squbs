@@ -74,8 +74,7 @@ trait HttpCallActorSupport extends PipelineManager with CircuitBreakerSupport {
   def handle(client: HttpClientState,
              pipeline: Try[HttpRequest => Future[HttpResponse]],
              httpRequest: HttpRequest)(implicit factory: ActorRefFactory): Future[HttpResponse] = {
-    httpClientLogger.debug("HttpRequest headers: " +
-      httpRequest.headers.map { h => h.name + '=' + h.value}.mkString(", "))
+
     pipeline match {
       case Success(res) =>
         withCircuitBreaker(client, res(httpRequest))
