@@ -20,14 +20,13 @@ import java.util.concurrent.atomic.AtomicInteger
 import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
-import akka.stream.{ActorMaterializer, ClosedShape, ThrottleMode}
+import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape, ThrottleMode}
 import akka.util.ByteString
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.testkit.Timeouts._
 
 import scala.concurrent.{Await, Promise}
 import scala.reflect._
-import scala.util.Try
 
 abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manifest]
    (typeName: String, autoCommit: Boolean = true) extends FlatSpec with Matchers with BeforeAndAfterAll {
@@ -48,7 +47,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     Await.ready(system.terminate(), awaitMax)
   }
 
-  it should "buffer a stream of one million elements using GraphDSL" in {
+  it should s"buffer a stream of $elementCount elements using GraphDSL" in {
     val util = new StreamSpecUtil[T](2, autoCommit)
     import util._
 
@@ -60,7 +59,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
         val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
         in ~> transform ~> bcBuffer ~> commit ~> mr ~> sink
-        bcBuffer ~> mr
+                           bcBuffer           ~> mr
         ClosedShape
     })
     val countFuture = streamGraph.run()
@@ -112,39 +111,42 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     import util._
 
     val mat = ActorMaterializer()
-    var t = Long.MinValue
     val finishedGenerating = Promise[Done]
+    val bBufferInCount = new AtomicInteger(0)
+    val counter = new AtomicInteger(0)
 
-    val t0 = System.nanoTime
-
-    def fireFinished() = Flow[Any].map(_ => 1L).reduce(_ + _).map { s =>
-      t = System.nanoTime - t0
-      finishedGenerating success Done
-      s
-    }.toMat(Sink.head)(Keep.right)
+    def fireFinished() = Flow[T].map { e =>
+      if(counter.incrementAndGet() == failTestAt) finishedGenerating success Done
+      e
+    }.toMat(Sink.ignore)(Keep.right)
 
     val shutdownF = finishedGenerating.future map { d => mat.shutdown(); d }
 
     val graph = RunnableGraph.fromGraph(GraphDSL.create(
-      last, last)((_,_)) { implicit builder =>
-      (count1, count2) =>
+      Sink.ignore, Sink.ignore, fireFinished())((_,_,_)) { implicit builder =>
+      (sink1, sink2, sink3) =>
         import GraphDSL.Implicits._
-        val buffer = new BroadcastBuffer[T](config)
+        val buffer = new BroadcastBuffer[T](config).withOnPushCallback(() => bBufferInCount.incrementAndGet()).withOnCommitCallback(i => commitCounter(i))
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
         val bcBuffer = builder.add(buffer.async)
         val bc = builder.add(Broadcast[T](2))
 
-        in ~> transform ~> bc ~> bcBuffer ~> throttle ~> commit ~> incrementFlow(atomicCounter(0)) ~> count1
-                                 bcBuffer ~> throttle ~> commit ~> incrementFlow(atomicCounter(1)) ~> count2
-                           bc ~> fireFinished()
+        in ~> transform ~> bc ~> bcBuffer ~> throttle ~> commit ~> sink1
+                                 bcBuffer ~> throttle ~> commit ~> sink2
+                           bc ~> sink3
 
         ClosedShape
     })
-    graph.run()(mat)
-    Await.result(shutdownF, awaitMax)
-    Thread.sleep(1000) // Wait a sec to make sure the shutdown completed. shutdownF only says shutdown started.
+    val (sink1F, sink2F, sink3F) = graph.run()(mat)
+
+    Await.result(sink1F.failed, awaitMax) shouldBe an[AbruptTerminationException]
+    Await.result(sink2F.failed, awaitMax) shouldBe an[AbruptTerminationException]
+
+    val restartFrom = bBufferInCount.incrementAndGet()
+    println(s"Restart from count $restartFrom")
+
     val beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
-    resumeGraphAndDoAssertion(beforeShutDown, elementCount + 1)
+    resumeGraphAndDoAssertion(beforeShutDown, restartFrom)
     clean()
   }
 
@@ -155,10 +157,6 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     val mat = ActorMaterializer()
     val injectCounter = new AtomicInteger(0)
     val inCounter = new AtomicInteger(0)
-    val in = Source(1 to elementCount).map { i =>
-      inCounter.incrementAndGet()
-      i
-    }
 
     val injectError = Flow[Event[T]].map { n =>
       val count = injectCounter.incrementAndGet()
@@ -166,28 +164,26 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
       else n
     }
 
-    def updateCounter(outputPortId: Int) = Sink.foreach[Any] { x => atomicCounter(outputPortId).incrementAndGet() }
-
     val graph = RunnableGraph.fromGraph(
-      GraphDSL.create(updateCounter(0), updateCounter(1))((_,_)) { implicit builder =>
-        (sink1, sink2) =>
+      GraphDSL.create(Sink.ignore, Sink.ignore)((_, _)) { implicit builder => (sink1, sink2) =>
           import GraphDSL.Implicits._
-          val buffer = new BroadcastBuffer[T](config)
+          val buffer = new BroadcastBuffer[T](config).withOnPushCallback(() => inCounter.incrementAndGet()).withOnCommitCallback(i => commitCounter(i))
           val commit = buffer.commit // makes a dummy flow if autocommit is set to false
           val bcBuffer = builder.add(buffer.async)
 
           in ~> transform ~> bcBuffer ~> throttle ~> injectError ~> commit ~> sink1
-                             bcBuffer ~> throttle ~> injectError ~> commit ~> sink2
+                             bcBuffer ~> throttle                ~> commit ~> sink2
 
           ClosedShape
       })
 
     val (sink1F, sink2F) = graph.run()(mat)
-    Try {
-      Await.result(for {a <- sink1F; b <- sink2F} yield (a, b), awaitMax)
-    }
+
+    Await.result(sink1F.failed, awaitMax) shouldBe an[NumberFormatException]
+    Await.result(sink2F, awaitMax) shouldBe Done
+
     val beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
-    val restartFrom = if (inCounter.get == elementCount) elementCount + 1 else inCounter.get
+    val restartFrom = inCounter.incrementAndGet()
     println(s"Restart from count $restartFrom")
     resumeGraphAndDoAssertion(beforeShutDown, restartFrom)
     clean()
@@ -205,10 +201,10 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
 
     def updateCounter(outputPortId: Int) = Sink.foreach[Any] { x => atomicCounter(outputPortId).incrementAndGet() }
     val graph1 = RunnableGraph.fromGraph(
-      GraphDSL.create(updateCounter(0), updateCounter(1))((_,_)) { implicit builder =>
+      GraphDSL.create(Sink.ignore, Sink.ignore)((_,_)) { implicit builder =>
         (sink1, sink2) =>
           import GraphDSL.Implicits._
-          val buffer = new BroadcastBuffer[T](config)
+          val buffer = new BroadcastBuffer[T](config).withOnCommitCallback(i => commitCounter(i))
           val commit = buffer.commit // makes a dummy flow if autocommit is set to false
           val bcBuffer = builder.add(buffer.async)
 
@@ -218,9 +214,8 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
           ClosedShape
       })
     val (sink1F, sink2F) = graph1.run()(mat)
-    Try {
-      Await.result(for {a <- sink1F; b <- sink2F} yield (a, b), awaitMax)
-    }
+    Await.result(for {a <- sink1F; b <- sink2F} yield (a, b), awaitMax)
+
     val beforeShutDown  = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
     resumeGraphAndDoAssertion(beforeShutDown, failTestAt)
     clean()

@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
-import akka.stream.{ActorMaterializer, ClosedShape}
+import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape}
 import akka.util.ByteString
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.testkit.Timeouts._
@@ -118,7 +118,8 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
 
     val mat = ActorMaterializer()
     var t = Long.MinValue
-    val recordCount = new AtomicInteger(0)
+    val pBufferInCount = new AtomicInteger(0)
+    val commitCount = new AtomicInteger(0)
     val finishedGenerating = Promise[Done]
     val t0 = System.nanoTime
 
@@ -128,26 +129,28 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
       s
     }.toMat(Sink.head)(Keep.right)
 
-    def updateCounter() = Sink.foreach[Any] { _ => recordCount.incrementAndGet() }
-
     val shutdownF = finishedGenerating.future map { d => mat.shutdown(); d }
 
-    val graph = RunnableGraph.fromGraph(GraphDSL.create(updateCounter()) { implicit builder =>
+    val graph = RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val buffer = new PersistentBuffer[T](config)
+        val buffer = new PersistentBuffer[T](config).withOnPushCallback(() => pBufferInCount.incrementAndGet()).withOnCommitCallback(() =>  commitCount.incrementAndGet())
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
-      val bc = builder.add(Broadcast[T](2))
+        val bc = builder.add(Broadcast[T](2))
 
         in ~> transform ~> bc ~> buffer.async ~> throttle ~> commit ~> sink
-        bc ~> fireFinished()
+                           bc ~> fireFinished()
 
         ClosedShape
     })
-    graph.run()(mat)
+    val sinkF = graph.run()(mat)
     Await.result(shutdownF, awaitMax)
-    Thread.sleep(1000) // Wait a sec to make sure the shutdown completed. shutdownF only says shutdown started.
-    resumeGraphAndDoAssertion(recordCount.get, elementCount + 1)
+    Await.result(sinkF.failed, awaitMax) shouldBe an[AbruptTerminationException]
+
+    val restartFrom = pBufferInCount.incrementAndGet()
+    println(s"Restart from count $restartFrom")
+
+    resumeGraphAndDoAssertion(commitCount.get, restartFrom)
     clean()
   }
 
@@ -159,10 +162,6 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val outCount = new AtomicInteger(0)
     val injectCounter = new AtomicInteger(0)
     val inCounter = new AtomicInteger(0)
-    val in = Source(1 to elementCount).map { i =>
-      inCounter.incrementAndGet()
-      i
-    }
 
     val injectError = Flow[Event[T]].map { n =>
       val count = injectCounter.incrementAndGet()
@@ -170,17 +169,13 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
       else n
     }
 
-    def updateCounter() = Flow[Any].map{ _ =>
-      outCount.incrementAndGet()
-      1L
-    }.reduce(_ + _).toMat(Sink.head)(Keep.right)
-
-    val graph = RunnableGraph.fromGraph(GraphDSL.create(updateCounter()) { implicit builder =>
+    val graph = RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val buffer = new PersistentBuffer[T](config)
+        val buffer = new PersistentBuffer[T](config).withOnPushCallback(() => inCounter.incrementAndGet()).withOnCommitCallback(() => outCount.incrementAndGet())
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
-        in ~> transform ~> buffer.async ~> throttle ~> injectError ~> commit ~> sink
+        val pBuffer = builder.add(buffer.async)
+        in ~> transform ~> pBuffer ~> throttle ~> injectError ~> commit ~> sink
         ClosedShape
     })
     val countF = graph.run()(mat)
@@ -227,9 +222,8 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
           val buffer = new PersistentBuffer[T](config)
           val commit = buffer.commit // makes a dummy flow if autocommit is set to false
         val bc = builder.add(Broadcast[Event[T]](2))
-          Source(restartFrom to (elementCount + elementsAfterFail)) ~> transform ~>
-            buffer.async ~> commit ~> bc ~> sink
-          bc ~> first
+          Source(restartFrom to (elementCount + elementsAfterFail)) ~> transform ~> buffer.async ~> commit ~> bc ~> sink
+                                                                                                              bc ~> first
           ClosedShape
       })
     val (countF, firstF) = graph.run()(ActorMaterializer())

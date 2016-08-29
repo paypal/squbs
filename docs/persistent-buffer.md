@@ -51,6 +51,8 @@ Due to it's persistent nature, `PersistentBuffer` can recover from abrupt stream
 
 Since the buffer is backed by local storage, spindles or SSD, the performance and durability of this buffer is also dependent on the durability of this storage. A system malfunction or storage corruption may cause total loss of all elements in the buffer. So it is important to understand and assume the durability of this buffer not at the level of databases or other off-host persistent stores, in exchange for much higher performance.
 
+Akka Streams stages batch the requests and buffers the records internally.  `PersistentBuffer` guarantees the recovery and persistence of the records that reached to `onPush`, the records that are in Akka Stream stage's internal buffer that has not reached to `onPush` yet would be lost during a failure.
+
 ##Commit Guarantee
 
 In case of any unexpected failure, all intermediate elements emitted out of the buffer until reaching a sink stage in the stream are effectively lost. Sometimes, it might be required to avoid such data loss. Using a commit stage after a sink might possibly help in such case.

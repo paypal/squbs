@@ -60,10 +60,7 @@ class StreamSpecUtil[T](outputPort: Int = 1, autoCommit: Boolean = true) {
   lazy val head = Sink.head[Event[T]]
   lazy val last = Sink.last[Event[T]]
 
-  def incrementFlow(counter: AtomicInteger) = Flow[Event[T]].map { event =>
-    counter.incrementAndGet()
-    event
-  }
+  def commitCounter(outputPortId: Int) = atomicCounter(outputPortId).incrementAndGet()
 
   def clean() = if (tempPath.isFile) delete(tempPath)
 
