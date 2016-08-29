@@ -35,11 +35,13 @@ case class Event[T](outputPortId: Int, commitOffset: Long, entry: T)
   *
   * @tparam T The type of elements to be stored in the queue.
   */
-class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSerializer[T]) {
+class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x => {}))(implicit val serializer: QueueSerializer[T]) {
 
   def this(config: Config)(implicit serializer: QueueSerializer[T]) = this(QueueConfig.from(config))
 
   def this(persistDir: File)(implicit serializer: QueueSerializer[T]) = this(QueueConfig(persistDir))
+
+  def withOnCommitCallback(onCommitCallback: Int => Unit) = new PersistentQueue[T](config, onCommitCallback)
 
   import config._
   if (!persistDir.isDirectory && !persistDir.mkdirs())
@@ -129,6 +131,7 @@ class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSeri
   private def internalCommit(outputPortId: Int, index: Long) = {
     if (!indexMounted) mountIndexFile()
     indexStore.writeLong(outputPortId << 3, index)
+    onCommitCallback(outputPortId)
   }
 
   // Reads the given outputPort's queue index

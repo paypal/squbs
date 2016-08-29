@@ -39,12 +39,17 @@ import org.slf4j.LoggerFactory
   * to enable this, set the `auto-commit` to `false` and add a commit stage after downstream consumer.
   *
   */
-class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T])
+class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
+                                  onPushCallback: () => Unit = (() => {}))
                                  (implicit serializer: QueueSerializer[T]) extends GraphStage[FlowShape[T, Event[T]]] {
 
   def this(config: Config)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](config))
 
   def this(persistDir: File)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](persistDir))
+
+  def withOnPushCallback(onPushCallback: () => Unit) = new PersistentBuffer[T](queue, onPushCallback)
+
+  def withOnCommitCallback(onCommitCallback: () => Unit) = new PersistentBuffer[T](queue.withOnCommitCallback(Int => onCommitCallback), onPushCallback)
 
   private[stream] val in = Inlet[T]("PersistentBuffer.in")
   private[stream] val out = Outlet[Event[T]]("PersistentBuffer.out")

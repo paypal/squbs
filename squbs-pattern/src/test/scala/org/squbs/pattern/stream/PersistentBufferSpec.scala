@@ -159,10 +159,6 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val outCount = new AtomicInteger(0)
     val injectCounter = new AtomicInteger(0)
     val inCounter = new AtomicInteger(0)
-    val in = Source(1 to elementCount).map { i =>
-      inCounter.incrementAndGet()
-      i
-    }
 
     val injectError = Flow[Event[T]].map { n =>
       val count = injectCounter.incrementAndGet()
@@ -170,15 +166,10 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
       else n
     }
 
-    def updateCounter() = Flow[Any].map{ _ =>
-      outCount.incrementAndGet()
-      1L
-    }.reduce(_ + _).toMat(Sink.head)(Keep.right)
-
-    val graph = RunnableGraph.fromGraph(GraphDSL.create(updateCounter()) { implicit builder =>
+    val graph = RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val buffer = new PersistentBuffer[T](config)
+        val buffer = new PersistentBuffer[T](config).withOnPushCallback(() => inCounter.incrementAndGet()).withOnCommitCallback(() => outCount.incrementAndGet())
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
         in ~> transform ~> buffer.async ~> throttle ~> injectError ~> commit ~> sink
         ClosedShape

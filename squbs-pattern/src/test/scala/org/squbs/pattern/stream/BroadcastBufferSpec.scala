@@ -155,10 +155,6 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     val mat = ActorMaterializer()
     val injectCounter = new AtomicInteger(0)
     val inCounter = new AtomicInteger(0)
-    val in = Source(1 to elementCount).map { i =>
-      inCounter.incrementAndGet()
-      i
-    }
 
     val injectError = Flow[Event[T]].map { n =>
       val count = injectCounter.incrementAndGet()
@@ -166,18 +162,17 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
       else n
     }
 
-    def updateCounter(outputPortId: Int) = Sink.foreach[Any] { x => atomicCounter(outputPortId).incrementAndGet() }
+    def commitCounter(outputPortId: Int) = atomicCounter(outputPortId).incrementAndGet()
 
     val graph = RunnableGraph.fromGraph(
-      GraphDSL.create(updateCounter(0), updateCounter(1))((_,_)) { implicit builder =>
-        (sink1, sink2) =>
+      GraphDSL.create(Sink.ignore, Sink.ignore)((_, _)) { implicit builder => (sink1, sink2) =>
           import GraphDSL.Implicits._
-          val buffer = new BroadcastBuffer[T](config)
+          val buffer = new BroadcastBuffer[T](config).withOnPushCallback(() => inCounter.incrementAndGet()).withOnCommitCallback(i => commitCounter(i))
           val commit = buffer.commit // makes a dummy flow if autocommit is set to false
           val bcBuffer = builder.add(buffer.async)
 
           in ~> transform ~> bcBuffer ~> throttle ~> injectError ~> commit ~> sink1
-                             bcBuffer ~> throttle ~> injectError ~> commit ~> sink2
+                             bcBuffer ~> throttle                ~> commit ~> sink2
 
           ClosedShape
       })
@@ -186,8 +181,9 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     Try {
       Await.result(for {a <- sink1F; b <- sink2F} yield (a, b), awaitMax)
     }
+
     val beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
-    val restartFrom = if (inCounter.get == elementCount) elementCount + 1 else inCounter.get
+    val restartFrom = inCounter.incrementAndGet()
     println(s"Restart from count $restartFrom")
     resumeGraphAndDoAssertion(beforeShutDown, restartFrom)
     clean()
