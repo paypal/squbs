@@ -59,6 +59,7 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 
     private var upstreamFinished = false
+    private var downstreamFinished = false
     private val finished = Array.fill[Boolean](outputPorts)(false)
 
     override def preStart(): Unit = pull(in)
@@ -68,13 +69,23 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
         queue.dequeue(outputPortId) match {
           case None => if (upstreamFinished) {
               finished(outputPortId) = true
-              if(finished.reduce(_ && _)) {
+              if (finished.reduce(_ && _)) {
                 queue.close()
                 completeStage()
               }
             }
           case Some(element) => push(outlet, Event(outputPortId, element.index, element.entry))
         }
+      }
+
+      override def onDownstreamFinish(): Unit = {
+        val logger = Logger(LoggerFactory.getLogger(this.getClass))
+        logger.error("Received down steam finish signal")
+        finished(outputPortId) = true
+        if (finished.reduce(_ && _)) {
+          queue.close()
+        }
+        super.onDownstreamFinish()
       }
     }
 
