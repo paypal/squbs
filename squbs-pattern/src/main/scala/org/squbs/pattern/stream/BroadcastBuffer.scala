@@ -39,12 +39,17 @@ import org.slf4j.LoggerFactory
   * to enable this, set the `auto-commit` to `false` and add a commit stage after downstream consumer.
   *
   */
-class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T])(implicit serializer: QueueSerializer[T])
+class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
+                                 onPushCallback: () => Unit = (() => {}))(implicit serializer: QueueSerializer[T])
   extends GraphStage[UniformFanOutShape[T, Event[T]]] {
 
   def this(config: Config)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](config))
 
-  def this(persistDir: File)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](persistDir))
+  def this(persistDir: File)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](persistDir), () => {})
+
+  def withOnPushCallback(onPushCallback: () => Unit) = new BroadcastBuffer[T](queue, onPushCallback)
+
+  def withOnCommitCallback(onCommitCallback: Int => Unit) = new BroadcastBuffer[T](queue.withOnCommitCallback(onCommitCallback), onPushCallback)
 
   private[stream] val outputPorts = queue.totalOutputPorts
   private[stream] val in = Inlet[T]("BroadcastBuffer.in")
@@ -54,6 +59,7 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T])(
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 
     private var upstreamFinished = false
+    private var downstreamFinished = false
     private val finished = Array.fill[Boolean](outputPorts)(false)
 
     override def preStart(): Unit = pull(in)
@@ -63,7 +69,7 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T])(
         queue.dequeue(outputPortId) match {
           case None => if (upstreamFinished) {
               finished(outputPortId) = true
-              if(finished.reduce(_ && _)) {
+              if (finished.reduce(_ && _)) {
                 queue.close()
                 completeStage()
               }
@@ -71,12 +77,23 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T])(
           case Some(element) => push(outlet, Event(outputPortId, element.index, element.entry))
         }
       }
+
+      override def onDownstreamFinish(): Unit = {
+        val logger = Logger(LoggerFactory.getLogger(this.getClass))
+        logger.error("Received down steam finish signal")
+        finished(outputPortId) = true
+        if (finished.reduce(_ && _)) {
+          queue.close()
+        }
+        super.onDownstreamFinish()
+      }
     }
 
     setHandler(in, new InHandler {
       override def onPush(): Unit = {
         val element = grab(in)
         queue.enqueue(element)
+        onPushCallback()
         out.iterator.zipWithIndex foreach { case (port, id) =>
           if (isAvailable(port))
             queue.dequeue(id) foreach { element => push(out(id), Event(id, element.index, element.entry)) }

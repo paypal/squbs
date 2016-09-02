@@ -35,11 +35,13 @@ case class Event[T](outputPortId: Int, commitOffset: Long, entry: T)
   *
   * @tparam T The type of elements to be stored in the queue.
   */
-class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSerializer[T]) {
+class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = x => {})(implicit val serializer: QueueSerializer[T]) {
 
   def this(config: Config)(implicit serializer: QueueSerializer[T]) = this(QueueConfig.from(config))
 
   def this(persistDir: File)(implicit serializer: QueueSerializer[T]) = this(QueueConfig(persistDir))
+
+  def withOnCommitCallback(onCommitCallback: Int => Unit) = new PersistentQueue[T](config, onCommitCallback)
 
   import config._
   if (!persistDir.isDirectory && !persistDir.mkdirs())
@@ -69,7 +71,12 @@ class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSeri
 
   val totalOutputPorts = outputPorts
 
+  // TODO: Debug only
+  val lastIndexes = Array.fill[Long](outputPorts) { 0L }
+  // TODO: End debug
+
   private def mountIndexFile(): Unit = {
+    if (OS.memory() == null) logger.warn("OS Memory is null")
     indexFile = IndexFile.of(path, OS.pageSize())
     indexStore = indexFile.acquireByteStore(0L)
     indexMounted = true
@@ -126,13 +133,18 @@ class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSeri
     */
   def commit(outputPortId: Int, index: Long): Unit = if (!autoCommit) internalCommit(outputPortId, index)
 
+
   private def internalCommit(outputPortId: Int, index: Long) = {
     if (!indexMounted) mountIndexFile()
     indexStore.writeLong(outputPortId << 3, index)
+    // TODO: Debug only
+    lastIndexes(outputPortId) = index
+    onCommitCallback(outputPortId)
   }
 
   // Reads the given outputPort's queue index
-  private def read(outputPortId: Int) : Long = {
+  // private
+  def read(outputPortId: Int) : Long = {
     if (!indexMounted) mountIndexFile()
     indexStore.readLong(outputPortId << 3)
   }
@@ -146,8 +158,8 @@ class PersistentQueue[T](config: QueueConfig)(implicit val serializer: QueueSeri
     if (written) appender.close()
     reader.foreach { m => m.close() }
     queue.close()
-    Option(indexStore) foreach { store => if (store.refCount > 0) store.close() }
-    Option(indexFile) foreach { file => file.close() }
+    Option(indexStore) foreach { store => if (store.refCount > 0) store.close(); logger.warn("IndexStore closed") }
+    Option(indexFile) foreach { file => file.close(); logger.warn("IndexFile closed") }
   }
 
   /**
