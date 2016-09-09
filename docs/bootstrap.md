@@ -88,8 +88,7 @@ the followings:
 
 *Service*: Identifies a squbs service.
 
-*Extension*: Identifies a squbs framework extension. The extension entry point has to extend from
-    org.squbs.lifecycle.ExtensionInit trait.
+*Extension*: Identifies a squbs framework extension. The extension entry point has to extend from `org.squbs.lifecycle.ExtensionLifecycle` trait.
     
 ##Configuration Resolution
 
@@ -232,7 +231,7 @@ The `webContext` field will automatically be made available to this class
 ##Extensions
 
 Extensions for squbs are low level facilities that need to be started for the environment. The extension initializer
-has to extend from the org.squbs.lifecycle.ExtensionInit trait and override the proper callbacks. An extension
+has to extend from the `org.squbs.lifecycle.ExtensionLifecycle` trait and override the proper callbacks. An extension
 has great capabilities to introspect the system and provide additional functionality squbs by itself does not provide.
 An extension must not be combined with an actor or a service in the same cube.
 
