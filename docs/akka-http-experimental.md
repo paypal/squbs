@@ -20,7 +20,7 @@ From: `import spray.routing.Directives._`
 
 To: `import akka.http.scaladsl.server.Directives._`
 
-But there are differences. Please see the [documentation for Akka HTTP directives](http://doc.akka.io/docs/akka/2.4.4/scala/http/routing-dsl/directives/index.html) for detail.
+But there are differences. Please see the [documentation for Akka HTTP directives](http://doc.akka.io/docs/akka/current/scala/http/routing-dsl/directives/index.html) for detail.
 
 ##Modules
 

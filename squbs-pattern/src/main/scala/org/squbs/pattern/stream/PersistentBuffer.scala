@@ -39,22 +39,29 @@ import org.slf4j.LoggerFactory
   * to enable this, set the `auto-commit` to `false` and add a commit stage after downstream consumer.
   *
   */
-class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T])
+class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
+                                  onPushCallback: () => Unit = (() => {}))
                                  (implicit serializer: QueueSerializer[T]) extends GraphStage[FlowShape[T, Event[T]]] {
 
   def this(config: Config)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](config))
 
   def this(persistDir: File)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](persistDir))
 
+  def withOnPushCallback(onPushCallback: () => Unit) = new PersistentBuffer[T](queue, onPushCallback)
+
+  def withOnCommitCallback(onCommitCallback: () => Unit) = new PersistentBuffer[T](queue.withOnCommitCallback(i => onCommitCallback()), onPushCallback)
+
   private[stream] val in = Inlet[T]("PersistentBuffer.in")
   private[stream] val out = Outlet[Event[T]]("PersistentBuffer.out")
   val shape: FlowShape[T, Event[T]] = FlowShape.of(in, out)
   val defaultOutputPort = 0
+  @volatile private var reachedEndOfQueue = false
+  @volatile private var upstreamFailed = false
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 
+    private var upstreamFinished = false
     var downstreamWaiting = false
-    var upstreamFinished = false
 
     override def preStart(): Unit = {
       // Start upstream demand
@@ -66,8 +73,9 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T])
       override def onPush(): Unit = {
         val element = grab(in)
         queue.enqueue(element)
+        onPushCallback()
         if (downstreamWaiting) {
-          queue.dequeue() foreach { element =>
+          queue.dequeue(reachedEndOfQueue = upstreamFinished) foreach { element =>
             push(out, Event(defaultOutputPort, element.index, element.entry))
             downstreamWaiting = false
           }
@@ -75,11 +83,18 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T])
         pull(in)
       }
 
-      override def onUpstreamFinish(): Unit = upstreamFinished = true
+      override def onUpstreamFinish(): Unit = {
+        upstreamFinished = true
+
+        if (downstreamWaiting) {
+          completeStage()
+        }
+      }
 
       override def onUpstreamFailure(ex: Throwable): Unit = {
         val logger = Logger(LoggerFactory.getLogger(this.getClass))
         logger.error("Received upstream failure signal: " + ex)
+        upstreamFailed = true
         queue.close()
         completeStage()
       }
@@ -88,12 +103,12 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T])
     setHandler(out, new OutHandler {
 
       override def onPull(): Unit = {
-        queue.dequeue() match {
+        queue.dequeue(reachedEndOfQueue = upstreamFinished) match {
           case Some(element) =>
             push(out, Event(defaultOutputPort, element.index, element.entry))
           case None =>
             if (upstreamFinished) {
-              queue.close()
+              reachedEndOfQueue = true
               completeStage()
             } else downstreamWaiting = true
         }
@@ -102,7 +117,7 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T])
   }
 
   val commit = Flow[Event[T]].map { element =>
-    queue.commit(element.outputPortId, element.commitOffset)
+    queue.commit(element.outputPortId, element.commitOffset, reachedEndOfQueue, upstreamFailed)
     element
   }
 
