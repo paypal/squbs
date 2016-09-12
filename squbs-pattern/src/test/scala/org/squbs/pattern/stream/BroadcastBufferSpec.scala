@@ -243,9 +243,11 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
           ClosedShape
       })
     val (head1F, head2F, last1F, last2F) = graph.run()(ActorMaterializer())
-    val res = for {a <- head1F; b <- head2F; c <- last1F; d <- last2F} yield (a, b, c, d)
-    val (head1, head2, last1, last2) = Await.result(res, awaitMax)
+    val head1 = Await.result(head1F, awaitMax)
+    val head2 = Await.result(head2F, awaitMax)
     println(s"First record processed after shutdown => ${(format(head1.entry), format(head2.entry))}")
+    val last1 = Await.result(last1F, awaitMax)
+    val last2 = Await.result(last2F, awaitMax)
     assertions(beforeShutDown, SinkCounts(last1, last2), SinkCounts(totalProcessed, totalProcessed))
   }
 
