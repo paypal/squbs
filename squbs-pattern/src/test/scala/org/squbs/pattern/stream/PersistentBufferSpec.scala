@@ -227,7 +227,8 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
           ClosedShape
       })
     val (countF, firstF) = graph.run()(ActorMaterializer())
-    val (afterRecovery, first) = Await.result(for {a <- countF; b <- firstF} yield (a, b), awaitMax)
+    val afterRecovery = Await.result(countF, awaitMax)
+    val first = Await.result(firstF, awaitMax)
     println(s"First record processed after shutdown => ${format(first.entry)}")
     assertions(beforeShutDown, afterRecovery, totalProcessed)
   }
