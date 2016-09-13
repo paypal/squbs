@@ -26,6 +26,8 @@ testNGSettings
 
 testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 
+javaOptions in Test += "-Xmx512m"
+
 updateOptions := updateOptions.value.withCachedResolution(true)
 
 // SimpleTestKitTest is causing actor system conflict with SimpleTestKitSpec.  Forking logic is specific to

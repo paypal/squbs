@@ -2,6 +2,8 @@ import Versions._
 
 name := "squbs-httpclient"
 
+javaOptions in Test += "-Xmx512m"
+
 libraryDependencies ++= Seq(
   "com.typesafe.akka"         %% "akka-actor"                   % akkaV,
   "com.typesafe.akka"         %% "akka-slf4j"                   % akkaV,
