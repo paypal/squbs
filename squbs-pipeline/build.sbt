@@ -2,6 +2,8 @@ import Versions._
 
 name := "squbs-pipeline"
 
+javaOptions in Test += "-Xmx512m"
+
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "org.scalatest" %% "scalatest" % "2.2.1" % "test->*",

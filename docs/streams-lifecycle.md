@@ -13,7 +13,7 @@ Streams making use of `PerpetualStream` will want to conform to the following re
 If all the requirements above are met, no other custom overrides are needed for `PerpetualStream` to function. The following code shows a fully conformant `PerpetualStream`
 
 ```scala
-class WellBehavedStream extends PerpetualStream[Future[Long]] {
+class WellBehavedStream extends PerpetualStream[Future[Done]] {
 
   def generator = Iterator.iterate(0) { p => 
     if (p == Int.MaxValue) 0 else p + 1 
@@ -21,7 +21,7 @@ class WellBehavedStream extends PerpetualStream[Future[Long]] {
 
   val source = Source.fromIterator(generator _)
 
-  val ignoreSink = Sink.ignore[Int]
+  val ignoreSink = Sink.ignore
   
   override def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(ignoreSink) {
     implicit builder =>
