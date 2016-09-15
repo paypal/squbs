@@ -70,9 +70,7 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
   private var indexStore: MappedBytesStore = _
 
   val totalOutputPorts = outputPorts
-  val lastPushedIndex = Array.ofDim[Long](totalOutputPorts)
-  @volatile private var reachedToPushedIndex = IndexedSeq.fill[Boolean](totalOutputPorts)(false)
-  private var closed = false
+  val autoCommit = config.autoCommit
 
   private def mountIndexFile(): Unit = {
     indexFile = IndexFile.of(path, OS.pageSize())
@@ -107,17 +105,14 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
     *
     * @return The first element in the queue, or None if the queue is empty.
     */
-  def dequeue(outputPortId: Int = 0, reachedEndOfQueue: Boolean = false): Option[Entry[T]] = {
+  def dequeue(outputPortId: Int = 0): Option[Entry[T]] = {
     var output: Option[Entry[T]] = None
     if (reader(outputPortId).readDocument(new ReadMarshallable {
       override def readMarshallable(wire: WireIn): Unit =
         output = {
           val element = serializer.readElement(wire)
           val index = reader(outputPortId).index
-          element map { e =>
-            if (autoCommit) internalCommit(outputPortId, index, reachedEndOfQueue)
-            Entry[T](index, e)
-          }
+          element map { e => Entry[T](index, e) }
         }
     })) output else None
   }
@@ -129,22 +124,10 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
     * @param outputPortId The id of the output port
     * @param index to be committed for next read
     */
-  def commit(outputPortId: Int, index: Long, reachedEndOfQueue: Boolean, upstreamFailed: Boolean): Unit =
-    if (!autoCommit) internalCommit(outputPortId, index, reachedEndOfQueue, upstreamFailed)
-
-  private def internalCommit(outputPortId: Int, index: Long, reachedEndOfQueue: Boolean, upstreamFailed: Boolean = false) = {
-    if(!upstreamFailed) {
-      if (!indexMounted) mountIndexFile()
-      indexStore.writeLong(outputPortId << 3, index)
-      onCommitCallback(outputPortId)
-
-      if (reachedEndOfQueue && lastPushedIndex(outputPortId) == index) {
-        synchronized {
-          reachedToPushedIndex = reachedToPushedIndex.updated(outputPortId, true)
-          if (reachedToPushedIndex.forall(_ == true)) close()
-        }
-      }
-    }
+  def commit(outputPortId: Int, index: Long): Unit = {
+    if (!indexMounted) mountIndexFile()
+    indexStore.writeLong(outputPortId << 3, index)
+    onCommitCallback(outputPortId)
   }
 
   // Reads the given outputPort's queue index
@@ -159,16 +142,11 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
     * Closes the queue and all its persistent storage.
     */
   def close(): Unit = {
-    synchronized {
-      if(!closed) {
-        closed = true
-        if (written) appender.close()
-        reader.foreach { m => m.close() }
-        queue.close()
-        Option(indexStore) foreach { store => if (store.refCount > 0) store.close() }
-        Option(indexFile) foreach { file => file.close() }
-      }
-    }
+    if (written) appender.close()
+    reader.foreach { m => m.close() }
+    queue.close()
+    Option(indexStore) foreach { store => if (store.refCount > 0) store.close() }
+    Option(indexFile) foreach { file => file.close() }
   }
 
   /**

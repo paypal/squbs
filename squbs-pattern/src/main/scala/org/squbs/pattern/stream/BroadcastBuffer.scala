@@ -17,6 +17,7 @@ package org.squbs.pattern.stream
 
 import java.io.File
 
+import akka.actor.{Props, ActorSystem}
 import akka.stream._
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
@@ -40,12 +41,15 @@ import org.slf4j.LoggerFactory
   *
   */
 class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
-                                 onPushCallback: () => Unit = (() => {}))(implicit serializer: QueueSerializer[T])
+                                 onPushCallback: () => Unit = () => {})(implicit serializer: QueueSerializer[T],
+                                                                        system: ActorSystem)
   extends GraphStage[UniformFanOutShape[T, Event[T]]] {
 
-  def this(config: Config)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](config))
+  def this(config: Config)(implicit serializer: QueueSerializer[T],
+                           system: ActorSystem) = this(new PersistentQueue[T](config))
 
-  def this(persistDir: File)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](persistDir), () => {})
+  def this(persistDir: File)(implicit serializer: QueueSerializer[T],
+                             system: ActorSystem) = this(new PersistentQueue[T](persistDir), () => {})
 
   def withOnPushCallback(onPushCallback: () => Unit) = new BroadcastBuffer[T](queue, onPushCallback)
 
@@ -55,8 +59,9 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
   private[stream] val in = Inlet[T]("BroadcastBuffer.in")
   private[stream] val out = Vector.tabulate(outputPorts)(i ⇒ Outlet[Event[T]]("BroadcastBuffer.out" + i))
   val shape: UniformFanOutShape[T, Event[T]] = UniformFanOutShape(in, out: _*)
-  @volatile private var finished = IndexedSeq.fill[Boolean](outputPorts)(false)
+  private var finished = IndexedSeq.fill[Boolean](outputPorts)(false)
   @volatile private var upstreamFailed = false
+  private val queueCloserActor = system.actorOf(Props(classOf[PersistentQueueCloserActor[T]], queue))
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 
@@ -66,16 +71,21 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
 
     def outHandler(outlet: Outlet[Event[T]], outputPortId: Int) = new OutHandler {
       override def onPull(): Unit = {
-        queue.dequeue(outputPortId, finished(outputPortId)) match {
+        queue.dequeue(outputPortId) match {
           case None => if (upstreamFinished) {
               finished = finished.updated(outputPortId, true)
               if(finished.reduce(_ && _)) {
+                queueCloserActor ! ReachedEndOfQueue
                 completeStage()
               }
             }
           case Some(element) =>
             push(outlet, Event(outputPortId, element.index, element.entry))
-            queue.lastPushedIndex(outputPortId) = element.index
+            queueCloserActor ! Pushed(outputPortId, element.index)
+            if(queue.autoCommit) {
+              queue.commit(outputPortId, element.index)
+              queueCloserActor ! Committed(outputPortId, element.index)
+            }
         }
       }
     }
@@ -87,9 +97,13 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
         onPushCallback()
         out.iterator.zipWithIndex foreach { case (port, id) =>
           if (isAvailable(port))
-            queue.dequeue(id, finished(id)) foreach { element =>
+            queue.dequeue(id) foreach { element =>
               push(out(id), Event(id, element.index, element.entry))
-              queue.lastPushedIndex(id) = element.index
+              queueCloserActor ! Pushed(id, element.index)
+              if(queue.autoCommit) {
+                queue.commit(id, element.index)
+                queueCloserActor ! Committed(id, element.index)
+              }
             }
         }
         pull(in)
@@ -101,7 +115,7 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
         val logger = Logger(LoggerFactory.getLogger(this.getClass))
         logger.error("Received upstream failure signal: " + ex)
         upstreamFailed = true
-        queue.close()
+        queueCloserActor ! UpstreamFailed
         completeStage()
       }
     })
@@ -112,7 +126,10 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
   }
 
   val commit = Flow[Event[T]].map { element =>
-    queue.commit(element.outputPortId, element.commitOffset, finished(element.outputPortId), upstreamFailed)
+    if(!queue.autoCommit && !upstreamFailed) {
+      queue.commit(element.outputPortId, element.commitOffset)
+      queueCloserActor ! Committed(element.outputPortId, element.commitOffset)
+    }
     element
   }
 
