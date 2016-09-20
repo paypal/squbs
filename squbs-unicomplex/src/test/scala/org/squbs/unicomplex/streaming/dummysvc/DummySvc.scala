@@ -16,21 +16,27 @@
 
 package org.squbs.unicomplex.streaming.dummysvc
 
-import akka.http.scaladsl.server.{Route, Directives}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.http.scaladsl.server.Route
 import akka.pattern.ask
-import akka.actor.{Props, ActorRef, Actor, ActorLogging}
+import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex._
 import org.squbs.unicomplex.streaming.RouteDefinition
-import Timeouts._
 
 class DummySvc extends RouteDefinition with WebContext {
-  def route: Route = path("msg" / Segment) {param =>
+  def route: Route =
     get {
-      onSuccess((context.actorOf(Props(classOf[DummyClient])) ? EchoMsg(param)).mapTo[String]) {
-        case value => complete(value)
+      path("msg" / Segment) { param =>
+        onSuccess((context.actorOf(Props(classOf[DummyClient])) ? EchoMsg(param)).mapTo[String]) {
+          value => complete(value)
+        }
+      } ~
+      path("who") {
+        extractClientIP { ip =>
+          complete(ip.toString)
+        }
       }
     }
-  }
 }
 
 class Dummy2VersionedSvc extends RouteDefinition with WebContext {

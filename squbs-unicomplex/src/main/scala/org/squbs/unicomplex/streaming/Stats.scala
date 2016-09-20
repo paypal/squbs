@@ -1,9 +1,27 @@
+/*
+ *  Copyright 2015 PayPal
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package org.squbs.unicomplex.streaming
 
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.stage._
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 
@@ -85,63 +103,78 @@ private object StatsSupport {
     }
 
     /**
-      * Create a PushStage which should be inserted into the connection flow
+      * Create a GraphStage which should be inserted into the connection flow
       * before the sealed route.
       *
       * This is also used to watch the connections.
       */
-    def watchRequests(): PushStage[HttpRequest, HttpRequest] = {
+    def watchRequests() = new GraphStage[FlowShape[HttpRequest, HttpRequest]] {
 
-      onConnectionStart()
+        val in = Inlet[HttpRequest]("RequestCounter.in")
+        val out = Outlet[HttpRequest]("RequestCounter.out")
 
-      new PushStage[HttpRequest, HttpRequest] {
+        override val shape = FlowShape.of(in, out)
 
-        override def onPush(
-                             request: HttpRequest,
-                             ctx: Context[HttpRequest]
-                           ): SyncDirective = {
-          onRequestStart()
+        override def createLogic(attr: Attributes): GraphStageLogic =
+          new GraphStageLogic(shape) {
 
-          ctx.push(request)
-        }
+            onConnectionStart()
 
-        override def onUpstreamFailure(
-                                        cause: Throwable,
-                                        ctx: Context[HttpRequest]
-                                      ): TerminationDirective = {
-          onConnectionEnd()
-          ctx.fail(cause)
-        }
+            setHandler(in, new InHandler {
+              override def onPush(): Unit = {
+                onRequestStart()
+                push(out, grab(in))
+              }
 
-        override def onUpstreamFinish(
-                                       ctx: Context[HttpRequest]
-                                     ): TerminationDirective = {
-          onConnectionEnd()
-          ctx.finish()
+              override def onUpstreamFailure(ex: Throwable): Unit = {
+                onConnectionEnd()
+                super.onUpstreamFailure(ex)
+              }
+
+              override def onUpstreamFinish(): Unit = {
+                onConnectionEnd()
+                super.onUpstreamFinish()
+              }
+            })
+
+            setHandler(out, new OutHandler {
+              override def onPull(): Unit = {
+                pull(in)
+              }
+            })
         }
       }
-    }
 
     /**
-      * Create a PushStage which should be inserted into the connection flow
+      * Create a GraphStage which should be inserted into the connection flow
       * after the sealed route.
       *
       * Connections are not counted here.
       */
-    def watchResponses(): PushStage[HttpResponse, HttpResponse] = {
+    def watchResponses() = new GraphStage[FlowShape[HttpResponse, HttpResponse]] {
 
-      new PushStage[HttpResponse, HttpResponse] {
+        val in = Inlet[HttpResponse]("ResponseCounter.in")
+        val out = Outlet[HttpResponse]("ResponseCounter.out")
 
-        override def onPush(
-                             Response: HttpResponse,
-                             ctx: Context[HttpResponse]
-                           ): SyncDirective = {
-          onResponseStart()
+        override val shape = FlowShape.of(in, out)
 
-          ctx.push(Response)
-        }
+        override def createLogic(attr: Attributes): GraphStageLogic =
+          new GraphStageLogic(shape) {
+
+            setHandler(in, new InHandler {
+              override def onPush(): Unit = {
+                onResponseStart()
+                push(out, grab(in))
+              }
+            })
+
+            setHandler(out, new OutHandler {
+              override def onPull(): Unit = {
+                pull(in)
+              }
+            })
+          }
       }
-    }
   }
 }
 
