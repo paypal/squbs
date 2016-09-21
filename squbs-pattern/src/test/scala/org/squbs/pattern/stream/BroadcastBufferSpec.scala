@@ -22,6 +22,8 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape, ThrottleMode}
 import akka.util.ByteString
+import org.scalatest.concurrent.Eventually
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.testkit.Timeouts._
 
@@ -29,13 +31,16 @@ import scala.concurrent.{Await, Promise}
 import scala.reflect._
 
 abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manifest]
-   (typeName: String, autoCommit: Boolean = true) extends FlatSpec with Matchers with BeforeAndAfterAll {
+   (typeName: String, autoCommit: Boolean = true) extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   implicit val system = ActorSystem(s"Broadcast${typeName}BufferSpec")
   implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[T]()
   import StreamSpecUtil._
   import system.dispatcher
+
+  implicit override val patienceConfig =
+    PatienceConfig(timeout = scaled(Span(30, Seconds)), interval = scaled(Span(500, Millis)))
 
   def createElement(n: Int): T
 
@@ -51,19 +56,20 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     val util = new StreamSpecUtil[T](2, autoCommit)
     import util._
 
+    val buffer = new BroadcastBuffer[T](config)
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val buffer = new BroadcastBuffer[T](config)
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
         val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
         in ~> transform ~> bcBuffer ~> commit ~> mr ~> sink
-                           bcBuffer           ~> mr
+                           bcBuffer ~> commit ~> mr
         ClosedShape
     })
     val countFuture = streamGraph.run()
     val count = Await.result(countFuture, awaitMax)
+    eventually { buffer.queue shouldBe 'closed }
     count shouldBe (elementCount * outputPorts)
     println(s"Total records processed $count")
     clean()
@@ -82,10 +88,10 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
       s
     }.toMat(Sink.head)(Keep.right)
 
+    val buffer = new BroadcastBuffer[T](config)
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter(t1 = _)) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val buffer = new BroadcastBuffer[T](config)
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
         val bc = builder.add(Broadcast[T](2))
         val bcBuffer = builder.add(buffer.async)
@@ -98,7 +104,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     })
     val countF = streamGraph.run()
     val count = Await.result(countF, awaitMax)
-
+    eventually { buffer.queue shouldBe 'closed }
     println("Time difference (ms): " + (t1 - t2) / 1000000d)
     count shouldBe (elementCount * outputPorts)
     println(s"Total records processed $count")
@@ -200,11 +206,11 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     }
 
     def updateCounter(outputPortId: Int) = Sink.foreach[Any] { x => atomicCounter(outputPortId).incrementAndGet() }
+    val buffer = new BroadcastBuffer[T](config).withOnCommitCallback(i => commitCounter(i))
     val graph1 = RunnableGraph.fromGraph(
       GraphDSL.create(Sink.ignore, Sink.ignore)((_,_)) { implicit builder =>
         (sink1, sink2) =>
           import GraphDSL.Implicits._
-          val buffer = new BroadcastBuffer[T](config).withOnCommitCallback(i => commitCounter(i))
           val commit = buffer.commit // makes a dummy flow if autocommit is set to false
           val bcBuffer = builder.add(buffer.async)
 
@@ -215,6 +221,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
       })
     val (sink1F, sink2F) = graph1.run()(mat)
     Await.result(for {a <- sink1F; b <- sink2F} yield (a, b), awaitMax)
+    eventually { buffer.queue shouldBe 'closed }
 
     val beforeShutDown  = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
     resumeGraphAndDoAssertion(beforeShutDown, failTestAt)
@@ -248,6 +255,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     println(s"First record processed after shutdown => ${(format(head1.entry), format(head2.entry))}")
     val last1 = Await.result(last1F, awaitMax)
     val last2 = Await.result(last2F, awaitMax)
+    eventually { buffer.queue shouldBe 'closed }
     assertions(beforeShutDown, SinkCounts(last1, last2), SinkCounts(totalProcessed, totalProcessed))
   }
 
@@ -258,10 +266,9 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     val lostRecords = (totalRecords.sink1 - processedRecords._1 , totalRecords.sink2 - processedRecords._2)
     println(s"Total records lost due to unexpected shutdown => $lostRecords")
     println(s"Total records processed => $processedRecords")
-    if (!autoCommit) {
-      processedRecords._1 should be >= totalRecords.sink1
-      processedRecords._2 should be >= totalRecords.sink2
-    }
+
+    processedRecords._1 should be >= totalRecords.sink1
+    processedRecords._2 should be >= totalRecords.sink2
   }
 }
 

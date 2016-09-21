@@ -17,6 +17,7 @@ package org.squbs.pattern.stream
 
 import java.io.File
 
+import akka.actor.{Props, ActorSystem}
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
@@ -40,12 +41,13 @@ import org.slf4j.LoggerFactory
   *
   */
 class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
-                                  onPushCallback: () => Unit = (() => {}))
-                                 (implicit serializer: QueueSerializer[T]) extends GraphStage[FlowShape[T, Event[T]]] {
+                                  onPushCallback: () => Unit = () => {})
+                                 (implicit serializer: QueueSerializer[T],
+                                  system: ActorSystem) extends GraphStage[FlowShape[T, Event[T]]] {
 
-  def this(config: Config)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](config))
+  def this(config: Config)(implicit serializer: QueueSerializer[T], system: ActorSystem) = this(new PersistentQueue[T](config))
 
-  def this(persistDir: File)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](persistDir))
+  def this(persistDir: File)(implicit serializer: QueueSerializer[T], system: ActorSystem) = this(new PersistentQueue[T](persistDir))
 
   def withOnPushCallback(onPushCallback: () => Unit) = new PersistentBuffer[T](queue, onPushCallback)
 
@@ -55,12 +57,13 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
   private[stream] val out = Outlet[Event[T]]("PersistentBuffer.out")
   val shape: FlowShape[T, Event[T]] = FlowShape.of(in, out)
   val defaultOutputPort = 0
-  @volatile private var reachedEndOfQueue = false
   @volatile private var upstreamFailed = false
+  @volatile private var upstreamFinished = false
+  private val queueCloserActor = system.actorOf(Props(classOf[PersistentQueueCloserActor[T]], queue))
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 
-    private var upstreamFinished = false
+    private var lastPushed = 0L
     var downstreamWaiting = false
 
     override def preStart(): Unit = {
@@ -75,9 +78,11 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
         queue.enqueue(element)
         onPushCallback()
         if (downstreamWaiting) {
-          queue.dequeue(reachedEndOfQueue = upstreamFinished) foreach { element =>
+          queue.dequeue() foreach { element =>
             push(out, Event(defaultOutputPort, element.index, element.entry))
             downstreamWaiting = false
+            lastPushed = element.index
+            if(queue.autoCommit) queue.commit(defaultOutputPort, element.index)
           }
         }
         pull(in)
@@ -87,6 +92,8 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
         upstreamFinished = true
 
         if (downstreamWaiting) {
+          queueCloserActor ! PushedAndCommitted(defaultOutputPort, lastPushed, queue.read(defaultOutputPort))
+          queueCloserActor ! UpstreamFinished
           completeStage()
         }
       }
@@ -95,7 +102,7 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
         val logger = Logger(LoggerFactory.getLogger(this.getClass))
         logger.error("Received upstream failure signal: " + ex)
         upstreamFailed = true
-        queue.close()
+        queueCloserActor ! UpstreamFailed
         completeStage()
       }
     })
@@ -103,12 +110,15 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
     setHandler(out, new OutHandler {
 
       override def onPull(): Unit = {
-        queue.dequeue(reachedEndOfQueue = upstreamFinished) match {
+        queue.dequeue() match {
           case Some(element) =>
             push(out, Event(defaultOutputPort, element.index, element.entry))
+            lastPushed = element.index
+            if(queue.autoCommit) queue.commit(defaultOutputPort, element.index)
           case None =>
             if (upstreamFinished) {
-              reachedEndOfQueue = true
+              queueCloserActor ! PushedAndCommitted(defaultOutputPort, lastPushed, queue.read(defaultOutputPort))
+              queueCloserActor ! UpstreamFinished
               completeStage()
             } else downstreamWaiting = true
         }
@@ -116,10 +126,16 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
     })
   }
 
-  val commit = Flow[Event[T]].map { element =>
-    queue.commit(element.outputPortId, element.commitOffset, reachedEndOfQueue, upstreamFailed)
-    element
-  }
+  val commit = if (queue.autoCommit) Flow[Event[T]]
+              else {
+                Flow[Event[T]].map { element =>
+                  if (!upstreamFailed) {
+                    queue.commit(element.outputPortId, element.commitOffset)
+                    if(upstreamFinished) queueCloserActor ! Committed(element.outputPortId, element.commitOffset)
+                  }
+                  element
+                }
+              }
 
   def clearStorage() = queue.clearStorage()
 }

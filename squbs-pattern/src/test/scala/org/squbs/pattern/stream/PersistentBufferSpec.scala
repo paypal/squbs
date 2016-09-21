@@ -22,6 +22,8 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape}
 import akka.util.ByteString
+import org.scalatest.concurrent.Eventually
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.testkit.Timeouts._
 
@@ -30,13 +32,16 @@ import scala.reflect._
 import scala.util.Try
 
 abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manifest]
-(typeName: String, autoCommit: Boolean = true) extends FlatSpec with Matchers with BeforeAndAfterAll {
+(typeName: String, autoCommit: Boolean = true) extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   implicit val system = ActorSystem(s"Persistent${typeName}BufferSpec")
   implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[T]()
   import StreamSpecUtil._
   import system.dispatcher
+
+  implicit override val patienceConfig =
+    PatienceConfig(timeout = scaled(Span(30, Seconds)), interval = scaled(Span(500, Millis)))
 
   val transform = Flow[Int] map createElement
 
@@ -57,6 +62,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val countFuture = in.via(transform).via(buffer.async).via(commit).runWith(flowCounter)
     val count = Await.result(countFuture, awaitMax)
     count shouldBe elementCount
+    eventually { buffer.queue shouldBe 'closed }
     clean()
   }
 
@@ -75,6 +81,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val countFuture = streamGraph.run()
     val count = Await.result(countFuture, awaitMax)
     count shouldBe elementCount
+    eventually { buffer.queue shouldBe 'closed }
     clean()
   }
 
@@ -103,6 +110,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val (countF, totalF) = streamGraph.run()
     val count = Await.result(countF, awaitMax)
     val totalProcessed = Await.result(totalF, awaitMax)
+    eventually { buffer.queue shouldBe 'closed }
 
     println("Time difference (ms): " + (t1 - t2) / 1000000d)
     println(s"Total count $count vs total processed $totalProcessed")
@@ -121,13 +129,12 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val pBufferInCount = new AtomicInteger(0)
     val commitCount = new AtomicInteger(0)
     val finishedGenerating = Promise[Done]
-    val t0 = System.nanoTime
+    val counter = new AtomicInteger(0)
 
-    def fireFinished() = Flow[Any].map( _ => 1L).reduce(_ + _).map { s =>
-      t = System.nanoTime - t0
-      finishedGenerating success Done
-      s
-    }.toMat(Sink.head)(Keep.right)
+    def fireFinished() = Flow[T].map { e =>
+      if(counter.incrementAndGet() == failTestAt) finishedGenerating success Done
+      e
+    }.toMat(Sink.ignore)(Keep.right)
 
     val shutdownF = finishedGenerating.future map { d => mat.shutdown(); d }
 
@@ -174,13 +181,12 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
         import GraphDSL.Implicits._
         val buffer = new PersistentBuffer[T](config).withOnPushCallback(() => inCounter.incrementAndGet()).withOnCommitCallback(() => outCount.incrementAndGet())
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
-        val pBuffer = builder.add(buffer.async)
-        in ~> transform ~> pBuffer ~> throttle ~> injectError ~> commit ~> sink
+        in ~> transform ~> buffer.async ~> throttle ~> injectError ~> commit ~> sink
         ClosedShape
     })
-    val countF = graph.run()(mat)
-    Try { Await.result(countF, awaitMax) }
-    val restartFrom = if (inCounter.get == elementCount) elementCount + 1 else inCounter.get
+    val sinkF = graph.run()(mat)
+    Await.result(sinkF.failed, awaitMax) shouldBe an[NumberFormatException]
+    val restartFrom = inCounter.incrementAndGet()
     println(s"Restart from count $restartFrom")
     resumeGraphAndDoAssertion(outCount.get, restartFrom)
     clean()
@@ -199,27 +205,28 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
 
     def updateCounter() = Sink.foreach[Any] { _ => recordCount.incrementAndGet() }
 
+    val buffer = new PersistentBuffer[T](config)
     val graph = RunnableGraph.fromGraph(GraphDSL.create(updateCounter()) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val buffer = new PersistentBuffer[T](config)
         val commit = buffer.commit // makes a dummy flow if autocommit is set to false
         in ~> injectError ~> transform ~> buffer.async ~> throttle ~> commit ~> sink
         ClosedShape
     })
     val countF = graph.run()(mat)
-    Try { Await.result(countF, awaitMax) }
+    Await.result(countF, awaitMax)
+    eventually { buffer.queue shouldBe 'closed }
     resumeGraphAndDoAssertion(recordCount.get, failTestAt)
     clean()
   }
 
   private def resumeGraphAndDoAssertion(beforeShutDown: Long, restartFrom: Int)(implicit util: StreamSpecUtil[T]) = {
     import util._
+    val buffer = new PersistentBuffer[T](config)
     val graph = RunnableGraph.fromGraph(
       GraphDSL.create(flowCounter, head)((_,_)) { implicit builder =>
         (sink, first) =>
           import GraphDSL.Implicits._
-          val buffer = new PersistentBuffer[T](config)
           val commit = buffer.commit // makes a dummy flow if autocommit is set to false
         val bc = builder.add(Broadcast[Event[T]](2))
           Source(restartFrom to (elementCount + elementsAfterFail)) ~> transform ~> buffer.async ~> commit ~> bc ~> sink
@@ -229,6 +236,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val (countF, firstF) = graph.run()(ActorMaterializer())
     val afterRecovery = Await.result(countF, awaitMax)
     val first = Await.result(firstF, awaitMax)
+    eventually { buffer.queue shouldBe 'closed }
     println(s"First record processed after shutdown => ${format(first.entry)}")
     assertions(beforeShutDown, afterRecovery, totalProcessed)
   }
@@ -240,7 +248,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val lostRecords = totalRecords - processedRecords
     println(s"Total records lost due to unexpected shutdown => $lostRecords")
     println(s"Total records processed => $processedRecords")
-    if (!autoCommit) processedRecords should be >= totalRecords
+    processedRecords should be >= totalRecords
   }
 }
 
