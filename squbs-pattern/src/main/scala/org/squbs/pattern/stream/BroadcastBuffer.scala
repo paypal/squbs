@@ -109,7 +109,14 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
         pull(in)
       }
 
-      override def onUpstreamFinish(): Unit = upstreamFinished = true
+      override def onUpstreamFinish(): Unit = {
+        upstreamFinished = true
+        if(out.forall(isAvailable(_))) completeStage()
+        else {
+          out.zipWithIndex.filter{ case (port, _) => isAvailable(port) }.
+                           foreach{ case (_, index) => finished.updated(index, true) }
+        }
+      }
 
       override def onUpstreamFailure(ex: Throwable): Unit = {
         val logger = Logger(LoggerFactory.getLogger(this.getClass))
