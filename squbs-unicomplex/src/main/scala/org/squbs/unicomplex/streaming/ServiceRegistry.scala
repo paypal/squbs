@@ -20,7 +20,6 @@ import akka.actor.Actor._
 import akka.actor.Status.{Failure => ActorFailure}
 import akka.actor.SupervisorStrategy.Escalate
 import akka.actor._
-import akka.agent.Agent
 import akka.event.LoggingAdapter
 import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model.HttpRequest
@@ -37,6 +36,8 @@ import org.squbs.pipeline.streaming.{PipelineExtension, PipelineSetting}
 import org.squbs.unicomplex._
 import org.squbs.unicomplex.streaming.StatsSupport.StatsHolder
 
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -48,12 +49,12 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   private var serverBindings = Map.empty[String, ServerBindingInfo] // Service actor and HttpListener actor
 
-  var listenerRoutesVar = Map.empty[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]]
+  var listenerRoutesVar = Map.empty[String, Seq[(Path, ActorWrapper, PipelineSetting)]]
 
-  override protected def listenerRoutes: Map[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]] = listenerRoutesVar
+  override protected def listenerRoutes: Map[String, Seq[(Path, ActorWrapper, PipelineSetting)]] = listenerRoutesVar
 
-  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Agent[Seq[(B, ActorWrapper, PipelineSetting)]]]): Unit =
-    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]]]
+  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, ActorWrapper, PipelineSetting)]]): Unit =
+    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Seq[(Path, ActorWrapper, PipelineSetting)]]]
 
   override private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
                                                 (implicit context: ActorContext): Receive = {
@@ -117,13 +118,12 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     PipelineExtension(context.system).getFlow(ps)
 
     listeners foreach { listener =>
-      val agent = listenerRoutes(listener)
-      agent.send {
-        currentSeq =>
-          merge(currentSeq, webContext, servant, ps, {
-            log.warning(s"Web context $webContext already registered on $listener. Override existing registration.")
-          })
-      }
+      val currentListenerRoutes = listenerRoutes(listener)
+      val mergedListenerRoutes = merge(currentListenerRoutes, webContext, servant, ps, {
+        log.warning(s"Web context $webContext already registered on $listener. Override existing registration.")
+      })
+
+      listenerRoutes = listenerRoutes + (listener -> mergedListenerRoutes)
     }
   }
 
@@ -150,7 +150,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 //    Http().shutdownAllConnectionPools() andThen { case _ =>
       serverBindings foreach {
         case (name, ServerBindingInfo(Some(sb), None)) =>
-          listenerRoutes(name)() foreach {case (_, aw, _) => aw.actor ! PoisonPill}
+          listenerRoutes(name) foreach {case (_, aw, _) => aw.actor ! PoisonPill}
           listenerRoutes = listenerRoutes - name
           sb.unbind() andThen { case _ => uniSelf ! Unbound(sb) }
           if (listenerRoutes.isEmpty) {

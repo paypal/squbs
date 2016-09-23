@@ -316,7 +316,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       } map {configs =>
         configs.map(_.getString("web-context"))
       } match {
-        case Some(webContexts) => serviceRegistry.deregisterContext(webContexts) pipeTo self
+        case Some(webContexts) =>
+          serviceRegistry.deregisterContext(webContexts)
+          self ! Ack
         case None => self ! Ack
       }
       context.become({

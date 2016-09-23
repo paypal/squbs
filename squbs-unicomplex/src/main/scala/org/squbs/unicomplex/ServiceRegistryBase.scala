@@ -19,27 +19,25 @@ package org.squbs.unicomplex
 import javax.net.ssl.SSLContext
 import akka.actor.Actor._
 import akka.actor.{ActorRef, ActorContext}
-import akka.agent.Agent
 import akka.event.LoggingAdapter
 import com.typesafe.config.Config
 import org.squbs.pipeline.streaming.PipelineSetting
 import org.squbs.unicomplex.ConfigUtil._
 
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.ExecutionContext
 import scala.collection.mutable.ListBuffer
 
 trait ServiceRegistryBase[A] {
 
   val log: LoggingAdapter
 
-  protected def listenerRoutes: Map[String, Agent[Seq[(A, ActorWrapper, PipelineSetting)]]]
+  protected def listenerRoutes: Map[String, Seq[(A, ActorWrapper, PipelineSetting)]]
 
-  protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Agent[Seq[(B, ActorWrapper, PipelineSetting)]]]): Unit
+  protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, ActorWrapper, PipelineSetting)]]): Unit
 
   private[unicomplex] def prepListeners(listenerNames: Iterable[String])(implicit context: ActorContext) {
-    import context.dispatcher
     listenerRoutes = listenerNames.map { listener =>
-      listener -> Agent[Seq[(A, ActorWrapper, PipelineSetting)]](Seq.empty)
+      listener -> Seq.empty[(A, ActorWrapper, PipelineSetting)]
     }.toMap
 
     import org.squbs.unicomplex.JMX._
@@ -57,20 +55,18 @@ trait ServiceRegistryBase[A] {
   protected def pathLength(p: A): Int
 
   private[unicomplex] def deregisterContext(webContexts: Seq[String])
-                                           (implicit ec: ExecutionContext): Future[Ack.type] = {
-    val futures = listenerRoutes flatMap {
-      case (_, agent) => webContexts map { ctx => agent.alter {
-        oldEntries =>
-          val buffer = ListBuffer[(A, ActorWrapper, PipelineSetting)]()
-          val path = pathCompanion(ctx)
-          oldEntries.foreach {
-            entry => if (!entry._1.equals(path)) buffer += entry
-          }
-          buffer.toSeq
-      }
+                                           (implicit ec: ExecutionContext): Unit = {
+
+    listenerRoutes = listenerRoutes flatMap {
+      case (listener, routes) => webContexts map { ctx =>
+        val buffer = ListBuffer[(A, ActorWrapper, PipelineSetting)]()
+        val path = pathCompanion(ctx)
+        routes.foreach {
+          entry => if (!entry._1.equals(path)) buffer += entry
+        }
+        (listener, buffer.toSeq)
       }
     }
-    Future.sequence(futures) map { _ => Ack}
   }
 
   private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
@@ -172,12 +168,12 @@ trait WebContext {
   protected final val webContext: String = WebContext.localContext.get.get
 }
 
-class ListenerBean[A](listenerRoutes: Map[String, Agent[Seq[(A, ActorWrapper, PipelineSetting)]]]) extends ListenerMXBean {
+class ListenerBean[A](listenerRoutes: => Map[String, Seq[(A, ActorWrapper, PipelineSetting)]]) extends ListenerMXBean {
 
   override def getListeners: java.util.List[ListenerInfo] = {
     import scala.collection.JavaConversions._
-    listenerRoutes.flatMap { case (listenerName, agent) =>
-      agent() map { case (webContext, servant, _) => // TODO Pass PipelineSetting
+    listenerRoutes.flatMap { case (listenerName, routes) =>
+      routes map { case (webContext, servant, _) => // TODO Pass PipelineSetting
         ListenerInfo(listenerName, webContext.toString(), servant.actor.toString())
       }
     }.toSeq

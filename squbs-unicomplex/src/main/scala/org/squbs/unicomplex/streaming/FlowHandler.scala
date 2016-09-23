@@ -17,7 +17,6 @@
 package org.squbs.unicomplex.streaming
 
 import akka.actor.{ActorRef, ActorSystem}
-import akka.agent.Agent
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model.{StatusCodes, HttpResponse, HttpRequest}
 import akka.stream.FlowShape
@@ -32,7 +31,7 @@ import scala.language.postfixOps
 
 object Handler {
 
-  def apply(routes: Agent[Seq[(Path, ActorWrapper, PipelineSetting)]], localPort: Option[Int])
+  def apply(routes: Seq[(Path, ActorWrapper, PipelineSetting)], localPort: Option[Int])
            (implicit system: ActorSystem): Handler = {
     new Handler(routes, localPort)
   }
@@ -55,7 +54,7 @@ object Handler {
   }
 }
 
-class Handler(routes: Agent[Seq[(Path, ActorWrapper, PipelineSetting)]], localPort: Option[Int])
+class Handler(routes: Seq[(Path, ActorWrapper, PipelineSetting)], localPort: Option[Int])
              (implicit system: ActorSystem) {
 
   import Handler._
@@ -87,7 +86,7 @@ class Handler(routes: Agent[Seq[(Path, ActorWrapper, PipelineSetting)]], localPo
     Flow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
 
-      val (paths, actorWrappers, pipelineSettings) = routes() unzip3
+      val (paths, actorWrappers, pipelineSettings) = routes unzip3
 
       val routesMerge = b.add(Merge[RequestContext](actorWrappers.size + 1))
 
