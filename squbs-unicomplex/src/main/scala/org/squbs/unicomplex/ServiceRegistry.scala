@@ -21,7 +21,6 @@ import java.net.BindException
 import akka.actor.Actor.Receive
 import akka.actor.SupervisorStrategy._
 import akka.actor._
-import akka.agent.Agent
 import akka.event.LoggingAdapter
 import akka.io.IO
 import com.typesafe.config.Config
@@ -92,12 +91,12 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   private var serviceListeners = Map.empty[String, ServiceListenerInfo]
 
-  private var listenerRoutesVar = Map.empty[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]]
+  private var listenerRoutesVar = Map.empty[String, Seq[(Path, ActorWrapper, PipelineSetting)]]
 
-  override protected def listenerRoutes: Map[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]] = listenerRoutesVar
+  override protected def listenerRoutes: Map[String, Seq[(Path, ActorWrapper, PipelineSetting)]] = listenerRoutesVar
 
-  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Agent[Seq[(B, ActorWrapper, PipelineSetting)]]]): Unit =
-    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]]]
+  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, ActorWrapper, PipelineSetting)]]): Unit =
+    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Seq[(Path, ActorWrapper, PipelineSetting)]]]
 
   override protected def pathCompanion(s: String) = Path(s)
 
@@ -158,14 +157,14 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   override private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ActorWrapper,
                                                    ps: PipelineSetting)(implicit context: ActorContext) {
+
     listeners foreach { listener =>
-      val agent = listenerRoutes(listener)
-      agent.send {
-        currentSeq =>
-          merge(currentSeq, webContext, servant, ps, {
-            log.warning(s"Web context $webContext already registered on $listener. Override existing registration.")
-          })
-      }
+      val currentListenerRoutes = listenerRoutes(listener)
+      val mergedListenerRoutes = merge(currentListenerRoutes, webContext, servant, ps, {
+        log.warning(s"Web context $webContext already registered on $listener. Override existing registration.")
+      })
+
+      listenerRoutes = listenerRoutes + (listener -> mergedListenerRoutes)
     }
   }
 
@@ -283,7 +282,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
   }
 }
 
-private[unicomplex] class ListenerActor(name: String, routes: Agent[Seq[(Path, ActorWrapper, PipelineSetting)]],
+private[unicomplex] class ListenerActor(name: String, routes: Seq[(Path, ActorWrapper, PipelineSetting)],
                                         localPort: Option[Int] = None) extends Actor with ActorLogging {
   import RegisterContext._
 
@@ -295,7 +294,7 @@ private[unicomplex] class ListenerActor(name: String, routes: Agent[Seq[(Path, A
 
     import request.uri.path
     val normPath = if (path.startsWithSlash) path.tail else path //normalize it to make sure not start with '/'
-    val routeOption = routes() find { case (contextPath, _, _) => pathMatch(normPath, contextPath) }
+    val routeOption = routes find { case (contextPath, _, _) => pathMatch(normPath, contextPath) }
 
     routeOption flatMap {
       case (webCtx, ProxiedActor(actor), _) => Some(patchHeaders(request, Some(webCtx.toString())), actor)
