@@ -35,7 +35,6 @@ import org.squbs.unicomplex.UnicomplexBoot.CubeInit
 
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
-import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
@@ -278,7 +277,8 @@ object UnicomplexBoot extends LazyLogging {
   }
 
   private[unicomplex] def startComponents(cube: CubeInit, aliases: Map[String, String])
-                                         (implicit actorSystem: ActorSystem) = {
+                                         (implicit actorSystem: ActorSystem,
+                                          timeout: Timeout = UnicomplexBoot.defaultStartupTimeout) = {
     import cube.components
     import cube.info.{fullName, jarPath, name, version}
     val cubeSupervisor = actorSystem.actorOf(Props[CubeSupervisor], name)
@@ -406,9 +406,10 @@ object UnicomplexBoot extends LazyLogging {
     val actorInfo = actorConfigs map startActor
     val routeInfo = routeConfigs map startService
 
-    cubeSupervisor ! Started // Tell the cube all actors to be started are started.
+    val startedF = cubeSupervisor ? Started // Tell the cube all actors to be started are started.
     logger.info(s"Started cube $fullName $version")
-    (actorInfo ++ routeInfo) collect { case Some(component) => component }
+    val componentInfo = (actorInfo ++ routeInfo) collect { case Some(component) => component }
+    (startedF, componentInfo)
   }
 
   def configuredListeners(config: Config): Map[String, Config] = {
@@ -546,7 +547,7 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
 
   def start(): UnicomplexBoot = start(defaultStartupTimeout)
 
-  def start(timeout: Timeout): UnicomplexBoot = synchronized {
+  def start(implicit timeout: Timeout): UnicomplexBoot = synchronized {
 
     if (started) throw new IllegalStateException("Unicomplex already started!")
 
@@ -588,7 +589,11 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
     uniActor ! Extensions(preCubesInitExtensions)
 
     // Start all actors
-    val actors = cubes.flatMap(startComponents(_, listenerAliases))
+    val (futures, actorsUnflat) = cubes.map(startComponents(_, listenerAliases)).unzip
+    val actors = actorsUnflat.flatten
+
+    import actorSystem.dispatcher
+    Await.ready(Future.sequence(futures), timeout.duration)
 
     // Start the service infrastructure if services are enabled and registered.
     if (startServices) startServiceInfra(this)
@@ -600,11 +605,10 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
 
     {
       // Tell Unicomplex we're done.
-      implicit val awaitTimeout = timeout
       val stateFuture = Unicomplex(actorSystem).uniActor ? Activate
-      Try(Await.result(stateFuture, awaitTimeout.duration)) recoverWith { case _: TimeoutException =>
+      Try(Await.result(stateFuture, timeout.duration)) recoverWith { case _: TimeoutException =>
         val recoverFuture = Unicomplex(actorSystem).uniActor ? ActivateTimedOut
-        Try(Await.result(recoverFuture, awaitTimeout.duration))
+        Try(Await.result(recoverFuture, timeout.duration))
       } match {
         case Success(Active) => logger.info(s"[$actorSystemName] activated")
         case Success(Failed) => logger.info(s"[$actorSystemName] initialization failed.")

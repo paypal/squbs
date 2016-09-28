@@ -17,27 +17,28 @@
 package org.squbs.unicomplex.streaming
 
 import akka.actor.Actor._
+import akka.actor.Status.{Failure => ActorFailure}
 import akka.actor.SupervisorStrategy.Escalate
 import akka.actor._
-import akka.agent.Agent
 import akka.event.LoggingAdapter
 import akka.http.scaladsl.Http.ServerBinding
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.server.directives.PathDirectives
-import akka.http.scaladsl.server._
-import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.http.scaladsl.model.HttpRequest
-import akka.stream.{BindFailedException, ActorMaterializer}
-import akka.stream.TLSClientAuth.{Want, Need}
-import akka.stream.scaladsl.Sink
+import akka.http.scaladsl.model.Uri.Path
+import akka.http.scaladsl.server._
+import akka.http.scaladsl.server.directives.PathDirectives
+import akka.http.scaladsl.{ConnectionContext, Http}
+import akka.pattern.pipe
+import akka.stream.TLSClientAuth.{Need, Want}
+import akka.stream.scaladsl.Flow
+import akka.stream.{ActorMaterializer, BindFailedException}
 import com.typesafe.config.Config
 import org.squbs.pipeline.streaming.{PipelineExtension, PipelineSetting}
 import org.squbs.unicomplex._
 import org.squbs.unicomplex.streaming.StatsSupport.StatsHolder
 
-import scala.util.{Try, Failure, Success}
-import akka.pattern.pipe
-import akka.actor.Status.{Failure => ActorFailure}
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success, Try}
 
 /**
   * Akka HTTP based [[ServiceRegistryBase]] implementation.
@@ -48,12 +49,12 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   private var serverBindings = Map.empty[String, ServerBindingInfo] // Service actor and HttpListener actor
 
-  var listenerRoutesVar = Map.empty[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]]
+  var listenerRoutesVar = Map.empty[String, Seq[(Path, ActorWrapper, PipelineSetting)]]
 
-  override protected def listenerRoutes: Map[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]] = listenerRoutesVar
+  override protected def listenerRoutes: Map[String, Seq[(Path, ActorWrapper, PipelineSetting)]] = listenerRoutesVar
 
-  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Agent[Seq[(B, ActorWrapper, PipelineSetting)]]]): Unit =
-    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Agent[Seq[(Path, ActorWrapper, PipelineSetting)]]]]
+  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, ActorWrapper, PipelineSetting)]]): Unit =
+    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Seq[(Path, ActorWrapper, PipelineSetting)]]]
 
   override private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
                                                 (implicit context: ActorContext): Receive = {
@@ -68,7 +69,6 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
     implicit val am = ActorMaterializer()
     import context.system
-    import context.dispatcher
 
     val handler = try { Handler(listenerRoutes(name), localPort) } catch { case e: Throwable =>
       serverBindings = serverBindings + (name -> ServerBindingInfo(None, Some(e)))
@@ -78,22 +78,22 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     }
 
     val uniSelf = context.self
-    val serverFlow = sslContext match {
-      case Some(sslCtx) =>
-        val httpsCtx = ConnectionContext.https(sslCtx, clientAuth = Some { if(needClientAuth) Need else Want })
-        Http().bind(interface, port, connectionContext = httpsCtx )
-
-      case None => Http().bind(interface, port)
-    }
+    import context.dispatcher
 
     val statsHolder = new StatsHolder
-    serverFlow.to(Sink.foreach { conn =>
+    val requestFlow = Flow[HttpRequest]
+      .via(statsHolder.watchRequests())
+      .via(handler.flow)
+      .via(statsHolder.watchResponses())
 
-      conn.flow.transform(() => statsHolder.watchRequests())
-        .join(handler.flow.transform(() => statsHolder.watchResponses()))
-        .run()
+    val bindingF = sslContext match {
+      case Some(sslCtx) =>
+        val httpsCtx = ConnectionContext.https(sslCtx, clientAuth = Some { if(needClientAuth) Need else Want })
+        Http().bindAndHandle(requestFlow, interface, port, connectionContext = httpsCtx )
 
-    }).run() pipeTo uniSelf
+      case None => Http().bindAndHandle(requestFlow, interface, port)
+    }
+    bindingF pipeTo uniSelf
 
     {
       case sb: ServerBinding =>
@@ -118,13 +118,12 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     PipelineExtension(context.system).getFlow(ps)
 
     listeners foreach { listener =>
-      val agent = listenerRoutes(listener)
-      agent.send {
-        currentSeq =>
-          merge(currentSeq, webContext, servant, ps, {
-            log.warning(s"Web context $webContext already registered on $listener. Override existing registration.")
-          })
-      }
+      val currentListenerRoutes = listenerRoutes(listener)
+      val mergedListenerRoutes = merge(currentListenerRoutes, webContext, servant, ps, {
+        log.warning(s"Web context $webContext already registered on $listener. Override existing registration.")
+      })
+
+      listenerRoutes = listenerRoutes + (listener -> mergedListenerRoutes)
     }
   }
 
@@ -145,14 +144,13 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   override private[unicomplex] def stopAll()(implicit context: ActorContext): Unit = {
 
-    import context.dispatcher
-    import context.system
+    import context.{dispatcher, system}
     val uniSelf = context.self
 
 //    Http().shutdownAllConnectionPools() andThen { case _ =>
       serverBindings foreach {
         case (name, ServerBindingInfo(Some(sb), None)) =>
-          listenerRoutes(name)() foreach {case (_, aw, _) => aw.actor ! PoisonPill}
+          listenerRoutes(name) foreach {case (_, aw, _) => aw.actor ! PoisonPill}
           listenerRoutes = listenerRoutes - name
           sb.unbind() andThen { case _ => uniSelf ! Unbound(sb) }
           if (listenerRoutes.isEmpty) {

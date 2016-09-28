@@ -316,7 +316,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       } map {configs =>
         configs.map(_.getString("web-context"))
       } match {
-        case Some(webContexts) => serviceRegistry.deregisterContext(webContexts) pipeTo self
+        case Some(webContexts) =>
+          serviceRegistry.deregisterContext(webContexts)
+          self ! Ack
         case None => self ! Ack
       }
       context.become({
@@ -615,6 +617,8 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     }
 
   private var cubeState: LifecycleState = Initializing
+  private var pendingContexts = 0
+  private var pendingNotifiees = Seq.empty[ActorRef]
   private val initMap = mutable.HashMap.empty[ActorRef, Option[InitReport]]
 
   private var maxChildTimeout = stopTimeout
@@ -623,6 +627,8 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   private val stopSet = mutable.Set.empty[ActorRef]
 
   context.become(startupReceive orElse receive, discardOld = false)
+
+  case class ContextRegistrationResult(cubeActor: ActorRef, state: Try[RegisterContext])
 
   def startupReceive: Actor.Receive = {
 
@@ -658,12 +664,27 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       if (initRequired && !(initMap contains cubeActor)) initMap += cubeActor -> None
 
       implicit val timeout = Timeout(1 seconds) // TODO Check with Akara
-      (Unicomplex() ? RegisterContext(listeners, webContext, serviceActor, ps)).mapTo[Try[_]] onSuccess {
-        case Success(a) => log.info(s"Started service actor ${cubeActor.path} for context $webContext")
+      val reg = RegisterContext(listeners, webContext, serviceActor, ps)
+      pendingContexts += 1
+      (Unicomplex() ? reg).mapTo[Try[_]].map {
+        case Success(_) => ContextRegistrationResult(cubeActor, Success(reg))
+        case Failure(t) => ContextRegistrationResult(cubeActor, Failure(t))
+      }   .pipeTo(self)
+
+    case ContextRegistrationResult(cubeActor, tr) =>
+      tr match {
         case Failure(t) =>
           initMap += cubeActor -> Some(Failure(t))
           cubeState = Failed
           Unicomplex() ! InitReports(cubeState, initMap.toMap)
+        case Success(reg) =>
+          log.info(s"Started service actor ${cubeActor.path} for context ${reg.webContext}")
+      }
+      pendingContexts -= 1
+      if (pendingContexts == 0 && pendingNotifiees.nonEmpty) {
+        pendingNotifiees.foreach(_ ! Started)
+        pendingNotifiees = Seq.empty
+        context.unbecome()
       }
 
     case Started => // Signals end of StartCubeActor messages. No more allowed after this.
@@ -671,7 +692,11 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         cubeState = Active
         Unicomplex() ! InitReports(cubeState, initMap.toMap)
       }
-      context.unbecome()
+      if (pendingContexts == 0) {
+        sender() ! Started
+        context.unbecome()
+      }
+      else pendingNotifiees :+= sender()
   }
 
   def receive = {

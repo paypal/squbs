@@ -132,7 +132,7 @@ myProxy {
 
   type = squbs.proxy
 
-  processorFactory = org.squbs.proxy.SimpleProcessorFactory
+  processorFactory = org.squbs.pipeline.SimpleProcessorFactory
 
   settings = {
     inbound = [handler1, handler2]

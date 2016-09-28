@@ -62,6 +62,7 @@ object UnicomplexSpec {
        |  experimental-mode-on = true
        |}
        |default-listener.bind-port = $port
+       |akka.http.server.remote-address-header = on
     """.stripMargin
   )
 
@@ -139,7 +140,10 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val services = boot.cubes flatMap { cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty) }
       assert(services.size == 6)
 
+
       Await.result(entityAsString(s"http://127.0.0.1:$port/dummysvc/msg/hello"), timeout.duration) should be ("^hello$")
+
+      Await.result(entityAsString(s"http://127.0.0.1:$port/dummysvc/who"), timeout.duration) should fullyMatch regex """\d+(\.\d+){3}:\d+"""
 
       Await.result(entityAsString(s"http://127.0.0.1:$port/dummy2svc/v1/msg/hello"), timeout.duration) should be ("^hello$")
       // This implementation reverses the message
