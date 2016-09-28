@@ -17,6 +17,7 @@ package org.squbs.pattern.stream
 
 import java.io.File
 
+import akka.actor.{Props, ActorSystem}
 import akka.stream._
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
@@ -40,42 +41,51 @@ import org.slf4j.LoggerFactory
   *
   */
 class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
-                                 onPushCallback: () => Unit = (() => {}))(implicit serializer: QueueSerializer[T])
+                                 onPushCallback: () => Unit = () => {})(implicit serializer: QueueSerializer[T],
+                                                                        system: ActorSystem)
   extends GraphStage[UniformFanOutShape[T, Event[T]]] {
 
-  def this(config: Config)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](config))
+  def this(config: Config)(implicit serializer: QueueSerializer[T],
+                           system: ActorSystem) = this(new PersistentQueue[T](config))
 
-  def this(persistDir: File)(implicit serializer: QueueSerializer[T]) = this(new PersistentQueue[T](persistDir), () => {})
+  def this(persistDir: File)(implicit serializer: QueueSerializer[T],
+                             system: ActorSystem) = this(new PersistentQueue[T](persistDir), () => {})
 
   def withOnPushCallback(onPushCallback: () => Unit) = new BroadcastBuffer[T](queue, onPushCallback)
 
   def withOnCommitCallback(onCommitCallback: Int => Unit) = new BroadcastBuffer[T](queue.withOnCommitCallback(onCommitCallback), onPushCallback)
 
-  private[stream] val outputPorts = queue.totalOutputPorts
-  private[stream] val in = Inlet[T]("BroadcastBuffer.in")
-  private[stream] val out = Vector.tabulate(outputPorts)(i ⇒ Outlet[Event[T]]("BroadcastBuffer.out" + i))
+  private val outputPorts = queue.totalOutputPorts
+  private val in = Inlet[T]("BroadcastBuffer.in")
+  private val out = Vector.tabulate(outputPorts)(i ⇒ Outlet[Event[T]]("BroadcastBuffer.out" + i))
+  private val outWithIndex = out.zipWithIndex
   val shape: UniformFanOutShape[T, Event[T]] = UniformFanOutShape(in, out: _*)
-  @volatile private var finished = IndexedSeq.fill[Boolean](outputPorts)(false)
   @volatile private var upstreamFailed = false
+  @volatile private var upstreamFinished = false
+  private val queueCloserActor = system.actorOf(Props(classOf[PersistentQueueCloserActor[T]], queue))
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 
-    private var upstreamFinished = false
+    private val finished = Array.fill[Boolean](outputPorts)(false)
+    private val lastPushed = Array.fill[Long](outputPorts)(0)
 
     override def preStart(): Unit = pull(in)
 
     def outHandler(outlet: Outlet[Event[T]], outputPortId: Int) = new OutHandler {
       override def onPull(): Unit = {
-        queue.dequeue(outputPortId, finished(outputPortId)) match {
+        queue.dequeue(outputPortId) match {
           case None => if (upstreamFinished) {
-              finished = finished.updated(outputPortId, true)
-              if(finished.reduce(_ && _)) {
-                completeStage()
-              }
+            finished(outputPortId) = true
+            queueCloserActor ! PushedAndCommitted(outputPortId, lastPushed(outputPortId), queue.read(outputPortId))
+            if (finished.reduce(_ && _)) {
+              queueCloserActor ! UpstreamFinished
+              completeStage()
             }
+          }
           case Some(element) =>
             push(outlet, Event(outputPortId, element.index, element.entry))
-            queue.lastPushedIndex(outputPortId) = element.index
+            lastPushed(outputPortId) = element.index
+            if (queue.autoCommit) queue.commit(outputPortId, element.index)
         }
       }
     }
@@ -85,36 +95,59 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
         val element = grab(in)
         queue.enqueue(element)
         onPushCallback()
-        out.iterator.zipWithIndex foreach { case (port, id) =>
+        outWithIndex foreach { case (port, id) =>
           if (isAvailable(port))
-            queue.dequeue(id, finished(id)) foreach { element =>
-              push(out(id), Event(id, element.index, element.entry))
-              queue.lastPushedIndex(id) = element.index
+            queue.dequeue(id) foreach { element =>
+              push(port, Event(id, element.index, element.entry))
+              lastPushed(id) = element.index
+              if (queue.autoCommit) queue.commit(id, element.index)
             }
         }
         pull(in)
       }
 
-      override def onUpstreamFinish(): Unit = upstreamFinished = true
+      override def onUpstreamFinish(): Unit = {
+        upstreamFinished = true
+        var isAllAvailable = true
+        outWithIndex foreach { case (port, outportId) =>
+          if (isAvailable(port)) {
+            finished(outportId) = true
+            queueCloserActor ! PushedAndCommitted(outportId, lastPushed(outportId), queue.read(outportId))
+          } else {
+            isAllAvailable = false
+          }
+        }
+
+        if (isAllAvailable) {
+          queueCloserActor ! UpstreamFinished
+          completeStage()
+        }
+      }
 
       override def onUpstreamFailure(ex: Throwable): Unit = {
         val logger = Logger(LoggerFactory.getLogger(this.getClass))
         logger.error("Received upstream failure signal: " + ex)
         upstreamFailed = true
-        queue.close()
+        queueCloserActor ! UpstreamFailed
         completeStage()
       }
     })
 
-    out.zipWithIndex foreach { case (currentOut, outputPortId) =>
+    outWithIndex foreach { case (currentOut, outputPortId) =>
       setHandler(currentOut, outHandler(currentOut, outputPortId))
     }
   }
 
-  val commit = Flow[Event[T]].map { element =>
-    queue.commit(element.outputPortId, element.commitOffset, finished(element.outputPortId), upstreamFailed)
-    element
-  }
+  val commit = if (queue.autoCommit) Flow[Event[T]]
+               else {
+                  Flow[Event[T]].map { element =>
+                    if (!upstreamFailed) {
+                      queue.commit(element.outputPortId, element.commitOffset)
+                      if(upstreamFinished) queueCloserActor ! Committed(element.outputPortId, element.commitOffset)
+                    }
+                    element
+                  }
+               }
 
   def clearStorage() = queue.clearStorage()
 }

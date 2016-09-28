@@ -116,6 +116,7 @@ class PersistentQueueSpec extends FlatSpec with Matchers {
     for { i <- 1 to 500000 } {
       val element = ByteString(s"Hello $i")
       val elementOption = queue3.dequeue()
+      queue3.commit(0, elementOption.value.index)
       elementOption.value.entry shouldBe element
     }
     queue3.close()
@@ -132,6 +133,7 @@ class PersistentQueueSpec extends FlatSpec with Matchers {
     for { i <- 500001 to 1000000 } {
       val element = ByteString(s"Hello $i")
       val elementOption = queue5.dequeue()
+      queue5.commit(0, elementOption.value.index)
       elementOption.value.entry shouldBe element
     }
     queue5.close()

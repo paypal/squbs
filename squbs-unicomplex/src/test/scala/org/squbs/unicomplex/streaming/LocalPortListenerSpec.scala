@@ -24,7 +24,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
-import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot}
+import org.squbs.unicomplex.{PortBindings, Unicomplex, UnicomplexBoot}
 
 import scala.concurrent.Await
 
@@ -84,8 +84,6 @@ object LocalPortListenerSpecActorSystem {
   			.scanComponents(classPaths)
   			.initExtensions
   			.start()
-  	
-  	def getPort = (port1, port2, port3)
 }
 
 class LocalPortListenerSpec extends TestKit(LocalPortListenerSpecActorSystem.boot.actorSystem)
@@ -93,7 +91,10 @@ class LocalPortListenerSpec extends TestKit(LocalPortListenerSpecActorSystem.boo
 
   implicit val am = ActorMaterializer()
   
-  val (port1, port2, port3) = LocalPortListenerSpecActorSystem.getPort
+  val (port1, port2, port3) = (port("default-listener"), port("second-listener"), port("third-listener"))
+
+  import akka.pattern.ask
+  def port(listener: String) = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)(listener)
 
   it should "patch local port well on local-port-header = true" in {
     Await.result(entityAsInt(s"http://127.0.0.1:$port1/localport"), awaitMax) should be (port1)
