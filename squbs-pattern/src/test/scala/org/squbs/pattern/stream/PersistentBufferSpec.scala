@@ -57,7 +57,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     import util._
     val buffer = new PersistentBuffer[T](config)
     buffer.queue.serializer shouldBe a [Q]
-    val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+    val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
     val countFuture = in.via(transform).via(buffer.async).via(commit).runWith(flowCounter)
     val count = Await.result(countFuture, awaitMax)
     count shouldBe elementCount
@@ -69,7 +69,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val util = new StreamSpecUtil[T](autoCommit = autoCommit)
     import util._
     val buffer = new PersistentBuffer[T](config)
-    val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+    val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
 
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
       sink =>
@@ -100,7 +100,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
         import GraphDSL.Implicits._
         val bc1 = builder.add(Broadcast[T](2))
         val bc2 = builder.add(Broadcast[Event[T]](2))
-        val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+        val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
         in ~> transform ~> bc1 ~> buffer.async ~> throttle ~> commit ~> bc2 ~> sink
         bc2 ~> total
         bc1 ~> counter(t2 = _)
@@ -141,7 +141,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
       sink =>
         import GraphDSL.Implicits._
         val buffer = new PersistentBuffer[T](config).withOnPushCallback(() => pBufferInCount.incrementAndGet()).withOnCommitCallback(() =>  commitCount.incrementAndGet())
-        val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+        val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
         val bc = builder.add(Broadcast[T](2))
 
         in ~> transform ~> bc ~> buffer.async ~> throttle ~> commit ~> sink
@@ -179,7 +179,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
       sink =>
         import GraphDSL.Implicits._
         val buffer = new PersistentBuffer[T](config).withOnPushCallback(() => inCounter.incrementAndGet()).withOnCommitCallback(() => outCount.incrementAndGet())
-        val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+        val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
         in ~> transform ~> buffer.async ~> throttle ~> injectError ~> commit ~> sink
         ClosedShape
     })
@@ -208,7 +208,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val graph = RunnableGraph.fromGraph(GraphDSL.create(updateCounter()) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+        val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
         in ~> injectError ~> transform ~> buffer.async ~> throttle ~> commit ~> sink
         ClosedShape
     })
@@ -226,7 +226,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
       GraphDSL.create(flowCounter, head)((_,_)) { implicit builder =>
         (sink, first) =>
           import GraphDSL.Implicits._
-          val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+          val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
         val bc = builder.add(Broadcast[Event[T]](2))
           Source(restartFrom to (elementCount + elementsAfterFail)) ~> transform ~> buffer.async ~> commit ~> bc ~> sink
                                                                                                               bc ~> first

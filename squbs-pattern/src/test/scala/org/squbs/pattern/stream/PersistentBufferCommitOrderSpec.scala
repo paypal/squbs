@@ -41,7 +41,7 @@ class PersistentBufferCommitOrderSpec extends FlatSpec with Matchers with Before
     val util = new StreamSpecUtil[Int](autoCommit = false)
     import util._
     val buffer = new PersistentBuffer[Int](ConfigFactory.parseString("commit-order-policy = strict").withFallback(config))
-    val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+    val commit = buffer.commit[Int] // makes a dummy flow if autocommit is set to false
 
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
       sink =>
@@ -58,7 +58,7 @@ class PersistentBufferCommitOrderSpec extends FlatSpec with Matchers with Before
     val util = new StreamSpecUtil[Int](autoCommit = false)
     import util._
     val buffer = new PersistentBuffer[Int](ConfigFactory.parseString("commit-order-policy = lenient").withFallback(config))
-    val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+    val commit = buffer.commit[Int] // makes a dummy flow if autocommit is set to false
 
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
       sink =>

@@ -83,7 +83,7 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
             }
           }
           case Some(element) =>
-            push(outlet, Event(outputPortId, element.index, element.entry))
+            push(outlet, element)
             lastPushed(outputPortId) = element.index
             if (queue.autoCommit) queue.commit(outputPortId, element.index)
         }
@@ -98,7 +98,7 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
         outWithIndex foreach { case (port, id) =>
           if (isAvailable(port))
             queue.dequeue(id) foreach { element =>
-              push(port, Event(id, element.index, element.entry))
+              push(port, element)
               lastPushed(id) = element.index
               if (queue.autoCommit) queue.commit(id, element.index)
             }
@@ -138,17 +138,16 @@ class BroadcastBuffer[T] private(private[stream] val queue: PersistentQueue[T],
     }
   }
 
-  val commit = if (queue.autoCommit) Flow[Event[T]]
+  def commit[S] = if (queue.autoCommit) Flow[Event[S]]
                else {
-                  Flow[Event[T]].map { element =>
+                  Flow[Event[S]].map { element =>
                     if (!upstreamFailed) {
-                      queue.commit(element.outputPortId, element.commitOffset)
-                      if(upstreamFinished) queueCloserActor ! Committed(element.outputPortId, element.commitOffset)
+                      queue.commit(element.outputPortId, element.index)
+                      if(upstreamFinished) queueCloserActor ! Committed(element.outputPortId, element.index)
                     }
                     element
                   }
                }
 
-  def clearStorage() = queue.clearStorage()
 }
 

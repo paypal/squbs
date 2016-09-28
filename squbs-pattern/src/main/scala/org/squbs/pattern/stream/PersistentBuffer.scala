@@ -79,7 +79,7 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
         onPushCallback()
         if (downstreamWaiting) {
           queue.dequeue() foreach { element =>
-            push(out, Event(defaultOutputPort, element.index, element.entry))
+            push(out, element)
             downstreamWaiting = false
             lastPushed = element.index
             if(queue.autoCommit) queue.commit(defaultOutputPort, element.index)
@@ -112,7 +112,7 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
       override def onPull(): Unit = {
         queue.dequeue() match {
           case Some(element) =>
-            push(out, Event(defaultOutputPort, element.index, element.entry))
+            push(out, element)
             lastPushed = element.index
             if(queue.autoCommit) queue.commit(defaultOutputPort, element.index)
           case None =>
@@ -126,16 +126,15 @@ class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
     })
   }
 
-  val commit = if (queue.autoCommit) Flow[Event[T]]
+  def commit[S] = if (queue.autoCommit) Flow[Event[S]]
               else {
-                Flow[Event[T]].map { element =>
+                Flow[Event[S]].map { element =>
                   if (!upstreamFailed) {
-                    queue.commit(element.outputPortId, element.commitOffset)
-                    if(upstreamFinished) queueCloserActor ! Committed(element.outputPortId, element.commitOffset)
+                    queue.commit(element.outputPortId, element.index)
+                    if(upstreamFinished) queueCloserActor ! Committed(element.outputPortId, element.index)
                   }
                   element
                 }
               }
 
-  def clearStorage() = queue.clearStorage()
 }
