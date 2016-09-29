@@ -29,7 +29,6 @@ import org.squbs.testkit.Timeouts._
 
 import scala.concurrent.{Await, Promise}
 import scala.reflect._
-import scala.util.Try
 
 abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manifest]
 (typeName: String, autoCommit: Boolean = true) extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {

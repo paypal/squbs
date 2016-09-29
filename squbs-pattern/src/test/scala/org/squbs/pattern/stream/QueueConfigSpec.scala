@@ -15,7 +15,7 @@
  */
 package org.squbs.pattern.stream
 
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ConfigException, ConfigFactory}
 import net.openhft.chronicle.queue.RollCycles
 import net.openhft.chronicle.wire.WireType
 import org.scalatest.{FlatSpec, Matchers}
@@ -34,6 +34,7 @@ class QueueConfigSpec extends FlatSpec with Matchers {
         | index-spacing = 8k
         | output-ports = 3
         | auto-commit = false
+        | commit-order-policy = strict
       """.stripMargin
     val config = ConfigFactory.parseString(configText)
     val queueConfig = QueueConfig.from(config)
@@ -47,6 +48,7 @@ class QueueConfigSpec extends FlatSpec with Matchers {
     queueConfig.epoch shouldBe 0L
     queueConfig.outputPorts shouldBe 3
     queueConfig.autoCommit shouldBe false
+    queueConfig.commitOrderPolicy shouldBe Strict
   }
 
   it should "properly assume default configurations" in {
@@ -67,5 +69,39 @@ class QueueConfigSpec extends FlatSpec with Matchers {
     queueConfig.epoch shouldBe 0L
     queueConfig.outputPorts shouldBe 1
     queueConfig.autoCommit shouldBe true
+    queueConfig.commitOrderPolicy shouldBe Lenient
+  }
+
+  it should "set commit order policy to lenient" in {
+    val configText =
+      """
+        | persist-dir = /tmp/myQueue
+        | roll-cycle = xlarge_daily
+        | wire-type = compressed_binary
+        | block-size = 80m
+        | index-spacing = 8k
+        | output-ports = 3
+        | auto-commit = false
+        | commit-order-policy = lenient
+      """.stripMargin
+    val config = ConfigFactory.parseString(configText)
+    val queueConfig = QueueConfig.from(config)
+    queueConfig.commitOrderPolicy shouldBe Lenient
+  }
+
+  it should "throw BadValue exception when commit-order-policy is set to an invalid value" in {
+    val configText =
+      """
+        | persist-dir = /tmp/myQueue
+        | roll-cycle = xlarge_daily
+        | wire-type = compressed_binary
+        | block-size = 80m
+        | index-spacing = 8k
+        | output-ports = 3
+        | auto-commit = false
+        | commit-order-policy = invalid
+      """.stripMargin
+    val config = ConfigFactory.parseString(configText)
+    a [ConfigException.BadValue] should be thrownBy QueueConfig.from(config)
   }
 }

@@ -55,11 +55,7 @@ Akka Streams stages batch the requests and buffers the records internally.  `Per
 
 ##Commit Guarantee
 
-In case of any unexpected failure, all intermediate elements emitted out of the buffer until reaching a sink stage in the stream are effectively lost. Sometimes, it might be required to avoid such data loss. Using a commit stage after a sink might possibly help in such case.
-
-By default auto-commit property is set `true` to keep the buffer simple. Using a commit stage with auto-commit set to `false` can help solve the above problem.
-
-This example shows the usage with auto-commit disabled:
+In case of an unexpected failure, elements emitted from the `PersistentBuffer` stage but not yet reached to a `sink` would be lost. Sometimes, it might be required to avoid such data loss. Using a `commit` stage before a `sink` might help in such case.  To use a `commit` stage, set `auto-commit` to `false`.  Please see below example for `commit` stage usage:  
 
 ```scala
 implicit val serializer = QueueSerializer[ByteString]()
@@ -85,6 +81,11 @@ val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit bu
 val countFuture = streamGraph.run()
 ```
 
+Please note, `commit` does not prevent the loss of messages in a `sink`'s (or any other stage's after `commit`) internal buffer.
+
+###Commit Order
+
+The `commit` stage should normally receive the elements in the index order.  However, a potential bug in a stream may cause an element to be dropped or reach to `commit` stage out of order.  The default `commit-order-policy` is set to `lenient` to let the stream continue in such scenarios.  You can set it to `strict` for a `CommitOrderException` to be thrown and let the `Supervision.Decider` determine what action to take.
 
 ##Space Management
 
@@ -128,6 +129,8 @@ wire-type = binary         # Optional, defaults to binary
 block-size = 80m           # Optional, defaults to 64m
 index-spacing = 16k        # Optional, defaults to roll-cycle's spacing 
 index-count = 16           # Optional, defaults to roll-cycle's count
+auto-commit = true         # Optional, defaults to true
+commit-order-policy = lenient # Optional, default to lenient
 ```
 
 Roll-cycle can be specified in lower or upper case. Supported values for `roll-cycle` are as follows:

@@ -20,13 +20,14 @@ import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicInteger
 
 import akka.stream.ThrottleMode
-import akka.stream.scaladsl.{Flow, Keep, Merge, Sink, Source}
+import akka.stream.scaladsl._
 import com.typesafe.config.ConfigFactory
 import net.openhft.chronicle.wire.{WireIn, WireOut}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.collection.JavaConversions._
+import scala.util.Random
 
 object StreamSpecUtil {
   val elementCount = 100000
@@ -59,6 +60,10 @@ class StreamSpecUtil[T](outputPort: Int = 1, autoCommit: Boolean = true) {
   lazy val throttle = Flow[Event[T]].throttle(flowRate, flowUnit, burstSize, ThrottleMode.shaping)
   lazy val head = Sink.head[Event[T]]
   lazy val last = Sink.last[Event[T]]
+  val minRandom = 100
+  lazy val random = Random.nextInt(elementCount - minRandom - 1) + minRandom
+  lazy val filterCounter = new AtomicInteger(0)
+  lazy val filterARandomElement = Flow[Event[T]].map(e => (e, filterCounter.incrementAndGet())).filter(_._2 != random).map(_._1)
 
   def commitCounter(outputPortId: Int) = atomicCounter(outputPortId).incrementAndGet()
 
