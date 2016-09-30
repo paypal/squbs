@@ -69,6 +69,8 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
   private var indexFile: IndexFile = _
   private var indexStore: MappedBytesStore = _
   private var closed = false
+  private val cycle = Array.ofDim[Int](outputPorts)
+  private val lastCommitIndex = Array.ofDim[Long](outputPorts)
 
   val totalOutputPorts = outputPorts
   val autoCommit = config.autoCommit
@@ -86,6 +88,8 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
       logger.info("Setting idx for outputPort {} - {}", outputPortId.toString, startIdx.toString)
       reader(outputPortId).moveToIndex(startIdx)
       dequeue(outputPortId) // dequeue the first read element
+      lastCommitIndex(outputPortId) = startIdx
+      cycle(outputPortId) = queue.rollCycle().toCycle(startIdx)
     }
   }
 
@@ -126,9 +130,33 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
     * @param index to be committed for next read
     */
   def commit(outputPortId: Int, index: Long): Unit = {
+    verifyCommitOrder(outputPortId, index)
     if (!indexMounted) mountIndexFile()
     indexStore.writeLong(outputPortId << 3, index)
     onCommitCallback(outputPortId)
+  }
+
+  private def verifyCommitOrder(outputPortId: Int, index: Long): Unit = {
+    val lastCommit = lastCommitIndex(outputPortId)
+    if(index == lastCommit + 1) lastCommitIndex(outputPortId) = index
+    else {
+      val newCycle = queue.rollCycle().toCycle(index)
+      if(newCycle == cycle(outputPortId) + 1 || lastCommit == 0) {
+        cycle(outputPortId) = newCycle
+        lastCommitIndex(outputPortId) = index
+      } else {
+        config.commitOrderPolicy match {
+          case Lenient =>
+            logger.warn(s"Missing or out of order commits.  previous: ${lastCommitIndex(outputPortId)} latest: $index cycle: ${cycle(outputPortId)}")
+            lastCommitIndex(outputPortId) = index
+          case Strict =>
+            val msg = s"Missing or out of order commits.  previous: ${lastCommitIndex(outputPortId)} latest: $index cycle: ${cycle(outputPortId)}"
+            logger.error(msg)
+            // Not closing the queue here as `Supervision.Decider` might resume the stream.
+            throw new CommitOrderException(msg, lastCommitIndex(outputPortId), index, cycle(outputPortId))
+        }
+      }
+    }
   }
 
   // Reads the given outputPort's queue index
@@ -171,5 +199,6 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
     }
     delete(first())
   }
-
 }
+
+class CommitOrderException(message: String, previousIndex: Long, lastIndex: Long, cycle: Int) extends RuntimeException(message)
