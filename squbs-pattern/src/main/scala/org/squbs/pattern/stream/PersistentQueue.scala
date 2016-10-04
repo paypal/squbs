@@ -22,14 +22,12 @@ import com.typesafe.scalalogging.Logger
 import net.openhft.chronicle.bytes.MappedBytesStore
 import net.openhft.chronicle.core.OS
 import net.openhft.chronicle.queue.ChronicleQueueBuilder
-import net.openhft.chronicle.queue.impl.RollingResourcesCache.Resource
+import net.openhft.chronicle.queue.impl.StoreFileListener
+import net.openhft.chronicle.queue.impl.single.SingleChronicleQueue
 import net.openhft.chronicle.wire.{ReadMarshallable, WireIn, WireOut, WriteMarshallable}
 import org.slf4j.LoggerFactory
 
-import scala.annotation.tailrec
-
-case class Entry[T](index: Long, entry: T)
-case class Event[T](outputPortId: Int, commitOffset: Long, entry: T)
+case class Event[T](outputPortId: Int, index: Long, entry: T)
 /**
   * Persistent queue using Chronicle Queue as implementation.
   *
@@ -56,15 +54,15 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
     .blockSize(blockSize.toInt)
     .indexSpacing(indexSpacing)
     .indexCount(indexCount)
+    .storeFileListener(new ResourceManager)
     .build()
 
-  private val appender = queue.createAppender
-  private val cache = QueueResource.resourceCache(queue)
+  private val appender = queue.acquireAppender
   private val reader = Vector.tabulate(outputPorts)(_ => queue.createTailer)
 
-  private val path = new File(persistDir, "tailer.idx")
+  private val Tailer = "tailer.idx"
+  private val path = new File(persistDir, Tailer)
 
-  private var written = false
   private var indexMounted = false
   private var indexFile: IndexFile = _
   private var indexStore: MappedBytesStore = _
@@ -102,7 +100,6 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
     appender.writeDocument(new WriteMarshallable {
       override def writeMarshallable(wire: WireOut): Unit = serializer.writeElement(element, wire)
     })
-    written = true
   }
 
   /**
@@ -110,14 +107,14 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
     *
     * @return The first element in the queue, or None if the queue is empty.
     */
-  def dequeue(outputPortId: Int = 0): Option[Entry[T]] = {
-    var output: Option[Entry[T]] = None
+  def dequeue(outputPortId: Int = 0): Option[Event[T]] = {
+    var output: Option[Event[T]] = None
     if (reader(outputPortId).readDocument(new ReadMarshallable {
       override def readMarshallable(wire: WireIn): Unit =
         output = {
           val element = serializer.readElement(wire)
           val index = reader(outputPortId).index
-          element map { e => Entry[T](index, e) }
+          element map { e => Event[T](outputPortId, index, e) }
         }
     })) output else None
   }
@@ -165,39 +162,44 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
     indexStore.readLong(outputPortId << 3)
   }
 
-  private def minIndex() = Iterator.tabulate(outputPorts)(outputPortId => read(outputPortId)).min
-
   /**
     * Closes the queue and all its persistent storage.
     */
   def close(): Unit = {
     closed = true
-    if (written) appender.close()
-    reader.foreach { m => m.close() }
     queue.close()
-    Option(indexStore) foreach { store => if (store.refCount > 0) store.close() }
-    Option(indexFile) foreach { file => file.close() }
+    Option(indexStore) foreach { store => if (store.refCount > 0) store.release() }
+    Option(indexFile) foreach { file => file.release() }
   }
 
   private[stream] def isClosed = closed
 
   /**
-    * Removes processed queue files based on
-    * min read index from all outputPorts
+    * Removes queue's data files automatically after all
+    * outputPorts releases processed queue files.
+    * The callback `onReleased` is called once processed.
     */
-  def clearStorage(): Unit = {
-    val reader = queue.createTailer(); reader.moveToIndex(minIndex())
-    val current = cache.resourceFor(reader.cycle)
-    def first() = cache.resourceFor(reader.toStart.cycle)
+  class ResourceManager extends StoreFileListener {
 
-    @tailrec
-    def delete(previous: Resource) : Unit = {
-      if (current.path != previous.path) {
-        previous.path.delete()
-        delete(first())
+    override def onAcquired(cycle: Int, file: File): Unit = {
+      logger.info("File acquired {} - {}", cycle.toString, file.getPath)
+      super.onAcquired(cycle, file)
+    }
+
+    override def onReleased(cycle: Int, file: File): Unit =
+      if (minCycle >= cycle) deleteFiles(cycle, fileNameToLong(file))
+
+    private def minCycle = reader.iterator.map(_.cycle).min
+
+    private def fileNameToLong(file: File): Long = file.getName
+      .stripSuffix(SingleChronicleQueue.SUFFIX).split("-").last.toLong
+
+    private def deleteFiles(cycle: Int, fileNameInLong: Long) = Option(persistDir.listFiles) map {
+      f => f.filterNot(f => f.getName.equals(Tailer) || fileNameToLong(f) >= fileNameInLong).map {
+        file => logger.info("File released {} - {}", cycle.toString, file.getPath)
+          file.delete()
       }
     }
-    delete(first())
   }
 }
 

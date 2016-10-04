@@ -49,7 +49,8 @@ class StreamSpecUtil[T](outputPort: Int = 1, autoCommit: Boolean = true) {
     Map(
       "persist-dir" -> s"${tempPath.getAbsolutePath}",
       "output-ports" -> s"$outputPorts",
-      "auto-commit" -> s"$autoCommit"
+      "auto-commit" -> s"$autoCommit",
+      "roll-cycle" -> "TEST_SECONDLY".toLowerCase()
     )
   }
 
@@ -67,7 +68,7 @@ class StreamSpecUtil[T](outputPort: Int = 1, autoCommit: Boolean = true) {
 
   def commitCounter(outputPortId: Int) = atomicCounter(outputPortId).incrementAndGet()
 
-  def clean() = if (tempPath.isFile) delete(tempPath)
+  def clean() = delete(tempPath)
 
   private def delete(file: File) {
     if (file.isDirectory)

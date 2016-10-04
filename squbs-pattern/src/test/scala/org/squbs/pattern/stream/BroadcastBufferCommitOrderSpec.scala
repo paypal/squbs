@@ -44,7 +44,7 @@ class BroadcastBufferCommitOrderSpec extends FlatSpec with Matchers with BeforeA
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+        val commit = buffer.commit[Int] // makes a dummy flow if autocommit is set to false
       val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
         in ~> bcBuffer ~> filterARandomElement ~> commit ~> mr ~> sink
@@ -63,7 +63,7 @@ class BroadcastBufferCommitOrderSpec extends FlatSpec with Matchers with BeforeA
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+        val commit = buffer.commit[Int] // makes a dummy flow if autocommit is set to false
       val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
         in ~> bcBuffer ~> filterARandomElement ~> commit ~> mr ~> sink

@@ -60,7 +60,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+        val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
         val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
         in ~> transform ~> bcBuffer ~> commit ~> mr ~> sink
@@ -92,7 +92,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter(t1 = _)) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+        val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
         val bc = builder.add(Broadcast[T](2))
         val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
@@ -133,7 +133,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
       (sink1, sink2, sink3) =>
         import GraphDSL.Implicits._
         val buffer = new BroadcastBuffer[T](config).withOnPushCallback(() => bBufferInCount.incrementAndGet()).withOnCommitCallback(i => commitCounter(i))
-        val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+        val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
         val bcBuffer = builder.add(buffer.async)
         val bc = builder.add(Broadcast[T](2))
 
@@ -143,7 +143,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
 
         ClosedShape
     })
-    val (sink1F, sink2F, sink3F) = graph.run()(mat)
+    val (sink1F, sink2F, _) = graph.run()(mat)
 
     Await.result(sink1F.failed, awaitMax) shouldBe an[AbruptTerminationException]
     Await.result(sink2F.failed, awaitMax) shouldBe an[AbruptTerminationException]
@@ -174,7 +174,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
       GraphDSL.create(Sink.ignore, Sink.ignore)((_, _)) { implicit builder => (sink1, sink2) =>
           import GraphDSL.Implicits._
           val buffer = new BroadcastBuffer[T](config).withOnPushCallback(() => inCounter.incrementAndGet()).withOnCommitCallback(i => commitCounter(i))
-          val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+          val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
           val bcBuffer = builder.add(buffer.async)
 
           in ~> transform ~> bcBuffer ~> throttle ~> injectError ~> commit ~> sink1
@@ -205,13 +205,12 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
       else n
     }
 
-    def updateCounter(outputPortId: Int) = Sink.foreach[Any] { x => atomicCounter(outputPortId).incrementAndGet() }
     val buffer = new BroadcastBuffer[T](config).withOnCommitCallback(i => commitCounter(i))
     val graph1 = RunnableGraph.fromGraph(
       GraphDSL.create(Sink.ignore, Sink.ignore)((_,_)) { implicit builder =>
         (sink1, sink2) =>
           import GraphDSL.Implicits._
-          val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+          val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
           val bcBuffer = builder.add(buffer.async)
 
           in ~> injectError ~> transform ~> bcBuffer ~> throttle ~> commit ~> sink1
@@ -239,7 +238,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
         (first1, first2, last1, last2) =>
           import GraphDSL.Implicits._
           val bcBuffer = builder.add(buffer.async)
-          val commit = buffer.commit // makes a dummy flow if autocommit is set to false
+          val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
           val bc1 = builder.add(Broadcast[Event[T]](2))
           val bc2 = builder.add(Broadcast[Event[T]](2))
           Source(restartFrom to (elementCount + elementsAfterFail)) ~> transform ~>

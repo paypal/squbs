@@ -26,7 +26,7 @@ import java.io.RandomAccessFile;
 public class IndexFile extends MappedFile {
 
     protected IndexFile(@NotNull File file, @NotNull RandomAccessFile raf, long chunkSize, long overlapSize, long capacity) {
-        super(file, raf, chunkSize, overlapSize, capacity);
+        super(file, raf, chunkSize, overlapSize, capacity, false);
     }
 
     public static IndexFile of(@NotNull File file, long chunkSize, long overlapSize, long capacity)

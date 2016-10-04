@@ -8,7 +8,7 @@ The following dependencies are required for Persistent Buffer to work:
 
 ```scala
 "org.squbs" %% "squbs-pattern" % squbsVersion,
-"net.openhft" % "chronicle-queue" % "4.4.4"
+"net.openhft" % "chronicle-queue" % "4.5.13"
 ```
 
 ##Examples
@@ -68,7 +68,7 @@ val config = ConfigFactory.parseMap {
     )
   }
 val buffer = new PersistentBuffer[ByteString](config)
-val commit = buffer.commit
+val commit = buffer.commit[ByteString]
 val flowSink = // do some transformation or a sink flow with expected failure
 val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
 val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit builder =>
@@ -97,11 +97,7 @@ $ ls -l
 -rw-r--r--  1 squbs_user     110054053      8192 May 17 20:00 tailer.idx
 ```
 
-Queue files that are created for persisting stream elements can be cleaned by calling `clearStorage`. This function cleans resource once all the elements in a particular queue file is consumed. Schedule a periodic call to this function based on your buffer configuration.
-
-```scala
-	buffer.clearStorage()
-```
+Queue files are deleted automatically once all the readers have successfully processed reading the queue.
 
 ##Configuration
 The queue can be created by passing just a location of the persistent directory keeping all default configuration. This is seen in all the examples above. Alternatively, it can be created by passing a `Config` object at construction. The `Config` object is a standard [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md) configuration. The following example shows constructing a `PersistentBuffer` using a `Config`:
@@ -228,7 +224,7 @@ val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implici
       sink =>
         import GraphDSL.Implicits._
         val buffer = new BroadcastBuffer[ByteString](config)
-        val commit = buffer.commit
+        val commit = buffer.commit[ByteString]
         val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
         in ~> transform ~> bcBuffer ~> commit ~> mr ~> sink
