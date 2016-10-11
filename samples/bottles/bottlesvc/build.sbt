@@ -1,4 +1,4 @@
-val akkaVersion = "2.4.9"
+val akkaVersion = "2.4.11"
 val squbsVersion = "0.8.0"
 
 libraryDependencies ++= Seq(
