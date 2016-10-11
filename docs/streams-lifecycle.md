@@ -89,7 +89,7 @@ The `PerpetualStream` default behavior resumes on errors uncaught by the stream 
   }
 ```
 
-`Restart` will restart the stage that has an error without shutting down the stream. Please see [Supervision Strategies](http://doc.akka.io/docs/akka/2.4.3/scala/stream/stream-error.html#Supervision_Strategies) for possible strategies.
+`Restart` will restart the stage that has an error without shutting down the stream. Please see [Supervision Strategies](http://doc.akka.io/docs/akka/current/scala/stream/stream-error.html#Supervision_Strategies) for possible strategies.
 
 ###Putting It Together
 The following example makes many of the possible overrides discussed above.
