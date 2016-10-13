@@ -1,7 +1,7 @@
 #Unicomplex & Cube Bootstrapping
 
 squbs comes with a default bootstrap class `org.squbs.unicomplex.Bootstrap`. This can be started from IDEs, command line, sbt, or even Maven. Bootstrap scans the class loader and finds META-INF/squbs-meta.&lt;ext&gt; in each loaded jar resource.
-If squbs metadata is available, the jar resource is treated as squbs cube or extension and initialized according to the metadata declarations. The bootstrap then first initializes extensions, cubes, then service routes last regardless of
+If squbs metadata is available, the jar resource is treated as squbs cube or extension and initialized according to the metadata declarations. The bootstrap then first initializes extensions, cubes, then service handlers last regardless of
 their sequence in the classpath.
 
 Given normal circumstances, bootstrapping detail are of not much significance. However, one may need to programmatically bootstrap squbs in different ways. This is especially common in test cases needing custom configuration and needing to run in parallel. Please see [Testing](testing.md) for more information. The syntax for bootstrapping squbs is as follows:
@@ -159,8 +159,10 @@ Service implementations can have two flavors:
 
 1. A spray-can style server request handler actor as documented at [http://spray.io/documentation/1.2.3/spray-can/http-server/](http://spray.io/documentation/1.2.3/spray-can/http-server/). The actor handles all but the `Connected` message and must not take any constructor arguments. The whole request or request part is passed on to this actor unchanged.
 
-2. A spray-routing style route definition. These are classes extending from the `org.squbs.unicomplex.RouteDefinition` trait, must not take any constructor arguments (zero-argument constructor) and have to provide the route member which is a Spray route according to the
-   [spray-routing documentation](http://spray.io/documentation/1.2.3/spray-routing/key-concepts/routes/). In contrast to the actor implementation, the path matching of the route matches the path **AFTER** the registered web context. For instance, a route definition registered under the web context `"my-context"` would match `/segment1/segment2` for the url `http://mysite.com/my-context/segment1/segment2` not including the web context string itself.
+2. A route definition defining your `Route`. These are classes extending from the `org.squbs.unicomplex.RouteDefinition` trait, or `org.squbs.unicomplex.streaming.RouteDefinition` trait if you use Akka Http. They must not take any constructor arguments (zero-argument constructor) and have to provide the route member which is a Spray route according to the
+   [spray-routing documentation](http://spray.io/documentation/1.2.3/spray-routing/key-concepts/routes/) or Akka Http route according to the Akka [High-level Server-Side API](http://doc.akka.io/docs/akka/2.4/scala/http/routing-dsl/index.html). In contrast to the actor implementation, the path matching of the route matches the path **AFTER** the registered web context. For instance, a route definition registered under the web context `"my-context"` would match `/segment1/segment2` for the url `http://mysite.com/my-context/segment1/segment2` not including the web context string itself.
+   
+3. A flow definition providing your `Flow[HttpRequest, HttpResponse, NotUsed]` by extending from the `org.squbs.unicomplex.streaming.FlowDefinition` trait. The flow definition only works with Akka Http, not with Spray. The `HttpRequest` path in the flow is the full path no matter the web context this service is serving.
       
 Service metadata is declared in META-INF/squbs-meta.conf as shown in the following example.
 
@@ -184,13 +186,15 @@ squbs-services = [
 ]
 ```
 
-The class-name parameter identifies either the actor or route class.
+The class-name parameter identifies either the actor, `RouteDefinition`, or `FlowDefinition` class.
 
 The web-context is a string that uniquely identifies the web context of a request to be dispatched to this service. It **MUST NOT** start with a `/` character. It can have `/` characters inside as segment separators in case of multi-segment contexts. And it is allowed to be `""` for root context. If multiple services match the request, the longest context match takes precedence.
 
 Optionally, the listeners parameter declares a list of listeners to bind this service. Listener binding is discussed in the following section, below.
 
-A proxy is a pipelined request pre-processor before the request gets processed by the route. The proxy name can be specified by a `proxy-name` parameter. Unless `""` is specified, a default proxy will be used. Please refer to [Request/Response Pipeline Proxy](pipeline.md) for more information.
+A proxy is a pipelined request pre-processor before the request gets processed by the request handler. The proxy name can be specified by a `proxy-name` parameter. Unless `""` is specified, a default proxy will be used. Please refer to [Request/Response Pipeline Proxy](pipeline.md) for more information.
+
+The proxy is only valid when using Spray. Please see the [pipeline configuration](streamingpipeline.md) for Akka Http experimental mode uses.
 
 Only actors can have another optional `init-required` parameter which allows the actor to feed back its state to the system. Please refer to the [Startup Hooks](lifecycle.md#startup-hooks) section of the [Runtime Lifecycles & API](lifecycle.md) documentation for a full discussion of startup/initialization hooks.
 
@@ -199,16 +203,16 @@ Only actors can have another optional `init-required` parameter which allows the
 
 A listener is declared in `application.conf` or `reference.conf` usually living in the project's `src/main/resources` directory. Listeners declare interfaces, ports, and security attributes, and name aliases, and are explained in [Configuration](configuration.md)
 
-A service route attaches itself to one or more listeners. The `listeners` attribute is a list of listeners or aliases the route should bind to. If listeners are not defined, it will default to the `default-listener`.
+A service handler attaches itself to one or more listeners. The `listeners` attribute is a list of listeners or aliases the handler should bind to. If listeners are not defined, it will default to the `default-listener`.
 
-The wildcard value `"*"` (note, it has to be quoted or will not be properly be interpreted) is a special case which translates to attaching this route to all active listeners. By itself, if will however not activate any listener if it is not already activated by a concrete attachment of a route. If the route should activate the default listener and attach to any other listener activated by other routes, the concrete attachment has to be specified separately as follows:
+The wildcard value `"*"` (note, it has to be quoted or will not be properly be interpreted) is a special case which translates to attaching this handler to all active listeners. By itself, it will however not activate any listener if it is not already activated by a concrete attachment of a handler. If the handler should activate the default listener and attach to any other listener activated by other handlers, the concrete attachment has to be specified separately as follows:
 
 ```
     listeners = [ default-listener, "*" ]
 ```
 
 ### Runtime Access to Web Context
-While the web context is configured in metadata, both the route and the actor will sometimes need to know what web context it is serving. To do so, any service class (route or actor) may want to mix in the `org.squbs.unicomplex.WebContext` trait. Doing so will add the following field to your object
+While the web context is configured in metadata, the route, the actor, and the flow will sometimes need to know what web context it is serving. To do so, any service handler class (route, actor, flow) may want to mix in the `org.squbs.unicomplex.WebContext` trait. Doing so will add the following field to your object
 
 ```
     val webContext: String

@@ -16,24 +16,25 @@
 
 package org.squbs.unicomplex.streaming
 
+import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model.{StatusCodes, HttpResponse, HttpRequest}
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import akka.pattern._
 import akka.stream.FlowShape
 import akka.stream.scaladsl._
 import akka.util.Timeout
-import org.squbs.pipeline.streaming.{PipelineSetting, PipelineExtension, RequestContext}
-import org.squbs.unicomplex.ActorWrapper
-import akka.pattern._
+import org.squbs.pipeline.streaming.{PipelineExtension, PipelineSetting, RequestContext}
+import org.squbs.unicomplex.{ActorWrapper, FlowWrapper, ServiceHandlerWrapper}
 
 import scala.annotation.tailrec
 import scala.language.postfixOps
 
-object Handler {
+object FlowHandler {
 
-  def apply(routes: Seq[(Path, ActorWrapper, PipelineSetting)], localPort: Option[Int])
-           (implicit system: ActorSystem): Handler = {
-    new Handler(routes, localPort)
+  def apply(routes: Seq[(Path, ServiceHandlerWrapper, PipelineSetting)], localPort: Option[Int])
+           (implicit system: ActorSystem): FlowHandler = {
+    new FlowHandler(routes, localPort)
   }
 
   def pathMatch(path: Path, target: Path): Boolean = {
@@ -54,10 +55,10 @@ object Handler {
   }
 }
 
-class Handler(routes: Seq[(Path, ActorWrapper, PipelineSetting)], localPort: Option[Int])
-             (implicit system: ActorSystem) {
+class FlowHandler(routes: Seq[(Path, ServiceHandlerWrapper, PipelineSetting)], localPort: Option[Int])
+                 (implicit system: ActorSystem) {
 
-  import Handler._
+  import FlowHandler._
 
   val akkaHttpConfig = system.settings.config.getConfig("akka.http")
 
@@ -82,13 +83,26 @@ class Handler(routes: Seq[(Path, ActorWrapper, PipelineSetting)], localPort: Opt
 
   val notFoundHttpResponse = HttpResponse(StatusCodes.NotFound, entity = StatusCodes.NotFound.defaultMessage)
 
+  def toRequestContextFlow(myFlow: Flow[HttpRequest, HttpResponse, NotUsed]):
+      Flow[RequestContext, RequestContext, NotUsed] =
+    Flow.fromGraph(GraphDSL.create() { implicit b =>
+      import GraphDSL.Implicits._
+      val unzip = b.add(UnzipWith[RequestContext, RequestContext, HttpRequest] { rc => (rc, rc.request)})
+      val zip = b.add(ZipWith[RequestContext, HttpResponse, RequestContext] {
+        case (rc, resp) => rc.copy(response = Some(resp))
+      })
+      unzip.out0 ~> zip.in0
+      unzip.out1 ~> myFlow ~> zip.in1
+      FlowShape(unzip.in, zip.out)
+    })
+
   lazy val routeFlow =
     Flow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
 
-      val (paths, actorWrappers, pipelineSettings) = routes unzip3
+      val (paths, serviceHandlerWrappers, pipelineSettings) = routes unzip3
 
-      val routesMerge = b.add(Merge[RequestContext](actorWrappers.size + 1))
+      val routesMerge = b.add(Merge[RequestContext](serviceHandlerWrappers.size + 1))
 
       def partitioner(rc: RequestContext) = {
         val index = paths.indexWhere(p => pathMatch(normPath(rc.request.uri.path), p))
@@ -98,14 +112,20 @@ class Handler(routes: Seq[(Path, ActorWrapper, PipelineSetting)], localPort: Opt
 
       val partition = b.add(Partition(paths.size + 1, partitioner))
 
-      actorWrappers.zipWithIndex foreach { case (aw, i) =>
-        val routeFlow = Flow[RequestContext].mapAsync(akkaHttpConfig.getInt("server.pipelining-limit")) {
-          rc => runRoute(aw.actor, rc)
-        }
+      serviceHandlerWrappers.zipWithIndex foreach { case (sw, i) =>
+        val serviceFlow =
+          sw match {
+            case aw: ActorWrapper =>
+              Flow[RequestContext].mapAsync(akkaHttpConfig.getInt("server.pipelining-limit")) {
+                rc => runRoute(aw.actor, rc)
+              }
+            case fw: FlowWrapper =>
+              toRequestContextFlow(fw.flowHandler.flow)
+          }
 
         pipelineExtension.getFlow(pipelineSettings(i)) match {
-          case Some(pipeline) => partition.out(i) ~> pipeline.join(routeFlow) ~> routesMerge
-          case None => partition.out(i) ~> routeFlow ~> routesMerge
+          case Some(pipeline) => partition.out(i) ~> pipeline.join(serviceFlow) ~> routesMerge
+          case None => partition.out(i) ~> serviceFlow ~> routesMerge
         }
       }
 
@@ -114,7 +134,7 @@ class Handler(routes: Seq[(Path, ActorWrapper, PipelineSetting)], localPort: Opt
       })
 
       // Last output port is for 404
-      partition.out(actorWrappers.size) ~> notFound ~> routesMerge
+      partition.out(serviceHandlerWrappers.size) ~> notFound ~> routesMerge
 
       FlowShape(partition.in, routesMerge.out)
   })
