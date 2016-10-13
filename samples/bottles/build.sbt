@@ -2,7 +2,7 @@ name := "bottleSample"
 
 organization in ThisBuild := "org.squbs.bottles"
 
-scalaVersion in ThisBuild := "2.11.7"
+scalaVersion in ThisBuild := "2.11.8"
 
 version in ThisBuild := "0.8.0"
 
