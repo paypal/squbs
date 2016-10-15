@@ -113,10 +113,7 @@ class LocalPortListenerSpec extends TestKit(LocalPortListenerSpecActorSystem.boo
 class LocalPortListenerService extends RouteDefinition {
 
   override def route: Route = get {
-    // TODO https://github.com/akka/akka/issues/20052 seems to be still a problem.  Will tackle in 0.8.1.  We should also
-    // follow the Akka Http convention for header names..
-    // headerValueByType[LocalPortHeader]()(header => complete(header.value))
-    headerValueByName("org.squbs.unicomplex.streaming.LocalPortHeader")(header => complete(header))
+    headerValueByType[LocalPortHeader]()(header => complete(header.value))
   } ~ get {
     complete(0.toString)
   }
