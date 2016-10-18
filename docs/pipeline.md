@@ -166,13 +166,13 @@ Or you might check [sample config with description](../squbs-unicomplex/src/main
 
 For the above configuration:
 
-* `processorFactory` must be `org.squbs.proxy.SimpleProcessorFactory`.
+* `processorFactory` must be `org.squbs.pipeline.SimpleProcessorFactory`.
 * `settings.inbound` is the sequence of request handlers.
 * `settings.outbound` is the sequence of response handlers.
 * `handlerX.type` must be `pipeline.handler`.
 * `handlerX.factory` is the name of a class that implements HandlerFactory
 
-Again, if you want to have custom logic for other phases like preInbound or postOutbound, you can extend [SimpleProcessor](../squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L30) and create your own factory just like [SimpleProcessorFactory](../squbs-unicomplex/src/main/scala/org/squbs/proxy/SimpleProcessor.scala#L46)
+Again, if you want to have custom logic for other phases like preInbound or postOutbound, you can extend [SimpleProcessor](../squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala#L172) and create your own factory just like [SimpleProcessorFactory](../squbs-pipeline/src/main/scala/org/squbs/pipeline/Processor.scala#L197)
 
 ####  Default proxy
 
