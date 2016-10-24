@@ -55,7 +55,7 @@ Akka Streams stages batch the requests and buffers the records internally.  `Per
 
 ##Commit Guarantee
 
-In case of an unexpected failure, elements emitted from the `PersistentBuffer` stage but not yet reached to a `sink` would be lost. Sometimes, it might be required to avoid such data loss. Using a `commit` stage before a `sink` might help in such case.  To use a `commit` stage, set `auto-commit` to `false`.  Please see below example for `commit` stage usage:  
+In case of an unexpected failure, elements emitted from the `PersistentBuffer` stage but not yet reached to a `sink` would be lost. Sometimes, it might be required to avoid such data loss. Using a `commit` stage before a `sink` might help in such case.  To add a `commit` stage, use `PersistentBufferAtLeastOnce` instead.  Please see below example for `commit` stage usage:  
 
 ```scala
 implicit val serializer = QueueSerializer[ByteString]()
@@ -63,11 +63,10 @@ val source = Source(1 to 1000000).map { n => ByteString(s"Hello $n") }
 val tempPath = new File("/tmp/myqueue")
 val config = ConfigFactory.parseMap {
     Map(
-      "persist-dir" -> s"${tempPath.getAbsolutePath}",
-      "auto-commit" -> false
+      "persist-dir" -> s"${tempPath.getAbsolutePath}"
     )
   }
-val buffer = new PersistentBuffer[ByteString](config)
+val buffer = new PersistentBufferAtLeastOnce[ByteString](config)
 val commit = buffer.commit[ByteString]
 val flowSink = // do some transformation or a sink flow with expected failure
 val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
@@ -125,7 +124,6 @@ wire-type = binary         # Optional, defaults to binary
 block-size = 80m           # Optional, defaults to 64m
 index-spacing = 16k        # Optional, defaults to roll-cycle's spacing 
 index-count = 16           # Optional, defaults to roll-cycle's count
-auto-commit = true         # Optional, defaults to true
 commit-order-policy = lenient # Optional, default to lenient
 ```
 
@@ -204,7 +202,6 @@ val configText =
     | wire-type = compressed_binary
     | block-size = 80m
     | output-ports = 3
-    | auto-commit = false
   """.stripMargin
 val config = ConfigFactory.parseString(configText)
 
@@ -223,7 +220,7 @@ val flowCounter = Flow[Any].map(_ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.rig
 val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val buffer = new BroadcastBuffer[ByteString](config)
+        val buffer = new BroadcastBufferAtLeastOnce[ByteString](config)
         val commit = buffer.commit[ByteString]
         val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)

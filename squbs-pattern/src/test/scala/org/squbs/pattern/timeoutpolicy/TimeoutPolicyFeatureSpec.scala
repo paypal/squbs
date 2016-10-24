@@ -16,7 +16,7 @@
 
 package org.squbs.pattern.timeoutpolicy
 
-import java.util.Date
+import java.util.concurrent.TimeUnit
 
 import org.scalatest.{FlatSpecLike, Matchers}
 
@@ -32,15 +32,14 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
     val policy = TimeoutPolicy(name = Some("mypolicy"), initial = 1 second)
 
     for(i<- 1 to 9) {
-      val olderDate = new Date()
+      val start = System.nanoTime
       val tx = policy.transaction
       Await.result(Future {
         val s = 100 * i
         Thread.sleep(s)
       }, tx.waitTime)
       tx.end
-      val newerDate = new Date()
-      val diff = newerDate.getTime() - olderDate.getTime()
+      val diff = TimeUnit.NANOSECONDS.toMillis(System.nanoTime - start)
       println(diff)
       assert(diff < 100*(i+1))
     }
@@ -50,7 +49,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
     val policy = TimeoutPolicy(name = Some("mypolicy"), initial = 1 second)
 
     for(i<- 1 to 3) {
-      val olderDate = new Date()
+      val start = System.nanoTime
       val tx = policy.transaction
       intercept[java.util.concurrent.TimeoutException]{
         println(tx.waitTime)
@@ -61,8 +60,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
         }, tx.waitTime)
       }
       tx.end
-      val newerDate = new Date()
-      val diff = newerDate.getTime() - olderDate.getTime()
+      val diff = TimeUnit.NANOSECONDS.toMillis(System.nanoTime - start)
       println(diff)
       assert(diff < 1100)
     }
@@ -101,7 +99,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
     //timeout should be 142
 
     //test fast pass
-    val olderDate = new Date()
+    val start1 = System.nanoTime
     val tx = timeoutPolicy.transaction
     println(tx.waitTime.toMillis)
     Await.ready(Future{
@@ -109,13 +107,12 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
       Thread.sleep(s)
     }, tx.waitTime)
     tx.end()
-    val newerDate = new Date()
-    val diff = newerDate.getTime() - olderDate.getTime()
+    val diff = TimeUnit.NANOSECONDS.toMillis(System.nanoTime - start1)
     println(diff)
     assert(diff < 150)
 
     //test fast fail
-    val olderDate2 = new Date()
+    val start2 = System.nanoTime
     intercept[java.util.concurrent.TimeoutException] {
       val tx2 = timeoutPolicy.transaction
       println(tx2.waitTime.toMillis)
@@ -125,8 +122,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
       }, tx2.waitTime)
       tx2.end()
     }
-    val newerDate2 = new Date()
-    val diff2 = newerDate2.getTime() - olderDate2.getTime()
+    val diff2 = TimeUnit.NANOSECONDS.toMillis(System.nanoTime - start2)
     println(diff)
     assert(diff < 200)
 
@@ -165,7 +161,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
     //timeout should be 84
     var waitTime:Long = 0
     //test fast pass
-    val olderDate = new Date()
+    val start1 = System.nanoTime
     val tx = timeoutPolicy.transaction
     waitTime = tx.waitTime.toMillis
     println("current wait time:"+tx.waitTime.toMillis)
@@ -174,13 +170,12 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
       Thread.sleep(s)
     }, tx.waitTime)
     tx.end()
-    val newerDate = new Date()
-    val diff = newerDate.getTime() - olderDate.getTime()
+    val diff = TimeUnit.NANOSECONDS.toMillis(System.nanoTime - start1)
     println("diff:"+diff)
     assert(diff < 100)
 
     //test fast fail
-    val olderDate2 = new Date()
+    val start2 = System.nanoTime
 
     intercept[java.util.concurrent.TimeoutException] {
       val tx2 = timeoutPolicy.transaction
@@ -192,12 +187,9 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
       }, tx2.waitTime)
       tx2.end()
     }
-    val newerDate2 = new Date()
-    val diff2 = newerDate2.getTime() - olderDate2.getTime()
+    val diff2 = TimeUnit.NANOSECONDS.toMillis(System.nanoTime - start2)
     println("diff:"+diff2)
     assert(diff2 >= waitTime)
-
   }
-
 }
 
