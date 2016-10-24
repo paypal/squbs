@@ -31,13 +31,13 @@ trait ServiceRegistryBase[A] {
 
   val log: LoggingAdapter
 
-  protected def listenerRoutes: Map[String, Seq[(A, ActorWrapper, PipelineSetting)]]
+  protected def listenerRoutes: Map[String, Seq[(A, ServiceHandlerWrapper, PipelineSetting)]]
 
-  protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, ActorWrapper, PipelineSetting)]]): Unit
+  protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, ServiceHandlerWrapper, PipelineSetting)]]): Unit
 
   private[unicomplex] def prepListeners(listenerNames: Iterable[String])(implicit context: ActorContext) {
     listenerRoutes = listenerNames.map { listener =>
-      listener -> Seq.empty[(A, ActorWrapper, PipelineSetting)]
+      listener -> Seq.empty[(A, ServiceHandlerWrapper, PipelineSetting)]
     }.toMap
 
     import org.squbs.unicomplex.JMX._
@@ -47,7 +47,7 @@ trait ServiceRegistryBase[A] {
 
   protected def listenerStateMXBean(): ListenerStateMXBean
 
-  private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ActorWrapper,
+  private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ServiceHandlerWrapper,
                                           ps: PipelineSetting)(implicit context: ActorContext): Unit
 
   protected def pathCompanion(s: String): A
@@ -59,7 +59,7 @@ trait ServiceRegistryBase[A] {
 
     listenerRoutes = listenerRoutes flatMap {
       case (listener, routes) => webContexts map { ctx =>
-        val buffer = ListBuffer[(A, ActorWrapper, PipelineSetting)]()
+        val buffer = ListBuffer[(A, ServiceHandlerWrapper, PipelineSetting)]()
         val path = pathCompanion(ctx)
         routes.foreach {
           entry => if (!entry._1.equals(path)) buffer += entry
@@ -144,7 +144,7 @@ trait ServiceRegistryBase[A] {
           }
       }
       if (!added) buffer += newMember
-      buffer.toSeq
+      buffer
     }
   }
 }
@@ -168,13 +168,13 @@ trait WebContext {
   protected final val webContext: String = WebContext.localContext.get.get
 }
 
-class ListenerBean[A](listenerRoutes: => Map[String, Seq[(A, ActorWrapper, PipelineSetting)]]) extends ListenerMXBean {
+class ListenerBean[A](listenerRoutes: => Map[String, Seq[(A, ServiceHandlerWrapper, PipelineSetting)]]) extends ListenerMXBean {
 
   override def getListeners: java.util.List[ListenerInfo] = {
     import scala.collection.JavaConversions._
     listenerRoutes.flatMap { case (listenerName, routes) =>
       routes map { case (webContext, servant, _) => // TODO Pass PipelineSetting
-        ListenerInfo(listenerName, webContext.toString(), servant.actor.toString())
+        ListenerInfo(listenerName, webContext.toString, servant.actor.toString)
       }
     }.toSeq
   }
