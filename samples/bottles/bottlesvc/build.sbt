@@ -6,7 +6,7 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-jdk14" % "1.7.5",
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "org.squbs" %% "squbs-unicomplex" % squbsVersion,
-  "org.scalatest" %% "scalatest" % "2.2.1" % "test",
+  "org.scalatest" %% "scalatest" % scalatestV % "test",
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test",
   "org.squbs" %% "squbs-testkit" % squbsVersion % "test"
 )

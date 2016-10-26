@@ -14,7 +14,7 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
   "net.openhft" % "chronicle-queue" % "4.5.13" % "provided",
-  "org.scalatest" %% "scalatest" % "2.2.1" % "test->*",
+  "org.scalatest" %% "scalatest" % scalatestV % "test->*",
   "junit" % "junit" % "4.12" % "test",
   "org.apache.commons"         %  "commons-math3"       % "3.3"   % "test->*",
   "org.scala-lang.modules"     %% "scala-java8-compat"  % "0.7.0" % "test",
