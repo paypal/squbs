@@ -22,16 +22,18 @@ import javax.management.ObjectName
 import javax.management.openmbean.CompositeData
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{HttpEntity, StatusCodes}
+import akka.http.scaladsl.model.HttpEntity.Chunked
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
-import org.scalatest.concurrent.{Eventually, AsyncAssertions}
+import org.scalatest.concurrent.{AsyncAssertions, Eventually}
 import org.squbs.lifecycle.GracefulStop
-import org.squbs.unicomplex._
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
+import org.squbs.unicomplex._
 import org.squbs.unicomplex.dummyextensions.DummyExtension
 import org.squbs.unicomplex.streaming.dummysvcactor.GetWebContext
 
@@ -48,6 +50,7 @@ object UnicomplexSpec {
     "DummyCubeSvc",
     "DummySvc",
     "DummySvcActor",
+    "DummyFlowSvc",
     "StashCube",
     "DummyExtensions"
   ) map (dummyJarsDir + "/" + _)
@@ -155,6 +158,26 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
       Await.result(entityAsString(s"http://127.0.0.1:$port/dummysvcactor/ping"), timeout.duration) should be ("pong")
 
+      Await.result(entityAsString(s"http://127.0.0.1:$port/dummyflowsvc/ping"), timeout.duration) should be ("pong")
+
+      val requestChunks = Source.single("Hi this is a test")
+        .mapConcat { s => s.split(' ').toList }
+        .map (HttpEntity.ChunkStreamPart(_))
+
+      val errResp = Await.result(get(s"http://127.0.0.1:$port/dummyflowsvc/throwit"), timeout.duration)
+      errResp.status shouldBe StatusCodes.InternalServerError
+      val respEntity = Await.result(errResp.entity.toStrict(timeout.duration), timeout.duration)
+      respEntity.data.utf8String shouldBe 'empty
+
+      val response = Await.result(
+          post(s"http://127.0.0.1:$port/dummyflowsvc/chunks", Chunked(ContentTypes.`text/plain(UTF-8)`, requestChunks)),
+          timeout.duration)
+
+      response.entity shouldBe 'chunked
+      val responseStringF = response.entity.dataBytes.map(_.utf8String).toMat(Sink.fold("") { _ + _ })(Keep.right).run()
+      val responseString = Await.result(responseStringF, timeout.duration)
+      responseString should be ("Received 5 chunks and 13 bytes.\r\nThis is the last chunk!")
+
       Await.result(post(s"http://127.0.0.1:$port/withstash/", HttpEntity("request message")),
         timeout.duration).status should be (StatusCodes.Accepted)
 
@@ -190,7 +213,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val attrs = attr.asInstanceOf[Array[_]]
 
       // 6 cubes registered above.
-      attrs should have size 6
+      attrs should have size 7
       all (attrs) shouldBe a [javax.management.openmbean.CompositeData]
     }
 
@@ -220,7 +243,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       all (listeners) shouldBe a [javax.management.openmbean.CompositeData]
 
       // 6 services registered on one listener
-      listeners should have size 6
+      listeners should have size 7
 
     }
 

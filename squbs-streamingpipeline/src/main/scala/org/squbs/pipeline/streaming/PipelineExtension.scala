@@ -37,10 +37,10 @@ class PipelineExtensionImpl(flowMap: Map[String, PipelineFlow],
     val (appFlow, defaultsOn) = pipelineSetting
 
     val pipelineFlowNames = (if(defaultsOn getOrElse true) { defaultPreFlow :: appFlow :: defaultPostFlow :: Nil }
-                             else { appFlow :: Nil }) flatten
+                             else { appFlow :: Nil }).flatten
 
-    if(pipelineFlowNames.isEmpty) { None }
-    else { buildPipeline(pipelineFlowNames) }
+    if(pipelineFlowNames.isEmpty) None
+    else buildPipeline(pipelineFlowNames)
   }
 
   private def buildPipeline(flowNames: Seq[String]) = {

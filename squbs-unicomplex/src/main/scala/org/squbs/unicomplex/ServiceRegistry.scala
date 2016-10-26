@@ -37,7 +37,7 @@ import scala.collection.mutable
 import scala.language.postfixOps
 import scala.util.{Try, Failure, Success}
 
-case class RegisterContext(listeners: Seq[String], webContext: String, actor: ActorWrapper, ps: PipelineSetting)
+case class RegisterContext(listeners: Seq[String], webContext: String, handler: ServiceHandlerWrapper, ps: PipelineSetting)
 
 object RegisterContext {
 
@@ -91,12 +91,12 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   private var serviceListeners = Map.empty[String, ServiceListenerInfo]
 
-  private var listenerRoutesVar = Map.empty[String, Seq[(Path, ActorWrapper, PipelineSetting)]]
+  private var listenerRoutesVar = Map.empty[String, Seq[(Path, ServiceHandlerWrapper, PipelineSetting)]]
 
-  override protected def listenerRoutes: Map[String, Seq[(Path, ActorWrapper, PipelineSetting)]] = listenerRoutesVar
+  override protected def listenerRoutes: Map[String, Seq[(Path, ServiceHandlerWrapper, PipelineSetting)]] = listenerRoutesVar
 
-  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, ActorWrapper, PipelineSetting)]]): Unit =
-    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Seq[(Path, ActorWrapper, PipelineSetting)]]]
+  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, ServiceHandlerWrapper, PipelineSetting)]]): Unit =
+    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Seq[(Path, ServiceHandlerWrapper, PipelineSetting)]]]
 
   override protected def pathCompanion(s: String) = Path(s)
 
@@ -155,7 +155,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
       }
   }
 
-  override private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ActorWrapper,
+  override private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ServiceHandlerWrapper,
                                                    ps: PipelineSetting)(implicit context: ActorContext) {
 
     listeners foreach { listener =>
@@ -282,7 +282,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
   }
 }
 
-private[unicomplex] class ListenerActor(name: String, routes: Seq[(Path, ActorWrapper, PipelineSetting)],
+private[unicomplex] class ListenerActor(name: String, routes: Seq[(Path, ServiceHandlerWrapper, PipelineSetting)],
                                         localPort: Option[Int] = None) extends Actor with ActorLogging {
   import RegisterContext._
 
@@ -297,8 +297,8 @@ private[unicomplex] class ListenerActor(name: String, routes: Seq[(Path, ActorWr
     val routeOption = routes find { case (contextPath, _, _) => pathMatch(normPath, contextPath) }
 
     routeOption flatMap {
-      case (webCtx, ProxiedActor(actor), _) => Some(patchHeaders(request, Some(webCtx.toString())), actor)
-      case (_, SimpleActor(actor), _) => Some(patchHeaders(request), actor)
+      case (webCtx, w: ActorWrapper with Proxied, _) => Some(patchHeaders(request, Some(webCtx.toString())), w.actor)
+      case (_, ActorWrapper(actor), _) => Some(patchHeaders(request), actor)
       case _ => None
     }
   }

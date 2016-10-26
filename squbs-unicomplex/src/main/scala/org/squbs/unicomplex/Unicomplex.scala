@@ -33,12 +33,14 @@ import org.squbs.pipeline.PipelineManager
 import org.squbs.pipeline.streaming.PipelineSetting
 import org.squbs.proxy.CubeProxyActor
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
+import org.squbs.unicomplex.streaming.{FlowDefinition, FlowNotAvailable}
 
 import scala.annotation.varargs
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
 
@@ -148,11 +150,14 @@ private[unicomplex] case object HttpBindFailed
 
 case object PortBindings
 
-sealed trait ActorWrapper {
+sealed trait ServiceHandlerWrapper {
   val actor: ActorRef
 }
-case class SimpleActor(actor: ActorRef) extends ActorWrapper
-case class ProxiedActor(actor: ActorRef) extends ActorWrapper
+
+case class ActorWrapper(actor: ActorRef) extends ServiceHandlerWrapper
+case class FlowWrapper(flowHandler: FlowDefinition, actor: ActorRef) extends ServiceHandlerWrapper
+
+trait Proxied { self => ActorWrapper } // TODO: This trait to be removed in squbs 0.9 as we only need it for Spray.
 
 /**
  * The Unicomplex actor is the supervisor of the Unicomplex.
@@ -393,8 +398,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         serviceRegistry.prepListeners(listeners.keys)
       }
 
-    case RegisterContext(listeners, webContext, actor, ps) =>
-      sender() ! Try { serviceRegistry.registerContext(listeners, webContext, actor, ps) }
+    case RegisterContext(listeners, webContext, serviceHandler, ps) =>
+      sender() ! Try { serviceRegistry.registerContext(listeners, webContext, serviceHandler, ps) }
 
     case StartListener(name, conf) => // Sent from Bootstrap to start the web service infrastructure.
 
@@ -575,6 +580,8 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   val pipelineManager = PipelineManager(context.system)
   val actorErrorStatesAgent = Agent[Map[String, ActorErrorState]](Map())
 
+  implicit val timeout = UnicomplexBoot.defaultStartupTimeout
+
   class CubeStateBean extends CubeStateMXBean {
 
     override def getName: String = cubeName
@@ -638,6 +645,22 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
 
+    case StartCubeService(webContext, listeners, props, name, proxyName, ps, initRequired)
+      if props.actorClass == classOf[streaming.FlowActor] =>
+      val hostActor = context.actorOf(props, name)
+      initMap += hostActor -> None
+      pendingContexts += 1
+      (hostActor ? streaming.FlowRequest).mapTo[Try[FlowDefinition]] onSuccess {
+        case Success(flowDef: FlowDefinition) =>
+          val reg = RegisterContext(listeners, webContext, FlowWrapper(flowDef, hostActor), ps)
+          (Unicomplex() ? reg).mapTo[Try[_]].map {
+            case Success(_) => ContextRegistrationResult(hostActor, Success(reg))
+            case Failure(t) => ContextRegistrationResult(hostActor, Failure(t))
+          }   .pipeTo(self)
+        case Failure(e) =>
+          self ! ContextRegistrationResult(hostActor, Failure(e))
+      }
+
     case StartCubeService(webContext, listeners, props, name, proxyName, ps, initRequired) =>
 
       // Caution: The serviceActor may be the cubeActor in case of no proxy, or the proxy in case there is a proxy.
@@ -648,22 +671,22 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         } match {
           case None =>
             val hostActor = context.actorOf(props, name) // disable proxy
-            (hostActor, SimpleActor(hostActor))
+            (hostActor, ActorWrapper(hostActor))
           case Some(proc) =>
             val hostActor = context.actorOf(props, name + "target")
-            (hostActor, ProxiedActor(context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name)))
+            (hostActor,
+              new ActorWrapper(context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name)) with Proxied)
         }
       } catch {
         case t: Throwable =>
           log.error(t, "Cube {} proxy with name of {} initialized failed.", name, proxyName)
           val hostActor = context.actorOf(props, name) // disable proxy
           initMap += hostActor -> Some(Failure(t))
-          (hostActor, SimpleActor(hostActor))
+          (hostActor, ActorWrapper(hostActor))
       }
 
       if (initRequired && !(initMap contains cubeActor)) initMap += cubeActor -> None
 
-      implicit val timeout = Timeout(1 seconds) // TODO Check with Akara
       val reg = RegisterContext(listeners, webContext, serviceActor, ps)
       pendingContexts += 1
       (Unicomplex() ? reg).mapTo[Try[_]].map {

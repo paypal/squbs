@@ -323,6 +323,10 @@ object UnicomplexBoot extends LazyLogging {
         Try {
           (clazz asSubclass classOf[streaming.RouteDefinition], classOf[streaming.RouteActor])
         }
+      } orElse {
+        Try {
+          (clazz asSubclass classOf[streaming.FlowDefinition], classOf[streaming.FlowActor])
+        }
       } match {
         case Success((routeClass, routeActor)) =>
           val props = Props(routeActor, webContext, routeClass)
