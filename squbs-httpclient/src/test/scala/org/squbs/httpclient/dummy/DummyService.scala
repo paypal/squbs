@@ -23,7 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.json4s.CustomSerializer
 import org.json4s.JsonAST._
-import org.squbs.httpclient.japi.{PageData, EmployeeBean, TeamBean, TeamBeanWithCaseClassMember}
+//import org.squbs.httpclient.japi.{PageData, EmployeeBean, TeamBean, TeamBeanWithCaseClassMember}
 import org.squbs.httpclient.json.JsonProtocol
 import spray.http.HttpHeaders.RawHeader
 import spray.http._
@@ -35,6 +35,7 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 
+/*
 //case class reference case class
 case class Employee(id: Long, firstName: String, lastName: String, age: Int, male: Boolean)
 
@@ -85,13 +86,14 @@ object EmployeeBeanSerializer extends CustomSerializer[EmployeeBean](format => (
 //scala class reference java class
 class Team2(val description: String, val members: List[EmployeeBean])
 
+*/
 object DummyService {
 
   val (dummyServiceIpAddress, dummyServicePort) = temporaryServerHostnameAndPort()
 
   val dummyServiceEndpoint = Uri(s"http://$dummyServiceIpAddress:$dummyServicePort")
 }
-
+/*
 object DummyServiceMain extends App with DummyService {
   implicit val actorSystem = ActorSystem("DummyServiceMain")
   startDummyService(actorSystem, address = "localhost", port = 8888)
@@ -346,3 +348,4 @@ trait DummyService extends SimpleRoutingApp {
     }
   }
 }
+*/

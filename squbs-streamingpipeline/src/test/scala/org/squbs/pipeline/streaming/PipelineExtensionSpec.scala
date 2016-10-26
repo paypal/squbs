@@ -28,6 +28,7 @@ import org.scalatest.{Matchers, FlatSpecLike}
 import Timeouts._
 
 import scala.concurrent.Await
+import scala.util.{Success, Try}
 
 class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec", PipelineExtensionSpec.config))
   with FlatSpecLike with Matchers {
@@ -35,11 +36,11 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
   implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)
   val dummyEndpoint = Flow[RequestContext].map { r =>
-    r.copy(response = Some(HttpResponse(entity = s"${r.request.headers.sortBy(_.name).mkString(",")}")))
+    r.copy(response = Some(Try(HttpResponse(entity = s"${r.request.headers.sortBy(_.name).mkString(",")}"))))
   }
 
   it should "build the flow with defaults" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)), Context("dummy"))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)
@@ -47,7 +48,7 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
     val rc = Await.result(future, awaitMax)
 
     rc.response should not be (None)
-    val httpResponse = rc.response.get
+    val Some(Success(httpResponse)) = rc.response
     httpResponse.headers.sortBy(_.name) should equal(Seq(RawHeader("keyD", "valD"),
                                                          RawHeader("keyPreOutbound", "valPreOutbound"),
                                                          RawHeader("keyPostOutbound", "valPostOutbound")).sortBy(_.name))
@@ -62,7 +63,7 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
   }
 
   it should "build the flow without defaults when defaults are turned off" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(false)))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(false)), Context("dummy"))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)
@@ -70,7 +71,7 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
     val rc = Await.result(future, awaitMax)
 
     rc.response should not be (None)
-    val httpResponse = rc.response.get
+    val Some(Success(httpResponse)) = rc.response
     httpResponse.headers should equal(Seq(RawHeader("keyD", "valD")))
     import system.dispatcher
     val actualEntity = Await.result(httpResponse.entity.dataBytes.runFold(ByteString(""))(_ ++ _) map(_.utf8String), awaitMax)
@@ -82,16 +83,16 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
 
   it should "throw IllegalArgumentException when getFlow is called with a bad flow name" in {
     intercept[IllegalArgumentException] {
-      pipelineExtension.getFlow(Some("badPipelineName"), Some(true))
+      pipelineExtension.getFlow((Some("badPipelineName"), Some(true)), Context("dummy"))
     }
   }
 
   it should "return None when no custom flow exists and defaults are off" in {
-    pipelineExtension.getFlow(None, Some(false)) should be (None)
+    pipelineExtension.getFlow((None, Some(false)), Context("dummy")) should be (None)
   }
 
   it should "build the flow with defaults when defaultsOn param is set to None" in {
-    pipelineExtension.getFlow(None, None) should not be (None)
+    pipelineExtension.getFlow((None, None), Context("dummy")) should not be (None)
   }
 }
 
@@ -147,15 +148,15 @@ class PipelineExtensionSpec3 extends TestKit(ActorSystem("PipelineExtensionSpec3
   implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)
   val dummyEndpoint = Flow[RequestContext].map { r =>
-    r.copy(response = Some(HttpResponse(entity = s"${r.request.headers.sortBy(_.name).mkString(",")}")))
+    r.copy(response = Some(Try(HttpResponse(entity = s"${r.request.headers.sortBy(_.name).mkString(",")}"))))
   }
 
   it should "return None when no custom flow exists and no defaults specified in config" in {
-    pipelineExtension.getFlow(None, Some(true)) should be (None)
+    pipelineExtension.getFlow((None, Some(true)), Context("dummy")) should be (None)
   }
 
   it should "be able to build the flow when no defaults are specified in config" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)), Context("dummy"))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)
@@ -163,7 +164,7 @@ class PipelineExtensionSpec3 extends TestKit(ActorSystem("PipelineExtensionSpec3
     val rc = Await.result(future, awaitMax)
 
     rc.response should not be (None)
-    val httpResponse = rc.response.get
+    val Some(Success(httpResponse)) = rc.response
     httpResponse.headers should equal(Seq(RawHeader("keyD", "valD")))
     import system.dispatcher
     val entity = Await.result(httpResponse.entity.dataBytes.runFold(ByteString(""))(_ ++ _) map(_.utf8String), awaitMax)
@@ -173,7 +174,7 @@ class PipelineExtensionSpec3 extends TestKit(ActorSystem("PipelineExtensionSpec3
 
 class DummyFlow1 extends PipelineFlowFactory {
 
-  override def create(implicit system: ActorSystem): PipelineFlow = {
+  override def create(context: Context)(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
@@ -199,7 +200,7 @@ class DummyFlow1 extends PipelineFlowFactory {
 
 class PreFlow extends PipelineFlowFactory {
 
-  override def create(implicit system: ActorSystem): PipelineFlow = {
+  override def create(context: Context)(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       val inbound = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyPreInbound", "valPreInbound")) })
@@ -211,7 +212,7 @@ class PreFlow extends PipelineFlowFactory {
 
 class PostFlow extends PipelineFlowFactory {
 
-  override def create(implicit system: ActorSystem): PipelineFlow = {
+  override def create(context: Context)(implicit system: ActorSystem): PipelineFlow = {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       val inbound = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyPostInbound", "valPostInbound")) })

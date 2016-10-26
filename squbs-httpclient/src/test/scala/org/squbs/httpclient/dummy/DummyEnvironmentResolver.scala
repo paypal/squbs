@@ -16,21 +16,19 @@
 
 package org.squbs.httpclient.dummy
 
-import org.squbs.httpclient.env._
+import org.squbs.env._
 
 object DummyProdEnvironmentResolver extends EnvironmentResolver {
-
-  override def resolve(svcName: String): Environment = PROD
-
+  override def resolve: Environment = PROD
   override def name: String = "DummyProdEnvironmentResolver"
 }
 
-object DummyPriorityEnvironmentResolver extends EnvironmentResolver {
+object DummyQAEnvironmentResolver extends EnvironmentResolver {
+  override def resolve: Environment = QA
+  override def name: String = "DummyQAEnvironmentResolver"
+}
 
-  override def resolve(svcName: String): Environment = svcName match {
-    case "abc" => QA
-    case _ => Default
-  }
-
-  override def name: String = "DummyPriorityEnvironmentResolver"
+object DummyNotResolveEnvironmentResolver extends EnvironmentResolver {
+  override def resolve: Environment = Default
+  override def name: String = "DummyNotResolveEnvironmentResolver"
 }

@@ -15,7 +15,7 @@
  */
 package org.squbs.httpclient.japi;
 
-import org.squbs.httpclient.dummy.Employee;
+//import org.squbs.httpclient.dummy.Employee;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,7 @@ import java.util.List;
  * Created by lma on 6/15/2015.
  */
 public class TeamBeanWithCaseClassMember {
-
+      /*
     private String description;
     private List<Employee> members;
 
@@ -82,4 +82,5 @@ public class TeamBeanWithCaseClassMember {
             return otherTeam.description.equals(description) && otherTeam.members.equals(members);
         }
     }
+    */
 }

@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.httpclient.env
+package org.squbs.env
 
 import akka.actor._
 import com.typesafe.scalalogging.LazyLogging
@@ -65,7 +65,7 @@ case class RawEnv(name: String) extends Environment
 trait EnvironmentResolver {
   def name: String
 
-  def resolve(svcName: String): Environment
+  def resolve: Environment
 }
 
 class EnvironmentRegistryExtension(system: ExtendedActorSystem) extends Extension with LazyLogging {
@@ -89,15 +89,15 @@ class EnvironmentRegistryExtension(system: ExtendedActorSystem) extends Extensio
     }
   }
 
-  def resolve(svcName: String): Environment = {
+  def resolve: Environment = {
     val resolvedEnv = environmentResolvers.foldLeft[Environment](Default){
       (env: Environment, resolver: EnvironmentResolver) =>
         env match {
-          case Default => resolver.resolve(svcName)
+          case Default => resolver.resolve
           case _       => env
         }
     }
-    logger.debug(s"Environment can be resolved by ($svcName), the environment is: " + resolvedEnv.lowercaseName)
+    logger.debug(s"The environment is: " + resolvedEnv.lowercaseName)
     resolvedEnv
   }
 }

@@ -19,10 +19,11 @@ package org.squbs.pipeline.streaming
 import akka.http.scaladsl.model.{HttpHeader, HttpResponse, HttpRequest}
 
 import scala.collection.JavaConversions._
+import scala.util.{Success, Try}
 
 case class RequestContext(request: HttpRequest,
                           httpPipeliningOrder: Int, // TODO Come up with a better val name
-                          response: Option[HttpResponse] = None,
+                          response: Option[Try[HttpResponse]] = None,
                           attributes: Map[String, Any] = Map.empty) {
 
   def ++(attributes: (String, Any)*): RequestContext = {
@@ -65,9 +66,10 @@ case class RequestContext(request: HttpRequest,
 
   def addResponseHeaders(headers: HttpHeader*): RequestContext = {
     response.fold(this) {
-      resp => copy(response = Option(resp.copy(headers = resp.headers ++ headers)))
+      case Success(resp) => copy(response = Option(Try(resp.copy(headers = resp.headers ++ headers))))
+      case _ => this
     }
   }
 
-  def abortWith(httpResponse: HttpResponse): RequestContext = copy(response = Option(httpResponse))
+  def abortWith(httpResponse: HttpResponse): RequestContext = copy(response = Option(Try(httpResponse)))
 }

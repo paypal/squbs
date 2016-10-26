@@ -22,12 +22,13 @@ import akka.http.scaladsl.model.{StatusCodes, HttpResponse, HttpRequest}
 import akka.stream.FlowShape
 import akka.stream.scaladsl._
 import akka.util.Timeout
-import org.squbs.pipeline.streaming.{PipelineSetting, PipelineExtension, RequestContext}
+import org.squbs.pipeline.streaming.{Context, PipelineSetting, PipelineExtension, RequestContext}
 import org.squbs.unicomplex.ActorWrapper
 import akka.pattern._
 
 import scala.annotation.tailrec
 import scala.language.postfixOps
+import scala.util.{Success, Try}
 
 object Handler {
 
@@ -77,10 +78,12 @@ class Handler(routes: Seq[(Path, ActorWrapper, PipelineSetting)], localPort: Opt
   implicit val askTimeOut: Timeout = 5 seconds
   private def asyncHandler(routeActor: ActorRef) = (req: HttpRequest) => (routeActor ? req).mapTo[HttpResponse]
   def runRoute(routeActor: ActorRef, rc: RequestContext) = asyncHandler(routeActor)(rc.request) map {
-    httpResponse => rc.copy(response = Option(httpResponse))
+    httpResponse => rc.copy(response = Option(Try(httpResponse)))
   }
 
-  val notFoundHttpResponse = HttpResponse(StatusCodes.NotFound, entity = StatusCodes.NotFound.defaultMessage)
+  val NotFound = HttpResponse(StatusCodes.NotFound, entity = StatusCodes.NotFound.defaultMessage)
+  val InternalServerError = HttpResponse(StatusCodes.InternalServerError,
+                                         entity = StatusCodes.InternalServerError.defaultMessage)
 
   lazy val routeFlow =
     Flow.fromGraph(GraphDSL.create() { implicit b =>
@@ -103,14 +106,14 @@ class Handler(routes: Seq[(Path, ActorWrapper, PipelineSetting)], localPort: Opt
           rc => runRoute(aw.actor, rc)
         }
 
-        pipelineExtension.getFlow(pipelineSettings(i)) match {
+        pipelineExtension.getFlow(pipelineSettings(i), Context(name = paths(i).toString())) match {
           case Some(pipeline) => partition.out(i) ~> pipeline.join(routeFlow) ~> routesMerge
           case None => partition.out(i) ~> routeFlow ~> routesMerge
         }
       }
 
       val notFound = b.add(Flow[RequestContext].map {
-        rc => rc.copy(response = Option(notFoundHttpResponse))
+        rc => rc.copy(response = Option(Try(NotFound)))
       })
 
       // Last output port is for 404
@@ -132,7 +135,12 @@ class Handler(routes: Seq[(Path, ActorWrapper, PipelineSetting)], localPort: Opt
                                                (rc: RequestContext) => rc.httpPipeliningOrder)
                                                (RequestContextOrdering))
 
-      val responseFlow = b.add(Flow[RequestContext].map { _.response getOrElse notFoundHttpResponse }) // TODO This actually might be a 500..
+      val responseFlow = b.add(Flow[RequestContext].map { rc =>
+        rc.response map {
+          case Success(response) => response
+          case _ => InternalServerError
+        } getOrElse NotFound
+      })
 
       val zipF = localPort map {
         port => (hr: HttpRequest, po: Int) => RequestContext(hr, po).addRequestHeaders(LocalPortHeader(port))

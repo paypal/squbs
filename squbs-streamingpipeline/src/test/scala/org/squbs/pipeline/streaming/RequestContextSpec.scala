@@ -24,6 +24,8 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.testkit.TestKit
 import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
 
+import scala.util.Try
+
 class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) with FlatSpecLike with Matchers with BeforeAndAfterAll {
 
   override def afterAll(): Unit = {
@@ -65,13 +67,13 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
     rc3.response should be(None)
     rc3.request.headers should contain(RawHeader("key1", "val1"))
 
-    val rc4 = rc3.copy(response = Some(HttpResponse()))
-    rc4.response.get.headers should have size 0
+    val rc4 = rc3.copy(response = Some(Try(HttpResponse())))
+    rc4.response.get.get.headers should have size 0
     val rc5 = rc4.addResponseHeader(RawHeader("key4", "val4"))
     val rc6 = rc5.addResponseHeaders(RawHeader("key5", "val5"), RawHeader("key6", "val6"))
     val rc7 = rc6.addResponseHeader(RawHeader("key7", "val7"))
     rc7.request.headers should have size 3
-    rc7.response.get.headers should have size 4
-    rc7.response.get.headers should contain(RawHeader("key4", "val4"))
+    rc7.response.get.get.headers should have size 4
+    rc7.response.get.get.headers should contain(RawHeader("key4", "val4"))
   }
 }

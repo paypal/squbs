@@ -23,16 +23,20 @@ import com.typesafe.config.ConfigObject
 
 import scala.annotation.tailrec
 
+case class Context(name: String)
+
 trait PipelineFlowFactory {
 
-  def create(implicit system: ActorSystem): BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]
+  def create(context: Context)(implicit system: ActorSystem):
+  BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]
 }
 
-class PipelineExtensionImpl(flowMap: Map[String, PipelineFlow],
+class PipelineExtensionImpl(flowFactoryMap: Map[String, PipelineFlowFactory],
                             defaultPreFlow: Option[String],
-                            defaultPostFlow: Option[String]) extends Extension {
+                            defaultPostFlow: Option[String])(implicit system: ActorSystem) extends Extension {
 
-  def getFlow(pipelineSetting: PipelineSetting): Option[PipelineFlow] = {
+  // TODO remove the default value for context..
+  def getFlow(pipelineSetting: PipelineSetting, context: Context): Option[PipelineFlow] = {
 
     val (appFlow, defaultsOn) = pipelineSetting
 
@@ -40,13 +44,15 @@ class PipelineExtensionImpl(flowMap: Map[String, PipelineFlow],
                              else { appFlow :: Nil }) flatten
 
     if(pipelineFlowNames.isEmpty) { None }
-    else { buildPipeline(pipelineFlowNames) }
+    else { buildPipeline(pipelineFlowNames, context) }
   }
 
-  private def buildPipeline(flowNames: Seq[String]) = {
+  private def buildPipeline(flowNames: Seq[String], context: Context) = {
 
     val flows = flowNames.toList collect { case name =>
-      flowMap.getOrElse(name, throw new IllegalArgumentException(s"Invalid pipeline name $name")) }
+      val flowFactory = flowFactoryMap.getOrElse(name, throw new IllegalArgumentException(s"Invalid pipeline name $name"))
+      flowFactory.create(context)
+    }
 
     @tailrec
     def connectFlows(currentFlow: PipelineFlow, flowList: List[PipelineFlow]): PipelineFlow = {
@@ -71,18 +77,18 @@ object PipelineExtension extends ExtensionId[PipelineExtensionImpl] with Extensi
       case (n, v: ConfigObject) if v.toConfig.getOptionalString("type").contains("squbs.pipelineflow") => (n, v.toConfig)
     }
 
-    var flowMap = Map.empty[String, PipelineFlow]
+    var flowMap = Map.empty[String, PipelineFlowFactory]
     flows foreach { case (name, config) =>
       val factoryClassName = config.getString("factory")
 
       val flowFactory = Class.forName(factoryClassName).newInstance().asInstanceOf[PipelineFlowFactory]
 
-      flowMap = flowMap + (name -> flowFactory.create(system))
+      flowMap = flowMap + (name -> flowFactory)
     }
 
     val pre = system.settings.config.getOptionalString("squbs.pipeline.streaming.defaults.pre-flow")
     val post = system.settings.config.getOptionalString("squbs.pipeline.streaming.defaults.post-flow")
-    new PipelineExtensionImpl(flowMap, pre, post)
+    new PipelineExtensionImpl(flowMap, pre, post)(system)
   }
 
   override def lookup(): ExtensionId[_ <: Extension] = PipelineExtension
