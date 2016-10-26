@@ -6,7 +6,7 @@ name := "squbs-testkit"
 resolvers += Resolver.sbtPluginRepo("releases")
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "2.2.1",
+  "org.scalatest" %% "scalatest" % scalatestV,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV,
   "com.typesafe.akka" %% "akka-http-testkit" % akkaV % "provided",
