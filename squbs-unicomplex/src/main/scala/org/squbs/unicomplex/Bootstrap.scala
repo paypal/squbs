@@ -51,19 +51,23 @@ object Shutdown extends App {
       val preConfig = UnicomplexBoot.getFullConfig(None)
       preConfig.getString("squbs.actorsystem-name")
     }
-    val actorSystem = UnicomplexBoot.actorSystems(name)
-    val delay = delayParameter orElse
-      actorSystem.settings.config.getOption[FiniteDuration]("squbs.shutdown-delay") getOrElse Duration.Zero
-    implicit val squbsStopTimeout = Timeout(actorSystem.settings.config.get[FiniteDuration]("squbs.default-stop-timeout", 3 seconds))
-    val systemState = (Unicomplex(actorSystem).uniActor ? SystemState).mapTo[LifecycleState]
+    UnicomplexBoot.actorSystems.get(name) foreach { actorSystem =>
+      val delay = delayParameter orElse
+        actorSystem.settings.config.getOption[FiniteDuration]("squbs.shutdown-delay") getOrElse Duration.Zero
+      implicit val squbsStopTimeout =
+        Timeout(actorSystem.settings.config.get[FiniteDuration]("squbs.default-stop-timeout", 3 seconds))
+      val systemState = (Unicomplex(actorSystem).uniActor ? SystemState).mapTo[LifecycleState]
 
-    import actorSystem.dispatcher
+      import actorSystem.dispatcher
 
-    systemState.onComplete {
-      case Success(Stopping | Stopped) | Failure(_)=> // Termination already started/happened.  Do nothing!
-      case _ => actorSystem.scheduler.scheduleOnce(delay, Unicomplex(name), GracefulStop)
+      systemState.onComplete {
+        case Success(Stopping | Stopped) | Failure(_) => // Termination already started/happened.  Do nothing!
+        case _ => actorSystem.scheduler.scheduleOnce(delay, Unicomplex(name), GracefulStop)
+      }
+
+      Try {
+        Await.ready(actorSystem.whenTerminated, delay + squbsStopTimeout.duration + (1 second))
+      }
     }
-
-    Try { Await.ready(actorSystem.whenTerminated, delay + squbsStopTimeout.duration + (1 second)) }
   }
 }
