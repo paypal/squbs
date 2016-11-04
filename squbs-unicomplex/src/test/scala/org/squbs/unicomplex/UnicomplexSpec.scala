@@ -1,43 +1,43 @@
 /*
- *  Copyright 2015 PayPal
+ * Copyright 2015 PayPal
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.squbs.unicomplex
 
 import java.lang.management.ManagementFactory
-import java.util.concurrent.TimeUnit
 import javax.management.ObjectName
 import javax.management.openmbean.CompositeData
 
 import akka.actor.ActorSystem
-import akka.io.IO
+import akka.http.scaladsl.model.HttpEntity.Chunked
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.pattern.ask
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
-import org.scalatest.concurrent.AsyncAssertions
+import org.scalatest.concurrent.{AsyncAssertions, Eventually}
 import org.squbs.lifecycle.GracefulStop
+import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import org.squbs.unicomplex.dummyextensions.DummyExtension
 import org.squbs.unicomplex.dummysvcactor.GetWebContext
-import spray.can.Http
-import spray.http._
-import spray.util.Utils
 
+import scala.concurrent.Await
 import scala.language.postfixOps
-import scala.util.Try
 
 object UnicomplexSpec {
 
@@ -48,19 +48,19 @@ object UnicomplexSpec {
     "DummyCubeSvc",
     "DummySvc",
     "DummySvcActor",
+    "DummyFlowSvc",
     "StashCube",
     "DummyExtensions"
   ) map (dummyJarsDir + "/" + _)
 
-  val (_, port) = Utils.temporaryServerHostnameAndPort()
-
   val config = ConfigFactory.parseString(
     s"""
        |squbs {
-       |  actorsystem-name = unicomplexSpec
+       |  actorsystem-name = UnicomplexSpec
        |  ${JMX.prefixConfig} = true
        |}
-       |default-listener.bind-port = $port
+       |default-listener.bind-port = 0
+       |akka.http.server.remote-address-header = on
     """.stripMargin
   )
 
@@ -73,17 +73,15 @@ object UnicomplexSpec {
 
 class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with ImplicitSender
                              with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll
-                             with AsyncAssertions {
+                             with AsyncAssertions with Eventually {
 
-  import org.squbs.unicomplex.UnicomplexSpec._
+  import UnicomplexSpec._
   import system.dispatcher
 
-  implicit val timeout: akka.util.Timeout =
-  Try(System.getProperty("test.timeout").toLong) map { millis =>
-      akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
-    } getOrElse Timeouts.askTimeout
+  implicit val am = ActorMaterializer()
 
-  val port = system.settings.config getInt "default-listener.bind-port"
+  val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
+  val port = portBindings("default-listener")
 
 
   override def afterAll() {
@@ -134,74 +132,55 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
 
     "start all services" in {
       val services = boot.cubes flatMap { cube => cube.components.getOrElse(StartupType.SERVICES, Seq.empty) }
-      assert(services.size == 6)
-      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvc/msg/hello"))
-      within(timeout.duration) {
-        val response = expectMsgType[HttpResponse]
-        response.status should be(StatusCodes.OK)
-        response.entity.asString should be("^hello$")
-      }
+      assert(services.size == 7)
 
-      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummy2svc/v1/msg/hello"))
-      within(timeout.duration) {
-        val response = expectMsgType[HttpResponse]
-        response.status should be(StatusCodes.OK)
-        response.entity.asString should be("^hello$")
-      }
 
-      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummy2svc/msg/hello"))
-      within(timeout.duration) {
-        val response = expectMsgType[HttpResponse]
-        response.status should be(StatusCodes.OK)
-        response.entity.asString should be("^olleh$") // This implementation reverses the message
-      }
+      Await.result(entityAsString(s"http://127.0.0.1:$port/dummysvc/msg/hello"), awaitMax) should be ("^hello$")
 
-      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/ping"))
-      within(timeout.duration) {
-        val response = expectMsgType[HttpResponse]
-        response.status should be(StatusCodes.OK)
-        response.entity.asString should be("Pong")
-      }
+      Await.result(entityAsString(s"http://127.0.0.1:$port/dummysvc/who"), awaitMax) should fullyMatch regex """\d+(\.\d+){3}:\d+"""
 
-      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/pingpongsvc/pong"))
-      within(timeout.duration) {
-        val response = expectMsgType[HttpResponse]
-        response.status should be(StatusCodes.OK)
-        response.entity.asString should be("Ping")
-      }
+      Await.result(entityAsString(s"http://127.0.0.1:$port/dummy2svc/v1/msg/hello"), awaitMax) should be ("^hello$")
+      // This implementation reverses the message
+      Await.result(entityAsString(s"http://127.0.0.1:$port/dummy2svc/msg/hello"), awaitMax) should be ("^olleh$")
 
-      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/dummysvcactor/ping"))
-      within(timeout.duration) {
-        val response = expectMsgType[HttpResponse]
-        response.status should be(StatusCodes.OK)
-        response.entity.asString should be("pong")
-      }
+      Await.result(entityAsString(s"http://127.0.0.1:$port/pingpongsvc/ping"), awaitMax) should be ("Pong")
 
-      IO(Http) ! HttpRequest(HttpMethods.POST, Uri(s"http://127.0.0.1:$port/withstash/"), entity = HttpEntity("request message"))
-      within(timeout.duration) {
-        val resp0 = expectMsgType[HttpResponse]
-        resp0.status shouldBe StatusCodes.Accepted
-      }
+      Await.result(entityAsString(s"http://127.0.0.1:$port/pingpongsvc/pong"), awaitMax) should be ("Ping")
 
-      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/withstash/"))
-			within(timeout.duration) {
-        val resp1 = expectMsgType[HttpResponse]
-        resp1.status shouldBe StatusCodes.OK
-        resp1.entity.asString shouldBe Seq.empty[String].toString
-      }
+      Await.result(entityAsString(s"http://127.0.0.1:$port/dummysvcactor/ping"), awaitMax) should be ("pong")
 
-      IO(Http) ! HttpRequest(HttpMethods.PUT, Uri(s"http://127.0.0.1:$port/withstash/"))
-      within(timeout.duration) {
-        val resp0 = expectMsgType[HttpResponse]
-        resp0.status shouldBe StatusCodes.Created
-      }
+      Await.result(entityAsString(s"http://127.0.0.1:$port/dummyflowsvc/ping"), awaitMax) should be ("pong")
 
-      IO(Http) ! HttpRequest(HttpMethods.GET, Uri(s"http://127.0.0.1:$port/withstash/"))
-			within(timeout.duration) {
-				val resp2 = expectMsgType[HttpResponse]
-				resp2.status shouldBe StatusCodes.OK
-				resp2.entity.asString shouldBe Seq("request message").toString // This line fails inconsistently.
-			}
+      val requestChunks = Source.single("Hi this is a test")
+        .mapConcat { s => s.split(' ').toList }
+        .map (HttpEntity.ChunkStreamPart(_))
+
+      val errResp = Await.result(get(s"http://127.0.0.1:$port/dummyflowsvc/throwit"), awaitMax)
+      errResp.status shouldBe StatusCodes.InternalServerError
+      val respEntity = Await.result(errResp.entity.toStrict(awaitMax), awaitMax)
+      respEntity.data.utf8String shouldBe 'empty
+
+      val response = Await.result(
+          post(s"http://127.0.0.1:$port/dummyflowsvc/chunks", Chunked(ContentTypes.`text/plain(UTF-8)`, requestChunks)),
+          awaitMax)
+
+      response.entity shouldBe 'chunked
+      val responseStringF = response.entity.dataBytes.map(_.utf8String).toMat(Sink.fold("") { _ + _ })(Keep.right).run()
+      val responseString = Await.result(responseStringF, awaitMax)
+      responseString should be ("Received 5 chunks and 13 bytes.\r\nThis is the last chunk!")
+
+      Await.result(post(s"http://127.0.0.1:$port/withstash/", HttpEntity("request message")),
+        awaitMax).status should be (StatusCodes.Accepted)
+
+      Await.result(entityAsString(s"http://127.0.0.1:$port/withstash/"), awaitMax) should be (Seq.empty[String].toString)
+
+      Await.result(put(s"http://127.0.0.1:$port/withstash/"), awaitMax).status should be (StatusCodes.Created)
+
+      // Whether messages from unstashall or the message from this request will be the first message to StashCubeSvc
+      // is not deterministic.  So, running it in eventually.
+      eventually {
+        Await.result(entityAsString(s"http://127.0.0.1:$port/withstash/"), awaitMax) should be (Seq("request message").toString)
+      }
     }
 
     "service actor with WebContext must have a WebContext" in {
@@ -225,7 +204,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val attrs = attr.asInstanceOf[Array[_]]
 
       // 6 cubes registered above.
-      attrs should have size 6
+      attrs should have size 7
       all (attrs) shouldBe a [javax.management.openmbean.CompositeData]
     }
 
@@ -241,9 +220,8 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       cubeState should be ("Active")
 
       val WellKnownActors = mBeanServer.getAttribute(cubesObjName, "WellKnownActors").asInstanceOf[String]
-      println(WellKnownActors)
-      WellKnownActors should include ("Actor[akka://unicomplexSpec/user/DummyCube/Prepender#")
-      WellKnownActors should include ("Actor[akka://unicomplexSpec/user/DummyCube/Appender#")
+      WellKnownActors should include ("Actor[akka://UnicomplexSpec/user/DummyCube/Prepender#")
+      WellKnownActors should include ("Actor[akka://UnicomplexSpec/user/DummyCube/Appender#")
     }
 
     "check listener MXbean" in {
@@ -256,7 +234,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       all (listeners) shouldBe a [javax.management.openmbean.CompositeData]
 
       // 6 services registered on one listener
-      listeners should have size 6
+      listeners should have size 7
 
     }
 
@@ -281,7 +259,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       dummyExtensionB.get("phase") should be ("")
     }
 
-    "preInit, init, preCubesInit and postInit all extensions" in {
+    "preInit, init, preCubesInit   and postInit all extensions" in {
       boot.extensions.size should be (2)
       forAll (boot.extensions) { _.extLifecycle.get shouldBe a [DummyExtension]}
       boot.extensions(0).extLifecycle.get.asInstanceOf[DummyExtension].state should be ("AstartpreInitinitpreCubesInitpostInit")

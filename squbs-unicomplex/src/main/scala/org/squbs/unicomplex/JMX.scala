@@ -16,20 +16,18 @@
 
 package org.squbs.unicomplex
 
+import java.beans.ConstructorProperties
 import java.lang.management.ManagementFactory
 import java.util
-import javax.management.{MXBean, ObjectName}
 import java.util.Date
-import java.beans.ConstructorProperties
+import javax.management.{MXBean, ObjectName}
+
+import akka.actor._
 import com.typesafe.config.Config
-import spray.can.Http
-import spray.can.server.Stats
 
 import scala.beans.BeanProperty
-import akka.actor._
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.Await
-import scala.util.Try
+import scala.language.{implicitConversions, postfixOps}
 
 object JMX {
 
@@ -195,35 +193,6 @@ trait ForkJoinPoolMXBean {
   def getQueuedTaskCount: Long
   def getRunningThreadCount: Int
   def isQuiescent: Boolean
-}
-
-class ServerStats(name: String, httpListener: ActorRef) extends ServerStatsMXBean {
-  import akka.pattern._
-  import scala.concurrent.duration._
-  import spray.util._
-
-  override def getListenerName: String = name
-
-  override def getTotalConnections: Long = status.map(_.totalConnections) getOrElse -1
-
-  override def getRequestsTimedOut: Long = status.map(_.requestTimeouts) getOrElse -1
-
-  override def getOpenRequests: Long = status.map(_.openRequests) getOrElse -1
-
-  override def getUptime: String = status.map(_.uptime.formatHMS) getOrElse "00:00:00.000"
-
-  override def getMaxOpenRequests: Long = status.map(_.maxOpenRequests) getOrElse -1
-
-  override def getOpenConnections: Long = status.map(_.openConnections) getOrElse -1
-
-  override def getMaxOpenConnections: Long = status.map(_.maxOpenConnections) getOrElse -1
-
-  override def getTotalRequests: Long = status.map(_.totalRequests) getOrElse -1
-
-  private def status: Option[Stats] = {
-    val statsFuture = httpListener.ask(Http.GetStats)(1 second).mapTo[Stats]
-    Try(Await.result(statsFuture, 1 second)).toOption
-  }
 }
 
 class SystemSettingBean(config: Config) extends SystemSettingMXBean {

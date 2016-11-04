@@ -20,21 +20,20 @@ import javax.management.ObjectName
 import javax.management.openmbean.CompositeData
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.{Directives, Route}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
-import spray.http.StatusCodes
-import spray.routing._
-import spray.util.Utils
+import org.squbs.unicomplex.streaming.RouteDefinition
 
 object ListenerStateSpec{
 
   val classPaths = Array(getClass.getClassLoader.getResource("classpaths/ListenerState").getPath)
 
-  val (_, port) = Utils.temporaryServerHostnameAndPort()
-  val (_, port2) = Utils.temporaryServerHostnameAndPort()
+  val (_, _, port) = temporaryServerHostnameAndPort()
 
   val config = ConfigFactory.parseString(
     s"""
@@ -78,7 +77,7 @@ object ListenerStateSpec{
        |  full-address = false
        |
        |  # Service bind to particular port. 8080 is the default.
-       |  bind-port = $port2
+       |  bind-port = 0
        |
        |  # Listener uses HTTPS?
        |  secure = true
@@ -109,7 +108,7 @@ class ListenerStateSpec extends TestKit(ListenerStateSpec.boot.actorSystem) with
     val listenerStates = JMX.get(new ObjectName(prefix(system) + listenerStateName), "ListenerStates")
       .asInstanceOf[Array[CompositeData]]
 
-    listenerStates.size should be (3)
+    listenerStates should have length 3
 
     val defaultListener = listenerStates.find(_.get("listener") == "default-listener").get
     val portConflictListener = listenerStates.find(_.get("listener") == "port-conflict-listener").get
@@ -117,7 +116,7 @@ class ListenerStateSpec extends TestKit(ListenerStateSpec.boot.actorSystem) with
 
     defaultListener.get("state") should be("Success")
     portConflictListener.get("state") should be("Failed")
-    portConflictListener.get("error").asInstanceOf[String] should startWith("java.net.BindException")
+    portConflictListener.get("error").asInstanceOf[String] should startWith("akka.stream.BindFailedException$: bind failed")
     sslContextNotExistListener.get("state") should be("Failed")
     sslContextNotExistListener.get("error").asInstanceOf[String] should startWith("java.lang.ClassNotFoundException: org.squbs.unicomplex.IDoNotExist")
   }

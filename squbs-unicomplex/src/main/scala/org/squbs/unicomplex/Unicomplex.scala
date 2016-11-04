@@ -22,16 +22,17 @@ import java.util
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 
+import akka.NotUsed
 import akka.actor.SupervisorStrategy._
 import akka.actor.{Extension => AkkaExtension, _}
 import akka.agent.Agent
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.pattern._
+import akka.stream.scaladsl.Flow
 import akka.util.Timeout
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
-import org.squbs.pipeline.PipelineManager
 import org.squbs.pipeline.streaming.PipelineSetting
-import org.squbs.proxy.CubeProxyActor
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import org.squbs.unicomplex.streaming.{FlowDefinition, FlowNotAvailable}
 
@@ -150,14 +151,7 @@ private[unicomplex] case object HttpBindFailed
 
 case object PortBindings
 
-sealed trait ServiceHandlerWrapper {
-  val actor: ActorRef
-}
-
-case class ActorWrapper(actor: ActorRef) extends ServiceHandlerWrapper
-case class FlowWrapper(flowHandler: FlowDefinition, actor: ActorRef) extends ServiceHandlerWrapper
-
-trait Proxied { self => ActorWrapper } // TODO: This trait to be removed in squbs 0.9 as we only need it for Spray.
+case class FlowWrapper(flow: Flow[HttpRequest, HttpResponse, NotUsed], actor: ActorRef)
 
 /**
  * The Unicomplex actor is the supervisor of the Unicomplex.
@@ -198,10 +192,8 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   private var servicesStarted= false
 
   import ConfigUtil._
-  val isStreaming = context.system.settings.config.get[Boolean]("squbs.experimental-mode-on", false)
 
-  lazy val serviceRegistry = if(isStreaming) new streaming.ServiceRegistry(log)
-                             else new ServiceRegistry(log)
+  lazy val serviceRegistry = new streaming.ServiceRegistry(log)
 
   private val unicomplexExtension = Unicomplex(context.system)
   import unicomplexExtension._
@@ -577,7 +569,6 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   import scala.collection.JavaConversions._
 
   val cubeName = self.path.name
-  val pipelineManager = PipelineManager(context.system)
   val actorErrorStatesAgent = Agent[Map[String, ActorErrorState]](Map())
 
   implicit val timeout = UnicomplexBoot.defaultStartupTimeout
@@ -646,13 +637,13 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       log.info(s"Started actor ${cubeActor.path}")
 
     case StartCubeService(webContext, listeners, props, name, proxyName, ps, initRequired)
-      if props.actorClass == classOf[streaming.FlowActor] =>
+        if classOf[streaming.FlowSupplier].isAssignableFrom(props.actorClass) =>
       val hostActor = context.actorOf(props, name)
       initMap += hostActor -> None
       pendingContexts += 1
-      (hostActor ? streaming.FlowRequest).mapTo[Try[FlowDefinition]] onSuccess {
-        case Success(flowDef: FlowDefinition) =>
-          val reg = RegisterContext(listeners, webContext, FlowWrapper(flowDef, hostActor), ps)
+      (hostActor ? streaming.FlowRequest).mapTo[Try[Flow[HttpRequest, HttpResponse, NotUsed]]] onSuccess {
+        case Success(flow) =>
+          val reg = RegisterContext(listeners, webContext, FlowWrapper(flow, hostActor), ps)
           (Unicomplex() ? reg).mapTo[Try[_]].map {
             case Success(_) => ContextRegistrationResult(hostActor, Success(reg))
             case Failure(t) => ContextRegistrationResult(hostActor, Failure(t))
@@ -662,36 +653,18 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       }
 
     case StartCubeService(webContext, listeners, props, name, proxyName, ps, initRequired) =>
+      val hostActor = context.actorOf(props, name)
+      import ConfigUtil._
+      val concurrency = context.system.settings.config.get[Int]("akka.http.server.pipelining-limit")
+      val flow = Flow[HttpRequest].mapAsync(concurrency) { request => (hostActor ? request).mapTo[HttpResponse] }
+      val wrapper = FlowWrapper(flow, hostActor)
 
-      // Caution: The serviceActor may be the cubeActor in case of no proxy, or the proxy in case there is a proxy.
-      val (cubeActor, serviceActor) = try {
-        proxyName.fold(pipelineManager.default) {
-          case "" => None
-          case other => pipelineManager.getProcessor(other)
-        } match {
-          case None =>
-            val hostActor = context.actorOf(props, name) // disable proxy
-            (hostActor, ActorWrapper(hostActor))
-          case Some(proc) =>
-            val hostActor = context.actorOf(props, name + "target")
-            (hostActor,
-              new ActorWrapper(context.actorOf(Props(classOf[CubeProxyActor], proc, hostActor), name)) with Proxied)
-        }
-      } catch {
-        case t: Throwable =>
-          log.error(t, "Cube {} proxy with name of {} initialized failed.", name, proxyName)
-          val hostActor = context.actorOf(props, name) // disable proxy
-          initMap += hostActor -> Some(Failure(t))
-          (hostActor, ActorWrapper(hostActor))
-      }
-
-      if (initRequired && !(initMap contains cubeActor)) initMap += cubeActor -> None
-
-      val reg = RegisterContext(listeners, webContext, serviceActor, ps)
+      if (initRequired && !(initMap contains hostActor)) initMap += hostActor -> None
+      val reg = RegisterContext(listeners, webContext, wrapper, ps)
       pendingContexts += 1
       (Unicomplex() ? reg).mapTo[Try[_]].map {
-        case Success(_) => ContextRegistrationResult(cubeActor, Success(reg))
-        case Failure(t) => ContextRegistrationResult(cubeActor, Failure(t))
+        case Success(_) => ContextRegistrationResult(hostActor, Success(reg))
+        case Failure(t) => ContextRegistrationResult(hostActor, Failure(t))
       }   .pipeTo(self)
 
     case ContextRegistrationResult(cubeActor, tr) =>

@@ -316,13 +316,7 @@ object UnicomplexBoot extends LazyLogging {
                           ps: PipelineSetting) = {
 
       Try {
-        // Try non-streaming RouteDefinition first.
-        (clazz asSubclass classOf[RouteDefinition], classOf[RouteActor])
-      } orElse {
-        // Try the streaming (Akka-Http) RouteDefinition.
-        Try {
-          (clazz asSubclass classOf[streaming.RouteDefinition], classOf[streaming.RouteActor])
-        }
+        (clazz asSubclass classOf[streaming.RouteDefinition], classOf[streaming.RouteActor])
       } orElse {
         Try {
           (clazz asSubclass classOf[streaming.FlowDefinition], classOf[streaming.FlowActor])
