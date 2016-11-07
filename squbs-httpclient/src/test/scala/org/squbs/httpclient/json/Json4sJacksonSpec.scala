@@ -1,12 +1,25 @@
+/*
+ *  Copyright 2015 PayPal
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.squbs.httpclient.json
 
 import org.scalatest.{Matchers, FlatSpec}
 import org.json4s._
 import jackson.Serialization._
 
-/**
- * Created by hakuang on 6/2/2014.
- */
 class Json4sJacksonSpec extends FlatSpec with Matchers{
 
   "NotTypeHints Example (case class)" should "have correct behaviour of read/write" in {
@@ -37,15 +50,17 @@ class Json4sJacksonSpec extends FlatSpec with Matchers{
   "FullTypeHints Example (inheritance)" should "have correct behaviour of read/write" in {
     import Json4sJacksonFullTypeHintsProtocolExample._
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
-    val jsonString = """{"animals":[{"jsonClass":"org.squbs.httpclient.json.Dog","name":"lucky"},{"jsonClass":"org.squbs.httpclient.json.Fish","weight":3.4}]}"""
+    val jsonString = """{"animals":[{"jsonClass":"org.squbs.httpclient.json.Dog","name":"lucky"},""" +
+      """{"jsonClass":"org.squbs.httpclient.json.Fish","weight":3.4}]}"""
     write(animals) should be (jsonString)
     read[Animals](jsonString) should be (animals)
   }
 
-  "Custome Example (inheritance)" should "have correct behaviour of read/write" in {
+  "Custom Example (inheritance)" should "have correct behaviour of read/write" in {
     import Json4sJacksonCustomProtocolExample._
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
-    val jsonString = """{"animals":[{"$type$":"org.squbs.httpclient.json.Dog","name":"lucky"},{"$type$":"org.squbs.httpclient.json.Fish","weight":3.4}]}"""
+    val jsonString = """{"animals":[{"$type$":"org.squbs.httpclient.json.Dog","name":"lucky"},""" +
+      """{"$type$":"org.squbs.httpclient.json.Fish","weight":3.4}]}"""
     write(animals) should be (jsonString)
     read[Animals](jsonString) should be (animals)
   }

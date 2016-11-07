@@ -1,29 +1,65 @@
+/*
+ *  Copyright 2015 PayPal
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.squbs.httpclient.pipeline.impl
 
-import org.squbs.httpclient.pipeline.RequestPipelineHandler
-import spray.client.pipelining
+import akka.actor.ActorRefFactory
+import org.squbs.pipeline.{Handler, RequestContext}
 import spray.http.HttpHeader
 
-/**
- * Created by hakuang on 6/5/2014.
- */
-case class RequestAddHeaderHandler(httpHeader: HttpHeader) extends RequestPipelineHandler {
-  override def processRequest: pipelining.RequestTransformer = { httpRequest =>
-      val originalHeaders = httpRequest.headers
-      httpRequest.copy(headers = (originalHeaders :+ httpHeader))
+import scala.collection.mutable
+import scala.concurrent.Future
+
+class RequestAddHeaderHandler(httpHeader: HttpHeader) extends Handler {
+  override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+    import context.dispatcher
+    val originalHeaders = reqCtx.request.headers
+    Future {
+      reqCtx.copy(request = reqCtx.request.copy(headers = originalHeaders :+ httpHeader))
+    }
   }
 }
 
-case class RequestRemoveHeaderHandler(httpHeader: HttpHeader) extends RequestPipelineHandler {
-  override def processRequest: pipelining.RequestTransformer = { httpRequest =>
-    val originalHeaders = httpRequest.headers.groupBy[Boolean](_.name == httpHeader.name)
-    httpRequest.copy(headers = (originalHeaders.get(false).getOrElse(List.empty[HttpHeader])))
+class RequestRemoveHeaderHandler(httpHeader: HttpHeader) extends Handler {
+  override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+    import context.dispatcher
+    val originalHeaders = reqCtx.request.headers.groupBy[Boolean](_.name == httpHeader.name)
+    Future {
+      reqCtx.copy(request = reqCtx.request.copy(headers = originalHeaders.getOrElse(false, List.empty[HttpHeader])))
+    }
   }
 }
 
-case class RequestUpdateHeaderHandler(httpHeader: HttpHeader) extends RequestPipelineHandler {
-  override def processRequest: pipelining.RequestTransformer = { httpRequest =>
-    val originalHeaders = httpRequest.headers.groupBy[Boolean](_.name == httpHeader.name)
-    httpRequest.copy(headers = (originalHeaders.get(false).getOrElse(List.empty[HttpHeader]) :+ httpHeader))
+class RequestUpdateHeaderHandler(httpHeader: HttpHeader) extends Handler {
+  override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+    import context.dispatcher
+    val originalHeaders = reqCtx.request.headers.groupBy[Boolean](_.name == httpHeader.name)
+    Future {
+      reqCtx.copy(request =
+        reqCtx.request.copy(headers = originalHeaders.getOrElse(false, List.empty[HttpHeader]) :+ httpHeader))
+    }
   }
 }
+
+class RequestUpdateHeadersHandler(newHeaders: List[HttpHeader]) extends Handler {
+  override def process(reqCtx: RequestContext)(implicit context: ActorRefFactory): Future[RequestContext] = {
+    val origHdrKV = reqCtx.request.headers map { h => h.lowercaseName -> h }
+    val newHdrKV = newHeaders map { h => h.lowercaseName -> h }
+    val finalHeaders = (mutable.LinkedHashMap(origHdrKV: _*) ++ newHdrKV).values.toList
+    Future.successful(reqCtx.copy(request = reqCtx.request.copy(headers = finalHeaders)))
+  }
+}
+

@@ -1,19 +1,29 @@
-package org.squbs.cluster
+/*
+ *  Copyright 2015 PayPal
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
-import com.typesafe.scalalogging.slf4j.Logging
+package org.squbs.cluster.rebalance
+
+import akka.actor.{ActorSystem, Address, AddressFromURIString}
+import akka.dispatch.Dispatchers
+import akka.routing.{ActorSelectionRoutee, _}
+import akka.util.ByteString
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.annotation.tailrec
 import scala.collection.immutable
-import java.net._
-import akka.actor.{AddressFromURIString, ActorSystem, ActorPath, Address}
-import akka.routing._
-import akka.dispatch.Dispatchers
-import akka.routing.ActorSelectionRoutee
-import akka.util.ByteString
-
-/**
- * Created by huzhou on 5/6/14.
- */
 
 trait Correlation[C] {
 
@@ -31,7 +41,8 @@ object DefaultCorrelation {
 
 }
 
-class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlation[C]) extends RoutingLogic with Logging {
+class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlation[C])
+  extends RoutingLogic with LazyLogging {
 
   val fallback = RoundRobinRoutingLogic()
 
@@ -59,12 +70,13 @@ object CorrelateRoundRobinRoutingLogic {
 
 }
 
-final case class CorrelateRoundRobinGroup[C](override val paths: immutable.Iterable[String],
+final case class CorrelateRoundRobinGroup[C](val routerPaths: (ActorSystem) => immutable.Iterable[String],
                                              override val routerDispatcher: String = Dispatchers.DefaultDispatcherId,
                                              zkAddress:Address,
                                              correlation:Correlation[C] = DefaultCorrelation()) extends Group {
 
-  override def createRouter(system: ActorSystem): Router = new Router(CorrelateRoundRobinRoutingLogic(zkAddress, correlation))
+  override def createRouter(system: ActorSystem): Router =
+    new Router(CorrelateRoundRobinRoutingLogic(zkAddress, correlation))
 
   /**
    * Setting the dispatcher to be used for the router head actor, which handles
@@ -72,24 +84,29 @@ final case class CorrelateRoundRobinGroup[C](override val paths: immutable.Itera
    */
   def withDispatcher(dispatcherId: String): CorrelateRoundRobinGroup[C] = copy(routerDispatcher = dispatcherId)
 
+  override def paths(system: ActorSystem): immutable.Iterable[String] = routerPaths(system)
 }
 
 
 class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], val spareLeader:Boolean) extends RebalanceLogic {
 
-  @tailrec private[cluster] final def classify(members:Seq[Address], classified:Map[C, Seq[Address]]):Map[C, Seq[Address]] =
+  @tailrec private[cluster] final def classify(members:Seq[Address], classified:Map[C, Seq[Address]]):
+      Map[C, Seq[Address]] =
     if(members.isEmpty)
       classified
     else
-      classify(members.tail, classified.updated(correlation.common(members.head), classified.getOrElse(correlation.common(members.head), Seq.empty) :+ members.head))
+      classify(members.tail, classified.updated(correlation.common(members.head),
+        classified.getOrElse(correlation.common(members.head), Seq.empty) :+ members.head))
 
-  @tailrec private[cluster] final def rotate(classified:Seq[Seq[Address]], sequence:Seq[Address]):Seq[Address] = classified match {
-    case Nil => sequence
-    case _ => classified.head match {
-      case Nil => rotate(classified.tail, sequence)
-      case row:Seq[Address] => rotate(classified.tail :+ row.tail/* a rotation of front(remaining) to the rear */, sequence :+ row.head)
+  @tailrec private[cluster] final def rotate(classified:Seq[Seq[Address]], sequence:Seq[Address]):Seq[Address] =
+    classified match {
+      case Nil => sequence
+      case _ => classified.head match {
+        case Nil => rotate(classified.tail, sequence)
+        case row:Seq[Address] =>
+          rotate(classified.tail :+ row.tail/* a rotation of front(remaining) to the rear */, sequence :+ row.head)
+      }
     }
-  }
 
   def shuffle(members:Seq[Address]):Seq[Address] =
     rotate(classify(members, Map.empty[C, Seq[Address]]).values.to[Seq], Seq.empty[Address])
@@ -97,13 +114,15 @@ class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], val spareLead
   /**
    * @return partitionsToMembers compensated when size in service is short compared with what's required
    */
-  override def compensate(partitionsToMembers:Map[ByteString, Set[Address]], members:Seq[Address], size:(ByteString => Int)):Map[ByteString, Set[Address]] =
+  override def compensate(partitionsToMembers:Map[ByteString, Set[Address]], members:Seq[Address],
+                          size: ByteString => Int): Map[ByteString, Set[Address]] =
     DefaultRebalanceLogic(spareLeader).compensate(partitionsToMembers, shuffle(members), size)
 
   /**
    * @return partitionsToMembers rebalanced
    */
-  override def rebalance(partitionsToMembers:Map[ByteString, Set[Address]], members:Set[Address]):Map[ByteString, Set[Address]] = {
+  override def rebalance(partitionsToMembers:Map[ByteString, Set[Address]], members:Set[Address]):
+      Map[ByteString, Set[Address]] = {
 
     //the classified members of all, which is a correlation to members mappings
     val classified = classify(members.toSeq, Map.empty[C, Seq[Address]])
@@ -132,9 +151,12 @@ class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], val spareLead
           memoize.updated(correlation, Seq.empty[Address])
         }
 
-      //for each partition, we classify its current assigned correlates, check against the entire classified and fill zero sized correlates if any
-      //then start the relocations across correlates by shift assignment from the most loaded correlation to the least loaded one
-      partitionsToMembers.map(assign => assign._1 -> relocate(compensate(classify(assign._2.toSeq, Map.empty[C, Seq[Address]]))).flatMap(_._2).toSet)
+      // for each partition, we classify its current assigned correlates, check against the entire classified and
+      // fill zero sized correlates if any then start the relocation across correlates by shift assignment from
+      // the most loaded correlation to the least loaded one
+      partitionsToMembers map { assign =>
+        assign._1 -> relocate(compensate(classify(assign._2.toSeq, Map.empty[C, Seq[Address]]))).flatMap(_._2).toSet
+      }
     }
 
     classified.values.foldLeft(rebalanceAcrossCorrelates(partitionsToMembers)){(memoize, correlates) =>
@@ -145,5 +167,6 @@ class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], val spareLead
 
 object DataCenterAwareRebalanceLogic {
 
-  def apply[C](correlation:Correlation[C] = DefaultCorrelation(), spareLeader:Boolean = false) = new DataCenterAwareRebalanceLogic(correlation, spareLeader)
+  def apply[C](correlation:Correlation[C] = DefaultCorrelation(), spareLeader:Boolean = false) =
+    new DataCenterAwareRebalanceLogic(correlation, spareLeader)
 }

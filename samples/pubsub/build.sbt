@@ -1,10 +1,10 @@
-scalaVersion := "2.10.4"
+scalaVersion in ThisBuild := "2.11.8"
 
 name := "pubsub"
 
 organization in ThisBuild := "org.squbs.samples"
 
-version in ThisBuild := "0.0.1-SNAPSHOT"
+version in ThisBuild := "0.9.0-SNAPSHOT"
 
 publishArtifact := false
 
@@ -12,7 +12,9 @@ checksums in ThisBuild := Nil
 
 fork in ThisBuild := true
 
-lazy val pubsubsvc = project 
+lazy val pubsubsvc = project
 
-// Metadata properties:
-teamDL := "DL-eBay-PD-Scala@corp.ebay.com"
+resolvers in ThisBuild ++= Seq(
+  Resolver.sonatypeRepo("releases"),
+  Resolver.sonatypeRepo("snapshots")
+)

@@ -1,21 +1,22 @@
-scalaVersion := "2.10.4"
-
 name := "bottleSample"
 
 organization in ThisBuild := "org.squbs.bottles"
 
-version in ThisBuild := "0.0.2-SNAPSHOT"
+scalaVersion in ThisBuild := "2.11.8"
+
+version in ThisBuild := "0.9.0-SNAPSHOT"
 
 publishArtifact := false
 
-checksums in ThisBuild := Nil
+val bottlemsgs = project
 
-lazy val bottlemsgs = project
+val bottlecube = project dependsOn bottlemsgs
 
-lazy val bottlecube = project dependsOn bottlemsgs
-
-lazy val bottlesvc = project dependsOn (bottlemsgs, bottlecube)
+val bottlesvc = project dependsOn (bottlemsgs, bottlecube)
 
 fork in ThisBuild := true
 
-publishArtifact := false
+resolvers in ThisBuild ++= Seq(
+  Resolver.sonatypeRepo("releases"),
+  Resolver.sonatypeRepo("snapshots")
+)

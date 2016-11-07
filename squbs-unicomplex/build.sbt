@@ -1,32 +1,35 @@
-import de.johoop.findbugs4sbt.FindBugs._
+import Versions._
 
 name := "squbs-unicomplex"
 
+javaOptions in Test += "-Xmx512m"
+
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  "org.scalatest" %% "scalatest" % "2.1.0" % "test->*",
-  "com.typesafe.akka" %% "akka-actor" % "2.3.2",
-  "com.typesafe.akka" %% "akka-agent" % "2.3.2",
-  "com.typesafe.akka" %% "akka-slf4j" % "2.3.2",
-  "com.typesafe.akka" %% "akka-testkit" % "2.3.2" % "test",
-  "io.spray" %% "spray-can"     % "1.3.1",
-  "io.spray" %% "spray-http"    % "1.3.1",
-  "io.spray" %% "spray-routing" % "1.3.1",
-  "io.spray" %% "spray-testkit" % "1.3.1" % "test",
-  "io.spray" %% "spray-client"  % "1.3.1" % "test",
-  "io.spray" %% "spray-json"    % "1.2.6" % "test",
-  "org.zeromq" % "jeromq" % "0.3.3",
-  "net.databinder.dispatch" %% "dispatch-core" % "0.11.0" % "test"
+  "org.scalatest" %% "scalatest" % "2.2.1" % "test->*",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
+  "org.scala-lang.modules" %% "scala-java8-compat" % "0.7.0",
+  "com.wix" %% "accord-core" % "0.5"
+) ++ akka(akkaV) ++ spray(sprayV)
+
+def akka(v: String) = Seq(
+  "com.typesafe.akka" %% "akka-actor" % v,
+  "com.typesafe.akka" %% "akka-agent" % v,
+  "com.typesafe.akka" %% "akka-http-experimental" % v,
+  "com.typesafe.akka" %% "akka-testkit" % v % "test",
+  "com.typesafe.akka" %% "akka-stream-testkit" % v % "test"
 )
 
-findbugsSettings
-
-findbugsExcludeFilters := Some(scala.xml.XML.loadFile (baseDirectory.value / "findbugsExclude.xml"))
-
-org.scalastyle.sbt.ScalastylePlugin.Settings
+def spray(v: String) = Seq(
+  "io.spray" %% "spray-can" % v,
+  "io.spray" %% "spray-http" % v,
+  "io.spray" %% "spray-routing-shapeless2" % v,
+  "io.spray" %% "spray-testkit" % v % "test",
+  "io.spray" %% "spray-client" % v % "test",
+  "io.spray" %% "spray-json" % "1.3.2" % "test"
+)
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")
 
-instrumentSettings
-
-parallelExecution in ScoverageTest := false
+updateOptions := updateOptions.value.withCachedResolution(true)

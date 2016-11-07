@@ -1,21 +1,34 @@
+/*
+ *  Copyright 2015 PayPal
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.squbs.cluster
 
 import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor._
 import akka.util.ByteString
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.api.CuratorWatcher
 import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
 import scala.collection.JavaConversions._
-import scala.util.Try
-
-/**
- * Created by zhuwang on 1/26/15.
- */
+import scala.language.postfixOps
+import scala.util.{Failure, Try}
 
 private[cluster] case class ZkRebalance(planedPartitions: Map[ByteString, ZkPartitionData])
 private[cluster] case class ZkPartitionsChanged(segment:String, partitions: Map[ByteString, ZkPartitionData])
@@ -27,31 +40,29 @@ private[cluster] case class ZkDropOffPartitions(dropOffs: Set[ByteString])
 /**
  * The major responsibility of ZkPartitionsManager is to maintain partitions
  */
-private[cluster] class ZkPartitionsManager extends Actor with Logging {
-
-  import org.squbs.cluster.ZkPartitionsManager._
+private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLogging {
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._
-  
+
   private[this] implicit val segLogic = segmentationLogic
   import segLogic._
-  
+
+  import ZkPartitionsManager._
+
   private[this] implicit val log = logger
-  implicit val ec = context.dispatcher
-//  private[cluster] var partitionsToProtect = Set.empty[ByteString]
   private[this] var segmentsToPartitions = Map.empty[String, Set[ByteString]]
   private[this] var partitionWatchers = Map.empty[String, CuratorWatcher]
   private[this] val stopped = new AtomicBoolean(false)
-  
-  def initialize = {
-    segmentsToPartitions = zkClientWithNs.getChildren.forPath("/segments").map{
+
+  override def postStop(): Unit = stopped set true
+
+  private def initialize()(implicit curatorFwk: CuratorFramework) = {
+    segmentsToPartitions = curatorFwk.getChildren.forPath("/segments").map{
       segment => segment -> watchOverSegment(segment)
     }.toMap
   }
 
-  override def postStop = stopped set true
-  
-  def watchOverSegment(segment:String) = {
+  private def watchOverSegment(segment:String)(implicit curatorFwk: CuratorFramework) = {
     val segmentZkPath = s"/segments/${keyToPath(segment)}"
     //watch over changes of creation/removal of any partition (watcher over /partitions)
     lazy val segmentWatcher: CuratorWatcher = new CuratorWatcher {
@@ -60,7 +71,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Logging {
           case EventType.NodeChildrenChanged if !stopped.get =>
             self ! ZkSegmentChanged(
               segment,
-              zkClientWithNs.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath)
+              curatorFwk.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath)
                 .map { p => ByteString(pathToKey(p))}.toSet
             )
           case _ =>
@@ -87,48 +98,54 @@ private[cluster] class ZkPartitionsManager extends Actor with Logging {
     }
     partitionWatchers += segment -> partitionWatcher
     //initialize with the current set of partitions
-    zkClientWithNs.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath).map{p =>
+    curatorFwk.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath).map{p =>
       val partitionKey = ByteString(pathToKey(p))
       partitionKey -> watchOverPartition(segment, partitionKey, partitionWatcher)
     }.collect{
       case (partitionKey, Some(partitionData)) => partitionKey
     }.toSet
   }
-  
+
+  private def watchOverPartition(segment: String,
+                                 partitionKey: ByteString,
+                                 partitionWatcher: CuratorWatcher)
+                                (implicit curatorFwk: CuratorFramework): Option[ZkPartitionData] = {
+    Try {
+      guarantee(servantsOfParZkPath(partitionKey), None, CreateMode.PERSISTENT)
+      guarantee(sizeOfParZkPath(partitionKey), None, CreateMode.PERSISTENT)
+      val servants =
+        curatorFwk.getData.usingWatcher(partitionWatcher).forPath(servantsOfParZkPath(partitionKey)).toAddressSet
+      val expectedSize =
+        curatorFwk.getData.usingWatcher(partitionWatcher).forPath(sizeOfParZkPath(partitionKey)).toInt
+      ZkPartitionData(partitionKey, servants, partitionSize(partitionKey), expectedSize)
+    } recoverWith {
+      case t: Throwable =>
+        log.error("partitions refresh failed due to unknown reason: {}", t.getMessage)
+        Failure(t)
+    } toOption
+  }
+
   private def whenPartitionChanged(segment: String, change: ZkPartitionData) = {
     log.debug("[partitions] partitions change detected from zk: {}",
       keyToPath(change.partitionKey) -> change
     )
     zkClusterActor ! ZkPartitionsChanged(segment, Map(change.partitionKey -> change))
   }
-  
-  def watchOverPartition(segment: String,
-                         partitionKey: ByteString,
-                         partitionWatcher: CuratorWatcher): Option[ZkPartitionData] = {
-    try {
-      guarantee(servantsOfParZkPath(partitionKey), None, CreateMode.PERSISTENT)
-      guarantee(sizeOfParZkPath(partitionKey), None, CreateMode.PERSISTENT)
-      val servants: Set[Address] =
-        zkClientWithNs.getData.usingWatcher(partitionWatcher).forPath(servantsOfParZkPath(partitionKey))
-      val expectedSize: Int =
-        zkClientWithNs.getData.usingWatcher(partitionWatcher).forPath(sizeOfParZkPath(partitionKey))
-      Some(ZkPartitionData(partitionKey, servants, partitionSize(partitionKey), expectedSize))
-    }
-    catch {
-      case t: Throwable => log.error("partitions refresh failed due to unknown reason: {}", t.getMessage)
-        None
-    }
-  }
-  
-  def receive: Actor.Receive = {
-    
+
+  def receive: Receive = receiveZkClientUpdate
+
+  lazy val receiveZkClientUpdate: Receive = {
     case ZkClientUpdated(updated) =>
-      initialize
-    
+      implicit val curatorFwk = updated
+      initialize()
+      context become { receiveZkClientUpdate orElse receivePartitionChange() }
+  }
+
+  def receivePartitionChange()(implicit curatorFwk: CuratorFramework): Receive = {
     case ZkSegmentChanged(segment, changes) =>
       log.debug("[partitions] segment change detected from zk: {}", segment -> (changes map (keyToPath(_))))
       val onBoardPartitions = changes.diff(segmentsToPartitions.getOrElse(segment, Set.empty))
-        .map(partitionKey => (partitionKey -> watchOverPartition(segment, partitionKey, partitionWatchers(segment))))
+        .map(partitionKey => partitionKey -> watchOverPartition(segment, partitionKey, partitionWatchers(segment)))
         .collect{case (key, Some(partition)) => key -> partition}.toMap
       val dropOffPartitions = segmentsToPartitions.getOrElse(segment, Set.empty) diff changes
       segmentsToPartitions += (segment -> changes)
@@ -136,37 +153,42 @@ private[cluster] class ZkPartitionsManager extends Actor with Logging {
         onBoardPartitions.map(entry => keyToPath(entry._1)),
         dropOffPartitions.map(entry => keyToPath(entry))
       )
-      if (onBoardPartitions.nonEmpty)
+      if (onBoardPartitions.nonEmpty) {
         zkClusterActor ! ZkPartitionsChanged(segment, onBoardPartitions)
-      if (dropOffPartitions.nonEmpty)
+      }
+      if (dropOffPartitions.nonEmpty) {
         zkClusterActor ! ZkPartitionsChanged(segment,
           dropOffPartitions.map(key => key -> ZkPartitionData(key, expectedSize = 0)).toMap
         )
-    
-    case ZkRebalance(updates) =>
-      log.info("[partitions] update partitions based on plan:{}",
-        updates.map{case (key, value) => keyToPath(key) -> (value.members, value.expectedSize)}
-      )
-      updates foreach {
-        case (partitionKey, partitionData) =>
-          guarantee(partitionZkPath(partitionKey), Some(partitionData.props), CreateMode.PERSISTENT)
-          guarantee(servantsOfParZkPath(partitionKey), Some(partitionData.members), CreateMode.PERSISTENT)
-          if (partitionData.expectedSize != partitionSize(partitionKey))
-            guarantee(sizeOfParZkPath(partitionKey), Some(partitionData.expectedSize), CreateMode.PERSISTENT)
       }
-    
+
+    case ZkRebalance(updates) =>
+      log.info("[partitions] update partitions based on plan:{}", updates.values)
+      updates foreach { entry => updatePartition(entry._1, entry._2)}
+
     case ZkRemovePartition(partitionKey) =>
       log.debug("[partitions] remove partition {}", keyToPath(partitionKey))
       safelyDiscard(partitionZkPath(partitionKey))
       sender ! ZkPartitionRemoval(partitionKey)
-    
+
     case ZkResizePartition(partitionKey, size) =>
       guarantee(sizeOfParZkPath(partitionKey), Some(size), CreateMode.PERSISTENT)
+
   }
+
+  private def updatePartition(partitionKey: ByteString, partitionData: ZkPartitionData)
+                             (implicit curatorFwk: CuratorFramework) = {
+    guarantee(partitionZkPath(partitionKey), Some(partitionData.props), CreateMode.PERSISTENT)
+    guarantee(servantsOfParZkPath(partitionKey), Some(partitionData.members), CreateMode.PERSISTENT)
+    if (partitionData.expectedSize != partitionSize(partitionKey)) {
+      guarantee(sizeOfParZkPath(partitionKey), Some(partitionData.expectedSize), CreateMode.PERSISTENT)
+    }
+  }
+
 }
 
 object ZkPartitionsManager {
-  
+
   def loadPartitions()(implicit zkClient: CuratorFramework,
                        segmentationLogic: SegmentationLogic): Map[ByteString, ZkPartitionData] = {
     import segmentationLogic._
@@ -180,28 +202,22 @@ object ZkPartitionsManager {
       parKey -> ZkPartitionData(parKey, members, size, props)
     } toMap
   }
-  
+
   private def partitionServants(partitionKey: ByteString)
                                (implicit zkClient: CuratorFramework,
                                 segmentationLogic: SegmentationLogic): Set[Address] = {
     import segmentationLogic._
-    try{
-      zkClient.getData.forPath(servantsOfParZkPath(partitionKey))
-    }
-    catch{
-      case _:Throwable => Set.empty
-    }
+    Try {
+      zkClient.getData.forPath(servantsOfParZkPath(partitionKey)).toAddressSet
+    } getOrElse Set.empty
   }
-  
+
   private def partitionSize(partitionKey: ByteString)
                            (implicit zkClient: CuratorFramework,
                             segmentationLogic: SegmentationLogic): Int = {
     import segmentationLogic._
-    try{
-      zkClient.getData.forPath(sizeOfParZkPath(partitionKey))
-    }
-    catch{
-      case _:Throwable => 0
-    }
+    Try {
+      zkClient.getData.forPath(sizeOfParZkPath(partitionKey)).toInt
+    } getOrElse 0
   }
 }

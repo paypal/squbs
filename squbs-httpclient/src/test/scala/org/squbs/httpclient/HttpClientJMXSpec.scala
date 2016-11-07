@@ -1,86 +1,144 @@
+/*
+ *  Copyright 2015 PayPal
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package org.squbs.httpclient
 
-import org.scalatest._
-import org.squbs.httpclient.endpoint.{EndpointResolver, EndpointRegistry}
 import akka.actor.ActorSystem
-import scala.concurrent.duration._
-import akka.io.IO
-import spray.can.Http
-import akka.pattern._
-import spray.util._
-import spray.can.client.{ClientConnectionSettings, HostConnectorSettings}
+import akka.testkit.TestKit
+import org.scalatest._
+import org.squbs.httpclient.Configuration._
+import org.squbs.httpclient.dummy.DummyService._
+import org.squbs.httpclient.dummy.{DummyProdEnvironmentResolver, DummyRequestResponsePipeline, DummyService, DummyServiceEndpointResolver}
+import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry, EndpointResolver}
 import org.squbs.httpclient.env._
-import org.squbs.httpclient.endpoint.Endpoint
+import org.squbs.testkit.Timeouts._
 import spray.can.Http.ClientConnectionType.Proxied
-import scala.Some
-import org.squbs.httpclient.dummy.{DummyService, DummyProdEnvironmentResolver, DummyServiceEndpointResolver, DummyRequestResponsePipeline}
-import DummyService._
+import spray.can.client.{ClientConnectionSettings, HostConnectorSettings}
+import spray.http.{HttpResponse, StatusCodes}
 
-/**
- * Created by hakuang on 6/10/2014.
- */
-class HttpClientJMXSpec extends FlatSpec with Matchers with BeforeAndAfterEach with BeforeAndAfterAll{
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
 
-  private implicit val system = ActorSystem("HttpClientJMXSpec")
+class HttpClientJMXSpec extends TestKit(ActorSystem("HttpClientJMXSpec")) with FlatSpecLike with Matchers
+with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndAfterAll{
 
-  override def beforeEach = {
-    EndpointRegistry.register(new EndpointResolver {
-      override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = Some(Endpoint("http://www.ebay.com"))
+  implicit val _system = system
+
+  override def beforeEach() = {
+    EndpointRegistry(system).register(new EndpointResolver {
+      override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] =
+        Some(Endpoint("http://www.ebay.com"))
       override def name: String = "hello"
     })
   }
 
-  override def afterEach = {
-    EndpointRegistry.endpointResolvers.clear
-    EnvironmentRegistry.environmentResolvers.clear
-    HttpClientFactory.httpClientMap.clear
+  override def afterEach() = {
+    clearHttpClient()
+  }
+
+  override def beforeAll() = {
+    startDummyService(system)
   }
 
   override def afterAll() {
-    IO(Http).ask(Http.CloseAll)(1.second).await
-    system.shutdown()
+    shutdownActorSystem()
   }
 
   "HttpClient with svcName" should "show up the correct value of HttpClientBean" in {
-    HttpClientFactory.getOrCreate("hello1")
-    HttpClientFactory.getOrCreate("hello2")
-    HttpClientBean.getHttpClientInfo.size should be (2)
-    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello1") should be (HttpClientInfo("hello1", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
-    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello2") should be (HttpClientInfo("hello2", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
+    val httpClient1 = HttpClientFactory.get("hello1")
+    Await.result(httpClient1.readyFuture, awaitMax)
+    val httpClient2 = HttpClientFactory.get("hello2")
+    Await.result(httpClient2.readyFuture, awaitMax)
+    HttpClientBean(system).getHttpClientInfo should have size 2
+    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello1") should be (
+      HttpClientInfo("hello1", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
+    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello2") should be (
+      HttpClientInfo("hello2", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient with pipeline" should "show up the correct value of HttpClientBean" in {
-    HttpClientFactory.getOrCreate("hello3", pipeline = Some(DummyRequestResponsePipeline))
-    HttpClientFactory.getOrCreate("hello4")
-    HttpClientBean.getHttpClientInfo.size should be (2)
-    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello3") should be (HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler$$anonfun$processRequest$1","org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler$$anonfun$processResponse$1"))
-    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello4") should be (HttpClientInfo("hello4", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
+    val httpClient1 = HttpClientFactory.get("hello3").withConfig(Configuration().copy(pipeline =
+      Some(DummyRequestResponsePipeline)))
+    Await.result(httpClient1.readyFuture, awaitMax)
+    val httpClient2 = HttpClientFactory.get("hello4")
+    Await.result(httpClient2.readyFuture, awaitMax)
+    HttpClientBean(system).getHttpClientInfo should have size 2
+    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello3") should be (
+      HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000,
+        "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler",
+        "org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler"))
+    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello4") should be (
+      HttpClientInfo("hello4", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient with configuration" should "show up the correct value of HttpClientBean" in {
-    val httpClient = HttpClientFactory.getOrCreate("hello5")
-    httpClient.withConfig(Configuration(hostSettings = HostConnectorSettings(10 ,10, 10, true, 10 seconds, ClientConnectionSettings(system)), connectionType = Proxied("www.ebay.com", 80)))
-    HttpClientFactory.getOrCreate("hello6").markDown
-    HttpClientBean.getHttpClientInfo.size should be (2)
-    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello5") should be (HttpClientInfo("hello5", "default", "http://www.ebay.com", "UP", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
-    findHttpClientBean(HttpClientBean.getHttpClientInfo, "hello6") should be (HttpClientInfo("hello6", "default", "http://www.ebay.com", "DOWN", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
+    val httpClient = HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(
+      hostSettings = HostConnectorSettings(10 ,10, 10, pipelining = true, 10 seconds, ClientConnectionSettings(system)),
+      connectionType = Proxied("www.ebay.com", 80))))
+    Await.result(httpClient.readyFuture, awaitMax)
+    val markDownStatus = HttpClientFactory.get("hello6").markDown
+    Await.result(markDownStatus, awaitMax)
+    HttpClientBean(system).getHttpClientInfo should have size 2
+    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello5") should be (HttpClientInfo("hello5",
+      "default", "http://www.ebay.com", "UP", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
+    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello6") should be (HttpClientInfo("hello6",
+      "default", "http://www.ebay.com", "DOWN", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
   }
 
   "HttpClient Endpoint Resolver Info" should "show up the correct value of EndpointResolverBean" in {
-    EndpointRegistry.register(DummyServiceEndpointResolver)
-    EndpointResolverBean.getHttpClientEndpointResolverInfo.size should be (2)
-    EndpointResolverBean.getHttpClientEndpointResolverInfo.get(0).position should be (0)
-    EndpointRegistry.resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
-    EndpointResolverBean.getHttpClientEndpointResolverInfo.get(0).resolver should be ("org.squbs.httpclient.dummy.DummyServiceEndpointResolver$")
+    EndpointRegistry(system).register(new DummyServiceEndpointResolver)
+    EndpointResolverBean(system).getHttpClientEndpointResolverInfo should have size 2
+    EndpointResolverBean(system).getHttpClientEndpointResolverInfo.get(0).position should be (0)
+    EndpointRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
+    EndpointResolverBean(system).getHttpClientEndpointResolverInfo.get(0).resolver should be (
+      "org.squbs.httpclient.dummy.DummyServiceEndpointResolver")
   }
 
   "HttpClient Environment Resolver Info" should "show up the correct value of EnvironmentResolverBean" in {
-    EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo.size should be (0)
-    EnvironmentRegistry.register(DummyProdEnvironmentResolver)
-    EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo.size should be (1)
-    EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo.get(0).position should be (0)
-    EnvironmentRegistry.resolve("abc") should be (PROD)
-    EnvironmentResolverBean.getHttpClientEnvironmentResolverInfo.get(0).resolver should be ("org.squbs.httpclient.dummy.DummyProdEnvironmentResolver$")
+    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo should have size 0
+    EnvironmentRegistry(system).register(DummyProdEnvironmentResolver)
+    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo should have size 1
+    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo.get(0).position should be (0)
+    EnvironmentRegistry(system).resolve("abc") should be (PROD)
+    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo.get(0).resolver should be (
+      "org.squbs.httpclient.dummy.DummyProdEnvironmentResolver$")
+  }
+
+  "HttpClient Circuit Breaker Info" should "show up some value of CircuitBreakerBean" in {
+    CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo should have size 0
+    EndpointRegistry(system).register(new DummyServiceEndpointResolver)
+    val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/view")
+    val result = Await.result(response, awaitMax)
+    result.status should be (StatusCodes.OK)
+    CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo should have size 1
+    val cbInfo = CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.get(0)
+    cbInfo.name should be ("DummyService")
+    cbInfo.status should be ("Closed")
+    cbInfo.historyUnitDuration should be ("1 minute")
+    cbInfo.successTimes should be (1)
+    cbInfo.failFastTimes should be (0)
+    cbInfo.fallbackTimes should be (0)
+    cbInfo.exceptionTimes should be (0)
+
+    val currentRates = cbInfo.history.get(0)
+    val prevRates = cbInfo.history.get(1)
+
+    "0.00%" should (be (currentRates.errorRate) or be (prevRates.errorRate))
+    "0.00%" should (be (currentRates.failFastRate) or be (prevRates.failFastRate))
+    "0.00%" should (be (currentRates.exceptionRate) or be (prevRates.exceptionRate))
   }
 
   def findHttpClientBean(beans: java.util.List[HttpClientInfo], name: String): HttpClientInfo = {

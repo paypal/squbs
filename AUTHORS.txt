@@ -1,0 +1,10 @@
+squbs 
+
+Original Authors
+----------------
+eBay
+(c) 2015
+
+PayPal
+(c) 2015
+

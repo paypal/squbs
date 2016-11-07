@@ -1,9 +1,17 @@
-resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
+resolvers += "Typesafe Repository" at "https://repo.typesafe.com/typesafe/releases/"
 
-addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.6.0")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.3.3")
 
-addSbtPlugin("org.scoverage" %% "sbt-scoverage" % "0.99.5.1")
+addSbtPlugin("com.codacy" % "sbt-codacy-coverage" % "1.2.1")
 
-addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.3.2")
+addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.8.0")
 
-addSbtPlugin("de.johoop" % "findbugs4sbt" % "1.2.2")
+addSbtPlugin("io.spray" % "sbt-boilerplate" % "0.5.9")
+
+addSbtPlugin("com.github.gseitz" % "sbt-release" % "0.8.4")
+
+addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")
+
+addSbtPlugin("io.spray" % "sbt-revolver" % "0.8.0")
+
+addSbtPlugin("de.johoop" % "sbt-testng-plugin" % "3.0.2")

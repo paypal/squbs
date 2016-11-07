@@ -1,57 +1,70 @@
-Overview
-========
+#Clustering squbs Services using ZooKeeper
 
-zkcluster is an `akka` extension which leverages `zookeeper` to manage akka cluster & partitions.
-it's similar to `akka-cluster` module for the sake of leadership & membership management.
-it's richer as it provides partitioning support, and eliminates the need of `entry-nodes`
+##Overview
 
-Configuration
--------------
+squbs is achieving clustering of services through the zkcluster module. zkcluster is an [Akka extension](http://doc.akka.io/docs/akka/snapshot/scala/extending-akka.html) which leverages [ZooKeeper](https://zookeeper.apache.org/) to manage akka cluster & partitions.
+it's similar to [Akka Cluster](http://doc.akka.io/docs/akka/snapshot/common/cluster.html) for the functions of leadership & membership management.
+But it's richer as it provides partitioning support, and eliminates the need of `entry-nodes`.
 
-we'll need a `/squbsconfig/zkcluster.conf` under runtime directory, it should provide the following properties:
+##Configuration
+
+We'll need a `squbsconfig/zkcluster.conf` file under the runtime directory. It should provide the following properties:
+
 * connectionString: a string delimiting all zookeeper nodes of an ensemble with comma
 * namespace: a string that is a valid path of znode, which will be the parent of all znodes created thereafter
-* segments: number of partition segments to scale the number of partitions: https://github.corp.ebay.com/huzhou/pubsubak/issues/11
+* segments: number of partition segments to scale the number of partitions
 
-~~~
+The following is an example of a `zkcluster.conf`  file content:
+
+```
 zkCluster {
-    connectionString = "zk-node-phx-0-213163.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-1-213164.phx-os1.stratus.dev.ebay.com:2181,zk-node-phx-2-213165.phx-os1.stratus.dev.ebay.com:2181"
-    namespace = "channelservicedev"
+    connectionString = "zk-node-01.squbs.org:2181,zk-node-02.squbs.org:2181,zk-node-03.squbs.org:2181"
+    namespace = "clusteredservicedev"
     segments = 128
 }
-~~~
+```
 
-User Guide
-----------
+##User Guide
 
-simply register the extension as all normal akka extension
-~~~scala
+Start by simply registering the extension as all normal akka extension. Then you access the `zkClusterActor` and use it as follows:
+
+```scala
 val zkClusterActor = ZkCluster(system).zkClusterActor
 
-// query the members in the cluster
+// Query the members in the cluster
 zkClusterActor ! ZkQueryMembership
+
+// Matching the response
 case ZkMembership(members:Set[Address]) =>
 
-// query leader in the cluster
+
+// Query leader in the cluster
 zkClusterActor ! ZkQueryLeadership
+// Matching the response
 case ZkLeadership(leader:Address) =>
 
-// query partition (expectedSize = None), create or resize (expectedSize = Some[Int])
+// Query partition (expectedSize = None), create or resize (expectedSize = Some[Int])
 zkClusterActor ! ZkQueryPartition(partitionKey:ByteString, notification:Option[Any] = None, expectedSize:Option[Int] = None, props:Array[Byte] = Array[Byte]())
+// Matching the response
 case ZkPartition(partitionKey:ByteString, members: Set[Address], zkPath:String, notification:Option[Any]) =>
-case ZkPartitionNotFound(partitionKey: ByteString)
+case ZkPartitionNotFound(partitionKey: ByteString) =>
 
-// monitor/stop monitor the partition change
+
+// Monitor or stop monitoring the partition change
 zkClusterActor ! ZkMonitorPartition
 zkClusterActor ! ZkStopMonitorPartition
+// Matching the response
 case ZkPartitionDiff(partitionKey: ByteString, onBoardMembers: Set[Address], dropOffMembers: Set[Address], props: Array[Byte] = Array.empty) =>
 
-// remove partition
+// Removing partition
 zkClusterActor ! ZkRemovePartition(partitionKey:ByteString)
+// Matching the response
 case ZkPartitionRemoval(partitionKey:ByteString) =>
 
-// list the partitions hosted by a certain member
+
+// List the partitions hosted by a certain member
 zkClusterActor ! ZkListPartitions(address: Address)
+// Matching the response
 case ZkPartitions(partitionKeys:Seq[ByteString]) =>
 
 // monitor the zookeeper connection state
@@ -63,22 +76,30 @@ eventStream.subscribe(self, ZkSuspended.getClass)
 
 // quit the cluster
 zkCluster(system).zkClusterActor ! PoisonPill
+
 // add listener when quitting the cluster
 zkCluster(system).addShutdownListener(listener: () => Unit)
-~~~
+```
 
-Design
-------
+##Dependencies
 
-Read if you're making changes of zkcluster
-* membership is based on `zookeeper` ephemeral nodes, closed session would alter leader with `ZkMembershipChanged`
-* leadership is based on `curator` framework's `LeaderLatch`, new election will broadcast `ZkLeaderElected` to all nodes
-* partitions are based on ephemeral nodes, leader manages the initial partition creation and the rebalancing thereafter
-* partitions modification is only done by the leader, who asks its `ZkPartitionsManager` to enforce the modification
-* `ZkPartitionsManager` of leader communicates with all other `ZkPartitionsManager` from every follower to `onboard` or `dropoff` members of a partition using `akka-remote`
-* then the znode changes will trigger watchers from all nodes and the partitions become in sync finally
-* whoever needs to be notified by the partitions change `ZkPartitionDiff` should send `ZkMonitorPartition` to the cluster actor getting registered
+Add the following dependency to your build.sbt or scala build file:
 
-`ZkMembershipMonitor` is the actor type who handles membership & leadership
-`ZkPartitionsManager` is the one who handles partitions management and leader/follower communication
-`ZkClusterActor` is the interfacing actor user should be sending queries to
+"org.squbs" %% "squbs-zkcluster" % squbsVersion
+
+##Design
+
+Read this if you're making changes of zkcluster
+
+* Membership is based on `zookeeper` ephemeral nodes, closed session would alter leader with `ZkMembershipChanged`.
+* Leadership is based on `curator` framework's `LeaderLatch`, new election will broadcast `ZkLeaderElected` to all nodes.
+* Partitions are calculated by the leader and write to the znode by `ZkPartitionsManager` in leader node.
+* Partitions modification is only done by the leader, who asks its `ZkPartitionsManager` to enforce the modification.
+* `ZkPartitionsManager` of follower nodes will watch the znode change in Zookeeper. Once the leader change the paritions after rebalancing, `ZkPartitionsManager` in follower nodes will get notified and update their memory snapshot of the partition information.
+* Whoever needs to be notified by the partitions change `ZkPartitionDiff` should send `ZkMonitorPartition` to the cluster actor getting registered.
+
+`ZkMembershipMonitor` is the actor type handling membership & leadership.
+
+`ZkPartitionsManager` is the actor handling partitions management.
+
+`ZkClusterActor` is the interfacing actor users should be sending queries to.

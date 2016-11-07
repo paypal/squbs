@@ -1,33 +1,41 @@
+/*
+ *  Copyright 2015 PayPal
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.squbs.testkit
 
-import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{Suite, BeforeAndAfterAll}
-import org.squbs.unicomplex.UnicomplexBoot
 import akka.actor.ActorSystem
-import java.io.File
+import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
+import org.scalatest.{BeforeAndAfterAll, Suite}
+import org.squbs.unicomplex.UnicomplexBoot
 
-/**
- * Copyright (c) 2013 eBay, Inc.
- * All rights reserved.
- *
- * Contributors:
- * asucharitakul
- *
- * this is 0.3.0-SNAPSHOT
- */
+import scala.language.postfixOps
+
 object SimpleTestKit {
 
   val testConfFile = Option(getClass.getResource("/test.conf")) orElse Option(getClass.getResource("/default-test.conf"))
-  val testConfig = testConfFile map ConfigFactory.parseURL getOrElse null
+  val testConfig = (testConfFile map ConfigFactory.parseURL) orNull
 
   val boot = UnicomplexBoot(testConfig)
               .createUsing { (name, config) => ActorSystem(name, testConfig) } // Use the test config instead.
-              .scanComponents(System.getProperty("java.class.path").split(File.pathSeparator))
+              .scanResources()
               .initExtensions
   boot.start()
 
-  private def checkInit(actorSystem: ActorSystem) {
+  private[testkit] def checkInit(actorSystem: ActorSystem) {
       sys.addShutdownHook {
         actorSystem.shutdown()
       }
@@ -42,6 +50,7 @@ object SimpleTestKit {
  * the component scanning from the classpath (as in the regular squbs runtime). The test process must be forked and
  * no parallel tests with different squbs configurations are allowed.
  */
+@deprecated("use org.squbs.testkit.CustomTestKit instead")
 abstract class SimpleTestKit extends TestKit(SimpleTestKit.boot.actorSystem)
   with DebugTiming with ImplicitSender with Suite with BeforeAndAfterAll {
 
