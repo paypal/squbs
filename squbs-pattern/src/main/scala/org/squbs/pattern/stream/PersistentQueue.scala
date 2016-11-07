@@ -71,7 +71,6 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
   private val lastCommitIndex = Array.ofDim[Long](outputPorts)
 
   val totalOutputPorts = outputPorts
-  val autoCommit = config.autoCommit
 
   private def mountIndexFile(): Unit = {
     indexFile = IndexFile.of(path, OS.pageSize())

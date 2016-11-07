@@ -38,7 +38,7 @@ object StreamSpecUtil {
   val burstSize = 500
 }
 
-class StreamSpecUtil[T](outputPort: Int = 1, autoCommit: Boolean = true) {
+class StreamSpecUtil[T, S](outputPort: Int = 1) {
 
   import StreamSpecUtil._
   val outputPorts = outputPort
@@ -49,7 +49,6 @@ class StreamSpecUtil[T](outputPort: Int = 1, autoCommit: Boolean = true) {
     Map(
       "persist-dir" -> s"${tempPath.getAbsolutePath}",
       "output-ports" -> s"$outputPorts",
-      "auto-commit" -> s"$autoCommit",
       "roll-cycle" -> "TEST_SECONDLY".toLowerCase()
     )
   }
@@ -57,10 +56,10 @@ class StreamSpecUtil[T](outputPort: Int = 1, autoCommit: Boolean = true) {
   val in = Source(1 to elementCount)
   lazy val atomicCounter = Vector.tabulate(outputPorts)(_ => new AtomicInteger(0))
   lazy val flowCounter = Flow[Any].map(_ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
-  lazy val merge = Merge[Event[T]](outputPorts)
-  lazy val throttle = Flow[Event[T]].throttle(flowRate, flowUnit, burstSize, ThrottleMode.shaping)
-  lazy val head = Sink.head[Event[T]]
-  lazy val last = Sink.last[Event[T]]
+  lazy val merge = Merge[S](outputPorts)
+  lazy val throttle = Flow[S].throttle(flowRate, flowUnit, burstSize, ThrottleMode.shaping)
+  lazy val head = Sink.head[S]
+  lazy val last = Sink.last[S]
   val minRandom = 100
   lazy val random = Random.nextInt(elementCount - minRandom - 1) + minRandom
   lazy val filterCounter = new AtomicInteger(0)

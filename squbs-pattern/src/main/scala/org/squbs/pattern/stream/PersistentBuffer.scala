@@ -30,111 +30,88 @@ import org.slf4j.LoggerFactory
   *
   * '''Emits when''' one of the inputs has an element available
   *
-  * '''Does not Backpressure''' upstream when downstream backpressures, instead buffers the stream element to memory mapped queue
+  * '''Does not Backpressure''' upstream when downstream backpressures, instead buffers the stream element to
+  * memory mapped queue
   *
   * '''Completes when''' upstream completes
   *
   * '''Cancels when''' downstream cancels
   *
-  * In addition to this, a commit guarantee can be ensured to avoid data lost while consuming stream elements,
-  * to enable this, set the `auto-commit` to `false` and add a commit stage after downstream consumer.
-  *
   */
-class PersistentBuffer[T] private(private[stream] val queue: PersistentQueue[T],
-                                  onPushCallback: () => Unit = () => {})
-                                 (implicit serializer: QueueSerializer[T],
-                                  system: ActorSystem) extends GraphStage[FlowShape[T, Event[T]]] {
+class PersistentBuffer[T] private(queue: PersistentQueue[T], onPushCallback: () => Unit = () => {})
+                                 (implicit serializer: QueueSerializer[T], system: ActorSystem)
+  extends PersistentBufferBase[T, T](queue, onPushCallback)(serializer, system) {
 
-  def this(config: Config)(implicit serializer: QueueSerializer[T], system: ActorSystem) = this(new PersistentQueue[T](config))
+  def this(config: Config)(implicit serializer: QueueSerializer[T], system: ActorSystem) =
+    this(new PersistentQueue[T](config))
 
-  def this(persistDir: File)(implicit serializer: QueueSerializer[T], system: ActorSystem) = this(new PersistentQueue[T](persistDir))
+  def this(persistDir: File)(implicit serializer: QueueSerializer[T], system: ActorSystem) =
+    this(new PersistentQueue[T](persistDir))
 
   def withOnPushCallback(onPushCallback: () => Unit) = new PersistentBuffer[T](queue, onPushCallback)
 
-  def withOnCommitCallback(onCommitCallback: () => Unit) = new PersistentBuffer[T](queue.withOnCommitCallback(i => onCommitCallback()), onPushCallback)
+  def withOnCommitCallback(onCommitCallback: () => Unit) =
+    new PersistentBuffer[T](queue.withOnCommitCallback(i => onCommitCallback()), onPushCallback)
 
-  private[stream] val in = Inlet[T]("PersistentBuffer.in")
-  private[stream] val out = Outlet[Event[T]]("PersistentBuffer.out")
-  val shape: FlowShape[T, Event[T]] = FlowShape.of(in, out)
-  val defaultOutputPort = 0
-  @volatile private var upstreamFailed = false
-  @volatile private var upstreamFinished = false
-  private val queueCloserActor = system.actorOf(Props(classOf[PersistentQueueCloserActor[T]], queue))
+  override protected def autoCommit(index: Long) = queue.commit(defaultOutputPort, index)
 
-  def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
+  override protected def elementOut(e: Event[T]): T = e.entry
+}
 
-    private var lastPushed = 0L
-    var downstreamWaiting = false
+object PersistentBuffer {
+  def apply[T](config: Config)(implicit serializer: QueueSerializer[T], system: ActorSystem) =
+    new PersistentBuffer[T](config)
 
-    override def preStart(): Unit = {
-      // Start upstream demand
-      pull(in)
+  def apply[T](persistDir: File)(implicit serializer: QueueSerializer[T], system: ActorSystem) =
+    new PersistentBuffer[T](persistDir)
+}
+
+/**
+  * Persists all incoming upstream element to a memory mapped queue before publishing it to downstream consumer.
+  *
+  * '''Emits when''' one of the inputs has an element available
+  *
+  * '''Does not Backpressure''' upstream when downstream backpressures, instead buffers the stream element to
+  * memory mapped queue
+  *
+  * '''Completes when''' upstream completes
+  *
+  * '''Cancels when''' downstream cancels
+  *
+  * A commit guarantee can be ensured to avoid data lost while consuming stream elements by adding a commit stage
+  * after downstream consumer.
+  *
+  */
+class PersistentBufferAtLeastOnce[T] private(queue: PersistentQueue[T], onPushCallback: () => Unit = () => {})
+                                 (implicit serializer: QueueSerializer[T], system: ActorSystem)
+  extends PersistentBufferBase[T, Event[T]](queue, onPushCallback)(serializer, system) {
+
+  def this(config: Config)(implicit serializer: QueueSerializer[T], system: ActorSystem) =
+    this(new PersistentQueue[T](config))
+
+  def this(persistDir: File)(implicit serializer: QueueSerializer[T], system: ActorSystem) =
+    this(new PersistentQueue[T](persistDir))
+
+  def withOnPushCallback(onPushCallback: () => Unit) = new PersistentBufferAtLeastOnce[T](queue, onPushCallback)
+
+  def withOnCommitCallback(onCommitCallback: () => Unit) =
+    new PersistentBufferAtLeastOnce[T](queue.withOnCommitCallback(i => onCommitCallback()), onPushCallback)
+
+  override protected def elementOut(e: Event[T]): Event[T] = e
+
+  def commit[U] = Flow[Event[U]].map { element =>
+    if (!upstreamFailed) {
+      queue.commit(element.outputPortId, element.index)
+      if (upstreamFinished) queueCloserActor ! Committed(element.outputPortId, element.index)
     }
-
-    setHandler(in, new InHandler {
-
-      override def onPush(): Unit = {
-        val element = grab(in)
-        queue.enqueue(element)
-        onPushCallback()
-        if (downstreamWaiting) {
-          queue.dequeue() foreach { element =>
-            push(out, element)
-            downstreamWaiting = false
-            lastPushed = element.index
-            if(queue.autoCommit) queue.commit(defaultOutputPort, element.index)
-          }
-        }
-        pull(in)
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        upstreamFinished = true
-
-        if (downstreamWaiting) {
-          queueCloserActor ! PushedAndCommitted(defaultOutputPort, lastPushed, queue.read(defaultOutputPort))
-          queueCloserActor ! UpstreamFinished
-          completeStage()
-        }
-      }
-
-      override def onUpstreamFailure(ex: Throwable): Unit = {
-        val logger = Logger(LoggerFactory.getLogger(this.getClass))
-        logger.error("Received upstream failure signal: " + ex)
-        upstreamFailed = true
-        queueCloserActor ! UpstreamFailed
-        completeStage()
-      }
-    })
-
-    setHandler(out, new OutHandler {
-
-      override def onPull(): Unit = {
-        queue.dequeue() match {
-          case Some(element) =>
-            push(out, element)
-            lastPushed = element.index
-            if(queue.autoCommit) queue.commit(defaultOutputPort, element.index)
-          case None =>
-            if (upstreamFinished) {
-              queueCloserActor ! PushedAndCommitted(defaultOutputPort, lastPushed, queue.read(defaultOutputPort))
-              queueCloserActor ! UpstreamFinished
-              completeStage()
-            } else downstreamWaiting = true
-        }
-      }
-    })
+    element
   }
+}
 
-  def commit[S] = if (queue.autoCommit) Flow[Event[S]]
-              else {
-                Flow[Event[S]].map { element =>
-                  if (!upstreamFailed) {
-                    queue.commit(element.outputPortId, element.index)
-                    if(upstreamFinished) queueCloserActor ! Committed(element.outputPortId, element.index)
-                  }
-                  element
-                }
-              }
+object PersistentBufferAtLeastOnce {
+  def apply[T](config: Config)(implicit serializer: QueueSerializer[T], system: ActorSystem) =
+    new PersistentBufferAtLeastOnce[T](config)
 
+  def apply[T](persistDir: File)(implicit serializer: QueueSerializer[T], system: ActorSystem) =
+    new PersistentBufferAtLeastOnce[T](persistDir)
 }

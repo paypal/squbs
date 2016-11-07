@@ -16,13 +16,14 @@
 
 package org.squbs.unicomplex.streaming
 
+import akka.NotUsed
 import akka.actor.Actor._
 import akka.actor.Status.{Failure => ActorFailure}
 import akka.actor.SupervisorStrategy.Escalate
 import akka.actor._
 import akka.event.LoggingAdapter
 import akka.http.scaladsl.Http.ServerBinding
-import akka.http.scaladsl.model.HttpRequest
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.PathDirectives
@@ -36,8 +37,7 @@ import org.squbs.pipeline.streaming.{Context, PipelineExtension, PipelineSetting
 import org.squbs.unicomplex._
 import org.squbs.unicomplex.streaming.StatsSupport.StatsHolder
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -49,12 +49,12 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   private var serverBindings = Map.empty[String, ServerBindingInfo] // Service actor and HttpListener actor
 
-  var listenerRoutesVar = Map.empty[String, Seq[(Path, ActorWrapper, PipelineSetting)]]
+  var listenerRoutesVar = Map.empty[String, Seq[(Path, ServiceHandlerWrapper, PipelineSetting)]]
 
-  override protected def listenerRoutes: Map[String, Seq[(Path, ActorWrapper, PipelineSetting)]] = listenerRoutesVar
+  override protected def listenerRoutes: Map[String, Seq[(Path, ServiceHandlerWrapper, PipelineSetting)]] = listenerRoutesVar
 
-  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, ActorWrapper, PipelineSetting)]]): Unit =
-    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Seq[(Path, ActorWrapper, PipelineSetting)]]]
+  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, ServiceHandlerWrapper, PipelineSetting)]]): Unit =
+    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Seq[(Path, ServiceHandlerWrapper, PipelineSetting)]]]
 
   override private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
                                                 (implicit context: ActorContext): Receive = {
@@ -70,7 +70,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     implicit val am = ActorMaterializer()
     import context.system
 
-    val handler = try { Handler(listenerRoutes(name), localPort) } catch { case e: Throwable =>
+    val handler = try { FlowHandler(listenerRoutes(name), localPort) } catch { case e: Throwable =>
       serverBindings = serverBindings + (name -> ServerBindingInfo(None, Some(e)))
       log.error(s"Failed to build streaming flow handler.  System may not function properly.")
       notifySender ! Failure(e)
@@ -110,7 +110,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     }
   }
 
-  override private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ActorWrapper,
+  override private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ServiceHandlerWrapper,
                                                    ps: PipelineSetting)(implicit context: ActorContext) {
 
     // Calling this here just to see if it would throw an exception.
@@ -150,7 +150,9 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 //    Http().shutdownAllConnectionPools() andThen { case _ =>
       serverBindings foreach {
         case (name, ServerBindingInfo(Some(sb), None)) =>
-          listenerRoutes(name) foreach {case (_, aw, _) => aw.actor ! PoisonPill}
+          listenerRoutes(name) foreach {
+            case (_, sw, _) => sw.actor ! PoisonPill
+          }
           listenerRoutes = listenerRoutes - name
           sb.unbind() andThen { case _ => uniSelf ! Unbound(sb) }
           if (listenerRoutes.isEmpty) {
@@ -175,9 +177,9 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     new ListenerStateMXBean {
       import scala.collection.JavaConversions._
       override def getListenerStates: java.util.List[ListenerState] = {
-        serverBindings map { case (name, ServerBindingInfo(sb, exception)) =>
+        serverBindings.map { case (name, ServerBindingInfo(sb, exception)) =>
           ListenerState(name, sb.map(_ => "Success").getOrElse("Failed"), exception.getOrElse("").toString)
-        } toSeq
+        } .toSeq
       }
     }
   }
@@ -270,4 +272,58 @@ trait RouteDefinition extends Directives {
 class RejectRoute extends RouteDefinition {
 
   val route: Route = reject
+}
+
+private[unicomplex] case object FlowRequest
+private[unicomplex] case class FlowNotAvailable(flowClass: String)
+
+
+/**
+  * The FlowActor only hosts the FlowDefinition and hands out the Flow. It gives an
+  * ActorContext to the FlowDefinition but does no other functionality of an actor.
+  * @param webContext The web context held by this FlowActor
+  * @param clazz The FlowDefinition to be instantiated.
+  */
+private[unicomplex] class FlowActor(webContext: String, clazz: Class[FlowDefinition])
+  extends Actor with ActorLogging {
+
+  val flowDefTry = Try {
+    FlowDefinition.startFlow {
+      WebContext.createWithContext[FlowDefinition](webContext) {
+        clazz.newInstance
+      }
+    }
+  }
+
+  flowDefTry match {
+    case Success(_) =>
+      context.parent ! Initialized(Success(None))
+    case Failure(e) =>
+      log.error(e, s"Error instantiating flow from {}: {}", clazz.getName, e)
+      context.parent ! Initialized(Failure(e))
+  }
+
+  def receive = {
+    case FlowRequest => sender() ! flowDefTry
+      if (flowDefTry.isFailure) context.stop(self)
+  }
+}
+
+object FlowDefinition {
+  private[unicomplex] val context = new ThreadLocal[Option[ActorContext]] {
+    override def initialValue(): Option[ActorContext] = None
+  }
+
+  def startFlow[T](fn: => T)(implicit refFactory: ActorContext): T = {
+    context.set(Some(refFactory))
+    val f = fn
+    context.set(None)
+    f
+  }
+}
+
+trait FlowDefinition {
+  protected implicit final val context: ActorContext = FlowDefinition.context.get.get
+
+  def flow: Flow[HttpRequest, HttpResponse, NotUsed]
 }

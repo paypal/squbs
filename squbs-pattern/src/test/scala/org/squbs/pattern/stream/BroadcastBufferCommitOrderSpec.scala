@@ -38,14 +38,14 @@ class BroadcastBufferCommitOrderSpec extends FlatSpec with Matchers with BeforeA
   }
 
   it should "fail when an out of order commit is attempted and commit-order-policy = strict" in {
-    val util = new StreamSpecUtil[Int](2, false)
+    val util = new StreamSpecUtil[Int, Event[Int]](2)
     import util._
-    val buffer = new BroadcastBuffer[Int](ConfigFactory.parseString("commit-order-policy = strict").withFallback(config))
+    val buffer = BroadcastBufferAtLeastOnce[Int](ConfigFactory.parseString("commit-order-policy = strict").withFallback(config))
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val commit = buffer.commit[Int] // makes a dummy flow if autocommit is set to false
-      val bcBuffer = builder.add(buffer.async)
+        val commit = buffer.commit[Int]
+        val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
         in ~> bcBuffer ~> filterARandomElement ~> commit ~> mr ~> sink
         bcBuffer ~> commit ~> mr
@@ -57,13 +57,13 @@ class BroadcastBufferCommitOrderSpec extends FlatSpec with Matchers with BeforeA
   }
 
   it should "not fail when an out of order commit is attempted and commit-order-policy = lenient" in {
-    val util = new StreamSpecUtil[Int](2, false)
+    val util = new StreamSpecUtil[Int, Event[Int]](2)
     import util._
-    val buffer = new BroadcastBuffer[Int](ConfigFactory.parseString("commit-order-policy = lenient").withFallback(config))
+    val buffer = BroadcastBufferAtLeastOnce[Int](ConfigFactory.parseString("commit-order-policy = lenient").withFallback(config))
     val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val commit = buffer.commit[Int] // makes a dummy flow if autocommit is set to false
+        val commit = buffer.commit[Int]
       val bcBuffer = builder.add(buffer.async)
         val mr = builder.add(merge)
         in ~> bcBuffer ~> filterARandomElement ~> commit ~> mr ~> sink
