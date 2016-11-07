@@ -1,225 +1,370 @@
+/*
+ *  Copyright 2015 PayPal
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.squbs.httpclient
 
-import org.squbs.httpclient.endpoint.{Endpoint, EndpointRegistry}
-import akka.actor.ActorSystem
-import spray.client.pipelining._
-import spray.httpx.unmarshalling._
+import akka.actor._
+import akka.pattern.{CircuitBreaker, _}
+import akka.util.Timeout
+import org.squbs.httpclient.Configuration._
+import org.squbs.httpclient.HttpClientActorMessage.{MarkDownSuccess, MarkUpSuccess}
+import org.squbs.httpclient.endpoint.EndpointRegistry
+import org.squbs.httpclient.env.{Default, Environment, EnvironmentRegistry}
+import org.squbs.httpclient.pipeline.HttpClientUnmarshal._
+import org.squbs.pipeline.{SimplePipelineConfig, PipelineSetting}
+import spray.http.{HttpResponse, Uri}
 import spray.httpx.marshalling.Marshaller
-import scala.util.Try
-import scala.concurrent._
-import scala.annotation.tailrec
-import org.squbs.httpclient.pipeline.{Pipeline, PipelineManager}
-import scala.util.Failure
-import scala.Some
-import scala.util.Success
-import scala.collection.concurrent.TrieMap
-import scala.concurrent.duration.Duration
-import spray.http.HttpRequest
-import org.slf4j.LoggerFactory
-import org.squbs.httpclient.env.{EnvironmentRegistry, Default, Environment}
+import spray.httpx.unmarshalling._
 
-/**
- * Created by hakuang on 5/9/14.
- */
+import scala.concurrent.Future
+import scala.language.postfixOps
 
 object Status extends Enumeration {
   type Status = Value
   val UP, DOWN = Value
 }
 
-trait Client {
+trait HttpClientPathBuilder {
 
-  var status = Status.UP
-
-  val name: String
-
-  val env: Environment
-
-  val pipeline: Option[Pipeline]
-
-  var endpoint = EndpointRegistry.resolve(name, env)
-
-  def markUp = {
-    status = Status.UP
-  }
-
-  def markDown = {
-    status = Status.DOWN
-  }
-}
-
-trait RetrySupport {
-
-  val logger = LoggerFactory.getLogger(this.getClass)
-
-  def retry[T](pipeline: HttpRequest => Future[T], httpRequest: HttpRequest, maxRetries: Int, requestTimeout: Duration): Future[T] = {
-
-    @tailrec
-    def doRetry(times: Int): Future[T] = {
-      val work = pipeline {
-        httpRequest
+  def buildRequestUri(path: String, paramMap: Map[String, Any] = Map.empty[String, Any]): String = {
+    if (paramMap.isEmpty) {
+      Uri(path).toString()
+    } else {
+      val trimPath =
+        if (path.length > 1 && path.charAt(path.length - 1) == '/') path.substring(0, path.length - 1)
+        else path
+      val filteredParamMap = paramMap collect {
+        case (k, v: String) => (k, v)
+        case (k, v: Double) => (k, v.toString)
+        case (k, v: Float) => (k, v.toString)
+        case (k, v: Long) => (k, v.toString)
+        case (k, v: Int) => (k, v.toString)
+        case (k, v: Short) => (k, v.toString)
+        case (k, v: Byte) => (k, v.toString)
+        case (k, v: Char) => (k, v.toString)
+        case (k, v: Boolean) => (k, v.toString)
       }
-      Try {
-        Await.result(work, requestTimeout)
-      } match {
-        case Success(s) => work
-        case Failure(throwable) if times == 0 => work
-        case Failure(throwable) =>
-          logger.info("Retry service [uri=" + httpRequest.uri.toString() + "] @ " + (maxRetries - times + 1) + " times")
-          doRetry(times - 1)
-      }
-    }
-    doRetry(maxRetries)
-  }
-}
-
-trait ConfigurationSupport {
-  def config(client: Client) = {
-    client.endpoint match {
-      case Some(endpoint) =>
-        endpoint.config
-      case None =>
-        throw HttpClientEndpointNotExistException(client.name, client.env)
+      Uri(trimPath).withQuery(filteredParamMap).toString()
     }
   }
-
-  def hostSettings(client: Client)(implicit actorSystem: ActorSystem) = {
-    config(client).hostSettings
-  }
-
-  implicit def endpointToUri(endpoint: Option[Endpoint]): String = {
-    endpoint.getOrElse(Endpoint("")).uri
-  }
 }
 
-trait HttpCallSupport extends RetrySupport with ConfigurationSupport with PipelineManager {
+object HttpClientPathBuilder extends HttpClientPathBuilder
 
-  import ExecutionContext.Implicits.global
+class HttpClient private[httpclient] (val name: String, val env: Environment = Default, val askTimeout: Timeout)
+                                     (actorCreator: (ActorRefFactory) => Future[ActorRef])
+                                     (implicit val actorFactory: ActorRefFactory) {
 
-  def client: Client
+  import actorFactory.dispatcher
+  val fActorRef: Future[ActorRef] = actorCreator(actorFactory)
 
-  def handle(pipeline: Try[HttpRequest => Future[HttpResponseWrapper]], httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    val maxRetries = hostSettings(client).maxRetries
-    val requestTimeout = hostSettings(client).connectionSettings.requestTimeout
-    pipeline match {
-      case Success(res) => retry(res, httpRequest, maxRetries, requestTimeout)
-      case Failure(t@HttpClientMarkDownException(_, _)) => future {
-        HttpResponseWrapper(HttpClientException.httpClientMarkDownError, Left(t))
-      }
-      case Failure(t) => future {
-        HttpResponseWrapper(999, Left(t))
+  def get[R](uri: String, reqSettings: RequestSettings)
+            (implicit unmarshaller: FromResponseUnmarshaller[R]): Future[R] = {
+    implicit val timeout = reqSettings.timeout.askTimeout
+    val fHttpResponse = fActorRef flatMap { ref =>
+      (ref ? HttpClientActorMessage.Get(uri, Option(reqSettings))).mapTo[HttpResponse]
+    }
+    unmarshall[R](fHttpResponse)
+  }
+
+  def get[R](uri: String)(implicit unmarshaller: FromResponseUnmarshaller[R]): Future[R] = {
+    implicit val timeout = askTimeout
+    val fHttpResponse = fActorRef flatMap { ref => (ref ? HttpClientActorMessage.Get(uri, None)).mapTo[HttpResponse] }
+    unmarshall[R](fHttpResponse)
+  }
+
+  def options[R](uri: String, reqSettings: RequestSettings)
+                (implicit unmarshaller: FromResponseUnmarshaller[R]): Future[R] = {
+    implicit val timeout = reqSettings.timeout.askTimeout
+    val fHttpResponse = fActorRef flatMap { ref =>
+      (ref ? HttpClientActorMessage.Options(uri, Option(reqSettings))).mapTo[HttpResponse]
+    }
+    unmarshall[R](fHttpResponse)
+  }
+
+  def options[R](uri: String)(implicit unmarshaller: FromResponseUnmarshaller[R]): Future[R] = {
+    implicit val timeout = askTimeout
+    val fHttpResponse = fActorRef flatMap {
+      ref => (ref ? HttpClientActorMessage.Options(uri, None)).mapTo[HttpResponse]
+    }
+    unmarshall[R](fHttpResponse)
+  }
+
+  def delete[R](uri: String, reqSettings: RequestSettings)
+               (implicit unmarshaller: FromResponseUnmarshaller[R]): Future[R] = {
+    implicit val timeout = reqSettings.timeout.askTimeout
+    val fHttpResponse = fActorRef flatMap { ref =>
+      (ref ? HttpClientActorMessage.Delete(uri, Option(reqSettings))).mapTo[HttpResponse]
+    }
+    unmarshall[R](fHttpResponse)
+  }
+
+  def delete[R](uri: String)(implicit unmarshaller: FromResponseUnmarshaller[R]): Future[R] = {
+    implicit val timeout = askTimeout
+    val fHttpResponse = fActorRef flatMap {
+      ref => (ref ? HttpClientActorMessage.Delete(uri, None)).mapTo[HttpResponse]
+    }
+    unmarshall[R](fHttpResponse)
+  }
+
+  def post[T, R](uri: String, content: Option[T], reqSettings: RequestSettings)
+                (implicit marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]): Future[R] = {
+    implicit val timeout = reqSettings.timeout.askTimeout
+    val fHttpResponse = fActorRef flatMap { ref =>
+      (ref ? HttpClientActorMessage.Post(uri, content, marshaller, Option(reqSettings))).mapTo[HttpResponse]
+    }
+    unmarshall[R](fHttpResponse)
+  }
+
+  def post[T, R](uri: String, content: Option[T])
+                (implicit marshaller: Marshaller[T], unmarshaller: FromResponseUnmarshaller[R]): Future[R] = {
+    implicit val timeout = askTimeout
+    val fHttpResponse = fActorRef flatMap { ref =>
+      (ref ? HttpClientActorMessage.Post(uri, content, marshaller, None)).mapTo[HttpResponse]
+    }
+    unmarshall[R](fHttpResponse)
+  }
+
+  def put[T, R](uri: String, content: Option[T], reqSettings: RequestSettings)
+               (implicit marshaller: Marshaller[T], unmarshaller : FromResponseUnmarshaller[R]): Future[R] = {
+    implicit val timeout = reqSettings.timeout.askTimeout
+    val fHttpResponse = fActorRef flatMap { ref =>
+      (ref ? HttpClientActorMessage.Put(uri, content, marshaller, Option(reqSettings))).mapTo[HttpResponse]
+    }
+    unmarshall[R](fHttpResponse)
+  }
+
+  def put[T, R](uri: String, content: Option[T])
+               (implicit marshaller: Marshaller[T], unmarshaller : FromResponseUnmarshaller[R]): Future[R] = {
+    implicit val timeout = askTimeout
+    val fHttpResponse = fActorRef flatMap {
+      ref => (ref ? HttpClientActorMessage.Put(uri, content, marshaller, None)).mapTo[HttpResponse]
+    }
+    unmarshall[R](fHttpResponse)
+  }
+
+  private def unmarshall[R](httpResponse: Future[HttpResponse])
+                           (implicit ummarshaller : FromResponseUnmarshaller[R]) : Future[R] = {
+    httpResponse flatMap { response =>
+      try {
+        Future.fromTry(response.unmarshalTo[R])
+      } catch {
+        case t: Throwable => Future.failed(t)
       }
     }
   }
 
-  def get(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(invokeToHttpResponse(client), Get(client.endpoint + uri))
-  }
-
-  def post[T: Marshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(invokeToHttpResponse(client), Post(client.endpoint + uri, content))
-  }
-
-  def put[T: Marshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(invokeToHttpResponse(client), Put(client.endpoint + uri, content))
-  }
-
-  def head(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(invokeToHttpResponse(client), Head(client.endpoint + uri))
-  }
-
-  def delete(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(invokeToHttpResponse(client), Delete(client.endpoint + uri))
-  }
-
-  def options(uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseWrapper] = {
-    handle(invokeToHttpResponse(client), Options(client.endpoint + uri))
-  }
-}
-
-trait HttpEntityCallSupport extends RetrySupport with ConfigurationSupport with PipelineManager {
-
-  import ExecutionContext.Implicits.global
-
-  def client: Client
-
-  def handleEntity[T: FromResponseUnmarshaller](pipeline: Try[HttpRequest => Future[HttpResponseEntityWrapper[T]]],
-                                                httpRequest: HttpRequest)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[T]] = {
-    val maxRetries = hostSettings(client).maxRetries
-    val requestTimeout = hostSettings(client).connectionSettings.requestTimeout
-    pipeline match {
-      case Success(res) => retry(res, httpRequest, maxRetries, requestTimeout)
-      case Failure(t@HttpClientMarkDownException(_, _)) =>
-        future {HttpResponseEntityWrapper[T](HttpClientException.httpClientMarkDownError, Left(t), None)}
-      case Failure(t) =>
-        future {HttpResponseEntityWrapper[T](999, Left(t), None)}
-    }
-  }
-
-  def getEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](invokeToEntity[R](client), Get(client.endpoint + uri))
-  }
-
-  def postEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](invokeToEntity[R](client), Post(client.endpoint + uri, content))
-  }
-
-  def putEntity[T: Marshaller, R: FromResponseUnmarshaller](uri: String, content: Some[T])(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](invokeToEntity[R](client), Put(client.endpoint + uri, content))
-  }
-
-  def headEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](invokeToEntity[R](client), Head(client.endpoint + uri))
-  }
-
-  def deleteEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](invokeToEntity[R](client), Delete(client.endpoint + uri))
-  }
-
-  def optionsEntity[R: FromResponseUnmarshaller](uri: String)(implicit actorSystem: ActorSystem): Future[HttpResponseEntityWrapper[R]] = {
-    handleEntity[R](invokeToEntity[R](client), Options(client.endpoint + uri))
-  }
-}
-
-trait HttpClientSupport extends HttpCallSupport with HttpEntityCallSupport
-
-case class HttpClient(name: String,
-                      env: Environment = Default,
-                      pipeline: Option[Pipeline] = None) extends Client with HttpClientSupport {
-
-  require(endpoint != None, "endpoint should be resolved!")
-  Endpoint.check(endpoint.get.uri)
-
-  def client: Client = this
+  def raw = new RawHttpClient(this)
 
   def withConfig(config: Configuration): HttpClient = {
-    endpoint = Some(Endpoint(endpoint.get.uri, config))
-    HttpClientFactory.httpClientMap.put((name, env), this)
-    this
+    implicit val timeout = defaultFutureTimeout
+    val newAskTimeout = defaultRequestTimeout.askTimeout
+    new HttpClient(name, env, newAskTimeout)( (_) =>
+      fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateConfig(config)).mapTo[ActorRef] }
+    )
+  }
+
+  def withSettings(settings: Settings): HttpClient = {
+    implicit val timeout = defaultFutureTimeout
+    val newAskTimeout = defaultRequestTimeout.askTimeout
+    new HttpClient(name, env, newAskTimeout)( (_) =>
+      fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdateSettings(settings)).mapTo[ActorRef] }
+    )
+  }
+
+  def withPipelineSetting(pipelineSetting: Option[PipelineSetting]): HttpClient = {
+    implicit val timeout = defaultFutureTimeout
+    new HttpClient(name, env, askTimeout)( (_) =>
+      fActorRef flatMap { ref => (ref ? HttpClientActorMessage.UpdatePipeline(pipelineSetting)).mapTo[ActorRef] }
+    )
+  }
+
+  @deprecated
+  def withPipeline(pipeline: Option[SimplePipelineConfig]): HttpClient = {
+    withPipelineSetting(Some(PipelineSetting(config = pipeline)))
+  }
+
+  def withCircuitBreakerSettings(circuitBreakerSettings: CircuitBreakerSettings): HttpClient = {
+    implicit val timeout = defaultFutureTimeout
+    new HttpClient(name, env, askTimeout)( (_) =>
+      fActorRef flatMap { ref => (ref ? HttpClientActorMessage.
+        UpdateCircuitBreaker(circuitBreakerSettings)).mapTo[ActorRef] }
+    )
+  }
+
+  def withFallbackResponse(fallbackResponse: Option[HttpResponse]): HttpClient = {
+    implicit val timeout = defaultFutureTimeout
+    new HttpClient(name, env, askTimeout)( (_) =>
+      fActorRef flatMap { ref => (ref ? HttpClientActorMessage.
+        UpdateFallbackResponse(fallbackResponse)).mapTo[ActorRef] }
+    )
+  }
+
+  def markDown: Future[MarkDownSuccess.type] = {
+    implicit val timeout = defaultFutureTimeout
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.MarkDown).mapTo[MarkDownSuccess.type] }
+  }
+
+  def markUp: Future[MarkUpSuccess.type] = {
+    implicit val timeout = defaultFutureTimeout
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.MarkUp).mapTo[MarkUpSuccess.type] }
+  }
+
+  def readyFuture: Future[Unit] = {
+    fActorRef map {_ => }
+  }
+}
+
+class RawHttpClient private[httpclient] (client: HttpClient) {
+  import client._
+  import actorFactory.dispatcher
+
+  def get(uri: String, reqSettings: RequestSettings): Future[HttpResponse] = {
+    implicit val timeout = reqSettings.timeout.askTimeout
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.Get(uri, Option(reqSettings))).mapTo[HttpResponse] }
+  }
+
+  def get(uri: String): Future[HttpResponse] = {
+    implicit val timeout = askTimeout
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.Get(uri, None)).mapTo[HttpResponse] }
+  }
+
+  def post[T](uri: String, content: Option[T], reqSettings: RequestSettings)
+             (implicit marshaller: Marshaller[T]): Future[HttpResponse] = {
+    implicit val timeout = reqSettings.timeout.askTimeout
+    fActorRef flatMap { ref =>
+      (ref ? HttpClientActorMessage.Post[T](uri, content, marshaller, Option(reqSettings))).mapTo[HttpResponse]
+    }
+  }
+
+  def post[T](uri: String, content: Option[T])(implicit marshaller: Marshaller[T]): Future[HttpResponse] = {
+    implicit val timeout = askTimeout
+    fActorRef flatMap { ref =>
+      (ref ? HttpClientActorMessage.Post[T](uri, content, marshaller, None)).mapTo[HttpResponse]
+    }
+  }
+
+  def put[T](uri: String, content: Option[T], reqSettings: RequestSettings)
+            (implicit marshaller: Marshaller[T]): Future[HttpResponse] = {
+    implicit val timeout = reqSettings.timeout.askTimeout
+    fActorRef flatMap { ref =>
+      (ref ? HttpClientActorMessage.Put[T](uri, content, marshaller, Option(reqSettings))).mapTo[HttpResponse]
+    }
+  }
+
+  def put[T](uri: String, content: Option[T])(implicit marshaller: Marshaller[T]): Future[HttpResponse] = {
+    implicit val timeout = askTimeout
+    fActorRef flatMap { ref =>
+      (ref ? HttpClientActorMessage.Put[T](uri, content, marshaller, None)).mapTo[HttpResponse]
+    }
+  }
+
+  def head(uri: String, reqSettings: RequestSettings): Future[HttpResponse] = {
+    implicit val timeout = reqSettings.timeout.askTimeout
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.Head(uri, Option(reqSettings))).mapTo[HttpResponse] }
+  }
+
+  def head(uri: String): Future[HttpResponse] = {
+    implicit val timeout = askTimeout
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.Head(uri, None)).mapTo[HttpResponse]}
+  }
+
+  def delete(uri: String, reqSettings: RequestSettings): Future[HttpResponse] = {
+    implicit val timeout = reqSettings.timeout.askTimeout
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.Delete(uri, Option(reqSettings))).mapTo[HttpResponse] }
+  }
+
+  def delete(uri: String): Future[HttpResponse] = {
+    implicit val timeout = askTimeout
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.Delete(uri, None)).mapTo[HttpResponse]}
+  }
+
+  def options(uri: String, reqSettings: RequestSettings): Future[HttpResponse] = {
+    implicit val timeout = reqSettings.timeout.askTimeout
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.Options(uri, Option(reqSettings))).mapTo[HttpResponse] }
+  }
+
+  def options(uri: String): Future[HttpResponse] = {
+    implicit val timeout = askTimeout
+    fActorRef flatMap { ref => (ref ? HttpClientActorMessage.Options(uri, None)).mapTo[HttpResponse] }
+  }
+}
+
+case class HttpClientState(name: String,
+                           clientActor: ActorRef,
+                           env: Environment = Default,
+                           status: Status.Status = Status.UP,
+                           config: Option[Configuration] = None)
+                          (implicit actorRefFactory: ActorRefFactory) {
+
+  implicit val ec = actorRefFactory.dispatcher
+
+  val system: ActorSystem = actorRefFactory
+
+  val endpoint = {
+    val serviceEndpoint = EndpointRegistry(system).resolve(name, env)
+    serviceEndpoint match {
+      case Some(se) => config match {
+        case Some(conf) => se.copy(config = conf)
+        case None => se
+      }
+      case None => throw HttpClientEndpointNotExistException(name, env)
+    }
+  }
+
+  import endpoint.config.settings.{circuitBreakerConfig => cbConfig}
+
+  private[httpclient] var cbStat = CircuitBreakerStatus.Closed
+  private[httpclient] val cbMetrics =
+    new CircuitBreakerMetrics(cbConfig.historyUnits, cbConfig.historyUnitDuration)(system)
+  private[httpclient] val cb: CircuitBreaker = new CircuitBreaker(system.scheduler, cbConfig.maxFailures,
+    cbConfig.callTimeout, cbConfig.resetTimeout)(system.dispatcher)
+
+
+  cb.onClose {
+    cbStat = CircuitBreakerStatus.Closed
+  }
+
+  cb.onOpen {
+    cbStat = CircuitBreakerStatus.Open
+  }
+
+  cb.onHalfOpen {
+    cbStat = CircuitBreakerStatus.HalfOpen
   }
 }
 
 object HttpClientFactory {
 
-  HttpClientJMX.registryBeans
-
-  val httpClientMap: TrieMap[(String, Environment), HttpClient] = TrieMap[(String, Environment), HttpClient]()
-
-  def getOrCreate(name: String): HttpClient = {
-    getOrCreate(name, Default)
-  }
-
-  def getOrCreate(name: String, env: Environment): HttpClient = {
-    getOrCreate(name, env, None)
-  }
-
-  def getOrCreate(name: String, env: Environment = Default, pipeline: Option[Pipeline] = None): HttpClient = {
+  def get(name: String, env: Environment = Default)(implicit system: ActorSystem): HttpClient = {
     val newEnv = env match {
-      case Default => EnvironmentRegistry.resolve(name)
+      case Default => EnvironmentRegistry(system).resolve(name)
       case _ => env
     }
-    httpClientMap.getOrElseUpdate((name, newEnv), {
-      HttpClient(name, newEnv, pipeline)
-    })
+
+    val endpoint =
+      EndpointRegistry(system).resolve(name, env) getOrElse   { throw HttpClientEndpointNotExistException(name, env) }
+
+    val clientAskTimeout =
+      Some(toTimeout(endpoint.config.settings.hostSettings.connectionSettings.requestTimeout)).askTimeout
+
+
+    implicit val timeout = defaultFutureTimeout
+    new HttpClient(name, newEnv, clientAskTimeout)((_) =>
+      (HttpClientManager(system).httpClientManager ? HttpClientManagerMessage.Get(name, newEnv)).mapTo[ActorRef]
+    )
   }
 }

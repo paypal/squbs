@@ -1,66 +1,66 @@
+/*
+ *  Copyright 2015 PayPal
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.squbs.httpclient.pipeline
 
-import spray.httpx.{UnsuccessfulResponseException, PipelineException}
-import spray.client.pipelining._
-import akka.actor.{ActorSystem}
-import spray.httpx.unmarshalling._
-import scala.concurrent.{ExecutionContext, Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
-import org.squbs.httpclient._
-import spray.http.{Uri, HttpRequest, HttpResponse}
-import org.squbs.httpclient.HttpResponseEntityWrapper
-import scala.util.Try
-import akka.pattern._
-import akka.util.Timeout
-import spray.can.Http
-import akka.io.IO
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
+
+import akka.actor._
+import akka.util.Timeout
+import com.typesafe.scalalogging.LazyLogging
+import org.squbs.httpclient.{Status, _}
+import org.squbs.httpclient.endpoint.Endpoint
+import org.squbs.httpclient.pipeline.impl.RequestUpdateHeadersHandler
+import org.squbs.pipeline._
+import spray.can.Http
+import spray.http.{HttpRequest, HttpResponse}
+import spray.httpx.unmarshalling._
+import spray.httpx.{PipelineException, UnsuccessfulResponseException}
 import spray.io.ClientSSLEngineProvider
 
-/**
- * Created by hakuang on 5/1/2014.
- */
-trait Pipeline {
-  def requestPipelines: Seq[RequestTransformer]
+import scala.concurrent.Future
+import scala.language.implicitConversions
+import scala.util.Try
 
-  def responsePipelines: Seq[ResponseTransformer]
-}
+object HttpClientUnmarshal{
 
-trait PipelineHandler {
-  def processRequest: RequestTransformer
+  implicit class HttpResponseUnmarshal(val response: HttpResponse) extends AnyVal {
 
-  def processResponse: ResponseTransformer
-}
-
-trait RequestPipelineHandler extends PipelineHandler {
-  override def processResponse: ResponseTransformer = {httpResponse => httpResponse}
-}
-
-trait ResponsePipelineHandler extends PipelineHandler {
-  override def processRequest: RequestTransformer = {httpRequest => httpRequest}
-}
-
-object EmptyPipeline extends Pipeline {
-  override def responsePipelines: Seq[ResponseTransformer] = Seq.empty[ResponseTransformer]
-
-  override def requestPipelines: Seq[RequestTransformer] = Seq.empty[RequestTransformer]
-}
-
-trait PipelineManager extends ConfigurationSupport{
-
-  private def pipelining(client: Client)(implicit actorSystem: ActorSystem) = {
-
-    implicit val connectionTimeout: Timeout = hostSettings(client).connectionSettings.connectingTimeout.toMillis
-    import ExecutionContext.Implicits.global
-    for (
-      Http.HostConnectorInfo(connector, _) <-
-      IO(Http) ? hostConnectorSetup(client)
-    ) yield sendReceive(connector)
+    def unmarshalTo[T: FromResponseUnmarshaller]: Try[T] = {
+      Try{
+        if (response.status.isSuccess && response.status.allowsEntity && response.entity.nonEmpty)
+          response.as[T] match {
+            case Right(value) ⇒ value
+            case Left(error) ⇒
+              throw new PipelineException(error.toString, cause = new UnsuccessfulResponseException(response))
+          }
+        else throw new UnsuccessfulResponseException(response)
+      }
+    }
   }
+}
 
-  def hostConnectorSetup(client: Client)(implicit actorSystem: ActorSystem) = {
+trait PipelineManager extends LazyLogging {
+
+  val httpClientLogger = logger
+
+  def hostConnectorSetup(client: HttpClientState, reqSettings: Option[RequestSettings])(implicit system: ActorSystem) = {
     implicit def sslContext: SSLContext = {
-      config(client).sslContext match {
+      client.endpoint.config.settings.sslContext match {
         case Some(context) => context
         case None          => SSLContext.getDefault
       }
@@ -69,71 +69,74 @@ trait PipelineManager extends ConfigurationSupport{
     implicit val myClientEngineProvider = ClientSSLEngineProvider { engine =>
       engine
     }
-    val uri = Uri(client.endpoint.get.uri)
+
+    import client.endpoint.config.settings.hostSettings.connectionSettings
+    val defaultTimeout = Configuration.defaultRequestSettings(client.endpoint.config, client.config).timeout
+    val clientConnectionSettings = reqSettings match {
+      case None =>
+        defaultTimeout match {
+          case Some(timeout) => connectionSettings.copy(requestTimeout = timeout.duration)
+          case None => connectionSettings
+        }
+      case Some(settings) =>
+        val timeout = if (settings.timeout.isDefined) settings.timeout else defaultTimeout
+        timeout match {
+          case Some(t) => connectionSettings.copy(requestTimeout = t.duration)
+          case None => connectionSettings
+        }
+    }
+    import client.endpoint._
+    val hostSettings = config.settings.hostSettings.copy(connectionSettings = clientConnectionSettings)
+    Http.HostConnectorSetup(host, port, isSecure, settings = Some(hostSettings),
+      connectionType = client.endpoint.config.settings.connectionType)
+  }
+
+  def invokeToHttpResponseWithoutSetup(client: HttpClientState, reqSettings: Option[RequestSettings], actorRef: ActorRef)
+                                      (implicit actorFactory: ActorRefFactory): Try[(HttpRequest => Future[HttpResponse])] = {
+    import actorFactory.dispatcher
+    val pipelineSetting = client.endpoint.config.pipeline.getOrElse(PipelineSetting.default)
+    val pipeConfig = pipelineSetting.pipelineConfig
+    implicit val timeout: Timeout = // TODO: See whether we can honor the request setigns timeout.
+      Timeout(client.endpoint.config.settings.hostSettings.connectionSettings.connectingTimeout.toMillis, TimeUnit.MILLISECONDS)
+    val pipeline = spray.client.pipelining.sendReceive(actorRef)
+    val headers = reqSettings.toList flatMap (setting => setting.headers)
+    val updatedPipeConfig = if (headers.nonEmpty) {
+      val requestPipelines = pipeConfig.reqPipe :+ new RequestUpdateHeadersHandler(headers)
+      pipeConfig.copy(reqPipe = requestPipelines)
+    } else pipeConfig
+
+    val processor = pipelineSetting.factory.create(updatedPipeConfig, pipelineSetting.setting)(actorFactory)
+
+
+    Try {
+      client.status match {
+        case Status.DOWN =>
+          throw HttpClientMarkDownException(client.name, client.env)
+        case _ =>
+          req: HttpRequest =>
+            processor match {
+              case None => pipeline(req)
+              case Some(proc) =>
+                  val executor = new PipelineExecutor(pipeline, proc)
+                  executor.execute(RequestContext(req) +> ("HttpClient.name" -> client.name, "HttpClient.Endpoint" -> client.endpoint))
+//                val pipelineTarget : PipelineTarget = (req, caller) => pipeline(req.asInstanceOf[HttpRequest]) pipeTo caller
+//                val pipeProxy = system.actorOf(Props(classOf[PipelineProcessorActor], pipelineTarget, proc))
+//                (pipeProxy ? (RequestContext(req) +> ("HttpClient.name" -> client.name, "HttpClient.Endpoint" -> client.endpoint))).mapTo[HttpResponse]
+            }
+      }
+    }
+  }
+
+  implicit def endpointToUri(endpoint: Endpoint): String = {
+    val uri = endpoint.uri
     val host = uri.authority.host.toString
     val port = if (uri.effectivePort == 0) 80 else uri.effectivePort
     val isSecure = uri.scheme.toLowerCase.equals("https")
-    val defaultHostConnectorSetup = Http.HostConnectorSetup(host, port, isSecure)
-    defaultHostConnectorSetup.copy(settings = Some(hostSettings(client)), connectionType = config(client).connectionType)
-  }
-
-  def invokeToHttpResponse(client: Client)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseWrapper])] = {
-    val pipelines = client.pipeline.getOrElse(EmptyPipeline)
-    val reqPipelines = pipelines.requestPipelines
-    val resPipelines = pipelines.responsePipelines
-    val connTimeout = hostSettings(client).connectionSettings.connectingTimeout
-    Try{
-      val futurePipeline = pipelining(client)
-      val pipeline = Await.result(futurePipeline, connTimeout)
-      (reqPipelines, resPipelines, client.status) match {
-        case (_, _, Status.DOWN) =>
-          throw new HttpClientMarkDownException(client.name, client.env)
-        case (Seq(), Seq(), _) =>
-          pipeline ~> withWrapper
-        case (Seq(), _: Seq[ResponseTransformer], _) =>
-          pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> withWrapper
-        case (_: Seq[RequestTransformer], Seq(), _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> withWrapper
-        case (_: Seq[RequestTransformer], _: Seq[ResponseTransformer], _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> withWrapper
-      }
+    (isSecure, port) match {
+      case (true, 443) => s"https://$host"
+      case (true, _)   => s"https://$host:$port"
+      case (false, 80) => s"http://$host"
+      case (false, _)  => s"http://$host:$port"
     }
-  }
-
-  def invokeToEntity[T: FromResponseUnmarshaller](client: Client)(implicit actorSystem: ActorSystem): Try[(HttpRequest => Future[HttpResponseEntityWrapper[T]])] = {
-    val pipelines = client.pipeline.getOrElse(EmptyPipeline)
-    val reqPipelines = pipelines.requestPipelines
-    val resPipelines = pipelines.responsePipelines
-    val connTimeout = hostSettings(client).connectionSettings.connectingTimeout
-    Try{
-      val futurePipeline = pipelining(client)
-      val pipeline = Await.result(futurePipeline, connTimeout)
-      (reqPipelines, resPipelines, client.status) match {
-        case (_, _, Status.DOWN) =>
-          throw new HttpClientMarkDownException(client.name, client.env)
-        case (Seq(), Seq(), _) =>
-          pipeline ~> unmarshalWithWrapper[T]
-        case (Seq(), _: Seq[ResponseTransformer], _) =>
-          pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> unmarshalWithWrapper[T]
-        case (_: Seq[RequestTransformer], Seq(), _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> unmarshalWithWrapper[T]
-        case (_: Seq[RequestTransformer], _: Seq[ResponseTransformer], _) =>
-          reqPipelines.reduceLeft[RequestTransformer](_ ~> _) ~> pipeline ~> resPipelines.reduceLeft[ResponseTransformer](_ ~> _) ~> unmarshalWithWrapper[T]
-      }
-    }
-  }
-
-  private def withWrapper: HttpResponse => HttpResponseWrapper = {
-    response => HttpResponseWrapper(response.status, Right(response))
-  }
-
-  private def unmarshalWithWrapper[T: FromResponseUnmarshaller]: HttpResponse ⇒ HttpResponseEntityWrapper[T] = {
-    response =>
-      if (response.status.isSuccess)
-        response.as[T] match {
-          case Right(value) ⇒ HttpResponseEntityWrapper[T](response.status, Right(value), Some(response))
-          case Left(error) ⇒ HttpResponseEntityWrapper[T](response.status, Left(throw new PipelineException(error.toString)), Some(response))
-        }
-      else HttpResponseEntityWrapper[T](response.status, Left(new UnsuccessfulResponseException(response)), Some(response))
   }
 }

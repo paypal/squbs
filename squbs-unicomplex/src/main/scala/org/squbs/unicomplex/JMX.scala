@@ -1,12 +1,35 @@
+/*
+ *  Copyright 2015 PayPal
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.squbs.unicomplex
 
 import java.lang.management.ManagementFactory
+import java.util
 import javax.management.{MXBean, ObjectName}
 import java.util.Date
 import java.beans.ConstructorProperties
+import com.typesafe.config.Config
+import spray.can.Http
+import spray.can.server.Stats
+
 import scala.beans.BeanProperty
-import akka.actor.{ActorSystem, ActorContext}
+import akka.actor._
 import scala.collection.concurrent.TrieMap
+import scala.concurrent.Await
+import scala.util.Try
 
 object JMX {
 
@@ -14,8 +37,14 @@ object JMX {
 
   val systemStateName = "org.squbs.unicomplex:type=SystemState"
   val cubesName       = "org.squbs.unicomplex:type=Cubes"
+  val extensionsName  = "org.squbs.unicomplex:type=Extensions"
   val cubeStateName   = "org.squbs.unicomplex:type=CubeState,name="
   val listenersName    = "org.squbs.unicomplex:type=Listeners"
+  val listenerStateName = "org.squbs.unicomplex:type=ListenerState"
+  val serverStats = "org.squbs.unicomplex:type=ServerStats,listener="
+  val systemSettingName   = "org.squbs.unicomplex:type=SystemSetting"
+  val forkJoinStatsName = "org.squbs.unicomplex:type=ForkJoinPool,name="
+
 
   implicit def string2objectName(name:String):ObjectName = new ObjectName(name)
 
@@ -37,7 +66,7 @@ object JMX {
     (prefixes.get(system) orElse Option {
       import ConfigUtil._
       val p =
-        if (Unicomplex(system).config.getOptionalBoolean(prefixConfig).getOrElse(false) || isRegistered(systemStateName))
+        if (Unicomplex(system).config.get[Boolean](prefixConfig, false) || isRegistered(systemStateName))
           system.name + '.'
         else ""
       prefixes += system -> p
@@ -57,18 +86,39 @@ object JMX {
 }
 
 // $COVERAGE-OFF$
-case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", "supervisorPath"))(
+case class CubeInfo @ConstructorProperties(Array("name", "fullName", "version", "supervisor"))(
                                           @BeanProperty name: String,
                                           @BeanProperty fullName: String,
                                           @BeanProperty version: String,
-                                          @BeanProperty supervisorPath: String)
+                                          @BeanProperty supervisor: String)
 
-case class ListenerInfo @ConstructorProperties(Array("listener", "context", "actorPath"))(
+case class ListenerState @ConstructorProperties(Array("listener", "state", "error"))(
+                                          @BeanProperty listener: String,
+                                          @BeanProperty state: String,
+                                          @BeanProperty error: String)
+
+case class ListenerInfo @ConstructorProperties(Array("listener", "context", "actor"))(
                                           @BeanProperty listener: String,
                                           @BeanProperty context: String,
                                           @BeanProperty actorPath: String)
+case class SystemSetting @ConstructorProperties(Array("key", "value"))(
+                                          @BeanProperty key: String,
+                                          @BeanProperty value: String)
+
+
+case class ExtensionInfo @ConstructorProperties(Array("cube", "sequence", "phase", "error"))(
+                                          @BeanProperty cube: String,
+                                          @BeanProperty sequence: Int,
+                                          @BeanProperty phase: String,
+                                          @BeanProperty error: String)
+
+case class ActorErrorState @ConstructorProperties(Array("actorPath", "errorCount", "latestException"))(
+                                          @BeanProperty actorPath: String,
+                                          @BeanProperty errorCount: Int,
+                                          @BeanProperty latestException: String)
+
 // $COVERAGE-ON$
-                                          
+
 @MXBean
 trait SystemStateMXBean {
   def getSystemState: String
@@ -79,13 +129,36 @@ trait SystemStateMXBean {
 
 @MXBean
 trait CubesMXBean {
-  def getCubes: java.util.List[CubeInfo]
+  def getCubes: util.List[CubeInfo]
+}
+
+@MXBean
+trait ExtensionsMXBean {
+  def getExtensions: util.List[ExtensionInfo]
+}
+
+@MXBean
+trait ActorMXBean {
+  def getActor: String
+  def getClassName: String
+  def getRouteConfig : String
+  def getParent: String
+  def getChildren: String
+  def getDispatcher : String
+  def getMailBoxSize : String
 }
 
 @MXBean
 trait CubeStateMXBean {
   def getName: String
   def getCubeState: String
+  def getWellKnownActors : String
+  def getActorErrorStates: util.List[ActorErrorState]
+}
+
+@MXBean
+trait ListenerStateMXBean {
+  def getListenerStates: java.util.List[ListenerState]
 }
 
 @MXBean
@@ -93,4 +166,101 @@ trait ListenerMXBean {
   def getListeners: java.util.List[ListenerInfo]
 }
 
+@MXBean
+trait ServerStatsMXBean {
+  def getListenerName: String
+  def getUptime: String
+  def getTotalRequests: Long
+  def getOpenRequests: Long
+  def getMaxOpenRequests: Long
+  def getTotalConnections: Long
+  def getOpenConnections: Long
+  def getMaxOpenConnections: Long
+  def getRequestsTimedOut: Long
+}
 
+@MXBean
+trait SystemSettingMXBean {
+  def getSystemSetting: util.List[SystemSetting]
+}
+
+@MXBean
+trait ForkJoinPoolMXBean {
+  def getPoolSize: Int
+  def getActiveThreadCount: Int
+  def getParallelism: Int
+  def getStealCount: Long
+  def getMode: String
+  def getQueuedSubmissionCount: Int
+  def getQueuedTaskCount: Long
+  def getRunningThreadCount: Int
+  def isQuiescent: Boolean
+}
+
+class ServerStats(name: String, httpListener: ActorRef) extends ServerStatsMXBean {
+  import akka.pattern._
+  import scala.concurrent.duration._
+  import spray.util._
+
+  override def getListenerName: String = name
+
+  override def getTotalConnections: Long = status.map(_.totalConnections) getOrElse -1
+
+  override def getRequestsTimedOut: Long = status.map(_.requestTimeouts) getOrElse -1
+
+  override def getOpenRequests: Long = status.map(_.openRequests) getOrElse -1
+
+  override def getUptime: String = status.map(_.uptime.formatHMS) getOrElse "00:00:00.000"
+
+  override def getMaxOpenRequests: Long = status.map(_.maxOpenRequests) getOrElse -1
+
+  override def getOpenConnections: Long = status.map(_.openConnections) getOrElse -1
+
+  override def getMaxOpenConnections: Long = status.map(_.maxOpenConnections) getOrElse -1
+
+  override def getTotalRequests: Long = status.map(_.totalRequests) getOrElse -1
+
+  private def status: Option[Stats] = {
+    val statsFuture = httpListener.ask(Http.GetStats)(1 second).mapTo[Stats]
+    Try(Await.result(statsFuture, 1 second)).toOption
+  }
+}
+
+class SystemSettingBean(config: Config) extends SystemSettingMXBean {
+  lazy val settings:util.List[SystemSetting] = {
+    import scala.collection.JavaConversions._
+    def iterateMap(prefix: String, map: util.Map[String, AnyRef]): util.Map[String, String] = {
+      val result = new util.TreeMap[String, String]()
+      map.foreach {
+        case (key, v: util.List[_]) =>
+          val value = v.asInstanceOf[util.List[AnyRef]]
+          result.putAll(iterateList(s"$prefix$key", value))
+        case (key, v: util.Map[_, _]) =>
+          val value = v.asInstanceOf[util.Map[String, AnyRef]]
+          result.putAll(iterateMap(s"$prefix$key.", value))
+        case (key, value) => result.put(s"$prefix$key", String.valueOf(value))
+      }
+      result
+    }
+
+    def iterateList(prefix: String, list: util.List[AnyRef]): util.Map[String, String] = {
+      val result = new util.TreeMap[String, String]()
+
+      list.zipWithIndex.foreach{
+        case (v: util.List[_], i) =>
+          val value = v.asInstanceOf[util.List[AnyRef]]
+          result.putAll(iterateList(s"$prefix[$i]", value))
+        case (v: util.Map[_, _], i) =>
+          val value = v.asInstanceOf[util.Map[String, AnyRef]]
+          result.putAll(iterateMap(s"$prefix[$i].", value))
+        case (value, i) => result.put(s"$prefix[$i]", String.valueOf(value))
+      }
+      result
+    }
+
+    iterateMap("", config.root.unwrapped()).toList.map{case (k:String, v:String) => {
+      SystemSetting(k, v)
+    }}
+  }
+  override def getSystemSetting: util.List[SystemSetting] = settings
+}
