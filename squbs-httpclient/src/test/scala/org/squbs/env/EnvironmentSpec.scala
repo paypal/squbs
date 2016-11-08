@@ -29,7 +29,7 @@ with Matchers with BeforeAndAfterEach{
   }
 
   override def afterEach() = {
-    EnvironmentRegistry(system).environmentResolvers.clear()
+    EnvironmentRegistry(system).environmentResolvers = List[EnvironmentResolver]()
   }
 
   "EnvironmentResolverRegistry" should "contain DummyProdEnvironmentResolver" in {

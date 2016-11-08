@@ -19,8 +19,6 @@ package org.squbs.env
 import akka.actor._
 import com.typesafe.scalalogging.LazyLogging
 
-import scala.collection.mutable.ListBuffer
-
 abstract class Environment {
   def name: String
 
@@ -69,34 +67,28 @@ trait EnvironmentResolver {
 }
 
 class EnvironmentRegistryExtension(system: ExtendedActorSystem) extends Extension with LazyLogging {
-  val environmentResolvers = ListBuffer[EnvironmentResolver]()
+  var environmentResolvers = List[EnvironmentResolver]()
 
-  def register(resolver: EnvironmentResolver) = {
+  def register(resolver: EnvironmentResolver) {
     environmentResolvers.find(_.name == resolver.name) match {
-      case None =>
-        environmentResolvers.prepend(resolver)
+      case None => environmentResolvers = resolver :: environmentResolvers
       case Some(oldResolver) =>
         logger.warn("Env Resolver:" + oldResolver.name + " already registered, skipped!")
     }
   }
 
-  def unregister(name: String) = {
-    environmentResolvers.find(_.name == name) match {
-      case None =>
-        logger.warn("Env Resolver:" + name + " cannot be found, skipping unregister!")
-      case Some(resolver) =>
-        environmentResolvers.remove(environmentResolvers.indexOf(resolver))
-    }
+  def unregister(name: String) {
+    val originalLentgh = environmentResolvers.length
+    environmentResolvers = environmentResolvers.filterNot(_.name == name)
+    if(environmentResolvers.length == originalLentgh)
+      logger.warn("Env Resolver:" + name + " cannot be found, skipping unregister!")
   }
 
   def resolve: Environment = {
-    val resolvedEnv = environmentResolvers.foldLeft[Environment](Default){
-      (env: Environment, resolver: EnvironmentResolver) =>
-        env match {
-          case Default => resolver.resolve
-          case _       => env
-        }
-    }
+    val resolvedEnv = environmentResolvers.view.map(_.resolve).collectFirst {
+      case env if env != Default => env
+    } getOrElse Default
+
     logger.debug(s"The environment is: " + resolvedEnv.lowercaseName)
     resolvedEnv
   }

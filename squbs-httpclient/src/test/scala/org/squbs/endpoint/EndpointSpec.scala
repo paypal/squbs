@@ -19,6 +19,7 @@ package org.squbs.endpoint
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import org.scalatest.{BeforeAndAfterEach, FlatSpecLike, Matchers}
+import org.scalatest.OptionValues._
 import org.squbs.env._
 
 import scala.language.postfixOps
@@ -27,8 +28,8 @@ class EndpointSpec extends TestKit(ActorSystem("EndpointSpec")) with FlatSpecLik
 
   implicit val _system = system
   override def afterEach() = {
-    EndpointResolverRegistry(system).endpointResolvers.clear()
-    EnvironmentRegistry(system).environmentResolvers.clear()
+    EndpointResolverRegistry(system).endpointResolvers = List[EndpointResolver]()
+    EnvironmentRegistry(system).environmentResolvers = List[EnvironmentResolver]()
   }
 
   "EndpointResolverRegistry" should "register a resolver" in {
@@ -57,9 +58,9 @@ class EndpointSpec extends TestKit(ActorSystem("EndpointSpec")) with FlatSpecLik
   it should "resolve the endpoint" in {
     EndpointResolverRegistry(system).register(new DummyLocalhostResolver)
     val resolver = EndpointResolverRegistry(system).route("abcService")
-    resolver should not be None
-    resolver.get.name should be ("DummyLocalhostResolver")
-    resolver.get.resolve("abcService") should be (Some(Endpoint("http://localhost:8080")))
+    resolver should be ('defined)
+    resolver.value.name should be ("DummyLocalhostResolver")
+    resolver.value.resolve("abcService") should be (Some(Endpoint("http://localhost:8080")))
   }
 
   it should "propagate exceptions from EndpointResolvers" in {
@@ -71,8 +72,8 @@ class EndpointSpec extends TestKit(ActorSystem("EndpointSpec")) with FlatSpecLik
 
   it should "resolve the endpoint when Environment is provided" in {
     EndpointResolverRegistry(system).register(new DummyLocalhostResolver)
-    EndpointResolverRegistry(system).route("abcService", DEV) should not be None
-    EndpointResolverRegistry(system).route("abcService", DEV).get.name should be ("DummyLocalhostResolver")
+    EndpointResolverRegistry(system).route("abcService", DEV) should be ('defined)
+    EndpointResolverRegistry(system).route("abcService", DEV).value.name should be ("DummyLocalhostResolver")
     EndpointResolverRegistry(system).resolve("abcService", DEV) should be (Some(Endpoint("http://localhost:8080")))
   }
 
@@ -87,8 +88,8 @@ class EndpointSpec extends TestKit(ActorSystem("EndpointSpec")) with FlatSpecLik
     EndpointResolverRegistry(system).endpointResolvers should have size 2
     EndpointResolverRegistry(system).endpointResolvers.head should not be a [DummyLocalhostResolver]
     EndpointResolverRegistry(system).endpointResolvers.head.name should be ("override")
-    EndpointResolverRegistry(system).route("abcService") should not be None
-    EndpointResolverRegistry(system).route("abcService").get.name should be ("override")
+    EndpointResolverRegistry(system).route("abcService") should be ('defined)
+    EndpointResolverRegistry(system).route("abcService").value.name should be ("override")
     EndpointResolverRegistry(system).resolve("abcService") should be (Some(Endpoint("http://localhost:9090")))
   }
 
@@ -105,10 +106,10 @@ class EndpointSpec extends TestKit(ActorSystem("EndpointSpec")) with FlatSpecLik
       override def name: String = "unique"
     })
     EndpointResolverRegistry(system).endpointResolvers should have size 2
-    EndpointResolverRegistry(system).route("abcService") should not be None
-    EndpointResolverRegistry(system).route("abcService").get.name should be ("DummyLocalhostResolver")
-    EndpointResolverRegistry(system).route("unique") should not be None
-    EndpointResolverRegistry(system).route("unique").get.name should be ("unique")
+    EndpointResolverRegistry(system).route("abcService") should be ('defined)
+    EndpointResolverRegistry(system).route("abcService").value.name should be ("DummyLocalhostResolver")
+    EndpointResolverRegistry(system).route("unique") should be ('defined)
+    EndpointResolverRegistry(system).route("unique").value.name should be ("unique")
     EndpointResolverRegistry(system).resolve("abcService") should be (Some(Endpoint("http://localhost:8080")))
     EndpointResolverRegistry(system).resolve("unique") should be (Some(Endpoint("http://www.ebay.com")))
   }

@@ -23,8 +23,6 @@ import akka.actor._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.env.{Default, Environment}
 
-import scala.collection.mutable.ListBuffer
-
 // TODO Endpoint can be used by non-http clients as well, e.g., Kafka, db, etc.. So, using javax.net.URI
 case class Endpoint(uri: URI, sslContext: Option[SSLContext] = None)
 
@@ -43,20 +41,20 @@ trait EndpointResolver {
 }
 
 class EndpointResolverRegistryExtension(system: ExtendedActorSystem) extends Extension with LazyLogging {
-  val endpointResolvers = ListBuffer[EndpointResolver]()
+  var endpointResolvers = List[EndpointResolver]()
 
-  def register(resolver: EndpointResolver) = {
+  def register(resolver: EndpointResolver) {
     endpointResolvers.find(_.name == resolver.name) match {
-      case None => endpointResolvers.prepend(resolver)
+      case None => endpointResolvers = resolver :: endpointResolvers
       case Some(routing) => logger.warn(s"Endpoint Resolver: ${resolver.name} already registered, skipped!")
     }
   }
 
-  def unregister(name: String) = {
-    endpointResolvers.find(_.name == name) match {
-      case None => logger.warn("Endpoint Resolver: {} cannot be found, skipped unregister!", name)
-      case Some(resolver) => endpointResolvers -= resolver
-    }
+  def unregister(name: String) {
+    val originalLength = endpointResolvers.length
+    endpointResolvers = endpointResolvers.filterNot(_.name == name)
+    if(endpointResolvers.length == originalLength)
+      logger.warn("Endpoint Resolver: {} cannot be found, skipped unregister!", name)
   }
 
   def route(svcName: String, env: Environment = Default): Option[EndpointResolver] = {
@@ -64,13 +62,10 @@ class EndpointResolverRegistryExtension(system: ExtendedActorSystem) extends Ext
   }
 
   def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-    val resolvedEndpoint = endpointResolvers.foldLeft[Option[Endpoint]](None) {
-      (endpoint: Option[Endpoint], resolver: EndpointResolver) =>
-        endpoint match {
-          case Some(_) => endpoint
-          case None => resolver.resolve(svcName, env)
-        }
+    val resolvedEndpoint = endpointResolvers.view.map(_.resolve(svcName, env)).collectFirst {
+      case Some(endpoint) => endpoint
     }
+
     resolvedEndpoint match {
       case Some(ep) =>
         logger.debug(s"Endpoint can be resolved by ($svcName, $env), the endpoint uri is:" + ep.uri)

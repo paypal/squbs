@@ -113,7 +113,7 @@ class ClientFlowPipelineSpec  extends AsyncFlatSpec with Matchers with BeforeAnd
     val expectedResponseHeaders = Seq(
       RawHeader("keyD", "valD"),
       RawHeader("keyPreOutbound", "valPreOutbound"),
-      RawHeader("keyPostOutbound", "valPostOutbound")).sortBy(_.name)
+      RawHeader("keyPostOutbound", "valPostOutbound"))
 
     val expectedEntity = Seq(
       RawHeader("keyA", "valA"),
@@ -128,7 +128,7 @@ class ClientFlowPipelineSpec  extends AsyncFlatSpec with Matchers with BeforeAnd
   it should "build the flow only with defaults" in {
     val expectedResponseHeaders = Seq(
       RawHeader("keyPreOutbound", "valPreOutbound"),
-      RawHeader("keyPostOutbound", "valPostOutbound")).sortBy(_.name)
+      RawHeader("keyPostOutbound", "valPostOutbound"))
 
     val expectedEntity =  Seq(
       RawHeader("keyPreInbound", "valPreInbound"),
@@ -138,7 +138,7 @@ class ClientFlowPipelineSpec  extends AsyncFlatSpec with Matchers with BeforeAnd
   }
 
   it should "build the flow without defaults" in {
-    val expectedResponseHeaders = Seq(RawHeader("keyD", "valD")).sortBy(_.name)
+    val expectedResponseHeaders = Seq(RawHeader("keyD", "valD"))
 
     val expectedEntity =  Seq(
       RawHeader("keyA", "valA"),

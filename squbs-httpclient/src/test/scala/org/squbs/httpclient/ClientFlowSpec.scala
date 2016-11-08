@@ -89,14 +89,21 @@ class ClientConfigurationSpec extends FlatSpec with Matchers {
   val defaultConfig = ConfigFactory.load()
 
   it should "give priority to client specific configuration" in {
+    import scala.concurrent.duration._
     val config = ConfigFactory.parseString(
       """
         |sampleclient {
         | type = squbs.httpclient
         |
-        | akka.http.host-connection-pool {
-        |   max-connections = 987
-        |   max-retries = 123
+        | akka.http {
+        |   host-connection-pool {
+        |     max-connections = 987
+        |     max-retries = 123
+        |
+        |     client = {
+        |       connecting-timeout = 123 ms
+        |     }
+        |   }
         | }
         |}
       """.stripMargin).withFallback(defaultConfig)
@@ -105,6 +112,7 @@ class ClientConfigurationSpec extends FlatSpec with Matchers {
     cps.maxConnections shouldBe 987
     cps.maxRetries shouldBe 123
     cps.idleTimeout.toSeconds should equal (defaultConfig.getDuration("akka.http.host-connection-pool.idle-timeout").getSeconds)
+    cps.connectionSettings.connectingTimeout shouldEqual (123 millisecond)
   }
 
   it should "fallback to default values if no client specific configuration is provided" in {
