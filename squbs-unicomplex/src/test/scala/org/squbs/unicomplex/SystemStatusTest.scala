@@ -21,8 +21,8 @@ import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.squbs.lifecycle.GracefulStop
+import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex.dummyfailedextensions.{DummyFailedExtensionA, DummyFailedExtensionB}
-import Timeouts._
 
 object SystemStatusTest {
 
@@ -94,7 +94,7 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
 		}
 	}
 
-	"UniComplex" must {
+	"Unicomplex" must {
 
 		"get cube init reports" in {
 			Unicomplex(system).uniActor ! ReportStatus

@@ -16,7 +16,30 @@
 
 package org.squbs
 
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
+import akka.stream.ActorMaterializer
+import akka.util.ByteString
+
+import scala.concurrent.Future
+
 package object testkit {
   case object TestPing
   case object TestPong
+
+  def entityAsString(uri: String)(implicit am: ActorMaterializer, system: ActorSystem): Future[String] = {
+    import system.dispatcher
+    get(uri) flatMap extractEntityAsString
+  }
+
+  def get(uri: String)(implicit am: ActorMaterializer, system: ActorSystem): Future[HttpResponse] = {
+    Http().singleRequest(HttpRequest(uri = Uri(uri)))
+  }
+
+  def extractEntityAsString(response: HttpResponse)
+                           (implicit am: ActorMaterializer, system: ActorSystem): Future[String] = {
+    import system.dispatcher
+    response.entity.dataBytes.runFold(ByteString(""))(_ ++ _) map(_.utf8String)
+  }
 }

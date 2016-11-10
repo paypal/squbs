@@ -1,25 +1,27 @@
 /*
- *  Copyright 2015 PayPal
+ * Copyright 2015 PayPal
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.squbs.unicomplex
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.Uri.Path
 import akka.testkit.TestKit
-import org.scalatest.{Matchers, FlatSpecLike}
-import spray.http.Uri.Path
+import org.scalatest.{FlatSpecLike, Matchers}
+import org.squbs.unicomplex.streaming.FlowHandler._
+import org.squbs.unicomplex.streaming.ServiceRegistry
 
 class ServiceRegistrySpec extends TestKit(ActorSystem("ServiceRegistrySpec")) with FlatSpecLike with Matchers {
 
@@ -27,7 +29,6 @@ class ServiceRegistrySpec extends TestKit(ActorSystem("ServiceRegistrySpec")) wi
 
     val serviceRegistry = new ServiceRegistry(system.log)
     import serviceRegistry.merge
-    import RegisterContext._
 
     val pipelineSetting = (None, None, None)
     val result = merge(Seq(), "abc", "old", pipelineSetting)
