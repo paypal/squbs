@@ -26,13 +26,10 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.AsyncAssertions
 import org.scalatest.{BeforeAndAfterAll, Inspectors, Matchers, WordSpecLike}
 import org.squbs.lifecycle.GracefulStop
-import spray.util.Utils
 
 import scala.util.Try
 
 object ScanResourceSpec {
-
-  val (_, port) = Utils.temporaryServerHostnameAndPort()
 
   val jmxPrefix = "ScanResourceSpec"
 
@@ -43,7 +40,7 @@ object ScanResourceSpec {
        |  ${JMX.prefixConfig} = true
        |}
        |
-       |default-listener.bind-port = $port
+       |default-listener.bind-port = 0
     """.stripMargin)
 
   implicit val akkaTimeout: Timeout =

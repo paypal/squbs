@@ -25,7 +25,7 @@ import akka.stream.FlowShape
 import akka.stream.scaladsl._
 import akka.util.Timeout
 import org.squbs.pipeline.streaming.{Context, PipelineExtension, PipelineSetting, RequestContext}
-import org.squbs.unicomplex.{ActorWrapper, FlowWrapper, ServiceHandlerWrapper}
+import org.squbs.unicomplex.FlowWrapper
 
 import scala.annotation.tailrec
 import scala.language.postfixOps
@@ -33,7 +33,7 @@ import scala.util.{Success, Try}
 
 object FlowHandler {
 
-  def apply(routes: Seq[(Path, ServiceHandlerWrapper, PipelineSetting)], localPort: Option[Int])
+  def apply(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: Option[Int])
            (implicit system: ActorSystem): FlowHandler = {
     new FlowHandler(routes, localPort)
   }
@@ -56,7 +56,7 @@ object FlowHandler {
   }
 }
 
-class FlowHandler(routes: Seq[(Path, ServiceHandlerWrapper, PipelineSetting)], localPort: Option[Int])
+class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: Option[Int])
                  (implicit system: ActorSystem) {
 
   import FlowHandler._
@@ -103,9 +103,9 @@ class FlowHandler(routes: Seq[(Path, ServiceHandlerWrapper, PipelineSetting)], l
     Flow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
 
-      val (paths, serviceHandlerWrappers, pipelineSettings) = routes unzip3
+      val (paths, flowWrappers, pipelineSettings) = routes unzip3
 
-      val routesMerge = b.add(Merge[RequestContext](serviceHandlerWrappers.size + 1))
+      val routesMerge = b.add(Merge[RequestContext](flowWrappers.size + 1))
 
       def partitioner(rc: RequestContext) = {
         val index = paths.indexWhere(p => pathMatch(normPath(rc.request.uri.path), p))
@@ -115,16 +115,8 @@ class FlowHandler(routes: Seq[(Path, ServiceHandlerWrapper, PipelineSetting)], l
 
       val partition = b.add(Partition(paths.size + 1, partitioner))
 
-      serviceHandlerWrappers.zipWithIndex foreach { case (sw, i) =>
-        val serviceFlow =
-          sw match {
-            case aw: ActorWrapper =>
-              Flow[RequestContext].mapAsync(akkaHttpConfig.getInt("server.pipelining-limit")) {
-                rc => runRoute(aw.actor, rc)
-              }
-            case fw: FlowWrapper =>
-              toRequestContextFlow(fw.flowHandler.flow)
-          }
+      flowWrappers.zipWithIndex foreach { case (fw, i) =>
+        val serviceFlow = toRequestContextFlow(fw.flow)
 
         pipelineExtension.getFlow(pipelineSettings(i), Context(name = paths(i).toString())) match {
           case Some(pipeline) => partition.out(i) ~> pipeline.join(serviceFlow) ~> routesMerge
@@ -137,7 +129,7 @@ class FlowHandler(routes: Seq[(Path, ServiceHandlerWrapper, PipelineSetting)], l
       })
 
       // Last output port is for 404
-      partition.out(serviceHandlerWrappers.size) ~> notFound ~> routesMerge
+      partition.out(flowWrappers.size) ~> notFound ~> routesMerge
 
       FlowShape(partition.in, routesMerge.out)
   })

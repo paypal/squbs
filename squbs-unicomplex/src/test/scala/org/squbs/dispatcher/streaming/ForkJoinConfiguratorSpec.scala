@@ -16,27 +16,24 @@
 
 package org.squbs.dispatcher.streaming
 
-import java.util.concurrent.TimeUnit
 import javax.management.ObjectName
 
 import akka.actor.ActorSystem
-import akka.io.IO
+import akka.pattern._
 import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
-import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.AsyncAssertions
 import org.scalatest.{BeforeAndAfterAll, Inspectors, Matchers, WordSpecLike}
 import org.squbs.lifecycle.GracefulStop
-import org.squbs.unicomplex.{Timeouts, JMX, Unicomplex, UnicomplexBoot}
-import Timeouts._
-import org.squbs.unicomplex.streaming._
+import org.squbs.unicomplex.Timeouts._
+import org.squbs.unicomplex.{JMX, PortBindings, Unicomplex, UnicomplexBoot}
 
 import scala.concurrent.Await
 
 object ForkJoinConfiguratorSpec {
 
-  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths/streaming").getPath
+  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
   val classPaths = Array(
     "DummyCube",
@@ -47,19 +44,16 @@ object ForkJoinConfiguratorSpec {
     "DummyExtensions.jar"
   ) map (dummyJarsDir + "/" + _)
 
-  val (_, _, port) = temporaryServerHostnameAndPort()
-
   val jmxPrefix = "forkJoinConfiguratorSpec"
 
   val config = ConfigFactory.parseString(
     s"""
       |squbs {
-      |  actorsystem-name = streaming-forkJoinConfiguratorSpec
+      |  actorsystem-name = ForkJoinConfiguratorSpec
       |  ${JMX.prefixConfig} = true
-      |  experimental-mode-on = true
       |}
       |
-      |default-listener.bind-port = $port
+      |default-listener.bind-port = 0
       |
       |akka.actor {
       |  default-dispatcher {
@@ -85,6 +79,10 @@ class ForkJoinConfiguratorSpec extends TestKit(ForkJoinConfiguratorSpec.boot.act
   import system.dispatcher
   implicit val am = ActorMaterializer()
 
+  val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
+  val port = portBindings("default-listener")
+
+
   "The ForkJoinConfigurator" must {
 
     "have some actors started" in {
@@ -100,13 +98,14 @@ class ForkJoinConfiguratorSpec extends TestKit(ForkJoinConfiguratorSpec.boot.act
     }
 
     "be able to handle a simple Akka Http request" in {
+      import org.squbs.unicomplex._
       Await.result(entityAsString(s"http://127.0.0.1:$port/dummysvc/msg/hello"), awaitMax) should be("^hello$")
     }
 
     "expose proper ForkJoinPool MXBean stats" in {
       import org.squbs.unicomplex.JMX._
       val fjName =
-        new ObjectName(jmxPrefix + '.' + forkJoinStatsName + "streaming-forkJoinConfiguratorSpec-akka.actor.default-dispatcher")
+        new ObjectName(jmxPrefix + '.' + forkJoinStatsName + "ForkJoinConfiguratorSpec-akka.actor.default-dispatcher")
 
       get(fjName, "PoolSize").asInstanceOf[Int] should be > 0
       get(fjName, "ActiveThreadCount").asInstanceOf[Int] should be >= 0

@@ -23,8 +23,8 @@ import akka.actor.SupervisorStrategy.Escalate
 import akka.actor._
 import akka.event.LoggingAdapter
 import akka.http.scaladsl.Http.ServerBinding
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.model.Uri.Path
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.PathDirectives
 import akka.http.scaladsl.{ConnectionContext, Http}
@@ -49,12 +49,12 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   private var serverBindings = Map.empty[String, ServerBindingInfo] // Service actor and HttpListener actor
 
-  var listenerRoutesVar = Map.empty[String, Seq[(Path, ServiceHandlerWrapper, PipelineSetting)]]
+  var listenerRoutesVar = Map.empty[String, Seq[(Path, FlowWrapper, PipelineSetting)]]
 
-  override protected def listenerRoutes: Map[String, Seq[(Path, ServiceHandlerWrapper, PipelineSetting)]] = listenerRoutesVar
+  override protected def listenerRoutes: Map[String, Seq[(Path, FlowWrapper, PipelineSetting)]] = listenerRoutesVar
 
-  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, ServiceHandlerWrapper, PipelineSetting)]]): Unit =
-    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Seq[(Path, ServiceHandlerWrapper, PipelineSetting)]]]
+  override protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, FlowWrapper, PipelineSetting)]]): Unit =
+    listenerRoutesVar = newListenerRoutes.asInstanceOf[Map[String, Seq[(Path, FlowWrapper, PipelineSetting)]]]
 
   override private[unicomplex] def startListener(name: String, config: Config, notifySender: ActorRef)
                                                 (implicit context: ActorContext): Receive = {
@@ -110,7 +110,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     }
   }
 
-  override private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: ServiceHandlerWrapper,
+  override private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: FlowWrapper,
                                                    ps: PipelineSetting)(implicit context: ActorContext) {
 
     // Calling this here just to see if it would throw an exception.
@@ -191,8 +191,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
   }
 }
 
-private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
-  extends Actor with ActorLogging {
+private[unicomplex] sealed trait FlowSupplier { this: Actor with ActorLogging =>
 
   import scala.concurrent.duration._
 
@@ -203,44 +202,49 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
         Escalate
     }
 
+  val flowTry: Try[Flow[HttpRequest, HttpResponse, NotUsed]]
+
+  final def receive: Receive = {
+    case FlowRequest =>
+      sender() ! flowTry
+      if (flowTry.isFailure) context.stop(self)
+  }
+}
+
+private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
+  extends Actor with ActorLogging with FlowSupplier {
+
   def actorRefFactory = context
 
-  val routeDef =
-    try {
-      val d = RouteDefinition.startRoutes {
-        WebContext.createWithContext[RouteDefinition](webContext) {
-          clazz.newInstance
-        }
+  val routeDefTry = Try {
+    RouteDefinition.startRoutes {
+      WebContext.createWithContext[RouteDefinition](webContext) {
+        clazz.newInstance
       }
-      context.parent ! Initialized(Success(None))
-      d
-    } catch {
-      case e: Exception =>
-        log.error(e, s"Error instantiating route from {}: {}", clazz.getName, e)
-        context.parent ! Initialized(Failure(e))
-        context.stop(self)
-        RouteDefinition.startRoutes(new RejectRoute)
     }
-
-  // TODO Hold on..  Why do we directly need a materializer here..  Should be passed down..
-  implicit val am = ActorMaterializer()
-  implicit val rejectionHandler:RejectionHandler = routeDef.rejectionHandler.getOrElse(RejectionHandler.default)
-  implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.getOrElse(PartialFunction.empty[Throwable, Route])
-
-  lazy val route = if (webContext.nonEmpty) {
-    PathDirectives.pathPrefix(PathMatchers.separateOnSlashes(webContext)) {routeDef.route}
-  } else {
-    // don't append pathPrefix if webContext is empty, won't be null due to the top check
-    routeDef.route
   }
 
-  import akka.pattern.pipe
-  import context.dispatcher
+  implicit val am = ActorMaterializer()
 
-  def receive: Receive = {
-    case request: HttpRequest =>
-      val origSender = sender()
-      Route.asyncHandler(route).apply(request) pipeTo origSender
+  val flowTry: Try[Flow[HttpRequest, HttpResponse, NotUsed]] = routeDefTry match {
+
+    case Success(routeDef) =>
+      context.parent ! Initialized(Success(None))
+
+      implicit val rejectionHandler:RejectionHandler = routeDef.rejectionHandler.getOrElse(RejectionHandler.default)
+      implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.getOrElse(PartialFunction.empty[Throwable, Route])
+
+      if (webContext.nonEmpty) {
+        Success(PathDirectives.pathPrefix(PathMatchers.separateOnSlashes(webContext)) {routeDef.route})
+      } else {
+        // don't append pathPrefix if webContext is empty, won't be null due to the top check
+        Success(routeDef.route)
+      }
+
+    case Failure(e) =>
+      log.error(e, s"Error instantiating route from {}: {}", clazz.getName, e)
+      context.parent ! Initialized(Failure(e))
+      Failure(e)
   }
 }
 
@@ -285,7 +289,7 @@ private[unicomplex] case class FlowNotAvailable(flowClass: String)
   * @param clazz The FlowDefinition to be instantiated.
   */
 private[unicomplex] class FlowActor(webContext: String, clazz: Class[FlowDefinition])
-  extends Actor with ActorLogging {
+  extends Actor with ActorLogging with FlowSupplier {
 
   val flowDefTry = Try {
     FlowDefinition.startFlow {
@@ -295,17 +299,16 @@ private[unicomplex] class FlowActor(webContext: String, clazz: Class[FlowDefinit
     }
   }
 
-  flowDefTry match {
-    case Success(_) =>
+  val flowTry: Try[Flow[HttpRequest, HttpResponse, NotUsed]] = flowDefTry match {
+
+    case Success(flowDef) =>
       context.parent ! Initialized(Success(None))
+      Success(flowDef.flow)
+
     case Failure(e) =>
       log.error(e, s"Error instantiating flow from {}: {}", clazz.getName, e)
       context.parent ! Initialized(Failure(e))
-  }
-
-  def receive = {
-    case FlowRequest => sender() ! flowDefTry
-      if (flowDefTry.isFailure) context.stop(self)
+      Failure(e)
   }
 }
 

@@ -1,42 +1,44 @@
 /*
- *  Copyright 2015 PayPal
+ * Copyright 2015 PayPal
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.squbs.unicomplex
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.server.Route
+import akka.pattern._
+import akka.stream.ActorMaterializer
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
-import spray.client.pipelining._
-import spray.routing.{Directives, Route}
-import spray.util.Utils
+import org.squbs.unicomplex.streaming.{LocalPortHeader, RouteDefinition}
 
 import scala.concurrent.Await
 
 object LocalPortListenerSpecActorSystem {
-  val (_, port1) = Utils.temporaryServerHostnameAndPort()
-  val (_, port2) = Utils.temporaryServerHostnameAndPort()
-  val (_, port3) = Utils.temporaryServerHostnameAndPort()
+
+  // We need to explicitly generate a port for this test as the local port header takes the port form the config
+  // and not the binding results.
+  val (_, _, port1) = temporaryServerHostnameAndPort()
 
   val config = ConfigFactory.parseString(
       s"""
         squbs {
-          actorsystem-name = "LocalPortListenerSpec"
+          actorsystem-name = LocalPortListenerSpec
           prefix-jmx-name = true
         }
         default-listener {
@@ -55,7 +57,7 @@ object LocalPortListenerSpecActorSystem {
           aliases = []
           bind-address = "0.0.0.0"
           full-address = false
-          bind-port =  $port2
+          bind-port = 0
           secure = false
           client-authn = false
           ssl-context = default
@@ -65,7 +67,7 @@ object LocalPortListenerSpecActorSystem {
           aliases = []
           bind-address = "0.0.0.0"
           full-address = false
-          bind-port =  $port3
+          bind-port = 0
           local-port-header = false
           secure = false
           client-authn = false
@@ -83,27 +85,28 @@ object LocalPortListenerSpecActorSystem {
   			.scanComponents(classPaths)
   			.initExtensions
   			.start()
-  	
-  	def getPort = (port1, port2, port3)
 }
 
 class LocalPortListenerSpec extends TestKit(LocalPortListenerSpecActorSystem.boot.actorSystem)
     with FlatSpecLike with BeforeAndAfterAll with Matchers {
 
-  import system.dispatcher
-  
-  val (port1, port2, port3) = LocalPortListenerSpecActorSystem.getPort
+  implicit val am = ActorMaterializer()
+
+  val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
+  val port1 = portBindings("default-listener")
+  val port2 = portBindings("second-listener")
+  val port3 = portBindings("third-listener")
+
+  import akka.pattern.ask
+  def port(listener: String) = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)(listener)
 
   it should "patch local port well on local-port-header = true" in {
-    val pipeline = sendReceive
-    Await.result(pipeline(Get(s"http://127.0.0.1:$port1/localport")), awaitMax).entity.asString.toInt should be (port1)
-//    Await.result(pipeline(Get(s"http://127.0.0.1:$port2/localport")), awaitMax).status.intValue should be (200)
+    Await.result(entityAsInt(s"http://127.0.0.1:$port1/localport"), awaitMax) should be (port1)
   }
 
   it should "not patch local port header if local-port-header is false or absent" in {
-    val pipeline = sendReceive
-    Await.result(pipeline(Get(s"http://127.0.0.1:$port2/localport")), awaitMax).entity.asString.toInt should be (0)
-    Await.result(pipeline(Get(s"http://127.0.0.1:$port3/localport")), awaitMax).entity.asString.toInt should be (0)
+    Await.result(entityAsInt(s"http://127.0.0.1:$port2/localport"), awaitMax) should be (-1)
+    Await.result(entityAsInt(s"http://127.0.0.1:$port3/localport"), awaitMax) should be (-1)
   }
 
   override protected def afterAll(): Unit = {
@@ -111,13 +114,11 @@ class LocalPortListenerSpec extends TestKit(LocalPortListenerSpecActorSystem.boo
   }
 }
 
-class LocalPortListenerService extends RouteDefinition with Directives {
-
-
+class LocalPortListenerService extends RouteDefinition {
 
   override def route: Route = get {
-    headerValueByType[LocalPortHeader]()(header => complete(header.value))
+    headerValueByType[LocalPortHeader]()(header => complete(header.value()))
   } ~ get {
-    complete(0.toString)
+    complete((-1).toString)
   }
 }

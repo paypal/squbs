@@ -64,7 +64,7 @@ class UnicomplexTestModeOnSpec extends TestKit(UnicomplexTestModeOnSpec.boot.act
   }
 
   "Unicomplex" should "let the system pick the port" in {
-    portBindings("default-listener") should not be(8080)
-    portBindings("default-listener") should not be(13000) // bind-port specified in src/test/resources/reference.conf
+    portBindings("default-listener") should not be 8080
+    portBindings("default-listener") should not be 13000 // bind-port specified in src/test/resources/reference.conf
   }
 }

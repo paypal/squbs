@@ -1,38 +1,45 @@
 /*
- *  Copyright 2015 PayPal
+ * Copyright 2015 PayPal
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.squbs.unicomplex.dummycubesvc
 
-import org.squbs.unicomplex.{Ping, Pong, RouteDefinition}
-import spray.routing.Directives._
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse}
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{RequestContext, RouteResult, Route}
+import akka.pattern.ask
+import org.squbs.unicomplex.streaming.RouteDefinition
+import org.squbs.unicomplex.{EchoMsg, Ping, Pong}
 import akka.actor.{ActorRef, Actor, ActorLogging, Props}
 import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
-import spray.http.{HttpEntity, HttpResponse}
-import spray.http.MediaTypes._
+import org.squbs.unicomplex.Timeouts._
 
 class PingPongSvc extends RouteDefinition{
 
-  def route = path("ping") {
-    get {ctx =>
-      context.actorOf(Props[PingPongClient]).tell("ping", ctx.responder)
+  def route: Route = path("ping") {
+    get {
+      onSuccess((context.actorOf(Props(classOf[PingPongClient])) ? "ping").mapTo[String]) {
+        case value => complete(value)
+      }
     }
   } ~
   path("pong") {
-    get {ctx =>
-      context.actorOf(Props[PingPongClient]).tell("pong", ctx.responder)
+    get {
+      onSuccess((context.actorOf(Props(classOf[PingPongClient])) ? "pong").mapTo[String]) {
+        case value => complete(value)
+      }
     }
   }
 
@@ -43,14 +50,14 @@ private class PingPongClient extends Actor with ActorLogging {
   private val pingPongActor = context.actorSelection("/user/DummyCubeSvc/PingPongPlayer")
 
   def ping(responder: ActorRef): Receive = {
-    case Pong => responder ! HttpResponse(entity = HttpEntity(`text/plain`, Pong.toString))
+    case Pong => responder ! Pong.toString
   }
 
   def pong(responder: ActorRef): Receive = {
-    case Ping => responder ! HttpResponse(entity = HttpEntity(`text/plain`, Ping.toString))
+    case Ping => responder ! Ping.toString
   }
 
-  def receive = {
+  def receive: Receive = {
     case "ping" => pingPongActor ! Ping
       context.become(ping(sender()))
 

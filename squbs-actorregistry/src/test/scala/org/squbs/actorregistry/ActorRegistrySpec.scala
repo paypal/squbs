@@ -28,7 +28,6 @@ import org.squbs.actorregistry.testcube._
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
 import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
-import spray.util.Utils
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -43,15 +42,13 @@ object ActorRegistrySpec {
    "TestCube"
   ) map (dummyJarsDir + "/" + _)
 
-  val (_, port) = Utils.temporaryServerHostnameAndPort()
-
   val config = ConfigFactory.parseString(
     s"""
        |squbs {
        |  actorsystem-name = ActorRegistrySpec
        |  ${JMX.prefixConfig} = true
        |}
-       |default-listener.bind-port = $port
+       |default-listener.bind-port = 0
     """.stripMargin)
 
   val boot = UnicomplexBoot(config)
