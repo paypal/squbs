@@ -3,7 +3,7 @@ import Versions._
 name := "squbs-streamingpipeline"
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "2.2.1" % "test->*",
+  "org.scalatest" %% "scalatest" % scalatestV % "test->*",
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-agent" % akkaV,
   "com.typesafe.akka" %% "akka-http-experimental" % akkaV,

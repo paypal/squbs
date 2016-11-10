@@ -15,9 +15,9 @@
  */
 package org.squbs.httpclient.japi;
 
-import org.squbs.httpclient.endpoint.EndpointResolver;
-import org.squbs.httpclient.env.Default;
-import org.squbs.httpclient.env.Environment;
+import org.squbs.endpoint.EndpointResolver;
+import org.squbs.env.Default;
+import org.squbs.env.Environment;
 
 public abstract class AbstractEndpointResolver implements EndpointResolver {
 

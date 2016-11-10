@@ -23,6 +23,9 @@ import akka.http.scaladsl.model.{HttpResponse, HttpRequest}
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.testkit.TestKit
 import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
+import org.scalatest.OptionValues._
+
+import scala.util.Try
 
 class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) with FlatSpecLike with Matchers with BeforeAndAfterAll {
 
@@ -41,7 +44,7 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
 
     val rc3 = rc2 ++ ("key2" -> 1) ++ ("key3"-> new Exception("Bad Val"))
     rc3.attribute("key2") should be(Some(1))
-    rc3.attribute[Exception]("key3").get.getMessage should be("Bad Val")
+    rc3.attribute[Exception]("key3").value.getMessage should be("Bad Val")
     rc3.attribute("key1") should be(Some("val1"))
 
     rc3.attributes should have size 3
@@ -53,7 +56,7 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
     val rc5 = rc4 -- ("notexists")
     rc5.attributes should have size 2
     rc5.attribute("key2") should be(Some(1))
-    rc5.attribute[Exception]("key3").get.getMessage should be("Bad Val")
+    rc5.attribute[Exception]("key3").value.getMessage should be("Bad Val")
   }
 
   it should "handle headers correctly" in {
@@ -65,13 +68,13 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
     rc3.response should be(None)
     rc3.request.headers should contain(RawHeader("key1", "val1"))
 
-    val rc4 = rc3.copy(response = Some(HttpResponse()))
-    rc4.response.get.headers should have size 0
+    val rc4 = rc3.copy(response = Some(Try(HttpResponse())))
+    rc4.response.value.get.headers should have size 0
     val rc5 = rc4.addResponseHeader(RawHeader("key4", "val4"))
     val rc6 = rc5.addResponseHeaders(RawHeader("key5", "val5"), RawHeader("key6", "val6"))
     val rc7 = rc6.addResponseHeader(RawHeader("key7", "val7"))
     rc7.request.headers should have size 3
-    rc7.response.get.headers should have size 4
-    rc7.response.get.headers should contain(RawHeader("key4", "val4"))
+    rc7.response.value.get.headers should have size 4
+    rc7.response.value.get.headers should contain(RawHeader("key4", "val4"))
   }
 }

@@ -14,19 +14,20 @@
  *  limitations under the License.
  */
 
-package org.squbs.httpclient.dummy
+package org.squbs.endpoint
 
 import akka.actor.ActorSystem
-import org.squbs.httpclient.endpoint.{Endpoint, EndpointResolver}
-import org.squbs.httpclient.env.{DEV, Default, Environment}
+import org.squbs.env.{DEV, Default, Environment}
 import org.squbs.httpclient.HttpClientException
+import org.squbs.httpclient.dummy.DummyService
 import DummyService._
 
 class DummyServiceEndpointResolver(implicit system: ActorSystem) extends EndpointResolver{
 
   override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
     if (svcName == name) {
-      Some(Endpoint(dummyServiceEndpoint))
+      None
+//      Some(Endpoint(dummyServiceEndpoint))
     } else {
       None
     }
@@ -55,7 +56,7 @@ class DummyLocalhostResolver(implicit system: ActorSystem) extends EndpointResol
 
     env match {
       case Default | DEV => Some(Endpoint("http://localhost:8080"))
-      case _   => throw new HttpClientException("DummyLocalhostResolver cannot support " + env + " environment")
+      case _   => throw new RuntimeException("DummyLocalhostResolver cannot support " + env + " environment")
     }
   }
 

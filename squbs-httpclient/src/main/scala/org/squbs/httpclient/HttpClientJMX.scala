@@ -20,8 +20,8 @@ import java.util
 import javax.management.{MXBean, ObjectName}
 
 import akka.actor.ActorSystem
-import org.squbs.httpclient.endpoint.{EndpointRegistry, EndpointResolver}
-import org.squbs.httpclient.env.{EnvironmentRegistry, EnvironmentResolver}
+import org.squbs.endpoint.{EndpointResolverRegistry, EndpointResolver}
+import org.squbs.env.{EnvironmentRegistry, EnvironmentResolver}
 import org.squbs.pipeline.PipelineSetting
 import org.squbs.unicomplex.JMX
 import spray.can.Http.ClientConnectionType.{AutoProxied, Direct, Proxied}
@@ -47,7 +47,7 @@ object HttpClientJMX {
 
   def registryHCBean(implicit system: ActorSystem) = {
     if (!JMX.isRegistered(httpClientBean)){
-      JMX.register(HttpClientBean(system), JMX.prefix(system) + httpClientBean)
+//      JMX.register(HttpClientBean(system), JMX.prefix(system) + httpClientBean)
     }
   }
 
@@ -65,7 +65,7 @@ object HttpClientJMX {
 
   def registryHCCircuitBreakerBean(implicit system: ActorSystem) = {
     if (!JMX.isRegistered(circuitBreakerBean)){
-      JMX.register(CircuitBreakerBean(system), JMX.prefix(system) + circuitBreakerBean)
+//      JMX.register(CircuitBreakerBean(system), JMX.prefix(system) + circuitBreakerBean)
     }
   }
 }
@@ -92,40 +92,6 @@ trait HttpClientMXBean {
   def getHttpClientInfo: java.util.List[HttpClientInfo]
 }
 
-case class HttpClientBean(system: ActorSystem) extends HttpClientMXBean {
-
-  override def getHttpClientInfo: java.util.List[HttpClientInfo] =
-    HttpClientManager(system).httpClientMap.values.toList map toHttpClientInfo
-
-  private def toHttpClientInfo(httpClient: HttpClientState) = {
-    val name = httpClient.name
-    val env  = httpClient.env.lowercaseName
-    val endpoint = httpClient.endpoint.uri.toString()
-    val status = httpClient.status.toString
-    val configuration = httpClient.endpoint.config
-    val pipelines = configuration.pipeline.getOrElse(PipelineSetting.default).pipelineConfig
-    val requestPipelines = pipelines.reqPipe.map(_.getClass.getName).foldLeft[String](""){
-      (result, each) => if (result == "") each else result + "=>" + each
-    }
-    val responsePipelines = pipelines.respPipe.map(_.getClass.getName).foldLeft[String](""){
-      (result, each) => if (result == "") each else result + "=>" + each
-    }
-    val connectionType = configuration.settings.connectionType match {
-      case Direct => "Direct"
-      case AutoProxied => "AutoProxied"
-      case Proxied(host, port) => s"$host:$port"
-    }
-    val hostSettings = configuration.settings.hostSettings
-    val maxConnections = hostSettings.maxConnections
-    val maxRetries = hostSettings.maxRetries
-    val maxRedirects = hostSettings.maxRedirects
-    val requestTimeout = hostSettings.connectionSettings.requestTimeout.toMillis
-    val connectingTimeout = hostSettings.connectionSettings.connectingTimeout.toMillis
-    HttpClientInfo(name, env, endpoint, status, connectionType, maxConnections, maxRetries, maxRedirects,
-      requestTimeout, connectingTimeout, requestPipelines, responsePipelines)
-  }
-}
-
 // $COVERAGE-OFF$
 case class EndpointResolverInfo @ConstructorProperties(
   Array("position", "resolver"))(
@@ -143,7 +109,7 @@ trait EndpointResolverMXBean {
 case class EndpointResolverBean(system: ActorSystem) extends EndpointResolverMXBean {
 
   override def getHttpClientEndpointResolverInfo: util.List[EndpointResolverInfo] = {
-    EndpointRegistry(system).endpointResolvers.zipWithIndex map toEndpointResolverInfo
+    EndpointResolverRegistry(system).endpointResolvers.zipWithIndex map toEndpointResolverInfo
   }
 
   private def toEndpointResolverInfo(resolverWithIndex: (EndpointResolver, Int)): EndpointResolverInfo = {
@@ -201,42 +167,4 @@ case class CBHistory @ConstructorProperties(Array("period", "successes", "fallba
 
 trait CircuitBreakerMXBean {
   def getHttpClientCircuitBreakerInfo: java.util.List[CircuitBreakerInfo]
-}
-
-case class CircuitBreakerBean(system: ActorSystem) extends CircuitBreakerMXBean {
-
-  override def getHttpClientCircuitBreakerInfo: util.List[CircuitBreakerInfo] = {
-    HttpClientManager(system).httpClientMap.values.toList map toHttpClientCircuitBreakerInfo
-  }
-
-  private def toHttpClientCircuitBreakerInfo(httpClient: HttpClientState) = {
-    val name = httpClient.name
-    val status = httpClient.cbStat.toString
-    import httpClient.cbMetrics._
-    val successTimes = total.successTimes
-    val fallbackTimes = total.fallbackTimes
-    val failFastTimes = total.failFastTimes
-    val exceptionTimes = total.exceptionTimes
-    val unitDesc = unitSize.toString()
-    val h = history.zipWithIndex map { case (bucket, i) =>
-      val period = i match {
-        case 0 => s"$unitDesc-to-date"
-        case 1 => s"previous $unitDesc"
-        case n if unitDesc endsWith "s" => s"$n x $unitDesc prior"
-        case n => s" $n x ${unitDesc}s prior "
-      }
-      val calls = bucket.successTimes + bucket.fallbackTimes + bucket.failFastTimes + bucket.exceptionTimes
-      def formatPercent(value: java.lang.Double) = String.format("%.2f%%", value)
-      val (errorRate, failFastRate, exceptionRate) =
-        if (calls > 0) (
-          formatPercent((calls - bucket.successTimes) * 100.0 / calls),
-          formatPercent(bucket.failFastTimes * 100.0 / calls),
-          formatPercent(bucket.exceptionTimes * 100.0 / calls)
-          ) else ("0%", "0%", "0%")
-      CBHistory(period, bucket.successTimes, bucket.fallbackTimes, bucket.failFastTimes, bucket.exceptionTimes,
-        errorRate, failFastRate, exceptionRate)
-    }
-    CircuitBreakerInfo(name, status, unitDesc,
-      successTimes, fallbackTimes, failFastTimes, exceptionTimes, h)
-  }
 }
