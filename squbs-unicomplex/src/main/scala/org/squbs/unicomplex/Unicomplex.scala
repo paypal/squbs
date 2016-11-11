@@ -95,8 +95,7 @@ private[unicomplex] case class  StartListener(name: String, config: Config)
 private[unicomplex] case object RoutesStarted
 private[unicomplex] case class  StartCubeActor(props: Props, name: String = "", initRequired: Boolean = false)
 private[unicomplex] case class  StartCubeService(webContext: String, listeners: Seq[String], props: Props,
-                                                 name: String = "", proxyName : Option[String] = None,
-                                                 ps: PipelineSetting, initRequired: Boolean = false)
+                                                 name: String = "", ps: PipelineSetting, initRequired: Boolean = false)
 
 private[unicomplex] case object CheckInitStatus
 private[unicomplex] case object Started
@@ -635,7 +634,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       if (initRequired) initMap += cubeActor -> None
       log.info(s"Started actor ${cubeActor.path}")
 
-    case StartCubeService(webContext, listeners, props, name, proxyName, ps, initRequired)
+    case StartCubeService(webContext, listeners, props, name, ps, initRequired)
         if classOf[FlowSupplier].isAssignableFrom(props.actorClass) =>
       val hostActor = context.actorOf(props, name)
       initMap += hostActor -> None
@@ -651,7 +650,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
           self ! ContextRegistrationResult(hostActor, Failure(e))
       }
 
-    case StartCubeService(webContext, listeners, props, name, proxyName, ps, initRequired) =>
+    case StartCubeService(webContext, listeners, props, name, ps, initRequired) =>
       val hostActor = context.actorOf(props, name)
       import ConfigUtil._
       val concurrency = context.system.settings.config.get[Int]("akka.http.server.pipelining-limit")
