@@ -16,7 +16,7 @@
 
 package org.squbs.httpclient
 
-import org.squbs.httpclient.env._
+import org.squbs.env._
 
 class HttpClientException(message: String) extends RuntimeException(message) with Serializable
 

@@ -18,9 +18,10 @@ package org.squbs.testkit
 
 import akka.actor.Actor
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{Matchers, FlatSpecLike}
-import org.squbs.unicomplex.{RouteDefinition, UnicomplexBoot, JMX}
-import spray.routing.Directives._
+import org.scalatest.{FlatSpecLike, Matchers}
+import org.squbs.testkit.streaming.{CustomRouteTestKit, TestRoute}
+import org.squbs.unicomplex.streaming.RouteDefinition
+import org.squbs.unicomplex.{JMX, UnicomplexBoot}
 
 import scala.util.{Failure, Success}
 
@@ -204,9 +205,9 @@ class ReverserActor extends Actor {
 }
 
 class ReverserRoute extends RouteDefinition {
-  import akka.pattern.ask
+
   import Timeouts._
-  import context.dispatcher
+  import akka.pattern.ask
 
   val route =
     path("msg" / Segment) { msg =>

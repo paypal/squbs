@@ -1,92 +1,93 @@
 /*
- *  Copyright 2015 PayPal
+ * Copyright 2015 PayPal
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.squbs.unicomplex
 
-import akka.actor.{ActorSystem, Props}
-import akka.io.IO
+import akka.actor.ActorSystem
+import akka.http.scaladsl.server._
+import akka.pattern._
+import akka.stream.ActorMaterializer
 import akka.testkit.TestKit
-import akka.util.Timeout
+import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
-import spray.can.Http
-import spray.client.pipelining._
-import spray.routing._
-import spray.util.Utils
+import org.squbs.lifecycle.GracefulStop
+import org.squbs.unicomplex.Timeouts._
+import org.squbs.unicomplex.streaming.RouteDefinition
 
 import scala.concurrent.Await
 
-class RouteActorHandlerSpec
-  extends TestKit(ActorSystem())
-  with FlatSpecLike
-  with BeforeAndAfterAll
-  with Matchers {
+object RouteActorHandlerSpec {
 
-  import akka.pattern.ask
+  val classPaths = Array(getClass.getClassLoader.getResource("classpaths/RouteActorHandler").getPath)
 
-  import scala.concurrent.ExecutionContext.Implicits.global
-  import scala.concurrent.duration._
+  val config = ConfigFactory.parseString(
+    s"""
+       |default-listener.bind-port = 0
+       |squbs {
+       |  actorsystem-name = RouteActorHandlerSpec
+       |  ${JMX.prefixConfig} = true
+       |}
+    """.stripMargin
+  )
 
-  override protected def afterAll(): Unit = {
-    system.shutdown()
-    super.afterAll()
+  val boot = UnicomplexBoot(config)
+    .createUsing {(name, config) => ActorSystem(name, config)}
+    .scanComponents(classPaths)
+    .initExtensions.start()
+}
+
+class RouteActorHandlerSpec extends TestKit(
+  RouteActorHandlerSpec.boot.actorSystem) with FlatSpecLike with BeforeAndAfterAll with Matchers {
+
+  implicit val am = ActorMaterializer()
+
+  val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
+  val port = portBindings("default-listener")
+
+  override def afterAll() {
+    Unicomplex(system).uniActor ! GracefulStop
   }
 
-  val (interface, port) = Utils.temporaryServerHostnameAndPort()
-  println(s"Using port: $interface:$port")
-
-  val service = system.actorOf(Props(classOf[RouteActor], "ctx", classOf[Service]))
-
-  val timeoutDuration = 1 minute
-
-  implicit val timeout = Timeout(timeoutDuration)
-
-  Await.result(IO(Http) ? Http.Bind(service, interface = interface, port = port), timeoutDuration)
-
   "Rejection handler" should "be applied to the route actor" in {
-    val pipeline = sendReceive
-    val response = Await.result(pipeline(Get(s"http://$interface:$port/ctx/reject")), 1 minute)
-    response.entity.asString should be("rejected")
+    Await.result(entityAsString(s"http://127.0.0.1:$port/ctx/reject"), awaitMax) should be("rejected")
   }
 
   "Exception handler" should "be applied to the route actor" in {
-    val pipeline = sendReceive
-    val response = Await.result(pipeline(Get(s"http://$interface:$port/ctx/exception")), 1 minute)
-    response.entity.asString should be("exception")
+    Await.result(entityAsString(s"http://127.0.0.1:$port/ctx/exception"), awaitMax) should be("exception")
   }
 }
 
-class Service extends RouteDefinition with Directives {
+class Service extends RouteDefinition {
 
-  override def rejectionHandler: Option[RejectionHandler] = Some(RejectionHandler {
-    case ServiceRejection :: _ => complete("rejected")
-  })
+  override def rejectionHandler: Option[RejectionHandler] = Some(RejectionHandler.newBuilder().handle {
+    case ServiceRejection => complete("rejected")
+  }.result())
 
   override def exceptionHandler: Option[ExceptionHandler] = Some(ExceptionHandler {
-    case ServiceException => complete("exception")
+    case _: ServiceException => complete("exception")
   })
 
   override def route: Route = path("reject") {
     reject(ServiceRejection)
   } ~ path("exception") {
     ctx =>
-      throw ServiceException
+      throw new ServiceException
   }
 
   object ServiceRejection extends Rejection
 
-  object ServiceException extends Exception
-
+  class ServiceException extends Exception
 }

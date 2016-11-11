@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 package org.squbs.httpclient.japi;
-
+/*
 import akka.actor.ActorSystem;
 import org.squbs.httpclient.RequestSettings;
 import scala.concurrent.Future;
@@ -236,3 +236,4 @@ public class HttpClientJ {
         return client.put(uri, data, reqSettings, marshaller, unmarshaller);
     }
 }
+*/

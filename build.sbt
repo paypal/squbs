@@ -31,13 +31,13 @@ lazy val `squbs-pipeline` = project
 
 lazy val `squbs-streamingpipeline` = project
 
-lazy val `squbs-unicomplex` = project dependsOn (`squbs-pipeline`, `squbs-streamingpipeline`)
+lazy val `squbs-unicomplex` = project dependsOn `squbs-streamingpipeline`
 
 lazy val `squbs-testkit` = project dependsOn `squbs-unicomplex`
 
 lazy val `squbs-zkcluster` = project dependsOn `squbs-testkit` % "test"
 
-lazy val `squbs-httpclient` = project dependsOn(`squbs-unicomplex`, `squbs-testkit` % "test")
+lazy val `squbs-httpclient` = project dependsOn(`squbs-unicomplex`, `squbs-pipeline`, `squbs-testkit` % "test")
 
 // Add SlowTest configuration to squbs-pattern to run the long-running tests.
 // To run standard tests> test
@@ -68,8 +68,6 @@ lazy val `squbs-actorregistry` = project dependsOn (`squbs-unicomplex`, `squbs-t
 lazy val `squbs-actormonitor` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
 
 lazy val `squbs-admin` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
-
-lazy val `squbs-admin-exp` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
 
 publishTo in ThisBuild := {
   val nexus = "https://oss.sonatype.org/"

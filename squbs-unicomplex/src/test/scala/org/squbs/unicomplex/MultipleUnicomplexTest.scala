@@ -21,7 +21,6 @@ import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.squbs.lifecycle.GracefulStop
-import spray.util.Utils
 import Timeouts._
 
 import scala.language.postfixOps
@@ -37,9 +36,6 @@ object MultipleUnicomplexTest {
     "InitFailCube"
   ) map (dummyJarsDir + "/" + _)
 
-  val (_, port1) = Utils.temporaryServerHostnameAndPort()
-  val (_, port2) = Utils.temporaryServerHostnameAndPort()
-
 
   val config = ConfigFactory.parseString(
     s"""
@@ -47,7 +43,7 @@ object MultipleUnicomplexTest {
        |  actorsystem-name = MultipleUnicomplexTest1
        |  ${JMX.prefixConfig} = true
        |}
-       |default-listener.bind-port = $port1
+       |default-listener.bind-port = 0
      """.stripMargin
   )
 
@@ -57,7 +53,7 @@ object MultipleUnicomplexTest {
        |  actorsystem-name = MultipleUnicomplexTest2
        |  ${JMX.prefixConfig} = true
        |}
-       |default-listener.bind-port = $port2
+       |default-listener.bind-port = 0
      """.stripMargin
   )
 

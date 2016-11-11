@@ -23,7 +23,6 @@ import spray.http.HttpResponse
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 
@@ -39,31 +38,6 @@ object ServiceCallStatus extends Enumeration {
 
 case class ServiceCall(callTime: Long, status: ServiceCallStatus)
 
-trait CircuitBreakerSupport{
-
-  def withCircuitBreaker(client: HttpClientState, response: => Future[HttpResponse])
-                        (implicit actorFactory: ActorRefFactory) = {
-    import actorFactory.dispatcher
-    val runCircuitBreaker = client.cb.withCircuitBreaker[HttpResponse](response)
-    val fallbackHttpResponse = client.config match {
-      case Some(conf) => conf.settings.circuitBreakerConfig.fallbackHttpResponse
-      case None => client.endpoint.config.settings.circuitBreakerConfig.fallbackHttpResponse
-    }
-    runCircuitBreaker onComplete {
-      case Success(r) => client.cbMetrics.add(ServiceCallStatus.Success, System.nanoTime)
-      case Failure(e: CircuitBreakerOpenException) => fallbackHttpResponse match {
-        case Some(r) => client.cbMetrics.add(ServiceCallStatus.Fallback, System.nanoTime)
-        case None => client.cbMetrics.add(ServiceCallStatus.FailFast, System.nanoTime)
-      }
-      case Failure(e) => client.cbMetrics.add(ServiceCallStatus.Exception, System.nanoTime)
-    }
-    fallbackHttpResponse map { fallback =>
-      runCircuitBreaker recover {
-        case e: CircuitBreakerOpenException => fallback
-      }
-    } getOrElse runCircuitBreaker
-  }
-}
 
 class CircuitBreakerMetrics(val units: Int, val unitSize: FiniteDuration)(implicit val system: ActorSystem) {
 

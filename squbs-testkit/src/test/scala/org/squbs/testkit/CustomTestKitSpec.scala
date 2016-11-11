@@ -17,31 +17,23 @@
 package org.squbs.testkit
 
 import akka.actor.{Actor, Props}
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives
+import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{FlatSpecLike, Matchers}
 import org.squbs.testkit.Timeouts._
-import org.squbs.unicomplex.{JMX, RouteDefinition, UnicomplexBoot}
-import spray.client.pipelining._
-import spray.http.StatusCodes
-import spray.routing.Directives
-import spray.util.Utils._
+import org.squbs.unicomplex.streaming.RouteDefinition
+import org.squbs.unicomplex.{JMX, UnicomplexBoot}
 
 import scala.concurrent.Await
 
 class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatSpecLike with Matchers {
 
-  import system.dispatcher
-
-  it should "return OK" in {
-    val pipeline = sendReceive
-    val result = Await.result(pipeline(Get(s"http://127.0.0.1:${CustomTestKitSpec.port}/test")), awaitMax)
-    result.entity.asString should include ("success")
-  }
-
   it should "return OK with the port from PortGetter" in {
-    val pipeline = sendReceive
-    val result = Await.result(pipeline(Get(s"http://127.0.0.1:$port/test")), awaitMax)
-    result.entity.asString should include ("success")
+    implicit val materializer = ActorMaterializer()
+    val result = Await.result(entityAsString(s"http://127.0.0.1:$port/test"), awaitMax)
+    result should include ("success")
   }
 
   it should "return a Pong on a Ping" in {
@@ -52,17 +44,13 @@ class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatS
 
 object CustomTestKitSpec {
 
-  import scala.collection.JavaConversions._
-
-  val (_, port) = temporaryServerHostnameAndPort()
-
-  val testConfig = ConfigFactory.parseMap(
-    Map(
-      "squbs.actorsystem-name" -> "CustomTestKitSpec",
-      "squbs.external-config-dir" -> "actorCalLogTestConfig",
-      "default-listener.bind-port" -> Int.box(port),
-      "squbs." + JMX.prefixConfig -> Boolean.box(true)
-    )
+  val testConfig = ConfigFactory.parseString(
+    s"""
+       |squbs.actorsystem-name = CustomTestKitSpec
+       |squbs.external-config-dir = actorCalLogTestConfig
+       |default-listener.bind-port = 0
+       |squbs.${JMX.prefixConfig} = true
+     """.stripMargin
   )
 
   lazy val boot = UnicomplexBoot(testConfig)
@@ -78,7 +66,7 @@ class CustomTestKitDefaultSpec extends CustomTestKit with FlatSpecLike with Matc
   }
 
   it should "set actor system name to package-class-integer" in {
-    system.name should fullyMatch regex ("org-squbs-testkit-CustomTestKitDefaultSpec-\\d+")
+    system.name should fullyMatch regex "org-squbs-testkit-CustomTestKitDefaultSpec-\\d+"
   }
 
   it should "use the default configuration" in {
@@ -146,7 +134,7 @@ class CustomTestKitResourcesSpec extends CustomTestKit(CustomTestKitResourcesSpe
 with FlatSpecLike with Matchers {
 
   it should "set actor system name to package-class-integer" in {
-    system.name should fullyMatch regex ("org-squbs-testkit-CustomTestKitResourcesSpec-\\d+")
+    system.name should fullyMatch regex "org-squbs-testkit-CustomTestKitResourcesSpec-\\d+"
   }
 
   it should "start default-listener" in {

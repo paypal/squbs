@@ -29,10 +29,9 @@ import org.scalatest.concurrent.AsyncAssertions
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
 import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
-import spray.util.Utils
 
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 import scala.util.Try
 
@@ -46,7 +45,6 @@ object ActorMonitorSpec extends LazyLogging {
    "TestCube"
   ) map (dummyJarsDir + "/" + _)
 
-  val (_, port) = Utils.temporaryServerHostnameAndPort()
 
   val config = ConfigFactory.parseString(
     s"""
@@ -54,7 +52,7 @@ object ActorMonitorSpec extends LazyLogging {
        |  actorsystem-name = ActorMonitorSpec
        |  ${JMX.prefixConfig} = true
        |}
-       |default-listener.bind-port = $port
+       |default-listener.bind-port = 0
     """.stripMargin)
 
   val boot = UnicomplexBoot(config)
