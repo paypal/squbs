@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package org.squbs.unicomplex.streaming
+package org.squbs.unicomplex
 
-import akka.http.scaladsl.model.headers.{ModeledCustomHeaderCompanion, ModeledCustomHeader}
+import akka.http.scaladsl.model.headers.{ModeledCustomHeader, ModeledCustomHeaderCompanion}
 
 import scala.util.Try
 

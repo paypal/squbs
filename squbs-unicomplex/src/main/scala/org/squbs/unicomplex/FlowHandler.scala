@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.unicomplex.streaming
+package org.squbs.unicomplex
 
 import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
@@ -25,7 +25,6 @@ import akka.stream.FlowShape
 import akka.stream.scaladsl._
 import akka.util.Timeout
 import org.squbs.pipeline.streaming.{Context, PipelineExtension, PipelineSetting, RequestContext}
-import org.squbs.unicomplex.FlowWrapper
 
 import scala.annotation.tailrec
 import scala.language.postfixOps

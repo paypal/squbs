@@ -18,9 +18,7 @@ package org.squbs.testkit
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalatest.{FlatSpecLike, Matchers}
-import org.squbs.testkit.streaming.TestRoute
-import org.squbs.unicomplex.WebContext
-import org.squbs.unicomplex.streaming.RouteDefinition
+import org.squbs.unicomplex.{RouteDefinition, WebContext}
 
 class MyRoute extends RouteDefinition {
 

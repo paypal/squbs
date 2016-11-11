@@ -20,8 +20,7 @@ import akka.http.scaladsl.model.HttpEntity.{ChunkStreamPart, Chunked}
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
 import akka.stream.scaladsl.{Flow, Source}
-import org.squbs.unicomplex.WebContext
-import org.squbs.unicomplex.streaming.FlowDefinition
+import org.squbs.unicomplex.{FlowDefinition, WebContext}
 
 class DummyFlowSvc extends FlowDefinition with WebContext {
 

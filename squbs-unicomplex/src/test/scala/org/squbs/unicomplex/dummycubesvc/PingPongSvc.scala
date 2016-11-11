@@ -18,11 +18,10 @@ package org.squbs.unicomplex.dummycubesvc
 
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse}
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{RequestContext, RouteResult, Route}
+import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
 import akka.pattern.ask
-import org.squbs.unicomplex.streaming.RouteDefinition
-import org.squbs.unicomplex.{EchoMsg, Ping, Pong}
-import akka.actor.{ActorRef, Actor, ActorLogging, Props}
+import org.squbs.unicomplex.{EchoMsg, Ping, Pong, RouteDefinition}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
 import org.squbs.unicomplex.Timeouts._
 

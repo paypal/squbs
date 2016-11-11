@@ -18,8 +18,7 @@ package org.squbs.unicomplex.dummyfailedflowsvc1
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
 import akka.stream.scaladsl.Flow
-import org.squbs.unicomplex.WebContext
-import org.squbs.unicomplex.streaming.FlowDefinition
+import org.squbs.unicomplex.{FlowDefinition, WebContext}
 
 /**
   * A FlowDefinition must be a no-arg constructor. This is intended to test a failure path.

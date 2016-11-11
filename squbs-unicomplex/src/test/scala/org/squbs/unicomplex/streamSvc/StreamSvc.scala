@@ -17,7 +17,7 @@
 package org.squbs.unicomplex.streamSvc
 
 import akka.http.scaladsl.server._
-import org.squbs.unicomplex.streaming.RouteDefinition
+import org.squbs.unicomplex.RouteDefinition
 
 class StreamSvc extends RouteDefinition {
 

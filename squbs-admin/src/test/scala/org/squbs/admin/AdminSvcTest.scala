@@ -17,13 +17,13 @@
 package org.squbs.admin
 
 import java.lang.management.ManagementFactory
-import javax.management.{ObjectName, MXBean}
+import javax.management.{MXBean, ObjectName}
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.json4s.jackson.JsonMethods._
 import org.scalatest.{FunSpecLike, Matchers}
-import org.squbs.testkit.streaming.TestRoute
+import org.squbs.testkit.TestRoute
 
 import scala.beans.BeanProperty
 

@@ -13,13 +13,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.squbs.unicomplex.streaming
+package org.squbs.unicomplex
 
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.stream.stage._
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.stream.stage._
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 
 import scala.annotation.tailrec

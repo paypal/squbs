@@ -31,8 +31,6 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex._
 import org.squbs.unicomplex.Timeouts._
-import org.squbs.unicomplex.{JMX, PortBindings, Unicomplex, UnicomplexBoot}
-import org.squbs.unicomplex.streaming._
 
 import scala.concurrent.Await
 

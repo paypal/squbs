@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.squbs.dispatcher.streaming
+package org.squbs.dispatcher
 
 import javax.management.ObjectName
 

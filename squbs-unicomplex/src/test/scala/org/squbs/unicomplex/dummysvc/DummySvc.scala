@@ -21,7 +21,6 @@ import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex._
-import org.squbs.unicomplex.streaming.RouteDefinition
 
 class DummySvc extends RouteDefinition with WebContext {
   def route: Route =

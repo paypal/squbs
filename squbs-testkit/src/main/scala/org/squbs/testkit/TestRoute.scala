@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-package org.squbs.testkit.streaming
+package org.squbs.testkit
 
 import akka.actor.{Actor, ActorSystem}
+import akka.http.scaladsl.server.directives.PathDirectives._
 import akka.http.scaladsl.server.{ExceptionHandler, RejectionHandler, Route}
 import akka.http.scaladsl.settings.RoutingSettings
 import akka.testkit.TestActorRef
-import akka.http.scaladsl.server.directives.PathDirectives._
-import org.squbs.unicomplex.WebContext
-import org.squbs.unicomplex.streaming.RouteDefinition
+import org.squbs.unicomplex.{RouteDefinition, WebContext}
 
 import scala.reflect.ClassTag
 

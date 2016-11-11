@@ -23,8 +23,9 @@ libraryDependencies ++= Seq(
   "org.json4s"                %% "json4s-jackson"               % "3.3.0",
   "com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.6.3",
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % "2.6.3",
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
-) ++ akkaDependencies(akkaV) ++ sprayDependencies(sprayV)
+  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
+  "io.spray" %% "spray-json" % "1.3.2" % "test"
+) ++ akkaDependencies(akkaV)
 
 def akkaDependencies(v: String) = Seq(
   "com.typesafe.akka" %% "akka-actor" % v,
@@ -35,15 +36,6 @@ def akkaDependencies(v: String) = Seq(
   "com.typesafe.akka" %% "akka-http-experimental" % v,
   "com.typesafe.akka" %% "akka-http-spray-json-experimental" % v,
   "com.typesafe.akka" %% "akka-http-testkit" % v % "test"
-)
-
-def sprayDependencies(v: String) = Seq(
-  "io.spray" %% "spray-http" % v,
-  "io.spray" %% "spray-httpx" % v,
-  "io.spray" %% "spray-routing-shapeless2" % v,
-  "io.spray" %% "spray-json" % "1.3.2" % "test",
-  "io.spray" %% "spray-testkit" % v % "test",
-  "io.spray" %% "spray-httpx" % v % "test"
 )
 
 // : Seq[sbt.Def.Setting[_]] in the line below is not required for a successful build
