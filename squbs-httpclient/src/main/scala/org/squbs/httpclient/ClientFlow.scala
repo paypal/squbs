@@ -16,6 +16,8 @@
 
 package org.squbs.httpclient
 
+import javax.management.ObjectName
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.http.scaladsl.{ConnectionContext, HttpsConnectionContext, Http}
@@ -25,8 +27,9 @@ import akka.stream.{FlowShape, Materializer}
 import akka.stream.scaladsl.{GraphDSL, Keep, Flow}
 import com.typesafe.config.Config
 import org.squbs.endpoint.EndpointResolverRegistry
-import org.squbs.env.{EnvironmentRegistry, Default, Environment}
-import org.squbs.pipeline.streaming.{Context, RequestContext, PipelineExtension}
+import org.squbs.env.{EnvironmentResolverRegistry, Default, Environment}
+import org.squbs.pipeline.streaming.{PipelineSetting, Context, RequestContext, PipelineExtension}
+import org.squbs.unicomplex.JMX
 
 import scala.util.{Failure, Try}
 
@@ -40,11 +43,8 @@ object ClientFlow {
               settings: Option[ConnectionPoolSettings] = None,
               env: Environment = Default)(implicit system: ActorSystem, fm: Materializer): ClientConnectionFlow[T] = {
 
-    // Check HttpClientManager if we already have initialized this  -- why?  Why not directly call cacedHostConnectionPool and let it deal..
-    // we might need to do some statistics updates though for JMX
-
     val environment = env match {
-      case Default => EnvironmentRegistry(system).resolve
+      case Default => EnvironmentResolverRegistry(system).resolve
       case _ => env
     }
 
@@ -52,55 +52,46 @@ object ClientFlow {
       throw HttpClientEndpointNotExistException(name, environment)
     }
 
+    val config = system.settings.config
+    // TODO how come this unicomplex utility is sneaking here?  Should not be visible..
+    import org.squbs.unicomplex.ConfigUtil._
+    val clientSpecificConfig = config.getOption[Config](name).filter {
+      _.getOption[String]("type") == Some("squbs.httpclient")
+    }
+    val clientConfigWithDefaults = clientSpecificConfig.map(_.withFallback(config)).getOrElse(config)
+    val cps = settings.getOrElse(ConnectionPoolSettings(clientConfigWithDefaults))
+
     val clientConnectionFlow =
       if (endpoint.uri.getScheme == "https") {
         val httpsConnectionContext = connectionContext orElse {
           endpoint.sslContext map { sc => ConnectionContext.https(sc) }
         } getOrElse Http().defaultClientHttpsContext
 
-        Http().cachedHostConnectionPoolHttps[RequestContext](endpoint.uri.getHost,
-          endpoint.uri.getPort,
-          httpsConnectionContext,
-          connectionPoolSettings(name, system.settings.config, settings))
+        Http().cachedHostConnectionPoolHttps[RequestContext](endpoint.uri.getHost, endpoint.uri.getPort,
+          httpsConnectionContext, cps)
       } else {
-        Http().cachedHostConnectionPool[RequestContext](endpoint.uri.getHost,
-          endpoint.uri.getPort,
-          connectionPoolSettings(name, system.settings.config, settings))
+        Http().cachedHostConnectionPool[RequestContext](endpoint.uri.getHost, endpoint.uri.getPort, cps)
       }
 
-    withPipeline[T](name, system.settings.config, clientConnectionFlow)
+    val pipelineName = clientSpecificConfig.flatMap(_.getOption[String]("pipeline"))
+    val defaultFlowsOn = clientSpecificConfig.flatMap(_.getOption[Boolean]("defaultPipelineOn"))
 
-    // If Https, get SSLContext..  Probably with the above step (endpoint resolver)    -- done
-    // Check if `ConnectionPoolSettings` is passed in.                                 -- done
-    // If not, build one from configuration.                                           -- done
-    // If Configuration does not have at all, call the api with out the settings       -- n/a
-    // Http().cachedHostConnectionPool with the above configuration,                   -- done
-    // If https, actually call cachedHostconnectionPoolHttps                           -- done
-    // Check the configuration if there is any pipeline setting                        -- done
-    // If yes, wrap it with the bidi and return.                                       -- done
+    val beanName = new ObjectName(s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=$name")
+    if(!JMX.isRegistered(beanName)) JMX.register(HttpClientConfigMXBeanImpl(name,
+                                                                            endpoint.uri.toString,
+                                                                            environment.name,
+                                                                            pipelineName,
+                                                                            defaultFlowsOn,
+                                                                            cps), beanName)
+
+    withPipeline[T](name, (pipelineName, defaultFlowsOn), clientConnectionFlow)
   }
 
-  private[httpclient] def connectionPoolSettings(name: String, config: Config,
-                                                 settings: Option[ConnectionPoolSettings]) = {
-
-    // TODO how come this unicomplex utility is sneaking here?  Should not be visible..
-    import org.squbs.unicomplex.ConfigUtil._
-    val clientConfig = config.getOption[Config](name).filter(_.getOption[String]("type") == Some("squbs.httpclient")) map {
-      _.withFallback(config)
-    } getOrElse config
-
-    settings getOrElse { ConnectionPoolSettings(clientConfig) }
-  }
-
-  private[httpclient] def withPipeline[T](name: String, config: Config,
+  private[httpclient] def withPipeline[T](name: String, pipelineSetting: PipelineSetting,
                                           clientConnectionFlow: ClientConnectionFlow[RequestContext])
                                           (implicit system: ActorSystem): ClientConnectionFlow[T] = {
 
-    import org.squbs.unicomplex.ConfigUtil._
-    val pipelineName = config.getOption[String](s"$name.pipeline")
-    val defaultFlowsOn = config.getOption[Boolean](s"$name.defaultPipelineOn")
-
-    PipelineExtension(system).getFlow((pipelineName, defaultFlowsOn), Context(name)) match {
+    PipelineExtension(system).getFlow(pipelineSetting, Context(name)) match {
       case Some(pipeline) =>
         val tupleToRequestContext = Flow[(HttpRequest, T)].map { case (request, t) =>
           RequestContext(request, 0) ++ (AkkaHttpClientCustomContext -> t)

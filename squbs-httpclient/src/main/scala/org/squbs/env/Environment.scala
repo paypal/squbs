@@ -16,8 +16,15 @@
 
 package org.squbs.env
 
+import java.beans.ConstructorProperties
+import java.util
+import javax.management.{ObjectName, MXBean}
+
 import akka.actor._
 import com.typesafe.scalalogging.LazyLogging
+import org.squbs.unicomplex.JMX
+
+import scala.beans.BeanProperty
 
 abstract class Environment {
   def name: String
@@ -66,7 +73,7 @@ trait EnvironmentResolver {
   def resolve: Environment
 }
 
-class EnvironmentRegistryExtension(system: ExtendedActorSystem) extends Extension with LazyLogging {
+class EnvironmentResolverRegistryExtension(system: ExtendedActorSystem) extends Extension with LazyLogging {
   var environmentResolvers = List[EnvironmentResolver]()
 
   def register(resolver: EnvironmentResolver) {
@@ -94,13 +101,38 @@ class EnvironmentRegistryExtension(system: ExtendedActorSystem) extends Extensio
   }
 }
 
-object EnvironmentRegistry extends ExtensionId[EnvironmentRegistryExtension] with ExtensionIdProvider {
+object EnvironmentResolverRegistry extends ExtensionId[EnvironmentResolverRegistryExtension] with ExtensionIdProvider {
 
-  override def lookup() = EnvironmentRegistry
+  override def lookup() = EnvironmentResolverRegistry
 
-  override def createExtension(system: ExtendedActorSystem): EnvironmentRegistryExtension =
-    new EnvironmentRegistryExtension(system)
+  override def createExtension(system: ExtendedActorSystem): EnvironmentResolverRegistryExtension = {
+    val beanName = new ObjectName(s"org.squbs.configuration.${system.name}:type=EnvironmentResolverRegistry")
+    if (!JMX.isRegistered(beanName)) JMX.register(EnvironmentResolverRegistryMXBeanImpl(system), beanName)
+    new EnvironmentResolverRegistryExtension(system)
+  }
 
-  override def get(system: ActorSystem): EnvironmentRegistryExtension = super.get(system)
+  override def get(system: ActorSystem): EnvironmentResolverRegistryExtension = super.get(system)
 }
 
+// $COVERAGE-OFF$
+case class EnvironmentResolverInfo @ConstructorProperties(
+  Array("position", "name", "className"))(@BeanProperty position: Int,
+                                          @BeanProperty name: String,
+                                          @BeanProperty className: String)
+
+// $COVERAGE-ON$
+
+@MXBean
+trait EnvironmentResolverRegistryMXBean {
+  def getEnvironmentResolverInfo: java.util.List[EnvironmentResolverInfo]
+}
+
+case class EnvironmentResolverRegistryMXBeanImpl(system: ActorSystem) extends EnvironmentResolverRegistryMXBean {
+
+  override def getEnvironmentResolverInfo: util.List[EnvironmentResolverInfo] = {
+    import scala.collection.JavaConversions._
+    EnvironmentResolverRegistry(system).environmentResolvers.zipWithIndex map { case(resolver, position) =>
+      EnvironmentResolverInfo(position, resolver.name, resolver.getClass.getName)
+    }
+  }
+}

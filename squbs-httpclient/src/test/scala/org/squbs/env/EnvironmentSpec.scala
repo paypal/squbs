@@ -18,44 +18,43 @@ package org.squbs.env
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import org.squbs.httpclient.dummy.{DummyNotResolveEnvironmentResolver, DummyProdEnvironmentResolver, DummyQAEnvironmentResolver}
 import org.scalatest._
 
 class EnvironmentSpec extends TestKit(ActorSystem("EnvironmentSpec")) with FlatSpecLike
 with Matchers with BeforeAndAfterEach{
 
   override def beforeEach() = {
-    EnvironmentRegistry(system).register(DummyProdEnvironmentResolver)
+    EnvironmentResolverRegistry(system).register(DummyProdEnvironmentResolver)
   }
 
   override def afterEach() = {
-    EnvironmentRegistry(system).environmentResolvers = List[EnvironmentResolver]()
+    EnvironmentResolverRegistry(system).environmentResolvers = List[EnvironmentResolver]()
   }
 
   "EnvironmentResolverRegistry" should "contain DummyProdEnvironmentResolver" in {
-    EnvironmentRegistry(system).environmentResolvers should have size 1
-    EnvironmentRegistry(system).environmentResolvers.head should be (DummyProdEnvironmentResolver)
+    EnvironmentResolverRegistry(system).environmentResolvers should have size 1
+    EnvironmentResolverRegistry(system).environmentResolvers.head should be (DummyProdEnvironmentResolver)
   }
 
   it should "resolve the environment" in {
-    EnvironmentRegistry(system).resolve should be (PROD)
+    EnvironmentResolverRegistry(system).resolve should be (PROD)
   }
 
   it should "give priority to resolvers in the reverse order of registration" in {
-    EnvironmentRegistry(system).register(DummyQAEnvironmentResolver)
-    EnvironmentRegistry(system).resolve should be (QA)
+    EnvironmentResolverRegistry(system).register(DummyQAEnvironmentResolver)
+    EnvironmentResolverRegistry(system).resolve should be (QA)
   }
 
   it should "try the chain of resolvers till the environment can be resolved" in {
-    EnvironmentRegistry(system).register(DummyNotResolveEnvironmentResolver)
-    EnvironmentRegistry(system).resolve should be (PROD)
+    EnvironmentResolverRegistry(system).register(DummyNotResolveEnvironmentResolver)
+    EnvironmentResolverRegistry(system).resolve should be (PROD)
   }
 
   it should "unregister a resolver" in {
-    EnvironmentRegistry(system).register(DummyQAEnvironmentResolver)
-    EnvironmentRegistry(system).resolve should be (QA)
-    EnvironmentRegistry(system).unregister("DummyQAEnvironmentResolver")
-    EnvironmentRegistry(system).resolve should be (PROD)
+    EnvironmentResolverRegistry(system).register(DummyQAEnvironmentResolver)
+    EnvironmentResolverRegistry(system).resolve should be (QA)
+    EnvironmentResolverRegistry(system).unregister("DummyQAEnvironmentResolver")
+    EnvironmentResolverRegistry(system).resolve should be (PROD)
   }
 
 }

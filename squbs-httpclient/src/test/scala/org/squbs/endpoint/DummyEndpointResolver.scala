@@ -25,28 +25,11 @@ import DummyService._
 class DummyServiceEndpointResolver(implicit system: ActorSystem) extends EndpointResolver{
 
   override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
-    if (svcName == name) {
-      None
-//      Some(Endpoint(dummyServiceEndpoint))
-    } else {
-      None
-    }
+    if (svcName == name) Some(Endpoint("http://www.google.com"))
+    else None
   }
 
   override def name: String = "DummyService"
-}
-
-class NotExistingEndpointResolver(implicit system: ActorSystem) extends EndpointResolver {
-
-  override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
-    if (svcName == name) {
-      Some(Endpoint("http://www.notexistingservice.com"))
-    } else {
-      None
-    }
-  }
-
-  override def name: String = "NotExistingService"
 }
 
 class DummyLocalhostResolver(implicit system: ActorSystem) extends EndpointResolver {
@@ -61,24 +44,5 @@ class DummyLocalhostResolver(implicit system: ActorSystem) extends EndpointResol
   }
 
   override def name: String = "DummyLocalhostResolver"
-}
-
-object GoogleAPI {
-
-  class GoogleMapAPIEndpointResolver(implicit system: ActorSystem) extends EndpointResolver {
-    override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
-      if (svcName == name)
-        Some(Endpoint("http://maps.googleapis.com/maps"))
-      else
-        None
-    }
-
-    override def name: String = "googlemap"
-  }
-
-  case class Elevation(location: Location, elevation: Double)
-  case class Location(lat: Double, lng: Double)
-  case class GoogleApiResult[T](status: String, results: List[T])
-
 }
 

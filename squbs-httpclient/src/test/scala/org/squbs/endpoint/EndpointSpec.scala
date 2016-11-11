@@ -29,7 +29,7 @@ class EndpointSpec extends TestKit(ActorSystem("EndpointSpec")) with FlatSpecLik
   implicit val _system = system
   override def afterEach() = {
     EndpointResolverRegistry(system).endpointResolvers = List[EndpointResolver]()
-    EnvironmentRegistry(system).environmentResolvers = List[EnvironmentResolver]()
+    EnvironmentResolverRegistry(system).environmentResolvers = List[EnvironmentResolver]()
   }
 
   "EndpointResolverRegistry" should "register a resolver" in {
