@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.unicomplex.streaming
+package org.squbs.unicomplex
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
@@ -66,7 +66,7 @@ class OrderingStage[A, B](initialState: B, updateState: B => B, getState: A => B
           if(state == getState(elem)) {
             val elems = elemsToPush(elem :: Nil, updateState(state), pq)
 
-            for(i <- 0 until elems.size) state = updateState(state)
+            for(i <- elems.indices) state = updateState(state)
 
             emitMultiple(out, elems.reverse)
           }

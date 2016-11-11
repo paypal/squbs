@@ -20,8 +20,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri.Path
 import akka.testkit.TestKit
 import org.scalatest.{FlatSpecLike, Matchers}
-import org.squbs.unicomplex.streaming.FlowHandler._
-import org.squbs.unicomplex.streaming.ServiceRegistry
+import org.squbs.unicomplex.FlowHandler._
 
 class ServiceRegistrySpec extends TestKit(ActorSystem("ServiceRegistrySpec")) with FlatSpecLike with Matchers {
 

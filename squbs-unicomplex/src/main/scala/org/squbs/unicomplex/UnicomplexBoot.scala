@@ -316,10 +316,10 @@ object UnicomplexBoot extends LazyLogging {
                           ps: PipelineSetting) = {
 
       Try {
-        (clazz asSubclass classOf[streaming.RouteDefinition], classOf[streaming.RouteActor])
+        (clazz asSubclass classOf[RouteDefinition], classOf[RouteActor])
       } orElse {
         Try {
-          (clazz asSubclass classOf[streaming.FlowDefinition], classOf[streaming.FlowActor])
+          (clazz asSubclass classOf[FlowDefinition], classOf[FlowActor])
         }
       } match {
         case Success((routeClass, routeActor)) =>

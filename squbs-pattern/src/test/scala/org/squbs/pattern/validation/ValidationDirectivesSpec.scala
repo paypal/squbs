@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.pattern.validation.streaming
+package org.squbs.pattern.validation
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
@@ -23,7 +23,7 @@ import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.MethodDirectives
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalatest.{FunSpecLike, Matchers}
-import org.squbs.pattern.validation.Person
+import org.squbs.pattern.validation.ValidationDirectives.{validate => _}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object MyJsonProtocol extends SprayJsonSupport with DefaultJsonProtocol {

@@ -26,7 +26,6 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
-import org.squbs.unicomplex.streaming.FlowDefinition
 
 import scala.concurrent.Await
 

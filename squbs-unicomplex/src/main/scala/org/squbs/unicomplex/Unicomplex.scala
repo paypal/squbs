@@ -34,7 +34,6 @@ import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
 import org.squbs.pipeline.streaming.PipelineSetting
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
-import org.squbs.unicomplex.streaming.{FlowDefinition, FlowNotAvailable}
 
 import scala.annotation.varargs
 import scala.collection.mutable
@@ -193,7 +192,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   import ConfigUtil._
 
-  lazy val serviceRegistry = new streaming.ServiceRegistry(log)
+  lazy val serviceRegistry = new ServiceRegistry(log)
 
   private val unicomplexExtension = Unicomplex(context.system)
   import unicomplexExtension._
@@ -637,11 +636,11 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       log.info(s"Started actor ${cubeActor.path}")
 
     case StartCubeService(webContext, listeners, props, name, proxyName, ps, initRequired)
-        if classOf[streaming.FlowSupplier].isAssignableFrom(props.actorClass) =>
+        if classOf[FlowSupplier].isAssignableFrom(props.actorClass) =>
       val hostActor = context.actorOf(props, name)
       initMap += hostActor -> None
       pendingContexts += 1
-      (hostActor ? streaming.FlowRequest).mapTo[Try[Flow[HttpRequest, HttpResponse, NotUsed]]] onSuccess {
+      (hostActor ? FlowRequest).mapTo[Try[Flow[HttpRequest, HttpResponse, NotUsed]]] onSuccess {
         case Success(flow) =>
           val reg = RegisterContext(listeners, webContext, FlowWrapper(flow, hostActor), ps)
           (Unicomplex() ? reg).mapTo[Try[_]].map {

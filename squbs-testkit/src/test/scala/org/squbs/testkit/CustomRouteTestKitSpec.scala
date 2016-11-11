@@ -19,9 +19,7 @@ package org.squbs.testkit
 import akka.actor.Actor
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{FlatSpecLike, Matchers}
-import org.squbs.testkit.streaming.{CustomRouteTestKit, TestRoute}
-import org.squbs.unicomplex.streaming.RouteDefinition
-import org.squbs.unicomplex.{JMX, UnicomplexBoot}
+import org.squbs.unicomplex.{JMX, RouteDefinition, UnicomplexBoot}
 
 import scala.util.{Failure, Success}
 

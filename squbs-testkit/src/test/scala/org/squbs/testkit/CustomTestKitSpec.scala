@@ -23,8 +23,7 @@ import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{FlatSpecLike, Matchers}
 import org.squbs.testkit.Timeouts._
-import org.squbs.unicomplex.streaming.RouteDefinition
-import org.squbs.unicomplex.{JMX, UnicomplexBoot}
+import org.squbs.unicomplex.{JMX, RouteDefinition, UnicomplexBoot}
 
 import scala.concurrent.Await
 

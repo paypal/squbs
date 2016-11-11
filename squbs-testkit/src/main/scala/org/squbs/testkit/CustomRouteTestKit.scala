@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package org.squbs.testkit.streaming
+package org.squbs.testkit
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.testkit.TestKitBase
 import com.typesafe.config.Config
 import org.scalatest.Suite
 import org.squbs.lifecycle.GracefulStop
-import org.squbs.testkit.{PortGetter, DebugTiming, CustomTestKit}
 import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot}
 
 abstract class CustomRouteTestKit(val boot: UnicomplexBoot) extends {

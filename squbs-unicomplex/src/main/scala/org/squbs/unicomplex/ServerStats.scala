@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package org.squbs.unicomplex.streaming
+package org.squbs.unicomplex
 
-import org.squbs.unicomplex.ServerStatsMXBean
-import org.squbs.unicomplex.streaming.StatsSupport.StatsHolder
+import org.squbs.unicomplex.StatsSupport.StatsHolder
 
 
 class ServerStats(name: String, statsHolder: StatsHolder) extends ServerStatsMXBean {

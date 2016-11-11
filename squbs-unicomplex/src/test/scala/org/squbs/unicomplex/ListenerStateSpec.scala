@@ -27,7 +27,6 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
-import org.squbs.unicomplex.streaming.RouteDefinition
 
 object ListenerStateSpec{
 

@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.unicomplex.streaming
+package org.squbs.unicomplex
 
 import akka.NotUsed
 import akka.actor.Actor._
@@ -34,8 +34,7 @@ import akka.stream.scaladsl.Flow
 import akka.stream.{ActorMaterializer, BindFailedException}
 import com.typesafe.config.Config
 import org.squbs.pipeline.streaming.{Context, PipelineExtension, PipelineSetting}
-import org.squbs.unicomplex._
-import org.squbs.unicomplex.streaming.StatsSupport.StatsHolder
+import org.squbs.unicomplex.StatsSupport.StatsHolder
 
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
