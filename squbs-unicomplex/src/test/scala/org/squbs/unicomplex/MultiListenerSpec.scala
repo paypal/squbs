@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
+import akka.pattern._
 import akka.stream.ActorMaterializer
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
@@ -32,11 +33,6 @@ import org.squbs.unicomplex.Timeouts._
 import scala.concurrent.Await
 
 object MultiListenerSpecActorSystem {
-
-  // Another test we cannot use auto port assignment as the bootstrapping will fail.
-  val (_, _, port1) = temporaryServerHostnameAndPort()
-  val (_, _, port2) = temporaryServerHostnameAndPort()
-  val (_, _, port3) = temporaryServerHostnameAndPort()
   
   val config = ConfigFactory.parseString(
       s"""
@@ -49,7 +45,7 @@ object MultiListenerSpecActorSystem {
           aliases = []
           bind-address = "0.0.0.0"
           full-address = false
-          bind-port = $port1
+          bind-port = 0
           secure = false
           need-client-auth = false
           ssl-context = default
@@ -59,7 +55,7 @@ object MultiListenerSpecActorSystem {
           aliases = []
           bind-address = "0.0.0.0"
           full-address = false
-          bind-port = $port2
+          bind-port = 0
           secure = false
           need-client-auth = false
           ssl-context = default
@@ -67,9 +63,9 @@ object MultiListenerSpecActorSystem {
         third-listener {
           type = squbs.listener
           aliases = []
-          bind-address = "0.111.0.0"
+          bind-address = "0.111.0.0" # Invalid address - bind should fail
           full-address = false
-          bind-port = $port3
+          bind-port = 25 # Restricted port - bind should fail
           secure = false
           need-client-auth = false
           ssl-context = default
@@ -83,8 +79,6 @@ object MultiListenerSpecActorSystem {
   			.scanComponents(Seq(new File(jarDir + "/MultiListeners").getAbsolutePath))
   			.initExtensions
   			.start()
-  	
-  	def getPort = (port1, port2)
 }
 
 class MultiListenerSpec extends TestKit(MultiListenerSpecActorSystem.boot.actorSystem)
@@ -92,7 +86,16 @@ class MultiListenerSpec extends TestKit(MultiListenerSpecActorSystem.boot.actorS
 
   implicit val am = ActorMaterializer()
 
-  val (port1, port2) = MultiListenerSpecActorSystem.getPort
+  val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
+  val port1 = portBindings("default-listener")
+  val port2 = portBindings("second-listener")
+
+  behavior of "The unicomplex"
+
+  it should "not have 'third-listener' in the portBindings" in {
+    portBindings should have size 2
+    portBindings should not contain key ("third-listener")
+  }
 
   it should "run up two listeners on different ports" in {
     Await.result(get(s"http://127.0.0.1:$port1/multi"), awaitMax).status should be (StatusCodes.OK)
