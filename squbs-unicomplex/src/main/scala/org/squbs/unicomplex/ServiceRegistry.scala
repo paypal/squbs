@@ -184,9 +184,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
   }
 
   override private[unicomplex] def portBindings: Map[String, Int] = {
-    serverBindings map { case (name, ServerBindingInfo(Some(sb), None)) =>
-      name -> sb.localAddress.getPort
-    }
+    serverBindings collect { case (name, ServerBindingInfo(Some(sb), None)) => name -> sb.localAddress.getPort }
   }
 }
 
