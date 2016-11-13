@@ -22,21 +22,30 @@ import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
-import com.typesafe.config.{Config, ConfigFactory}
-import org.scalatest.{FlatSpec, BeforeAndAfterAll, AsyncFlatSpec, Matchers}
+import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
 import org.squbs.endpoint.{Endpoint, EndpointResolver, EndpointResolverRegistry}
 import org.squbs.env.Environment
 import org.squbs.testkit.Timeouts._
 
-import scala.concurrent.{Future, Await}
+import scala.concurrent.{Await, Future}
 import scala.util.{Success, Try}
 
 object ClientFlowSpec {
 
   implicit val system = ActorSystem("ClientFlowSpec")
   implicit val materializer = ActorMaterializer()
-  import system.dispatcher
+
+  EndpointResolverRegistry(system).register(new EndpointResolver {
+    override def name: String = "LocalhostEndpointResolver"
+
+    override def resolve(svcName: String, env: Environment): Option[Endpoint] = svcName match {
+      case "hello" => Some(Endpoint(s"http://localhost:$port"))
+      case _ => None
+    }
+  })
+
   import akka.http.scaladsl.server.Directives._
+  import system.dispatcher
 
   val route =
     path("hello") {
@@ -57,15 +66,6 @@ class ClientFlowSpec  extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
     serverBinding.unbind() map {_ => system.terminate()}
   }
 
-  EndpointResolverRegistry(system).register(new EndpointResolver {
-    override def name: String = "LocalhostEndpointResolver"
-
-    override def resolve(svcName: String, env: Environment): Option[Endpoint] = svcName match {
-      case "hello" => Some(Endpoint(s"http://localhost:$port"))
-      case _ => None
-    }
-  })
-
   it should "make a call to Hello Service" in {
     val clientFlow = ClientFlow[Int]("hello")
     val responseFuture: Future[(Try[HttpResponse], Int)] =
@@ -79,110 +79,9 @@ class ClientFlowSpec  extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
     entity map { e => e shouldEqual ("Hello World!") }
   }
 
-//  it should "not resolve an invalid client" in {
-//
-//  }
-}
-
-class ClientConfigurationSpec extends FlatSpec with Matchers {
-
-  val defaultConfig = ConfigFactory.load()
-
-  it should "give priority to client specific configuration" in {
-    import scala.concurrent.duration._
-    val config = ConfigFactory.parseString(
-      """
-        |sampleclient {
-        | type = squbs.httpclient
-        |
-        | akka.http {
-        |   host-connection-pool {
-        |     max-connections = 987
-        |     max-retries = 123
-        |
-        |     client = {
-        |       connecting-timeout = 123 ms
-        |     }
-        |   }
-        | }
-        |}
-      """.stripMargin).withFallback(defaultConfig)
-
-    val cps = ClientFlow.connectionPoolSettings("sampleclient", config, None)
-    cps.maxConnections shouldBe 987
-    cps.maxRetries shouldBe 123
-    cps.idleTimeout.toSeconds should equal (defaultConfig.getDuration("akka.http.host-connection-pool.idle-timeout").getSeconds)
-    cps.connectionSettings.connectingTimeout shouldEqual (123 millisecond)
-  }
-
-  it should "fallback to default values if no client specific configuration is provided" in {
-    assertDefaults("sampleclient", ConfigFactory.empty().withFallback(defaultConfig))
-  }
-
-  it should "fallback to default values if client configuration does not override any properties" in {
-    val config = ConfigFactory.parseString(
-      """
-        |sampleclient {
-        | type = squbs.httpclient
-        |}
-      """.stripMargin).withFallback(defaultConfig)
-
-    assertDefaults("sampleclient", config)
-  }
-
-  it should "ignore client specific configuration if type is not set to squbs.httpclient" in {
-    val config = ConfigFactory.parseString(
-      """
-        |sampleclient {
-        |
-        | akka.http.host-connection-pool {
-        |   max-connections = 987
-        |   max-retries = 123
-        | }
-        |}
-      """.stripMargin).withFallback(defaultConfig)
-
-    assertDefaults("sampleclient", config)
-  }
-
-  it should "let configuring multiple clients" in {
-    val config = ConfigFactory.parseString(
-      """
-        |sampleclient {
-        | type = squbs.httpclient
-        |
-        | akka.http.host-connection-pool {
-        |   max-connections = 987
-        |   max-retries = 123
-        | }
-        |}
-        |
-        |sampleclient2 {
-        | type = squbs.httpclient
-        |
-        | akka.http.host-connection-pool {
-        |   max-connections = 666
-        | }
-        |}
-      """.stripMargin).withFallback(defaultConfig)
-
-    val cps = ClientFlow.connectionPoolSettings("sampleclient", config, None)
-    cps.maxConnections shouldBe 987
-    cps.maxRetries shouldBe 123
-    cps.idleTimeout.toSeconds should equal (defaultConfig.getDuration("akka.http.host-connection-pool.idle-timeout").getSeconds)
-
-    val cps2 = ClientFlow.connectionPoolSettings("sampleclient2", config, None)
-    cps2.maxConnections shouldBe 666
-    cps2.maxRetries shouldBe defaultConfig.getInt("akka.http.host-connection-pool.max-retries")
-    cps2.idleTimeout.toSeconds should equal (defaultConfig.getDuration("akka.http.host-connection-pool.idle-timeout").getSeconds)
-
-    assertDefaults("sampleclient3", config) //
-  }
-
-  private def assertDefaults(clientName: String, config: Config) = {
-    val cps = ClientFlow.connectionPoolSettings(clientName, config, None)
-    cps.maxConnections shouldEqual defaultConfig.getInt("akka.http.host-connection-pool.max-connections")
-    cps.maxRetries shouldEqual defaultConfig.getInt("akka.http.host-connection-pool.max-retries")
-    cps.idleTimeout.toSeconds shouldEqual defaultConfig.getDuration("akka.http.host-connection-pool.idle-timeout").getSeconds
+  it should "throw HttpClientEndpointNotExistException if it cannot resolve the client" in {
+    an [HttpClientEndpointNotExistException] should be thrownBy {
+      ClientFlow[Int]("cannotResolve")
+    }
   }
 }

@@ -14,9 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.httpclient.dummy
-
-import org.squbs.env._
+package org.squbs.env
 
 object DummyProdEnvironmentResolver extends EnvironmentResolver {
   override def resolve: Environment = PROD

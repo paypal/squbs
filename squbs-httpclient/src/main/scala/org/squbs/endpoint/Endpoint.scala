@@ -16,12 +16,17 @@
 
 package org.squbs.endpoint
 
+import java.beans.ConstructorProperties
 import java.net.URI
+import javax.management.{ObjectName, MXBean}
 import javax.net.ssl.SSLContext
 
 import akka.actor._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.env.{Default, Environment}
+import org.squbs.unicomplex.JMX
+
+import scala.beans.BeanProperty
 
 // TODO Endpoint can be used by non-http clients as well, e.g., Kafka, db, etc.. So, using javax.net.URI
 case class Endpoint(uri: URI, sslContext: Option[SSLContext] = None)
@@ -81,11 +86,38 @@ object EndpointResolverRegistry extends ExtensionId[EndpointResolverRegistryExte
 
   override def lookup() = EndpointResolverRegistry
 
-  override def createExtension(system: ExtendedActorSystem): EndpointResolverRegistryExtension =
+  override def createExtension(system: ExtendedActorSystem): EndpointResolverRegistryExtension = {
+    val beanName = new ObjectName(s"org.squbs.configuration.${system.name}:type=EndpointResolverRegistry")
+    if (!JMX.isRegistered(beanName)) JMX.register(EndpointResolverRegistryMXBeanImpl(system), beanName)
     new EndpointResolverRegistryExtension(system)
+  }
 
   /**
     * Java API
     */
   override def get(system: ActorSystem): EndpointResolverRegistryExtension = super.get(system)
+}
+
+
+// $COVERAGE-OFF$
+case class EndpointResolverInfo @ConstructorProperties(
+  Array("position", "name", "className"))(@BeanProperty position: Int,
+                                          @BeanProperty name: String,
+                                          @BeanProperty className: String)
+
+// $COVERAGE-ON$
+
+@MXBean
+trait EndpointResolverRegistryMXBean {
+  def getEndpointResolverInfo: java.util.List[EndpointResolverInfo]
+}
+
+case class EndpointResolverRegistryMXBeanImpl(system: ActorSystem) extends EndpointResolverRegistryMXBean {
+
+  override def getEndpointResolverInfo: java.util.List[EndpointResolverInfo] = {
+    import scala.collection.JavaConversions._
+    EndpointResolverRegistry(system).endpointResolvers.zipWithIndex map { case (resolver, position) =>
+      EndpointResolverInfo(position, resolver.name, resolver.getClass.getName)
+    }
+  }
 }

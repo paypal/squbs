@@ -15,134 +15,255 @@
  */
 package org.squbs.httpclient
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
+
 import akka.actor.ActorSystem
-import akka.testkit.TestKit
+import akka.stream.ActorMaterializer
+import com.typesafe.config.ConfigFactory
 import org.scalatest._
-import org.squbs.httpclient.dummy.DummyService._
-import org.squbs.endpoint.{Endpoint, EndpointResolverRegistry, EndpointResolver}
-import org.squbs.env._
-import org.squbs.testkit.Timeouts._
-import spray.can.Http.ClientConnectionType.Proxied
-import spray.can.client.{ClientConnectionSettings, HostConnectorSettings}
-import spray.http.{HttpResponse, StatusCodes}
+import org.squbs.endpoint.{Endpoint, EndpointResolver, EndpointResolverRegistry}
+import org.squbs.env.{QA, Environment}
 
-import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
-import scala.language.postfixOps
+import scala.concurrent.duration.Duration
 
-/*
-class HttpClientJMXSpec extends TestKit(ActorSystem("HttpClientJMXSpec")) with FlatSpecLike with Matchers
-with DummyService with HttpClientTestKit with BeforeAndAfterEach with BeforeAndAfterAll{
+object HttpClientJMXSpec {
 
-  implicit val _system = system
+  val config = ConfigFactory.parseString(
+    """
+      |clientWithParsingOverride {
+      |  type = squbs.httpclient
+      |  akka.http.parsing {
+      |    max-uri-length             = 1k
+      |    max-method-length          = 16
+      |    max-response-reason-length = 17
+      |    max-header-name-length     = 18
+      |    max-header-value-length    = 2k
+      |    max-header-count           = 19
+      |    max-chunk-ext-length       = 20
+      |    max-chunk-size             = 3m
+      |    max-content-length = 4m
+      |    uri-parsing-mode = relaxed
+      |    cookie-parsing-mode = raw
+      |    illegal-header-warnings = off
+      |    error-logging-verbosity = simple
+      |    illegal-response-header-value-processing-mode = warn
+      |    header-cache {
+      |      default = 21
+      |      Content-MD5 = 22
+      |      Date = 23
+      |      If-Match = 24
+      |      If-Modified-Since = 25
+      |      If-None-Match = 26
+      |      If-Range = 27
+      |      If-Unmodified-Since = 28
+      |      User-Agent = 29
+      |    }
+      |    tls-session-info-header = on
+      |  }
+      |}
+      |
+      |clientWithParsingOverride2 {
+      |  type = squbs.httpclient
+      |
+      |  akka.http.parsing {
+      |    error-logging-verbosity = off
+      |    illegal-response-header-value-processing-mode = ignore
+      |  }
+      |}
+      |
+      |clientWithSocketOptionsOverride {
+      |  type = squbs.httpclient
+      |
+      |  akka.http.host-connection-pool {
+      |    client = {
+      |      socket-options {
+      |        so-receive-buffer-size = 1k
+      |        so-send-buffer-size = 2k
+      |        so-reuse-address = true
+      |        so-traffic-class = 3
+      |        tcp-keep-alive = true
+      |        tcp-oob-inline = true
+      |        tcp-no-delay = true
+      |      }
+      |    }
+      |  }
+      |}
+    """.stripMargin).withFallback(ConfigFactory.load())
 
-  override def beforeEach() = {
-    EndpointResolverRegistry(system).register(new EndpointResolver {
-      override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] =
-        Some(Endpoint("http://www.ebay.com"))
-      override def name: String = "hello"
-    })
+  implicit val system = ActorSystem("HttpClientJMXSpec", config)
+  implicit val materializer = ActorMaterializer()
+
+  EndpointResolverRegistry(system).register(new EndpointResolver {
+    override def name: String = "DummyEndpointResolver"
+
+    override def resolve(svcName: String, env: Environment): Option[Endpoint] =
+      Some(Endpoint("http://localhost:8080"))
+
+  })
+}
+
+class HttpClientJMXSpec extends FlatSpecLike with Matchers {
+
+  import HttpClientJMXSpec._
+
+  it should "show the configuration of an http client" in {
+    import org.squbs.unicomplex.ConfigUtil._
+
+    ClientFlow("sampleClient")
+
+    assertJmxValue("sampleClient", "Name", "sampleClient")
+    assertJmxValue("sampleClient", "EndpointUri", "http://localhost:8080")
+    assertJmxValue("sampleClient", "Environment", "DEFAULT")
+    assertJmxValue("sampleClient", "MaxConnections", config.getInt("akka.http.host-connection-pool.max-connections"))
+    assertJmxValue("sampleClient", "MinConnections", config.getInt("akka.http.host-connection-pool.min-connections"))
+    assertJmxValue("sampleClient", "MaxRetries", config.getInt("akka.http.host-connection-pool.max-retries"))
+    assertJmxValue("sampleClient", "MaxOpenRequests", config.getInt("akka.http.host-connection-pool.max-open-requests"))
+    assertJmxValue("sampleClient", "PipeliningLimit", config.getInt("akka.http.host-connection-pool.pipelining-limit"))
+    assertJmxValue("sampleClient", "ConnectionPoolIdleTimeout",
+      config.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
+    assertJmxValue("sampleClient", "UserAgentHeader",
+      config.getString("akka.http.host-connection-pool.client.user-agent-header"))
+    assertJmxValue("sampleClient", "ConnectingTimeout",
+      config.get[Duration]("akka.http.host-connection-pool.client.connecting-timeout").toString)
+    assertJmxValue("sampleClient", "ConnectionIdleTimeout",
+      config.get[Duration]("akka.http.host-connection-pool.client.idle-timeout").toString)
+    assertJmxValue("sampleClient", "RequestHeaderSizeHint",
+      config.getInt("akka.http.host-connection-pool.client.request-header-size-hint"))
+    assertJmxValue("sampleClient", "SoReceiveBufferSize",
+      config.getString("akka.http.host-connection-pool.client.socket-options.so-receive-buffer-size"))
+    assertJmxValue("sampleClient", "SoSendBufferSize",
+      config.getString("akka.http.host-connection-pool.client.socket-options.so-send-buffer-size"))
+    assertJmxValue("sampleClient", "SoReuseAddress",
+      config.getString("akka.http.host-connection-pool.client.socket-options.so-reuse-address"))
+    assertJmxValue("sampleClient", "SoTrafficClass",
+      config.getString("akka.http.host-connection-pool.client.socket-options.so-traffic-class"))
+    assertJmxValue("sampleClient", "TcpKeepAlive",
+      config.getString("akka.http.host-connection-pool.client.socket-options.tcp-keep-alive"))
+    assertJmxValue("sampleClient", "TcpOobInline",
+      config.getString("akka.http.host-connection-pool.client.socket-options.tcp-oob-inline"))
+    assertJmxValue("sampleClient", "TcpNoDelay",
+      config.getString("akka.http.host-connection-pool.client.socket-options.tcp-no-delay"))
+    assertJmxValue("sampleClient", "MaxUriLength", config.getBytes("akka.http.parsing.max-uri-length"))
+    assertJmxValue("sampleClient", "MaxMethodLength", config.getInt("akka.http.parsing.max-method-length"))
+    assertJmxValue("sampleClient", "MaxResponseReasonLength",
+      config.getInt("akka.http.parsing.max-response-reason-length"))
+    assertJmxValue("sampleClient", "MaxHeaderNameLength", config.getInt("akka.http.parsing.max-header-name-length"))
+    assertJmxValue("sampleClient", "MaxHeaderValueLength", config.getBytes("akka.http.parsing.max-header-value-length"))
+    assertJmxValue("sampleClient", "MaxHeaderCount", config.getInt("akka.http.parsing.max-header-count"))
+    assertJmxValue("sampleClient", "MaxChunkExtLength", config.getInt("akka.http.parsing.max-chunk-ext-length"))
+    assertJmxValue("sampleClient", "MaxChunkSize", config.getBytes("akka.http.parsing.max-chunk-size"))
+    assertJmxValue("sampleClient", "MaxContentLength", config.getBytes("akka.http.parsing.max-content-length"))
+    assertJmxValue("sampleClient", "UriParsingMode", config.getString("akka.http.parsing.uri-parsing-mode"))
+    assertJmxValue("sampleClient", "CookieParsingMode", config.getString("akka.http.parsing.cookie-parsing-mode"))
+    assertJmxValue("sampleClient", "IllegalHeaderWarnings",
+      config.getString("akka.http.parsing.illegal-header-warnings"))
+    assertJmxValue("sampleClient", "ErrorLoggingVerbosity",
+      config.getString("akka.http.parsing.error-logging-verbosity"))
+    assertJmxValue("sampleClient", "IllegalResponseHeaderValueProcessingMode",
+      config.getString("akka.http.parsing.illegal-response-header-value-processing-mode"))
+    assertJmxValue("sampleClient", "HeaderCacheDefault", config.getInt("akka.http.parsing.header-cache.default"))
+    assertJmxValue("sampleClient", "HeaderCacheContentMD5", config.getInt("akka.http.parsing.header-cache.Content-MD5"))
+    assertJmxValue("sampleClient", "HeaderCacheDate", config.getInt("akka.http.parsing.header-cache.Date"))
+    assertJmxValue("sampleClient", "HeaderCacheIfMatch", config.getInt("akka.http.parsing.header-cache.If-Match"))
+    assertJmxValue("sampleClient", "HeaderCacheIfModifiedSince",
+      config.getInt("akka.http.parsing.header-cache.If-Modified-Since"))
+    assertJmxValue("sampleClient", "HeaderCacheIfNoneMatch",
+      config.getInt("akka.http.parsing.header-cache.If-None-Match"))
+    assertJmxValue("sampleClient", "HeaderCacheIfRange", config.getInt("akka.http.parsing.header-cache.If-Range"))
+    assertJmxValue("sampleClient", "HeaderCacheIfUnmodifiedSince",
+      config.getInt("akka.http.parsing.header-cache.If-Unmodified-Since"))
+    assertJmxValue("sampleClient", "HeaderCacheUserAgent", config.getInt("akka.http.parsing.header-cache.User-Agent"))
+    assertJmxValue("sampleClient", "TlsSessionInfoHeader",
+      config.getString("akka.http.parsing.tls-session-info-header"))
   }
 
-  override def afterEach() = {
-    clearHttpClient()
+  it should "show non-default parsing settings" in {
+    ClientFlow("clientWithParsingOverride")
+
+    assertJmxValue("clientWithParsingOverride", "Name", "clientWithParsingOverride")
+    assertJmxValue("clientWithParsingOverride", "MaxUriLength",
+      config.getBytes("clientWithParsingOverride.akka.http.parsing.max-uri-length"))
+    assertJmxValue("clientWithParsingOverride", "MaxMethodLength",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.max-method-length"))
+    assertJmxValue("clientWithParsingOverride", "MaxResponseReasonLength",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.max-response-reason-length"))
+    assertJmxValue("clientWithParsingOverride", "MaxHeaderNameLength",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.max-header-name-length"))
+    assertJmxValue("clientWithParsingOverride", "MaxHeaderValueLength",
+      config.getBytes("clientWithParsingOverride.akka.http.parsing.max-header-value-length"))
+    assertJmxValue("clientWithParsingOverride", "MaxHeaderCount",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.max-header-count"))
+    assertJmxValue("clientWithParsingOverride", "MaxChunkExtLength",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.max-chunk-ext-length"))
+    assertJmxValue("clientWithParsingOverride", "MaxChunkSize",
+      config.getBytes("clientWithParsingOverride.akka.http.parsing.max-chunk-size"))
+    assertJmxValue("clientWithParsingOverride", "MaxContentLength",
+      config.getBytes("clientWithParsingOverride.akka.http.parsing.max-content-length"))
+    assertJmxValue("clientWithParsingOverride", "UriParsingMode",
+      config.getString("clientWithParsingOverride.akka.http.parsing.uri-parsing-mode"))
+    assertJmxValue("clientWithParsingOverride", "CookieParsingMode",
+      config.getString("clientWithParsingOverride.akka.http.parsing.cookie-parsing-mode"))
+    assertJmxValue("clientWithParsingOverride", "IllegalHeaderWarnings",
+      config.getString("clientWithParsingOverride.akka.http.parsing.illegal-header-warnings"))
+    assertJmxValue("clientWithParsingOverride", "ErrorLoggingVerbosity",
+      config.getString("clientWithParsingOverride.akka.http.parsing.error-logging-verbosity"))
+    assertJmxValue("clientWithParsingOverride", "IllegalResponseHeaderValueProcessingMode",
+      config.getString("clientWithParsingOverride.akka.http.parsing.illegal-response-header-value-processing-mode"))
+    assertJmxValue("clientWithParsingOverride", "HeaderCacheDefault",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.default"))
+    assertJmxValue("clientWithParsingOverride", "HeaderCacheContentMD5",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.Content-MD5"))
+    assertJmxValue("clientWithParsingOverride", "HeaderCacheDate",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.Date"))
+    assertJmxValue("clientWithParsingOverride", "HeaderCacheIfMatch",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.If-Match"))
+    assertJmxValue("clientWithParsingOverride", "HeaderCacheIfModifiedSince",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.If-Modified-Since"))
+    assertJmxValue("clientWithParsingOverride", "HeaderCacheIfNoneMatch",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.If-None-Match"))
+    assertJmxValue("clientWithParsingOverride", "HeaderCacheIfRange",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.If-Range"))
+    assertJmxValue("clientWithParsingOverride", "HeaderCacheIfUnmodifiedSince",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.If-Unmodified-Since"))
+    assertJmxValue("clientWithParsingOverride", "HeaderCacheUserAgent",
+      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.User-Agent"))
+    assertJmxValue("clientWithParsingOverride", "TlsSessionInfoHeader",
+      config.getString("clientWithParsingOverride.akka.http.parsing.tls-session-info-header"))
+
+    ClientFlow("clientWithParsingOverride2")
+    assertJmxValue("clientWithParsingOverride2", "ErrorLoggingVerbosity",
+      config.getString("clientWithParsingOverride2.akka.http.parsing.error-logging-verbosity"))
+    assertJmxValue("clientWithParsingOverride2", "IllegalResponseHeaderValueProcessingMode",
+      config.getString("clientWithParsingOverride2.akka.http.parsing.illegal-response-header-value-processing-mode"))
   }
 
-  override def beforeAll() = {
-    startDummyService(system)
+  it should "show socket options if set" in {
+    ClientFlow("clientWithSocketOptionsOverride")
+    val `c.a.h.hcp.c.so` = "clientWithSocketOptionsOverride.akka.http.host-connection-pool.client.socket-options"
+    assertJmxValue("clientWithSocketOptionsOverride", "SoReceiveBufferSize",
+      config.getBytes(s"${`c.a.h.hcp.c.so`}.so-receive-buffer-size").toString)
+    assertJmxValue("clientWithSocketOptionsOverride", "SoSendBufferSize",
+      config.getBytes(s"${`c.a.h.hcp.c.so`}.so-send-buffer-size").toString)
+    assertJmxValue("clientWithSocketOptionsOverride", "SoReuseAddress",
+      config.getBoolean(s"${`c.a.h.hcp.c.so`}.so-reuse-address").toString)
+    assertJmxValue("clientWithSocketOptionsOverride", "SoTrafficClass",
+      config.getInt(s"${`c.a.h.hcp.c.so`}.so-traffic-class").toString)
+    assertJmxValue("clientWithSocketOptionsOverride", "TcpKeepAlive",
+      config.getBoolean(s"${`c.a.h.hcp.c.so`}.tcp-keep-alive").toString)
+    assertJmxValue("clientWithSocketOptionsOverride", "TcpOobInline",
+      config.getBoolean(s"${`c.a.h.hcp.c.so`}.tcp-oob-inline").toString)
   }
 
-  override def afterAll() {
-    shutdownActorSystem()
+  it should "show different environment values correctly" in {
+    ClientFlow("clientWithDifferntEnvironment", env = QA)
+    assertJmxValue("clientWithDifferntEnvironment", "Name", "clientWithDifferntEnvironment")
+    assertJmxValue("clientWithDifferntEnvironment", "Environment", "QA")
   }
 
-  "HttpClient with svcName" should "show up the correct value of HttpClientBean" in {
-    val httpClient1 = HttpClientFactory.get("hello1")
-    Await.result(httpClient1.readyFuture, awaitMax)
-    val httpClient2 = HttpClientFactory.get("hello2")
-    Await.result(httpClient2.readyFuture, awaitMax)
-    HttpClientBean(system).getHttpClientInfo should have size 2
-    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello1") should be (
-      HttpClientInfo("hello1", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
-    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello2") should be (
-      HttpClientInfo("hello2", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
-  }
-
-  "HttpClient with pipeline" should "show up the correct value of HttpClientBean" in {
-    val httpClient1 = HttpClientFactory.get("hello3").withConfig(Configuration().copy(pipeline =
-      Some(DummyRequestResponsePipeline)))
-    Await.result(httpClient1.readyFuture, awaitMax)
-    val httpClient2 = HttpClientFactory.get("hello4")
-    Await.result(httpClient2.readyFuture, awaitMax)
-    HttpClientBean(system).getHttpClientInfo should have size 2
-    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello3") should be (
-      HttpClientInfo("hello3", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000,
-        "org.squbs.httpclient.pipeline.impl.RequestAddHeaderHandler",
-        "org.squbs.httpclient.pipeline.impl.ResponseAddHeaderHandler"))
-    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello4") should be (
-      HttpClientInfo("hello4", "default", "http://www.ebay.com", "UP", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
-  }
-
-  "HttpClient with configuration" should "show up the correct value of HttpClientBean" in {
-    val httpClient = HttpClientFactory.get("hello5").withConfig(Configuration(settings = Settings(
-      hostSettings = HostConnectorSettings(10 ,10, 10, pipelining = true, 10 seconds, ClientConnectionSettings(system)),
-      connectionType = Proxied("www.ebay.com", 80))))
-    Await.result(httpClient.readyFuture, awaitMax)
-    val markDownStatus = HttpClientFactory.get("hello6").markDown
-    Await.result(markDownStatus, awaitMax)
-    HttpClientBean(system).getHttpClientInfo should have size 2
-    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello5") should be (HttpClientInfo("hello5",
-      "default", "http://www.ebay.com", "UP", "www.ebay.com:80", 10, 10, 10, 20000, 10000, "", ""))
-    findHttpClientBean(HttpClientBean(system).getHttpClientInfo, "hello6") should be (HttpClientInfo("hello6",
-      "default", "http://www.ebay.com", "DOWN", "AutoProxied", 4, 5, 0, 20000, 10000, "", ""))
-  }
-
-  "HttpClient Endpoint Resolver Info" should "show up the correct value of EndpointResolverBean" in {
-    EndpointResolverRegistry(system).register(new DummyServiceEndpointResolver)
-    EndpointResolverBean(system).getHttpClientEndpointResolverInfo should have size 2
-    EndpointResolverBean(system).getHttpClientEndpointResolverInfo.get(0).position should be (0)
-    EndpointResolverRegistry(system).resolve("DummyService") should be (Some(Endpoint(dummyServiceEndpoint)))
-    EndpointResolverBean(system).getHttpClientEndpointResolverInfo.get(0).resolver should be (
-      "org.squbs.httpclient.dummy.DummyServiceEndpointResolver")
-  }
-
-  "HttpClient Environment Resolver Info" should "show up the correct value of EnvironmentResolverBean" in {
-    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo should have size 0
-    EnvironmentRegistry(system).register(DummyProdEnvironmentResolver)
-    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo should have size 1
-    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo.get(0).position should be (0)
-    EnvironmentRegistry(system).resolve("abc") should be (PROD)
-    EnvironmentResolverBean(system).getHttpClientEnvironmentResolverInfo.get(0).resolver should be (
-      "org.squbs.httpclient.dummy.DummyProdEnvironmentResolver$")
-  }
-
-  "HttpClient Circuit Breaker Info" should "show up some value of CircuitBreakerBean" in {
-    CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo should have size 0
-    EndpointResolverRegistry(system).register(new DummyServiceEndpointResolver)
-    val response: Future[HttpResponse] = HttpClientFactory.get("DummyService").raw.get("/view")
-    val result = Await.result(response, awaitMax)
-    result.status should be (StatusCodes.OK)
-    CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo should have size 1
-    val cbInfo = CircuitBreakerBean(system).getHttpClientCircuitBreakerInfo.get(0)
-    cbInfo.name should be ("DummyService")
-    cbInfo.status should be ("Closed")
-    cbInfo.historyUnitDuration should be ("1 minute")
-    cbInfo.successTimes should be (1)
-    cbInfo.failFastTimes should be (0)
-    cbInfo.fallbackTimes should be (0)
-    cbInfo.exceptionTimes should be (0)
-
-    val currentRates = cbInfo.history.get(0)
-    val prevRates = cbInfo.history.get(1)
-
-    "0.00%" should (be (currentRates.errorRate) or be (prevRates.errorRate))
-    "0.00%" should (be (currentRates.failFastRate) or be (prevRates.failFastRate))
-    "0.00%" should (be (currentRates.exceptionRate) or be (prevRates.exceptionRate))
-  }
-
-  def findHttpClientBean(beans: java.util.List[HttpClientInfo], name: String): HttpClientInfo = {
-    import scala.collection.JavaConversions._
-    beans.toList.find(_.name == name).get
+  def assertJmxValue(clientName: String, key: String, expectedValue: Any) = {
+    val oName = ObjectName.getInstance(s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=$clientName")
+    val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
+    actualValue shouldEqual expectedValue
   }
 }
-*/
