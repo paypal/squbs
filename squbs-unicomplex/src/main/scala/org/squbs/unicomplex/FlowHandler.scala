@@ -153,8 +153,14 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
         } getOrElse NotFound
       })
 
-      val zipF = localPort map {
-        port => (hr: HttpRequest, po: Int) => RequestContext(hr, po).addRequestHeaders(LocalPortHeader(port))
+      val zipF = localPort map { port =>
+        if (port != 0) {
+          // Port is configured, we use the configured port.
+          (hr: HttpRequest, po: Int) => RequestContext(hr, po).addRequestHeaders(LocalPortHeader(port))
+        } else {
+          // Else we use the port from the URI.
+          (hr: HttpRequest, po: Int) => RequestContext(hr, po).addRequestHeaders(LocalPortHeader(hr.uri.effectivePort))
+        }
       } getOrElse { (hr: HttpRequest, po: Int) => RequestContext(hr, po) }
 
       val zip = b.add(ZipWith[HttpRequest, Int, RequestContext](zipF))
