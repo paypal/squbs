@@ -62,7 +62,6 @@ Also check out these [slightly more advanced samples](https://github.com/paypal/
 * [Clustering squbs Services using ZooKeeper](docs/zkcluster.md)
 * [The Blocking Dispatcher for Blocking API calls](docs/blocking-dispatcher.md)
 * [Message Guidelines](docs/messages.md)
-* [Request/Response Pipeline Proxy](docs/pipeline.md)
 * [Monitoring Actors at Runtime](docs/monitor.md)
 * [Accessing Other Services using HTTP or HTTPS](docs/httpclient.md)
 * [Using the Orchestration DSL](docs/orchestration_dsl.md)

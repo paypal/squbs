@@ -25,16 +25,16 @@ import org.scalatest.{FlatSpecLike, Matchers}
 import scala.concurrent.Await
 import scala.util.Failure
 
-object InvalidProxyFlowSpec {
+object InvalidPipelineFlowSpec {
 
   val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
-  val classPath = dummyJarsDir + "/InvalidProxyFlowSvc/META-INF/squbs-meta.conf"
+  val classPath = dummyJarsDir + "/InvalidPipelineFlowSvc/META-INF/squbs-meta.conf"
 
   val config = ConfigFactory.parseString(
     s"""
        |squbs {
-       |  actorsystem-name = InvalidProxyFlowSpec
+       |  actorsystem-name = InvalidPipelineFlowSpec
        |  ${JMX.prefixConfig} = true
        |}
        |default-listener.bind-port = 0
@@ -51,14 +51,14 @@ object InvalidProxyFlowSpec {
 }
 
 
-class InvalidProxyFlowSpec extends TestKit(InvalidProxyFlowSpec.boot.actorSystem) with FlatSpecLike with Matchers {
+class InvalidPipelineFlowSpec extends TestKit(InvalidPipelineFlowSpec.boot.actorSystem) with FlatSpecLike with Matchers {
 
-  "The InvalidProxyFlowSvc" should "fail" in {
+  "The InvalidPipelineFlowSvc" should "fail" in {
     import Timeouts._
     Await.result(Unicomplex(system).uniActor ? SystemState, awaitMax) shouldBe Failed
   }
 
-  "The InvalidProxyFlowSvc" should "expose errors" in {
+  "The InvalidPipelineFlowSvc" should "expose errors" in {
     import Timeouts._
     val report = Await.result((Unicomplex(system).uniActor ? ReportStatus).mapTo[StatusReport], awaitMax)
     report.state shouldBe Failed
