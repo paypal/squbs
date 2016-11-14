@@ -13,17 +13,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.squbs.actorregistry.testcube
 
 import akka.actor.Actor
 
 case class TestRequest(msg: String)
-case class TestResponse(msg: String)
-
 case class TestRequest1(msg: String)
-
-
+case class TestResponse(msg: String)
 
 
 class TestActor extends Actor {

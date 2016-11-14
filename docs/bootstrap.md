@@ -134,7 +134,7 @@ akka.actor.deployment {
 
   # Router configuration
   /bottlecube/lyrics {
-    router = round-robin
+    router = round-robin-pool
     resizer {
       lower-bound = 1
       upper-bound = 10
