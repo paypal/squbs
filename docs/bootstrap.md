@@ -134,7 +134,7 @@ akka.actor.deployment {
 
   # Router configuration
   /bottlecube/lyrics {
-    router = round-robin
+    router = round-robin-pool
     resizer {
       lower-bound = 1
       upper-bound = 10
@@ -177,8 +177,11 @@ squbs-services = [
     # The listeners entry is optional, and defaults to 'default-listener'.
     listeners = [ default-listener, my-listener ]
     
-    # Optional, defaults to a default proxy. Specify "" for no proxy.
-    proxy-name = some-proxy                
+    # Optional, defaults to a default pipeline.
+    pipeline = some-pipeline
+    
+    # Optional, disables the default pipeline if set to false.
+    defaultPipelineOn = true                
     
     # Optional, only applies to actors.
     init-required = false
@@ -192,9 +195,7 @@ The web-context is a string that uniquely identifies the web context of a reques
 
 Optionally, the listeners parameter declares a list of listeners to bind this service. Listener binding is discussed in the following section, below.
 
-A proxy is a pipelined request pre-processor before the request gets processed by the request handler. The proxy name can be specified by a `proxy-name` parameter. Unless `""` is specified, a default proxy will be used. Please refer to [Request/Response Pipeline Proxy](pipeline.md) for more information.
-
-The proxy is only valid when using Spray. Please see the [pipeline configuration](streamingpipeline.md) for Akka Http experimental mode uses.
+The pipeline is a set of request pre-processors before the request gets processed by the request handler. The pipeline name can be specified by a `pipeline` parameter. A configured default pipeline will be used. To disable the default pipeline for this service, you can set `defaultPipelineOn = false` in META-INF/squbs-meta.conf. Please refer to [Streaming Request/Response Pipeline](streamingpipeline.md) for more information.
 
 Only actors can have another optional `init-required` parameter which allows the actor to feed back its state to the system. Please refer to the [Startup Hooks](lifecycle.md#startup-hooks) section of the [Runtime Lifecycles & API](lifecycle.md) documentation for a full discussion of startup/initialization hooks.
 

@@ -30,8 +30,8 @@ import scala.concurrent.Await
 
 object LocalPortListenerSpecActorSystem {
 
-  // We need to explicitly generate a port for this test as the local port header takes the port form the config
-  // and not the binding results.
+  // Case 1 default-listener: Explicitly generate a port for this test. The local port header takes the port form the config.
+  // Case 2 fourth-listener: Implicitly ask Unicomplex to create a port.
   val (_, _, port1) = temporaryServerHostnameAndPort()
 
   val config = ConfigFactory.parseString(
@@ -71,7 +71,18 @@ object LocalPortListenerSpecActorSystem {
           secure = false
           client-authn = false
           ssl-context = default
-          }
+        }
+        fourth-listener {
+          type = squbs.listener
+          aliases = []
+          bind-address = "0.0.0.0"
+          full-address = false
+          bind-port = 0
+          local-port-header = true
+          secure = false
+          client-authn = false
+          ssl-context = default
+        }
       """.stripMargin)
 
   val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
@@ -95,12 +106,14 @@ class LocalPortListenerSpec extends TestKit(LocalPortListenerSpecActorSystem.boo
   val port1 = portBindings("default-listener")
   val port2 = portBindings("second-listener")
   val port3 = portBindings("third-listener")
+  val port4 = portBindings("fourth-listener")
 
-  import akka.pattern.ask
-  def port(listener: String) = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)(listener)
-
-  it should "patch local port well on local-port-header = true" in {
+  it should "patch local port on local-port-header = true when port manually assigned" in {
     Await.result(entityAsInt(s"http://127.0.0.1:$port1/localport"), awaitMax) should be (port1)
+  }
+
+  it should "patch local port on local-port-header = true when port automatically assigned" in {
+    Await.result(entityAsInt(s"http://127.0.0.1:$port4/localport"), awaitMax) should be (port4)
   }
 
   it should "not patch local port header if local-port-header is false or absent" in {

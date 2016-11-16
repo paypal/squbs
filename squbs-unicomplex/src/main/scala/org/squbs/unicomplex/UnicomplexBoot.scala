@@ -312,7 +312,7 @@ object UnicomplexBoot extends LazyLogging {
       }
     }
 
-    def startServiceRoute(clazz: Class[_], proxyName: Option[String], webContext: String, listeners: Seq[String],
+    def startServiceRoute(clazz: Class[_], webContext: String, listeners: Seq[String],
                           ps: PipelineSetting) = {
 
       Try {
@@ -328,7 +328,7 @@ object UnicomplexBoot extends LazyLogging {
           val actorName =
             if (webContext.length > 0) s"${webContext.replace('/', '_')}-$className-route"
             else s"root-$className-route"
-          cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, proxyName, ps, initRequired = true)
+          cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, ps, initRequired = true)
           Some((fullName, name, version, clazz))
         case _ => None
       }
@@ -341,7 +341,7 @@ object UnicomplexBoot extends LazyLogging {
       override def produce() = creator()
     }
 
-    def startServiceActor(clazz: Class[_], proxyName: Option[String], webContext: String, listeners: Seq[String],
+    def startServiceActor(clazz: Class[_], webContext: String, listeners: Seq[String],
                           ps: PipelineSetting, initRequired: Boolean) = {
       try {
         val actorClass = clazz asSubclass classOf[Actor]
@@ -351,7 +351,7 @@ object UnicomplexBoot extends LazyLogging {
         val actorName =
           if (webContext.length > 0) s"${webContext.replace('/', '_')}-$className-handler"
           else s"root-$className-handler"
-        cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, proxyName, ps, initRequired)
+        cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, ps, initRequired)
         Some((fullName, name, version, actorClass))
       } catch {
         case e: ClassCastException => None
@@ -362,7 +362,6 @@ object UnicomplexBoot extends LazyLogging {
       try {
         val className = serviceConfig.getString("class-name")
         val clazz = Class.forName(className, true, getClass.getClassLoader)
-        val proxyName = serviceConfig.getOption[String]("proxy-name") map (_.trim)
         val webContext = serviceConfig.getString("web-context")
         val pipeline = serviceConfig.getOption[String]("pipeline")
         val defaultFlowsOn = serviceConfig.getOption[Boolean]("defaultPipelineOn")
@@ -380,8 +379,8 @@ object UnicomplexBoot extends LazyLogging {
           }
         }
 
-        val service = startServiceRoute(clazz, proxyName, webContext, listeners, streamingPipelineSettings) orElse
-          startServiceActor(clazz, proxyName, webContext, listeners, streamingPipelineSettings,
+        val service = startServiceRoute(clazz, webContext, listeners, streamingPipelineSettings) orElse
+          startServiceActor(clazz, webContext, listeners, streamingPipelineSettings,
             serviceConfig.get[Boolean]("init-required", false))
 
         if (service.isEmpty) throw new ClassCastException(s"Class $className is neither a RouteDefinition nor an Actor.")

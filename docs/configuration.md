@@ -23,31 +23,6 @@ squbs {
   external-config-files = []
 }
 
-
-default-proxy {
-
-  # All squbs proxies carry the type "squbs.proxy"
-  type = squbs.proxy
-
-  # a processorFactory must be provided in a proxy
-  processorFactory = "org.squbs.pipeline.SimpleProcessorFactory"
-
-  # settings will be parsed by processorFactory and create a processor
-  settings = {
-    # handlers is the unified place to indicate all the request/response/common handlers class name
-    # each handler should have a default constructor and derived from trait Handler
-    # handlers = {
-    #   myhandler = com.myorg.myhandler
-    # }
-
-    # inbound and outbound determine the handlers to be go throught in request/response phases
-    # inbound = []
-    # outbound = []
-  }
-
-}
-
-
 default-listener {
 
   # All squbs listeners carry the type "squbs.listener"
@@ -121,6 +96,6 @@ A listener is declared at the root level of the configuiration file. The name ge
 
 A declared listener is not started unless a service route attaches itself to this listener. In other words, just declaring the listener does not automatically cause the listener to start unless there is a real use for the listener.
 
-##Proxies
+##Pipeline
 
-A default proxy pipeline is installed for pre-processing every single request and post-processing every response. Services can specify a different proxy, or none at all as described under [Bootstrapping squbs](bootstrap.md#services). Applications or infrastructure can implement their own proxies for pre-processing needs such as logging or tracing. Please see detailed description of proxies under [Request/Response Pipeline Proxy](pipeline.md).
+If defined, a default pipeline is installed for pre-processing every single request and post-processing every response. Services can specify a different pipeline, or none at all as described under [Bootstrapping squbs](bootstrap.md#services). Applications or infrastructure can implement their own pipelines for pre-processing needs such as logging or tracing. Please see detailed description of pipelines under [Streaming Request/Response Pipeline](streamingpipeline.md).

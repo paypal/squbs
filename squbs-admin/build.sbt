@@ -1,6 +1,6 @@
 import Versions._
 
-name := "squbs-admin-exp"
+name := "squbs-admin"
 
 Revolver.settings
 
