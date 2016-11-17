@@ -18,9 +18,6 @@ package org.squbs.endpoint
 
 import akka.actor.ActorSystem
 import org.squbs.env.{DEV, Default, Environment}
-import org.squbs.httpclient.HttpClientException
-import org.squbs.httpclient.dummy.DummyService
-import DummyService._
 
 class DummyServiceEndpointResolver(implicit system: ActorSystem) extends EndpointResolver{
 

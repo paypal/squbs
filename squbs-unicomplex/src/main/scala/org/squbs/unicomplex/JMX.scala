@@ -62,7 +62,7 @@ object JMX {
    */
   def prefix(system: ActorSystem): String = {
     (prefixes.get(system) orElse Option {
-      import ConfigUtil._
+      import org.squbs.util.ConfigUtil._
       val p =
         if (Unicomplex(system).config.get[Boolean](prefixConfig, false) || isRegistered(systemStateName))
           system.name + '.'

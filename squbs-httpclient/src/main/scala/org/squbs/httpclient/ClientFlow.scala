@@ -16,6 +16,7 @@
 
 package org.squbs.httpclient
 
+import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 
 import akka.actor.ActorSystem
@@ -31,7 +32,6 @@ import com.typesafe.sslconfig.ssl.SSLConfigFactory
 import org.squbs.endpoint.EndpointResolverRegistry
 import org.squbs.env.{EnvironmentResolverRegistry, Default, Environment}
 import org.squbs.pipeline.streaming.{PipelineSetting, Context, RequestContext, PipelineExtension}
-import org.squbs.unicomplex.JMX
 
 import scala.util.{Failure, Try}
 
@@ -55,8 +55,7 @@ object ClientFlow {
     }
 
     val config = system.settings.config
-    // TODO how come this unicomplex utility is sneaking here?  Should not be visible..
-    import org.squbs.unicomplex.ConfigUtil._
+    import org.squbs.util.ConfigUtil._
     val clientSpecificConfig = config.getOption[Config](name).filter {
       _.getOption[String]("type") == Some("squbs.httpclient")
     }
@@ -83,13 +82,14 @@ object ClientFlow {
     val pipelineName = clientSpecificConfig.flatMap(_.getOption[String]("pipeline"))
     val defaultFlowsOn = clientSpecificConfig.flatMap(_.getOption[Boolean]("defaultPipelineOn"))
 
+    val mBeanServer = ManagementFactory.getPlatformMBeanServer
     val beanName = new ObjectName(s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=$name")
-    if(!JMX.isRegistered(beanName)) JMX.register(HttpClientConfigMXBeanImpl(name,
-                                                                            endpoint.uri.toString,
-                                                                            environment.name,
-                                                                            pipelineName,
-                                                                            defaultFlowsOn,
-                                                                            cps), beanName)
+    if(!mBeanServer.isRegistered(beanName)) mBeanServer.registerMBean(HttpClientConfigMXBeanImpl(name,
+                                                                                                 endpoint.uri.toString,
+                                                                                                 environment.name,
+                                                                                                 pipelineName,
+                                                                                                 defaultFlowsOn,
+                                                                                                 cps), beanName)
 
     withPipeline[T](name, (pipelineName, defaultFlowsOn), clientConnectionFlow)
   }

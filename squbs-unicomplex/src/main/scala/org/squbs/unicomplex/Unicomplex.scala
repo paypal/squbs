@@ -189,7 +189,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   private var servicesStarted= false
 
-  import ConfigUtil._
+  import org.squbs.util.ConfigUtil._
 
   lazy val serviceRegistry = new ServiceRegistry(log)
 
@@ -652,7 +652,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     case StartCubeService(webContext, listeners, props, name, ps, initRequired) =>
       val hostActor = context.actorOf(props, name)
-      import ConfigUtil._
+      import org.squbs.util.ConfigUtil._
       val concurrency = context.system.settings.config.get[Int]("akka.http.server.pipelining-limit")
       val flow = Flow[HttpRequest].mapAsync(concurrency) { request => (hostActor ? request).mapTo[HttpResponse] }
       val wrapper = FlowWrapper(flow, hostActor)

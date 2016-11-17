@@ -19,8 +19,8 @@ import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
 import org.json4s.JsonAST.{JObject, JString}
 import org.json4s.jackson.JsonMethods._
-import org.squbs.unicomplex.{ConfigUtil, RouteDefinition, WebContext}
-import ConfigUtil._
+import org.squbs.unicomplex.{RouteDefinition, WebContext}
+import org.squbs.util.ConfigUtil._
 
 class AdminSvc extends RouteDefinition with WebContext {
 

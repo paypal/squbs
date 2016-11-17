@@ -17,6 +17,7 @@
 package org.squbs.endpoint
 
 import java.beans.ConstructorProperties
+import java.lang.management.ManagementFactory
 import java.net.URI
 import java.util.Optional
 import javax.management.{ObjectName, MXBean}
@@ -25,7 +26,6 @@ import javax.net.ssl.SSLContext
 import akka.actor._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.env.{Default, Environment}
-import org.squbs.unicomplex.JMX
 
 import scala.beans.BeanProperty
 
@@ -95,8 +95,10 @@ object EndpointResolverRegistry extends ExtensionId[EndpointResolverRegistryExte
   override def lookup() = EndpointResolverRegistry
 
   override def createExtension(system: ExtendedActorSystem): EndpointResolverRegistryExtension = {
+    val mBeanServer = ManagementFactory.getPlatformMBeanServer
     val beanName = new ObjectName(s"org.squbs.configuration.${system.name}:type=EndpointResolverRegistry")
-    if (!JMX.isRegistered(beanName)) JMX.register(EndpointResolverRegistryMXBeanImpl(system), beanName)
+    if (!mBeanServer.isRegistered(beanName))
+      mBeanServer.registerMBean(EndpointResolverRegistryMXBeanImpl(system), beanName)
     new EndpointResolverRegistryExtension(system)
   }
 

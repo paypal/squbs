@@ -30,7 +30,7 @@ import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.lifecycle.ExtensionLifecycle
 import org.squbs.pipeline.streaming.PipelineSetting
-import org.squbs.unicomplex.ConfigUtil._
+import org.squbs.util.ConfigUtil._
 import org.squbs.unicomplex.UnicomplexBoot.CubeInit
 
 import scala.annotation.tailrec
