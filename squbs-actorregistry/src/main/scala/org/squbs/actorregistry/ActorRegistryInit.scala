@@ -21,7 +21,7 @@ import akka.actor._
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.lifecycle.ExtensionLifecycle
-import org.squbs.unicomplex.ConfigUtil
+import org.squbs.util.ConfigUtil
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 
 import scala.concurrent.duration._

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.squbs.metrics
+package org.squbs.httpclient
 
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
@@ -29,7 +29,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
 import org.squbs.endpoint.{EndpointResolverRegistry, Endpoint, EndpointResolver}
 import org.squbs.env.Environment
-import org.squbs.httpclient.ClientFlow
+import org.squbs.metrics.{MetricsFlow, MetricsExtension}
 import org.squbs.pipeline.streaming._
 import org.squbs.testkit.Timeouts._
 
@@ -42,7 +42,7 @@ object MetricsFlowSpec {
     s"""
        |preFlow {
        |  type = squbs.pipelineflow
-       |  factory = org.squbs.metrics.DefaultFlow
+       |  factory = org.squbs.httpclient.DefaultFlow
        |}
        |
        |squbs.pipeline.streaming.defaults {
@@ -60,12 +60,12 @@ object MetricsFlowSpec {
        |
        |failure {
        |  type = squbs.pipelineflow
-       |  factory = org.squbs.metrics.FailureFlow
+       |  factory = org.squbs.httpclient.FailureFlow
        |}
     """.stripMargin
   )
 
-  implicit val system: ActorSystem = ActorSystem("MetricFlowSpec", config)
+  implicit val system: ActorSystem = ActorSystem("ClientMetricFlowSpec", config)
   implicit val materializer = ActorMaterializer()
   import system.dispatcher
   import akka.http.scaladsl.server.Directives._

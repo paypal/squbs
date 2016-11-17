@@ -22,6 +22,7 @@ import akka.stream.scaladsl._
 import com.typesafe.config.ConfigObject
 
 import scala.annotation.tailrec
+import scala.util.Try
 
 case class Context(name: String)
 
@@ -35,7 +36,6 @@ class PipelineExtensionImpl(flowFactoryMap: Map[String, PipelineFlowFactory],
                             defaultPreFlow: Option[String],
                             defaultPostFlow: Option[String])(implicit system: ActorSystem) extends Extension {
 
-  // TODO remove the default value for context..
   def getFlow(pipelineSetting: PipelineSetting, context: Context): Option[PipelineFlow] = {
 
     val (appFlow, defaultsOn) = pipelineSetting
@@ -71,10 +71,10 @@ object PipelineExtension extends ExtensionId[PipelineExtensionImpl] with Extensi
 
   override def createExtension(system: ExtendedActorSystem): PipelineExtensionImpl = {
 
-    import ConfigHelper._
     import collection.JavaConversions._
     val flows = system.settings.config.root.toSeq collect {
-      case (n, v: ConfigObject) if v.toConfig.getOptionalString("type").contains("squbs.pipelineflow") => (n, v.toConfig)
+      case (n, v: ConfigObject) if v.toConfig.hasPath("type") && v.toConfig.getString("type") == "squbs.pipelineflow" =>
+        (n, v.toConfig)
     }
 
     var flowMap = Map.empty[String, PipelineFlowFactory]
@@ -86,8 +86,8 @@ object PipelineExtension extends ExtensionId[PipelineExtensionImpl] with Extensi
       flowMap = flowMap + (name -> flowFactory)
     }
 
-    val pre = system.settings.config.getOptionalString("squbs.pipeline.streaming.defaults.pre-flow")
-    val post = system.settings.config.getOptionalString("squbs.pipeline.streaming.defaults.post-flow")
+    val pre = Try(system.settings.config.getString("squbs.pipeline.streaming.defaults.pre-flow")).toOption
+    val post = Try(system.settings.config.getString("squbs.pipeline.streaming.defaults.post-flow")).toOption
     new PipelineExtensionImpl(flowMap, pre, post)(system)
   }
 

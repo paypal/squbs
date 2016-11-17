@@ -21,7 +21,7 @@ import com.typesafe.config.ConfigException.BadValue
 import com.typesafe.config.{Config, ConfigMemorySize}
 import net.openhft.chronicle.queue.{RollCycle, RollCycles}
 import net.openhft.chronicle.wire.WireType
-import org.squbs.pattern.util.ConfigUtil._
+import org.squbs.util.ConfigUtil._
 
 object QueueConfig {
 

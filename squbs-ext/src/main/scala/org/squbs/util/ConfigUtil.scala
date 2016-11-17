@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.squbs.pattern.util
+package org.squbs.util
 
 import java.net.{Inet4Address, NetworkInterface}
 
@@ -23,8 +23,9 @@ import com.typesafe.scalalogging.LazyLogging
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
-import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
+import scala.util.matching.Regex
+import scala.reflect.runtime.universe._
 
 object ConfigUtil extends LazyLogging {
 
@@ -32,13 +33,14 @@ object ConfigUtil extends LazyLogging {
   private val StringListTag = typeTag[Seq[String]]
   private val ConfigTag = typeTag[Config]
   private val ConfigListTag = typeTag[Seq[Config]]
+  private val RegexTag = typeTag[Regex]
+  private val ConfigMemorySizeTag = typeTag[ConfigMemorySize]
   private val DurationTag = typeTag[Duration]
   private val FiniteDurationTag = typeTag[FiniteDuration]
-  private val ConfigMemorySizeTag = typeTag[ConfigMemorySize]
 
   implicit class RichConfig(val underlying: Config) extends AnyVal {
 
-    def getTry[T](path: String)(implicit tag: TypeTag[T]): Try[T] = Try {
+    def getTry[T: TypeTag](path: String): Try[T] = Try {
       (typeTag[T] match {
         case StringTag => underlying.getString(path)
         case StringListTag => underlying.getStringList(path).toSeq
@@ -47,9 +49,10 @@ object ConfigUtil extends LazyLogging {
         case TypeTag.Double => underlying.getDouble(path)
         case ConfigTag => underlying.getConfig(path)
         case ConfigListTag => underlying.getConfigList(path).toSeq
+        case RegexTag => new Regex(underlying.getString(path))
+        case ConfigMemorySizeTag => underlying.getMemorySize(path)
         case FiniteDurationTag => Duration(underlying.getString(path)).asInstanceOf[FiniteDuration]
         case DurationTag => Duration(underlying.getString(path))
-        case ConfigMemorySizeTag => underlying.getMemorySize(path)
         case _ =>
           throw new IllegalArgumentException(s"Configuration option type ${typeTag[T].tpe} not implemented")
       }).asInstanceOf[T]
@@ -68,7 +71,7 @@ object ConfigUtil extends LazyLogging {
         case Failure(e: IllegalArgumentException) => throw e
         case Failure(e) =>
           logger.warn("Value at path {} has an illegal format for type{}: {}",
-            path, typeTag[T].tpe, underlying.getString(path))
+            path,  typeTag[T].tpe, underlying.getString(path))
           None
       }
 
@@ -132,11 +135,11 @@ object ConfigUtil extends LazyLogging {
 
     def getOptionalDuration(path: String): Option[FiniteDuration] = {
       import scala.concurrent.duration._
-      try {
-        Some(Duration.create(underlying.getDuration(path, MILLISECONDS), MILLISECONDS))
-      } catch {
-        case e: ConfigException.Missing => None
-      }
+      Try(Duration.create(underlying.getDuration(path, MILLISECONDS), MILLISECONDS)).toOption
+    }
+
+    def getOptionalPattern(path: String): Option[Regex] = {
+      Try(new Regex(underlying.getString(path))).toOption
     }
 
     def getOptionalMemorySize(path: String): Option[ConfigMemorySize] = {
