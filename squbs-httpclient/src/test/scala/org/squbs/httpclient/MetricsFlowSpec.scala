@@ -27,6 +27,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{BidiFlow, Flow, Sink, Source}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+import org.scalatest.OptionValues._
 import org.squbs.endpoint.{EndpointResolverRegistry, Endpoint, EndpointResolver}
 import org.squbs.env.Environment
 import org.squbs.metrics.{MetricsFlow, MetricsExtension}
@@ -107,9 +108,9 @@ class MetricsFlowSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
     val f = for(i <- 0 until 5) yield callService("sampleClient", "/hello")
 
     callServiceTwice("sampleClient", "/hello") flatMap { _ => Future.sequence(f) } map { _ =>
-      assertJmxValue("sampleClient-request-count", "Count", 7)
-      assertJmxValue("sampleClient-request-time", "Count", 7)
-      assertJmxEntryExists("sampleClient-request-time", "FifteenMinuteRate")
+      jmxValue("sampleClient-request-count", "Count").value shouldBe 7
+      jmxValue("sampleClient-request-time", "Count").value shouldBe 7
+      jmxValue("sampleClient-request-time", "FifteenMinuteRate") should not be 'empty
     }
   }
 
@@ -122,11 +123,11 @@ class MetricsFlowSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
     } yield List(hello, redirect, notFound, internalServerError)
 
     f map { _ =>
-      assertJmxValue("sampleClient2-request-count", "Count", 6)
-      assertJmxValue("sampleClient2-2XX-count", "Count", 2)
-      assertJmxValue("sampleClient2-3XX-count", "Count", 1)
-      assertJmxValue("sampleClient2-4XX-count", "Count", 1)
-      assertJmxValue("sampleClient2-5XX-count", "Count", 2)
+      jmxValue("sampleClient2-request-count", "Count").value shouldBe 6
+      jmxValue("sampleClient2-2XX-count", "Count").value shouldBe 2
+      jmxValue("sampleClient2-3XX-count", "Count").value shouldBe 1
+      jmxValue("sampleClient2-4XX-count", "Count").value shouldBe 1
+      jmxValue("sampleClient2-5XX-count", "Count").value shouldBe 2
     }
   }
 
@@ -139,15 +140,15 @@ class MetricsFlowSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
     } yield List(hello, redirect, notFound, internalServerError)
 
     f map { _ =>
-      assertJmxValue("sampleClient3-request-count", "Count", 4)
-      assertJmxValue("sampleClient3-2XX-count", "Count", 2)
-      assertJmxValue("sampleClient3-5XX-count", "Count", 2)
+      jmxValue("sampleClient3-request-count", "Count").value shouldBe 4
+      jmxValue("sampleClient3-2XX-count", "Count").value shouldBe 2
+      jmxValue("sampleClient3-5XX-count", "Count").value shouldBe 2
 
-      assertJmxValue("sampleClient4-request-count", "Count", 1)
-      assertJmxValue("sampleClient4-3XX-count", "Count", 1)
+      jmxValue("sampleClient4-request-count", "Count").value shouldBe 1
+      jmxValue("sampleClient4-3XX-count", "Count").value shouldBe 1
 
-      assertJmxValue("sampleClient5-request-count", "Count", 1)
-      assertJmxValue("sampleClient5-4XX-count", "Count", 1)
+      jmxValue("sampleClient5-request-count", "Count").value shouldBe 1
+      jmxValue("sampleClient5-4XX-count", "Count").value shouldBe 1
     }
   }
 
@@ -160,23 +161,16 @@ class MetricsFlowSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
     } yield List(hello, connectionException, connectionException2, timeoutException)
 
     f map { _ =>
-      assertJmxValue("sampleClient6-request-count", "Count", 6)
-      assertJmxValue("sampleClient6-2XX-count", "Count", 2)
-      assertJmxValue("sampleClient6-PeerClosedConnectionException-count", "Count", 2)
-      assertJmxValue("sampleClient6-RequestTimeoutException-count", "Count", 2)
+      jmxValue("sampleClient6-request-count", "Count").value shouldBe 6
+      jmxValue("sampleClient6-2XX-count", "Count").value shouldBe 2
+      jmxValue("sampleClient6-PeerClosedConnectionException-count", "Count").value shouldBe 2
+      jmxValue("sampleClient6-RequestTimeoutException-count", "Count").value shouldBe 2
     }
   }
 
-  def assertJmxValue(beanName: String, key: String, expectedValue: Any) = {
+  def jmxValue(beanName: String, key: String) = {
     val oName = ObjectName.getInstance(s"${MetricsExtension(system).Domain}:name=${MetricsExtension(system).Domain}.$beanName")
-    val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
-    actualValue shouldEqual expectedValue
-  }
-
-  def assertJmxEntryExists(beanName: String, key: String) = {
-    val oName = ObjectName.getInstance(s"${MetricsExtension(system).Domain}:name=${MetricsExtension(system).Domain}.$beanName")
-    val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
-    actualValue.toString should not be empty
+    Option(ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key))
   }
 
   private def callService(clientName: String, path: String) = {
@@ -214,7 +208,8 @@ class FailureFlow extends PipelineFlowFactory {
     val outbound = Flow[RequestContext].map { rc =>
       rc.request.getUri().path() match {
         case "/connectionException" => rc.copy(response = Some(Failure(new  PeerClosedConnectionException(0, ""))))
-        case "/timeoutException" => rc.copy(response = Some(Failure(new  RuntimeException(RequestTimeoutException(rc.request, "")))))
+        case "/timeoutException" =>
+          rc.copy(response = Some(Failure(new  RuntimeException(RequestTimeoutException(rc.request, "")))))
         case _ => rc
       }
     }

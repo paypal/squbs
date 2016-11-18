@@ -116,8 +116,9 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
 
       flowWrappers.zipWithIndex foreach { case (fw, i) =>
         val serviceFlow = toRequestContextFlow(fw.flow)
-
-        pipelineExtension.getFlow(pipelineSettings(i), Context(name = paths(i).toString())) match {
+        val pathString = paths(i).toString
+        val wc = if(pathString.isEmpty) "/" else pathString
+        pipelineExtension.getFlow(pipelineSettings(i), Context(name = wc)) match {
           case Some(pipeline) => partition.out(i) ~> pipeline.join(serviceFlow) ~> routesMerge
           case None => partition.out(i) ~> serviceFlow ~> routesMerge
         }

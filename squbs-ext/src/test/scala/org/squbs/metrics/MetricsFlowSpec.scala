@@ -20,12 +20,13 @@ import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.ws.PeerClosedConnectionException
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.ws.PeerClosedConnectionException
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Sink, Source, Flow}
+import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.testkit.TestKit
 import org.scalatest.{AsyncFlatSpecLike, Matchers}
+import org.scalatest.OptionValues._
 import org.squbs.pipeline.streaming.RequestContext
 
 import scala.concurrent.Future
@@ -60,9 +61,9 @@ class MetricsFlowSpec extends TestKit(ActorSystem("MetricsFlowSpec")) with Async
       runWith(Sink.ignore)
 
     future map { _ =>
-      assertJmxValue("sample-request-count", "Count", 2)
-      assertJmxValue("sample-request-time", "Count", 2)
-      assertJmxEntryExists("sample-request-time", "FifteenMinuteRate")
+      jmxValue("sample-request-count", "Count").value shouldBe 2
+      jmxValue("sample-request-time", "Count").value shouldBe 2
+      jmxValue("sample-request-time", "FifteenMinuteRate") should not be 'empty
     }
   }
 
@@ -72,15 +73,15 @@ class MetricsFlowSpec extends TestKit(ActorSystem("MetricsFlowSpec")) with Async
       runWith(Sink.ignore)
 
     future map { _ =>
-      assertJmxValue("sample2-request-count", "Count", 6)
-      assertJmxValue("sample2-2XX-count", "Count", 2)
-      assertJmxValue("sample2-3XX-count", "Count", 1)
-      assertJmxValue("sample2-4XX-count", "Count", 1)
-      assertJmxValue("sample2-5XX-count", "Count", 2)
+      jmxValue("sample2-request-count", "Count").value shouldBe 6
+      jmxValue("sample2-2XX-count", "Count").value shouldBe 2
+      jmxValue("sample2-3XX-count", "Count").value shouldBe 1
+      jmxValue("sample2-4XX-count", "Count").value shouldBe 1
+      jmxValue("sample2-5XX-count", "Count").value shouldBe 2
     }
   }
 
-  it should "collect metrics for multiple clients" in {
+  it should "be able to collect multiple metrics" in {
 
     val f1 = Source(hello :: hello :: internalServerError :: internalServerError :: Nil).
       via(MetricsFlow("sample3").join(dummyEndpoint)).
@@ -97,15 +98,15 @@ class MetricsFlowSpec extends TestKit(ActorSystem("MetricsFlowSpec")) with Async
     val f = Future.sequence(List(f1, f2, f3))
 
     f map { _ =>
-      assertJmxValue("sample3-request-count", "Count", 4)
-      assertJmxValue("sample3-2XX-count", "Count", 2)
-      assertJmxValue("sample3-5XX-count", "Count", 2)
+      jmxValue("sample3-request-count", "Count").value shouldBe 4
+      jmxValue("sample3-2XX-count", "Count").value shouldBe 2
+      jmxValue("sample3-5XX-count", "Count").value shouldBe 2
 
-      assertJmxValue("sample4-request-count", "Count", 1)
-      assertJmxValue("sample4-3XX-count", "Count", 1)
+      jmxValue("sample4-request-count", "Count").value shouldBe 1
+      jmxValue("sample4-3XX-count", "Count").value shouldBe 1
 
-      assertJmxValue("sample5-request-count", "Count", 1)
-      assertJmxValue("sample5-4XX-count", "Count", 1)
+      jmxValue("sample5-request-count", "Count").value shouldBe 1
+      jmxValue("sample5-4XX-count", "Count").value shouldBe 1
     }
   }
 
@@ -117,22 +118,16 @@ class MetricsFlowSpec extends TestKit(ActorSystem("MetricsFlowSpec")) with Async
       runWith(Sink.ignore)
 
     future map { _ =>
-      assertJmxValue("sample6-request-count", "Count", 6)
-      assertJmxValue("sample6-2XX-count", "Count", 2)
-      assertJmxValue("sample6-PeerClosedConnectionException-count", "Count", 2)
-      assertJmxValue("sample6-RequestTimeoutException-count", "Count", 2)
+      jmxValue("sample6-request-count", "Count").value shouldBe 6
+      jmxValue("sample6-2XX-count", "Count").value shouldBe 2
+      jmxValue("sample6-PeerClosedConnectionException-count", "Count").value shouldBe 2
+      jmxValue("sample6-RequestTimeoutException-count", "Count").value shouldBe 2
     }
   }
 
-  def assertJmxValue(beanName: String, key: String, expectedValue: Any) = {
-    val oName = ObjectName.getInstance(s"${MetricsExtension(system).Domain}:name=${MetricsExtension(system).Domain}.$beanName")
-    val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
-    actualValue shouldEqual expectedValue
-  }
-
-  def assertJmxEntryExists(beanName: String, key: String) = {
-    val oName = ObjectName.getInstance(s"${MetricsExtension(system).Domain}:name=${MetricsExtension(system).Domain}.$beanName")
-    val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
-    actualValue.toString should not be empty
+  def jmxValue(beanName: String, key: String) = {
+    val oName =
+      ObjectName.getInstance(s"${MetricsExtension(system).Domain}:name=${MetricsExtension(system).Domain}.$beanName")
+    Option(ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key))
   }
 }
