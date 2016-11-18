@@ -26,6 +26,8 @@ import akka.http.scaladsl.model.{HttpResponse, HttpRequest}
 import akka.stream.{FlowShape, Materializer}
 import akka.stream.scaladsl.{GraphDSL, Keep, Flow}
 import com.typesafe.config.Config
+import com.typesafe.sslconfig.akka.AkkaSSLConfig
+import com.typesafe.sslconfig.ssl.SSLConfigFactory
 import org.squbs.endpoint.EndpointResolverRegistry
 import org.squbs.env.{EnvironmentResolverRegistry, Default, Environment}
 import org.squbs.pipeline.streaming.{PipelineSetting, Context, RequestContext, PipelineExtension}
@@ -63,8 +65,13 @@ object ClientFlow {
 
     val clientConnectionFlow =
       if (endpoint.uri.getScheme == "https") {
+
+        val akkaOverrides = clientConfigWithDefaults.getConfig("akka.ssl-config")
+        val defaults = clientConfigWithDefaults.getConfig("ssl-config")
+        val sslConfig = AkkaSSLConfig().withSettings(SSLConfigFactory.parse(akkaOverrides withFallback defaults))
+
         val httpsConnectionContext = connectionContext orElse {
-          endpoint.sslContext map { sc => ConnectionContext.https(sc) }
+          endpoint.sslContext map { sc => ConnectionContext.https(sc, Some(sslConfig)) }
         } getOrElse Http().defaultClientHttpsContext
 
         Http().cachedHostConnectionPoolHttps[RequestContext](endpoint.uri.getHost, endpoint.uri.getPort,
