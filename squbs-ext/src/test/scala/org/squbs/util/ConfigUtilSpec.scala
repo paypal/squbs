@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.unicomplex
+package org.squbs.util
 
 import java.util.regex.PatternSyntaxException
 

@@ -20,7 +20,7 @@ import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.util.Timeout
 import org.squbs.lifecycle.GracefulStop
-import ConfigUtil._
+import org.squbs.util.ConfigUtil._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

@@ -7,6 +7,7 @@ javaOptions in Test += "-Xmx512m"
 libraryDependencies ++= Seq(
   "com.typesafe.akka"         %% "akka-actor"                   % akkaV,
   "com.typesafe.akka"         %% "akka-slf4j"                   % akkaV,
+  "com.typesafe.akka"         %% "akka-http-core"               % akkaV ,
   "com.typesafe.akka"         %% "akka-testkit"                 % akkaV % "test",
   "com.typesafe.scala-logging" %% "scala-logging" 			      	% "3.1.0",
   "io.spray"                  %% "spray-client"                 % sprayV,
@@ -18,8 +19,7 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules"    %% "scala-java8-compat"           % "0.7.0",
   "com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.6.3",
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % "2.6.3",
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
-  "io.dropwizard.metrics"     % "metrics-core"                  % metricsV
+  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 )
 
 javacOptions += "-parameters"

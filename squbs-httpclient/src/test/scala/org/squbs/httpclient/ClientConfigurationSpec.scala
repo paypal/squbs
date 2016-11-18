@@ -26,7 +26,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.{FlatSpec, Matchers}
 import org.squbs.endpoint.{Endpoint, EndpointResolver, EndpointResolverRegistry}
 import org.squbs.env.Environment
-import org.squbs.unicomplex.ConfigUtil._
+import org.squbs.util.ConfigUtil._
 import org.squbs.unicomplex.JMX
 
 import scala.concurrent.duration.Duration

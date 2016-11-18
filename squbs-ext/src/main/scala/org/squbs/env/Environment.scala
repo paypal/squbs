@@ -17,12 +17,12 @@
 package org.squbs.env
 
 import java.beans.ConstructorProperties
+import java.lang.management.ManagementFactory
 import java.util
 import javax.management.{ObjectName, MXBean}
 
 import akka.actor._
 import com.typesafe.scalalogging.LazyLogging
-import org.squbs.unicomplex.JMX
 
 import scala.beans.BeanProperty
 
@@ -106,8 +106,10 @@ object EnvironmentResolverRegistry extends ExtensionId[EnvironmentResolverRegist
   override def lookup() = EnvironmentResolverRegistry
 
   override def createExtension(system: ExtendedActorSystem): EnvironmentResolverRegistryExtension = {
+    val mBeanServer = ManagementFactory.getPlatformMBeanServer
     val beanName = new ObjectName(s"org.squbs.configuration.${system.name}:type=EnvironmentResolverRegistry")
-    if (!JMX.isRegistered(beanName)) JMX.register(EnvironmentResolverRegistryMXBeanImpl(system), beanName)
+    if (!mBeanServer.isRegistered(beanName))
+      mBeanServer.registerMBean(EnvironmentResolverRegistryMXBeanImpl(system), beanName)
     new EnvironmentResolverRegistryExtension(system)
   }
 

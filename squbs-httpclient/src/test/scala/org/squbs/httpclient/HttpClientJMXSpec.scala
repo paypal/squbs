@@ -108,7 +108,7 @@ class HttpClientJMXSpec extends FlatSpecLike with Matchers {
   import HttpClientJMXSpec._
 
   it should "show the configuration of an http client" in {
-    import org.squbs.unicomplex.ConfigUtil._
+    import org.squbs.util.ConfigUtil._
 
     ClientFlow("sampleClient")
 

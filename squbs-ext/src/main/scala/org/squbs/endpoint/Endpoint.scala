@@ -17,6 +17,7 @@
 package org.squbs.endpoint
 
 import java.beans.ConstructorProperties
+import java.lang.management.ManagementFactory
 import java.net.URI
 import javax.management.{ObjectName, MXBean}
 import javax.net.ssl.SSLContext
@@ -24,11 +25,9 @@ import javax.net.ssl.SSLContext
 import akka.actor._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.env.{Default, Environment}
-import org.squbs.unicomplex.JMX
 
 import scala.beans.BeanProperty
 
-// TODO Endpoint can be used by non-http clients as well, e.g., Kafka, db, etc.. So, using javax.net.URI
 case class Endpoint(uri: URI, sslContext: Option[SSLContext] = None)
 
 object Endpoint {
@@ -87,8 +86,10 @@ object EndpointResolverRegistry extends ExtensionId[EndpointResolverRegistryExte
   override def lookup() = EndpointResolverRegistry
 
   override def createExtension(system: ExtendedActorSystem): EndpointResolverRegistryExtension = {
+    val mBeanServer = ManagementFactory.getPlatformMBeanServer
     val beanName = new ObjectName(s"org.squbs.configuration.${system.name}:type=EndpointResolverRegistry")
-    if (!JMX.isRegistered(beanName)) JMX.register(EndpointResolverRegistryMXBeanImpl(system), beanName)
+    if (!mBeanServer.isRegistered(beanName))
+      mBeanServer.registerMBean(EndpointResolverRegistryMXBeanImpl(system), beanName)
     new EndpointResolverRegistryExtension(system)
   }
 
