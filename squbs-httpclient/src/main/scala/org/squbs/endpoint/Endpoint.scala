@@ -18,6 +18,7 @@ package org.squbs.endpoint
 
 import java.beans.ConstructorProperties
 import java.net.URI
+import java.util.Optional
 import javax.management.{ObjectName, MXBean}
 import javax.net.ssl.SSLContext
 
@@ -28,16 +29,23 @@ import org.squbs.unicomplex.JMX
 
 import scala.beans.BeanProperty
 
-// TODO Endpoint can be used by non-http clients as well, e.g., Kafka, db, etc.. So, using javax.net.URI
 case class Endpoint(uri: URI, sslContext: Option[SSLContext] = None)
 
 object Endpoint {
   def apply(s: String): Endpoint = Endpoint(new URI(s))
 
+  def apply(s: String, sslContext: Option[SSLContext]): Endpoint = Endpoint(new URI(s), sslContext)
+
   /**
     * Java API
     */
   def create(s: String): Endpoint = Endpoint(new URI(s))
+
+  /**
+    * Java API
+    */
+  import scala.compat.java8.OptionConverters._
+  def create(s: String, sslContext: Optional[SSLContext]): Endpoint = Endpoint(new URI(s), sslContext.asScala)
 }
 
 trait EndpointResolver {
