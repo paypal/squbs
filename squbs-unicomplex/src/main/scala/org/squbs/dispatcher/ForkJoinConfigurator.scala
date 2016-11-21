@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 
 import akka.dispatch._
 import com.typesafe.config.Config
-import org.squbs.unicomplex.{ConfigUtil, ForkJoinPoolMXBean, JMX}
+import org.squbs.unicomplex.{ForkJoinPoolMXBean, JMX}
 
 import scala.concurrent.{BlockContext, CanAwait}
 
@@ -60,7 +60,7 @@ class ForkJoinConfigurator(config: Config, prerequisites: DispatcherPrerequisite
       case other ⇒ (other, id)
     }
     val fjConf = config.getConfig("fork-join-executor")
-    import ConfigUtil._
+    import org.squbs.util.ConfigUtil._
     new ForkJoinExecutorServiceFactory(
       fjConf.get[String]("jmx-name-prefix", ""),
       name,

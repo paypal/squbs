@@ -22,7 +22,7 @@ import akka.actor.{ActorRef, ActorContext}
 import akka.event.LoggingAdapter
 import com.typesafe.config.Config
 import org.squbs.pipeline.streaming.PipelineSetting
-import org.squbs.unicomplex.ConfigUtil._
+import org.squbs.util.ConfigUtil._
 
 import scala.concurrent.ExecutionContext
 import scala.collection.mutable.ListBuffer
@@ -90,7 +90,7 @@ trait ServiceRegistryBase[A] {
                         ssLContext: Option[SSLContext], needClientAuth: Boolean)
 
   protected def bindConfig(config: Config): BindConfig = {
-    val interface = if (config getBoolean "full-address") ConfigUtil.ipv4
+    val interface = if (config getBoolean "full-address") org.squbs.util.ConfigUtil.ipv4
     else config getString "bind-address"
     val port = config getInt "bind-port"
     // assign the localPort only if local-port-header is true
