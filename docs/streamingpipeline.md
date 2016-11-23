@@ -2,18 +2,33 @@
 
 ### Overview
 
-We often need to have common infrastructure functionality across different squbs services, or as organizational standards.  Such infrastructure includes, but is not limited to logging, request tracing, authentication/authorization, tracking, cookie management, A/B testing, etc.
+We often need to have common infrastructure functionality or organizational standards across different services/clients.  Such infrastructure includes, but is not limited, to logging, metrics collection, request tracing, authentication/authorization, tracking, cookie management, A/B testing, etc.
 
-As squbs promotes separation of concerns, such logic would belong to infrastructure and not service implementation.  The squbs streaming pipeline allows infrastructure to provide components installed into a service without service owner having to worry about such aspects in their service or actors.
+As squbs promotes separation of concerns, such logic would belong to infrastructure and not service/client implementation.  The squbs streaming pipeline allows infrastructure to provide components installed into a service/client without service/client owner having to worry about such aspects.
 
-Generally speaking, a squbs streaming pipeline is a Bidi Flow acting as a bridge in between the Akka Http layer and the squbs service.  That is to say:
+Generally speaking, a squbs streaming pipeline is a Bidi Flow acting as a bridge in between: 
 
-   * All request messages sent from Akka Http to squbs service will go thru the pipeline
-   * Vice versa, all response messages sent from squbs service will go thru the pipeline.
+  * the Akka HTTP layer and the squbs service:
+    * All request messages sent from Akka Http to squbs service will go thru the pipeline
+    * Vice versa, all response messages sent from squbs service will go thru the pipeline.
+  * squbs client and Akka HTTP host connection pool flow:
+    * 	All request messages sent from squbs client to Akka HTTP host connection pool will go thru the pipeline
+    * Vice versa, all response messages sent from Akka HTTP host connection pool to squbs client will go thru the pipeline. 
 
 ### Streaming pipeline declaration
 
-In `squbs-meta.conf`, you can specify the pipeline for your service:
+Default pre/post flows specified via the below configuration are automatically connected to the server/client side pipeline unless `defaultPipeline` in individual service/client configuration is set to `off`:
+
+```
+squbs.pipeline.streaming.defaults {
+	pre-flow = defaultPreFlow
+	post-flow = defaultPostFlow
+}
+```
+
+#### Pipeline declaration for services
+
+In `squbs-meta.conf`, you can specify a pipeline for a service:
 
 ```
 squbs-services = [
@@ -24,15 +39,9 @@ squbs-services = [
   }
 ]
 ```
-* If there are no custom pipeline for a squbs-service, just omit.
-* Default pre/post flows specified via the below configuration are automatically connected to the pipeline unless `defaultPipelineOn` is set to `false`:
 
-```
-squbs.pipeline.streaming.defaults {
-	pre-flow = defaultPreFlow
-	post-flow = defaultPostFlow
-}
-```
+If there is no custom pipeline for a squbs-service, just omit.
+
 
 With the above configuration, the pipeline would look like:
 
@@ -46,6 +55,32 @@ RequestContext <~|         |<~ |         |<~ |         |<~ |         |
 ```
 
 `RequestContext` is basically a wrapper around `HttpRequest` and `HttpResponse`, which also allows carrying context information.
+
+#### Pipeline declaration for clients
+
+In `application.conf`, you can specify a pipeline for a client:
+
+```
+sample {
+  type = squbs.httpclient
+  pipeline = dummyFlow
+}
+```
+
+If there is no custom pipeline for a squbs-client, just omit.
+
+With the above configuration, the pipeline would look like:
+
+
+```
+                 +---------+   +---------+   +---------+   +----------+
+RequestContext ~>|         |~> |         |~> |         |~> |   Host   | 
+                 | default |   |  dummy  |   | default |   |Connection|
+                 | PreFlow |   |  flow   |   | PostFlow|   |   Pool   | 
+RequestContext <~|         |<~ |         |<~ |         |<~ |   Flow   |
+                 +---------+   +---------+   +---------+   +----------+
+```
+
 
 ### Bidi Flow Configuration
 
