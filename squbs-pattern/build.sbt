@@ -25,17 +25,17 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % "2.6.3",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
   "io.spray" %% "spray-json" % "1.3.2" % "test"
-) ++ akkaDependencies(akkaV)
+) ++ akkaDependencies
 
-def akkaDependencies(v: String) = Seq(
-  "com.typesafe.akka" %% "akka-actor" % v,
-  "com.typesafe.akka" %% "akka-agent" % v,
-  "com.typesafe.akka" %% "akka-stream" % v,
-  "com.typesafe.akka" %% "akka-testkit" % v % "test",
-  "com.typesafe.akka" %% "akka-contrib" % v intransitive(),
-  "com.typesafe.akka" %% "akka-http-experimental" % v,
-  "com.typesafe.akka" %% "akka-http-spray-json-experimental" % v,
-  "com.typesafe.akka" %% "akka-http-testkit" % v % "test"
+def akkaDependencies = Seq(
+  "com.typesafe.akka" %% "akka-actor" % akkaV,
+  "com.typesafe.akka" %% "akka-agent" % akkaV,
+  "com.typesafe.akka" %% "akka-stream" % akkaV,
+  "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
+  "com.typesafe.akka" %% "akka-contrib" % akkaV intransitive(),
+  "com.typesafe.akka" %% "akka-http" % akkaHttpV,
+  "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpV,
+  "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "test"
 )
 
 // : Seq[sbt.Def.Setting[_]] in the line below is not required for a successful build

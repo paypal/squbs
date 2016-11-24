@@ -11,14 +11,14 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
   "org.scala-lang.modules" %% "scala-java8-compat" % "0.7.0",
   "com.wix" %% "accord-core" % "0.5"
-) ++ akka(akkaV)
+) ++ akka
 
-def akka(v: String) = Seq(
-  "com.typesafe.akka" %% "akka-actor" % v,
-  "com.typesafe.akka" %% "akka-agent" % v,
-  "com.typesafe.akka" %% "akka-http-experimental" % v,
-  "com.typesafe.akka" %% "akka-testkit" % v % "test",
-  "com.typesafe.akka" %% "akka-stream-testkit" % v % "test"
+def akka = Seq(
+  "com.typesafe.akka" %% "akka-actor" % akkaV,
+  "com.typesafe.akka" %% "akka-agent" % akkaV,
+  "com.typesafe.akka" %% "akka-http" % akkaHttpV,
+  "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
+  "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % "test"
 )
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")
