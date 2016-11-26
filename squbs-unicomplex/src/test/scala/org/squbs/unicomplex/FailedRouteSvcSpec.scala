@@ -24,16 +24,16 @@ import org.scalatest.{AsyncFlatSpecLike, Matchers}
 
 import scala.util.Failure
 
-object FailedFlow1Spec {
+object FailedRouteSvcSpec {
 
   val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
-  val classPath = dummyJarsDir + "/DummyFailedFlowSvc1/META-INF/squbs-meta.conf"
+  val classPath = dummyJarsDir + "/FailedRouteSvc/META-INF/squbs-meta.conf"
 
   val config = ConfigFactory.parseString(
     s"""
        |squbs {
-       |  actorsystem-name = FailedFlow1Spec
+       |  actorsystem-name = FailedRouteSvc
        |  ${JMX.prefixConfig} = true
        |}
        |default-listener.bind-port = 0
@@ -50,16 +50,16 @@ object FailedFlow1Spec {
 }
 
 
-class FailedFlow1Spec extends TestKit(FailedFlow1Spec.boot.actorSystem) with AsyncFlatSpecLike with Matchers {
+class FailedRouteSvcSpec extends TestKit(FailedRouteSvcSpec.boot.actorSystem) with AsyncFlatSpecLike with Matchers {
 
-  "The DummyFailedFlowSvc1" should "fail" in {
+  "The FailedRouteSvc" should "fail" in {
     import Timeouts._
     Unicomplex(system).uniActor ? SystemState map { state =>
       state shouldBe Failed
     }
   }
 
-  "The DummyFailedFlowSvc1" should "expose errors" in {
+  "The FailedRouteSvc" should "expose errors" in {
     import Timeouts._
     (Unicomplex(system).uniActor ? ReportStatus).mapTo[StatusReport] map { report =>
       report.state shouldBe Failed
@@ -68,3 +68,15 @@ class FailedFlow1Spec extends TestKit(FailedFlow1Spec.boot.actorSystem) with Asy
     }
   }
 }
+
+/**
+  * A RouteDefinition must have a no-arg constructor. This is intended to test a failure path.
+  * @param content Some bogus content.
+  */
+class FailedRouteSvc(content: String) extends RouteDefinition {
+
+  def route = path("ping") {
+    complete(content)
+  }
+}
+

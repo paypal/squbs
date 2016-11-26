@@ -317,10 +317,12 @@ object UnicomplexBoot extends LazyLogging {
 
       Try {
         (clazz asSubclass classOf[RouteDefinition], classOf[RouteActor])
-      } orElse {
-        Try {
-          (clazz asSubclass classOf[FlowDefinition], classOf[FlowActor])
-        }
+      } orElse Try {
+        (clazz asSubclass classOf[FlowDefinition], classOf[FlowActor])
+      } orElse Try {
+        (clazz asSubclass classOf[AbstractRouteDefinition], classOf[JavaRouteActor])
+      } orElse Try {
+        (clazz asSubclass classOf[AbstractFlowDefinition], classOf[JavaFlowActor])
       } match {
         case Success((routeClass, routeActor)) =>
           val props = Props(routeActor, webContext, routeClass)
@@ -345,7 +347,7 @@ object UnicomplexBoot extends LazyLogging {
                           ps: PipelineSetting, initRequired: Boolean) = {
       try {
         val actorClass = clazz asSubclass classOf[Actor]
-        def actorCreator: Actor = WebContext.createWithContext[Actor](webContext) { actorClass.newInstance() }
+        def actorCreator: Actor = WithWebContext(webContext) { actorClass.newInstance() }
         val props = Props(classOf[TypedCreatorFunctionConsumer], clazz, actorCreator _)
         val className = clazz.getSimpleName
         val actorName =

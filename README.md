@@ -57,6 +57,7 @@ Also check out these [slightly more advanced samples](https://github.com/paypal/
 * [Unicomplex & Cube Bootstrapping](docs/bootstrap.md)
 * [Unicomplex Actor Hierarchy](docs/actor-hierarchy.md)
 * [Runtime Lifecycle & API](docs/lifecycle.md)
+* [Implementing HTTP(S) Services](docs/http-services.md)
 * [Configuration Reference](docs/configuration.md)
 * [Testing squbs Applications](docs/testing.md)
 * [Clustering squbs Services using ZooKeeper](docs/zkcluster.md)

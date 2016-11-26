@@ -21,7 +21,7 @@ import akka.http.scaladsl.server.directives.PathDirectives._
 import akka.http.scaladsl.server.{ExceptionHandler, RejectionHandler, Route}
 import akka.http.scaladsl.settings.RoutingSettings
 import akka.testkit.TestActorRef
-import org.squbs.unicomplex.{RouteDefinition, WebContext}
+import org.squbs.unicomplex.{RouteDefinition, WithActorContext, WithWebContext}
 
 import scala.reflect.ClassTag
 
@@ -49,11 +49,12 @@ object TestRoute {
   def apply[T <: RouteDefinition: ClassTag](webContext: String)(implicit system: ActorSystem): Route = {
     val clazz = implicitly[ClassTag[T]].runtimeClass
     implicit val actorContext = TestActorRef[TestRouteActor].underlyingActor.context
-    val routeDef = WebContext.createWithContext(webContext) {
-      RouteDefinition.startRoutes {
-        clazz.asSubclass(classOf[RouteDefinition]).newInstance()
+    val routeDef =
+      WithWebContext(webContext) {
+        WithActorContext {
+          clazz.asSubclass(classOf[RouteDefinition]).newInstance()
+        }
       }
-    }
 
     implicit val routingSettings = RoutingSettings(system.settings.config)
     implicit val rejectionHandler:RejectionHandler = routeDef.rejectionHandler.getOrElse(RejectionHandler.default)

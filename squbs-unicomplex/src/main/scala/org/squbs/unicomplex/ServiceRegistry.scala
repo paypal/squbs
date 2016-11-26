@@ -188,7 +188,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
   }
 }
 
-private[unicomplex] sealed trait FlowSupplier { this: Actor with ActorLogging =>
+private[unicomplex] trait FlowSupplier { this: Actor with ActorLogging =>
 
   import scala.concurrent.duration._
 
@@ -211,11 +211,9 @@ private[unicomplex] sealed trait FlowSupplier { this: Actor with ActorLogging =>
 private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefinition])
   extends Actor with ActorLogging with FlowSupplier {
 
-  def actorRefFactory = context
-
-  val routeDefTry = Try {
-    RouteDefinition.startRoutes {
-      WebContext.createWithContext[RouteDefinition](webContext) {
+  val routeDefTry: Try[RouteDefinition] = Try {
+    WithActorContext {
+      WithWebContext(webContext) {
         clazz.newInstance
       }
     }
@@ -245,13 +243,13 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
   }
 }
 
-object RouteDefinition {
+object WithActorContext {
 
   private[unicomplex] val localContext = new ThreadLocal[Option[ActorContext]] {
     override def initialValue(): Option[ActorContext] = None
   }
 
-  def startRoutes[T](fn: => T)(implicit context: ActorContext): T = {
+  def apply[T](fn: => T)(implicit context: ActorContext): T = {
     localContext.set(Some(context))
     val r = fn
     localContext.set(None)
@@ -260,7 +258,7 @@ object RouteDefinition {
 }
 
 trait RouteDefinition extends Directives {
-  protected implicit final val context: ActorContext = RouteDefinition.localContext.get.get
+  protected implicit final val context: ActorContext = WithActorContext.localContext.get.get
   implicit final lazy val self = context.self
 
   def route: Route
@@ -268,11 +266,6 @@ trait RouteDefinition extends Directives {
   def rejectionHandler: Option[RejectionHandler] = None
 
   def exceptionHandler: Option[ExceptionHandler] = None
-}
-
-class RejectRoute extends RouteDefinition {
-
-  val route: Route = reject
 }
 
 private[unicomplex] case object FlowRequest
@@ -288,9 +281,9 @@ private[unicomplex] case class FlowNotAvailable(flowClass: String)
 private[unicomplex] class FlowActor(webContext: String, clazz: Class[FlowDefinition])
   extends Actor with ActorLogging with FlowSupplier {
 
-  val flowDefTry = Try {
-    FlowDefinition.startFlow {
-      WebContext.createWithContext[FlowDefinition](webContext) {
+  val flowDefTry: Try[FlowDefinition] = Try {
+    WithActorContext {
+      WithWebContext(webContext) {
         clazz.newInstance
       }
     }
@@ -309,21 +302,8 @@ private[unicomplex] class FlowActor(webContext: String, clazz: Class[FlowDefinit
   }
 }
 
-object FlowDefinition {
-  private[unicomplex] val context = new ThreadLocal[Option[ActorContext]] {
-    override def initialValue(): Option[ActorContext] = None
-  }
-
-  def startFlow[T](fn: => T)(implicit refFactory: ActorContext): T = {
-    context.set(Some(refFactory))
-    val f = fn
-    context.set(None)
-    f
-  }
-}
-
 trait FlowDefinition {
-  protected implicit final val context: ActorContext = FlowDefinition.context.get.get
+  protected implicit final val context: ActorContext = WithActorContext.localContext.get.get
 
   def flow: Flow[HttpRequest, HttpResponse, NotUsed]
 }

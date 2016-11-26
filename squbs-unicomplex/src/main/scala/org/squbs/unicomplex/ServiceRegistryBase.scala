@@ -151,13 +151,13 @@ trait ServiceRegistryBase[A] {
 
 case class RegisterContext(listeners: Seq[String], webContext: String, handler: FlowWrapper, ps: PipelineSetting)
 
-object WebContext {
+object WithWebContext {
 
   private[unicomplex] val localContext = new ThreadLocal[Option[String]] {
     override def initialValue(): Option[String] = None
   }
 
-  def createWithContext[T](webContext: String)(fn: => T): T = {
+  def apply[T](webContext: String)(fn: => T): T = {
     localContext.set(Some(webContext))
     val r = fn
     localContext.set(None)
@@ -167,7 +167,7 @@ object WebContext {
 }
 
 trait WebContext {
-  protected final val webContext: String = WebContext.localContext.get.get
+  protected final val webContext: String = WithWebContext.localContext.get.get
 }
 
 class ListenerBean[A](listenerRoutes: => Map[String, Seq[(A, FlowWrapper, PipelineSetting)]]) extends ListenerMXBean {
