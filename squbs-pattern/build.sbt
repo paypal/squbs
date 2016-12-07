@@ -23,8 +23,7 @@ libraryDependencies ++= Seq(
   "org.json4s"                %% "json4s-jackson"               % "3.3.0",
   "com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.6.3",
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % "2.6.3",
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
-  "io.spray" %% "spray-json" % "1.3.2" % "test"
+  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 ) ++ akkaDependencies
 
 def akkaDependencies = Seq(
@@ -34,7 +33,7 @@ def akkaDependencies = Seq(
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "com.typesafe.akka" %% "akka-contrib" % akkaV intransitive(),
   "com.typesafe.akka" %% "akka-http" % akkaHttpV,
-  "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpV,
+  "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpV % "test",
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "test"
 )
 

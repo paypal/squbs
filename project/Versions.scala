@@ -17,7 +17,6 @@
 object Versions {
   val akkaV = "2.4.14"
   val akkaHttpV = "10.0.0"
-  val sprayV = "1.3.3"
   val scalatestV = "3.0.0"
   val metricsV = "3.1.0"
 }

@@ -16,71 +16,73 @@
 
 package org.squbs.httpclient.json
 
-import org.scalatest.{Matchers, FlatSpec}
+import akka.actor.ActorSystem
+import akka.http.scaladsl.marshalling.Marshal
+import akka.http.scaladsl.model.{HttpEntity, MediaTypes, MessageEntity}
+import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.stream.ActorMaterializer
 import org.json4s._
-import jackson.Serialization._
+import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
 
-class Json4sJacksonSpec extends FlatSpec with Matchers{
+class Json4sJacksonSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll {
+
+  import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+
+  implicit val system = ActorSystem("Json4sJacksonSpec")
+  implicit val mat = ActorMaterializer()
+  implicit val serialization = jackson.Serialization
 
   "NotTypeHints Example (case class)" should "have correct behaviour of read/write" in {
-    import Json4sJacksonNoTypeHintsProtocol._
+    implicit val formats = DefaultFormats.withHints(NoTypeHints)
     val playInfo = PlayerInfo("d", "k", 30)
-    val jsonString = """{"firstName":"d","lastName":"k","age":30}"""
-    write(playInfo) should be (jsonString)
-    read[PlayerInfo](jsonString) should be (playInfo)
+    val entity = HttpEntity(MediaTypes.`application/json`, """{"firstName":"d","lastName":"k","age":30}""")
+    Marshal(playInfo).to[MessageEntity] map { _ shouldBe entity }
+    Unmarshal(entity).to[PlayerInfo] map { _ shouldBe playInfo }
   }
 
   "NotTypeHints Example (case class contain the other case class)" should "have correct behaviour of read/write" in {
-    import Json4sJacksonNoTypeHintsProtocol._
+    implicit val formats = DefaultFormats.withHints(NoTypeHints)
     val name = Player("d", "k")
     val playInfo = PlayerInfo2(name, 30)
-    val jsonString = """{"name":{"firstName":"d","lastName":"k"},"age":30}"""
-    write(playInfo) should be (jsonString)
-    read[PlayerInfo2](jsonString) should be (playInfo)
+    val entity = HttpEntity(MediaTypes.`application/json`, """{"name":{"firstName":"d","lastName":"k"},"age":30}""")
+    Marshal(playInfo).to[MessageEntity] map { _ shouldBe entity }
+    Unmarshal(entity).to[PlayerInfo2] map { _ shouldBe playInfo }
   }
 
   "ShortTypeHints Example (inheritance)" should "have correct behaviour of read/write" in {
-    import Json4sJacksonShortTypeHintsProtocolExample._
+    implicit val formats = DefaultFormats.withHints(ShortTypeHints(classOf[Dog] :: classOf[Fish] :: Nil))
     val animals = Animals(Dog("pluto") :: Fish(1.2) :: Nil)
-    val jsonString = """{"animals":[{"jsonClass":"Dog","name":"pluto"},{"jsonClass":"Fish","weight":1.2}]}"""
-    write(animals) should be (jsonString)
-    read[Animals](jsonString) should be (animals)
+    val entity = HttpEntity(MediaTypes.`application/json`,
+      """{"animals":[{"jsonClass":"Dog","name":"pluto"},{"jsonClass":"Fish","weight":1.2}]}""")
+    Marshal(animals).to[MessageEntity] map { _ shouldBe entity }
+    Unmarshal(entity).to[Animals] map { _ shouldBe animals }
   }
 
   "FullTypeHints Example (inheritance)" should "have correct behaviour of read/write" in {
-    import Json4sJacksonFullTypeHintsProtocolExample._
+    implicit val formats = DefaultFormats.withHints(FullTypeHints(classOf[Dog] :: classOf[Fish] :: Nil))
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
-    val jsonString = """{"animals":[{"jsonClass":"org.squbs.httpclient.json.Dog","name":"lucky"},""" +
-      """{"jsonClass":"org.squbs.httpclient.json.Fish","weight":3.4}]}"""
-    write(animals) should be (jsonString)
-    read[Animals](jsonString) should be (animals)
+    val entity = HttpEntity(MediaTypes.`application/json`,
+      """{"animals":[{"jsonClass":"org.squbs.httpclient.json.Dog","name":"lucky"},""" +
+      """{"jsonClass":"org.squbs.httpclient.json.Fish","weight":3.4}]}""")
+    Marshal(animals).to[MessageEntity] map { _ shouldBe entity }
+    Unmarshal(entity).to[Animals] map { _ shouldBe animals }
   }
 
   "Custom Example (inheritance)" should "have correct behaviour of read/write" in {
-    import Json4sJacksonCustomProtocolExample._
+    implicit val formats = new Formats {
+      val dateFormat = DefaultFormats.lossless.dateFormat
+      override val typeHints = FullTypeHints(classOf[Fish] :: classOf[Dog] :: Nil)
+      override val typeHintFieldName = "$type$"
+    }
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
-    val jsonString = """{"animals":[{"$type$":"org.squbs.httpclient.json.Dog","name":"lucky"},""" +
-      """{"$type$":"org.squbs.httpclient.json.Fish","weight":3.4}]}"""
-    write(animals) should be (jsonString)
-    read[Animals](jsonString) should be (animals)
+    val entity = HttpEntity(MediaTypes.`application/json`,
+      """{"animals":[{"$type$":"org.squbs.httpclient.json.Dog","name":"lucky"},""" +
+      """{"$type$":"org.squbs.httpclient.json.Fish","weight":3.4}]}""")
+    Marshal(animals).to[MessageEntity] map { _ shouldBe entity }
+    Unmarshal(entity).to[Animals] map { _ shouldBe animals }
   }
 
-}
-
-object Json4sJacksonShortTypeHintsProtocolExample extends Json4sJacksonShortTypeHintsProtocol {
-  override def hints: List[Class[_]] = List(classOf[Dog], classOf[Fish])
-}
-
-object Json4sJacksonFullTypeHintsProtocolExample extends Json4sJacksonFullTypeHintsProtocol {
-  override def hints: List[Class[_]] = List(classOf[Dog], classOf[Fish])
-}
-
-object Json4sJacksonCustomProtocolExample extends Json4sJacksonCustomProtocol {
-  override implicit def json4sJacksonFormats: Formats = new Formats {
-    val dateFormat = DefaultFormats.lossless.dateFormat
-    override val typeHints = FullTypeHints(classOf[Fish] :: classOf[Dog] :: Nil)
-    override val typeHintFieldName = "$type$"
-  }
+  override protected def afterAll(): Unit = system.terminate()
 }
 
 case class Player(firstName: String, lastName: String)

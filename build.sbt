@@ -27,8 +27,6 @@ val par = {
 
 concurrentRestrictions in Global := Seq(Tags.limitAll(par))
 
-lazy val `squbs-pipeline` = project
-
 lazy val `squbs-streamingpipeline` = project
 
 lazy val `squbs-unicomplex` = project dependsOn (`squbs-streamingpipeline`, `squbs-ext`)

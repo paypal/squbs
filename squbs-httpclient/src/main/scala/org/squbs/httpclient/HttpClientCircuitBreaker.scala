@@ -16,14 +16,10 @@
 
 package org.squbs.httpclient
 
-import akka.actor.{ActorRefFactory, ActorSystem}
-import akka.pattern.CircuitBreakerOpenException
+import akka.actor.ActorSystem
 import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
-import spray.http.HttpResponse
 
-import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
 
 
 object CircuitBreakerStatus extends Enumeration {

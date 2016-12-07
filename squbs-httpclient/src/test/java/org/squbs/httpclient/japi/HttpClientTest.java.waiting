@@ -14,17 +14,76 @@
  *  limitations under the License.
  */
 package org.squbs.httpclient.japi;
-/*
+
 import akka.actor.ActorSystem;
-import org.squbs.httpclient.RequestSettings;
-import scala.concurrent.Future;
-import spray.http.HttpResponse;
-import spray.httpx.marshalling.Marshaller;
-import spray.httpx.unmarshalling.Deserializer;
+import akka.http.javadsl.HostConnectionPool;
+import akka.http.javadsl.model.HttpEntity;
+import akka.http.javadsl.model.HttpRequest;
+import akka.http.javadsl.model.HttpResponse;
+import akka.http.javadsl.model.StatusCodes;
+import akka.japi.Pair;
+import akka.stream.ActorMaterializer;
+import akka.stream.javadsl.Flow;
+import akka.stream.javadsl.Sink;
+import akka.stream.javadsl.Source;
+import org.junit.AfterClass;
+import org.junit.Test;
+import org.squbs.endpoint.EndpointResolverRegistry;
+import org.squbs.httpclient.ClientFlow;
+import org.squbs.httpclient.dummy.DummyServiceEndpointResolver;
+import org.squbs.httpclient.dummy.DummyServiceJavaTest;
+import scala.concurrent.Await;
+import scala.util.Try;
 
-import java.util.Optional;
+import java.util.concurrent.CompletionStage;
 
-public class HttpClientJ {
+import static org.junit.Assert.assertEquals;
+import static org.squbs.testkit.Timeouts.awaitMax;
+
+public class HttpClientTest {
+
+    private static final ActorSystem system = ActorSystem.create("HttpClientTest");
+    private final ActorMaterializer materializer = ActorMaterializer.create(system);
+    private final DummyServiceJavaTest dummyService;
+    private final String baseUrl;
+    private final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool> clientFlow;
+
+    public HttpClientTest() throws Exception {
+        dummyService = new DummyServiceJavaTest();
+        final int port = (Integer) Await.result(dummyService.startDummyService(system), awaitMax());
+        baseUrl = "http://localhost:" + port;
+        EndpointResolverRegistry.get(system).register(new DummyServiceEndpointResolver(baseUrl, system));
+        clientFlow = ClientFlow.create("DummyService", system, materializer);
+    }
+
+    CompletionStage<Try<HttpResponse>> doRequest(HttpRequest request) {
+        return Source
+                .single(Pair.create(request, 42))
+                .via(clientFlow)
+                .runWith(Sink.head(), materializer)
+                .thenApply(Pair::first);
+    }
+
+    @AfterClass
+    public static void afterAll() {
+        system.terminate();
+    }
+
+    @Test
+    public void testGetCaseClass() throws Exception {
+        CompletionStage<Try<HttpResponse>> tryResponse =
+                doRequest(HttpRequest.GET("/view"));
+        CompletionStage<HttpEntity.Strict> entity =
+                tryResponse.thenCompose(t -> t.get().entity().toStrict(30000L, materializer));
+        HttpResponse response = tryResponse.toCompletableFuture().get().get();
+        assertEquals(StatusCodes.OK, response.status());
+        String content = entity.toCompletableFuture().get().getData().utf8String();
+        assertEquals(dummyService.fullTeamJson(), content);
+    }
+
+
+/*
+
 
     public static Future<HttpResponse> rawGet(String clientName, ActorSystem system, String uri) {
         HttpClient client = HttpClientFactory.get(clientName, system);
@@ -235,5 +294,5 @@ public class HttpClientJ {
         HttpClient client = HttpClientFactory.get(clientName, system);
         return client.put(uri, data, reqSettings, marshaller, unmarshaller);
     }
+    */
 }
-*/

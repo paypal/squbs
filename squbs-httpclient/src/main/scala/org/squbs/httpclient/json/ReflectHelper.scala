@@ -17,9 +17,6 @@ package org.squbs.httpclient.json
 
 import scala.reflect.{ManifestFactory, ClassTag}
 
-/**
- * Created by lma on 6/23/2015.
- */
 object ReflectHelper {
 
   import scala.reflect.runtime.universe._
@@ -57,4 +54,9 @@ object ReflectHelper {
     toManifestRec(t.tpe).asInstanceOf[Manifest[T]]
   }
 
+  def toClassTag[T: TypeTag]: ClassTag[T] = {
+    val t = typeTag[T]
+    val mirror = t.mirror
+    ClassTag[T](mirror.runtimeClass(t.tpe))
+  }
 }

@@ -76,7 +76,7 @@ class ClientFlowSpec  extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
     val (Success(response), _) = Await.result(responseFuture, awaitMax)
     response.status should be (StatusCodes.OK)
     val entity = response.entity.dataBytes.runFold(ByteString(""))(_ ++ _) map(_.utf8String)
-    entity map { e => e shouldEqual ("Hello World!") }
+    entity map { e => e shouldEqual "Hello World!" }
   }
 
   it should "throw HttpClientEndpointNotExistException if it cannot resolve the client" in {
