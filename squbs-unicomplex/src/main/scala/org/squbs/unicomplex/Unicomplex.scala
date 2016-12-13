@@ -23,6 +23,7 @@ import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 
 import akka.NotUsed
+import akka.actor.Actor.Receive
 import akka.actor.SupervisorStrategy._
 import akka.actor.{Extension => AkkaExtension, _}
 import akka.agent.Agent
@@ -96,6 +97,7 @@ private[unicomplex] case object RoutesStarted
 private[unicomplex] case class  StartCubeActor(props: Props, name: String = "", initRequired: Boolean = false)
 private[unicomplex] case class  StartCubeService(webContext: String, listeners: Seq[String], props: Props,
                                                  name: String = "", ps: PipelineSetting, initRequired: Boolean = false)
+private[unicomplex] case class  StartFailure(t: Throwable)
 
 private[unicomplex] case object CheckInitStatus
 private[unicomplex] case object Started
@@ -681,6 +683,13 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         context.unbecome()
       }
 
+    case StartFailure(t) =>
+      // Register the failure with a bogus noop actor so we have all failures.
+      // The real servicing actor was never created.
+      initMap += context.actorOf(Props[NoopActor]) -> Some(Failure(t))
+      cubeState = Failed
+      Unicomplex() ! InitReports(cubeState, initMap.toMap)
+
     case Started => // Signals end of StartCubeActor messages. No more allowed after this.
       if (initMap.isEmpty) {
         cubeState = Active
@@ -741,3 +750,9 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   }
 }
 
+/**
+  * A noop actor used when a stub ActorRef is needed to register failures.
+  */
+private[unicomplex] class NoopActor extends Actor {
+  def receive = PartialFunction.empty
+}

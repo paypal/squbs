@@ -16,7 +16,7 @@
 
 package org.squbs.unicomplex
 
-import java.io.{File, FileInputStream, InputStreamReader, Reader}
+import java.io._
 import java.net.URL
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.jar.JarFile
@@ -308,6 +308,7 @@ object UnicomplexBoot extends LazyLogging {
             s"Path: $jarPath\n" +
             s"${t.getClass.getName}: ${t.getMessage}")
           t.printStackTrace()
+          cubeSupervisor ! StartFailure(e)
           None
       }
     }
@@ -323,16 +324,14 @@ object UnicomplexBoot extends LazyLogging {
         (clazz asSubclass classOf[AbstractRouteDefinition], classOf[JavaRouteActor])
       } orElse Try {
         (clazz asSubclass classOf[AbstractFlowDefinition], classOf[JavaFlowActor])
-      } match {
-        case Success((routeClass, routeActor)) =>
-          val props = Props(routeActor, webContext, routeClass)
-          val className = clazz.getSimpleName
-          val actorName =
-            if (webContext.length > 0) s"${webContext.replace('/', '_')}-$className-route"
-            else s"root-$className-route"
-          cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, ps, initRequired = true)
-          Some((fullName, name, version, clazz))
-        case _ => None
+      } map { case (routeClass, routeActor) =>
+        val props = Props(routeActor, webContext, routeClass)
+        val className = clazz.getSimpleName
+        val actorName =
+          if (webContext.length > 0) s"${webContext.replace('/', '_')}-$className-route"
+          else s"root-$className-route"
+        cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, ps, initRequired = true)
+        (fullName, name, version, clazz)
       }
     }
 
@@ -344,8 +343,8 @@ object UnicomplexBoot extends LazyLogging {
     }
 
     def startServiceActor(clazz: Class[_], webContext: String, listeners: Seq[String],
-                          ps: PipelineSetting, initRequired: Boolean) = {
-      try {
+                          ps: PipelineSetting, initRequired: Boolean) =
+      Try {
         val actorClass = clazz asSubclass classOf[Actor]
         def actorCreator: Actor = WithWebContext(webContext) { actorClass.newInstance() }
         val props = Props(classOf[TypedCreatorFunctionConsumer], clazz, actorCreator _)
@@ -354,14 +353,11 @@ object UnicomplexBoot extends LazyLogging {
           if (webContext.length > 0) s"${webContext.replace('/', '_')}-$className-handler"
           else s"root-$className-handler"
         cubeSupervisor ! StartCubeService(webContext, listeners, props, actorName, ps, initRequired)
-        Some((fullName, name, version, actorClass))
-      } catch {
-        case e: ClassCastException => None
+        (fullName, name, version, actorClass)
       }
-    }
 
     def startService(serviceConfig: Config): Option[(String, String, String, Class[_])] =
-      try {
+      Try {
         val className = serviceConfig.getString("class-name")
         val clazz = Class.forName(className, true, getClass.getClassLoader)
         val webContext = serviceConfig.getString("web-context")
@@ -384,18 +380,21 @@ object UnicomplexBoot extends LazyLogging {
         val service = startServiceRoute(clazz, webContext, listeners, streamingPipelineSettings) orElse
           startServiceActor(clazz, webContext, listeners, streamingPipelineSettings,
             serviceConfig.get[Boolean]("init-required", false))
-
-        if (service.isEmpty) throw new ClassCastException(s"Class $className is neither a RouteDefinition nor an Actor.")
-        service
-
-      } catch {
-        case e: Exception =>
+        service match {
+          case Success(svc) => svc
+          case Failure(e) =>
+            throw new IOException(s"Class $className is neither a RouteDefinition nor an Actor.", e)
+        }
+      } match {
+        case Success(svc) => Some(svc)
+        case Failure(e) =>
           val t = getRootCause(e)
           logger.warn(s"Can't load service definition $serviceConfig.\n" +
             s"Cube: $fullName $version\n" +
             s"Path: $jarPath\n" +
             s"${t.getClass.getName}: ${t.getMessage}")
           t.printStackTrace()
+          cubeSupervisor ! StartFailure(e)
           None
       }
 
@@ -475,14 +474,12 @@ object UnicomplexBoot extends LazyLogging {
     logger.info(s"Web Service started in $elapsed milliseconds")
   }
 
-  private[unicomplex] def getRootCause(e: Exception) = {
-    var t: Throwable = e
-    var cause = e.getCause
-    while (cause != null) {
-      t = cause
-      cause = t.getCause
+  @tailrec
+  private[unicomplex] def getRootCause(e: Throwable): Throwable = {
+    Option(e.getCause) match {
+      case Some(ex) => getRootCause(ex)
+      case None => e
     }
-    t
   }
 }
 
