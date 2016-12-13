@@ -24,16 +24,16 @@ import org.scalatest.{AsyncFlatSpecLike, Matchers}
 
 import scala.util.Failure
 
-object FailedFlow1Spec {
+object JavaFailedFlowSvcSpec {
 
   val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
-  val classPath = dummyJarsDir + "/DummyFailedFlowSvc1/META-INF/squbs-meta.conf"
+  val classPath = dummyJarsDir + "/JavaFailedFlowSvc/META-INF/squbs-meta.conf"
 
   val config = ConfigFactory.parseString(
     s"""
        |squbs {
-       |  actorsystem-name = FailedFlow1Spec
+       |  actorsystem-name = JavaFailedFlowSvcSpec
        |  ${JMX.prefixConfig} = true
        |}
        |default-listener.bind-port = 0
@@ -50,16 +50,16 @@ object FailedFlow1Spec {
 }
 
 
-class FailedFlow1Spec extends TestKit(FailedFlow1Spec.boot.actorSystem) with AsyncFlatSpecLike with Matchers {
+class JavaFailedFlowSvcSpec extends TestKit(JavaFailedFlowSvcSpec.boot.actorSystem) with AsyncFlatSpecLike with Matchers {
 
-  "The DummyFailedFlowSvc1" should "fail" in {
+  "The JavaFailedFlowSvc" should "fail" in {
     import Timeouts._
     Unicomplex(system).uniActor ? SystemState map { state =>
       state shouldBe Failed
     }
   }
 
-  "The DummyFailedFlowSvc1" should "expose errors" in {
+  "The JavaFailedFlowSvc" should "expose errors" in {
     import Timeouts._
     (Unicomplex(system).uniActor ? ReportStatus).mapTo[StatusReport] map { report =>
       report.state shouldBe Failed

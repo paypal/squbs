@@ -153,18 +153,7 @@ Router concepts, examples, and configuration, are documented in the
 
 ##Services
 
-Each service entry point is bound to a unique web context which is the leading path segments separated by the `/` character. For instance, the url `http://mysite.com/my-context/index` would match the context `"my-context"`, if registered. It can also match the root context if `"my-context"` is not registered. Web contexts are not necessarily the first slash-separated segment of the path. Dependent on the context registration, it may match multiple such segments. A concrete example would be a URL with service versioning. The URL `http://mysite.com/my-context/v2/index` may have either `my-context` or `my-context/v2` as the web context, depending on what contexts are registered. If both `my-context` and `my-context/v2` are registered, the longest match - in this case `my-context/v2` will be used for routing the request.
-
-Service implementations can have two flavors:
-
-1. A spray-can style server request handler actor as documented at [http://spray.io/documentation/1.2.3/spray-can/http-server/](http://spray.io/documentation/1.2.3/spray-can/http-server/). The actor handles all but the `Connected` message and must not take any constructor arguments. The whole request or request part is passed on to this actor unchanged.
-
-2. A route definition defining your `Route`. These are classes extending from the `org.squbs.unicomplex.RouteDefinition` trait, or `org.squbs.unicomplex.streaming.RouteDefinition` trait if you use Akka Http. They must not take any constructor arguments (zero-argument constructor) and have to provide the route member which is a Spray route according to the
-   [spray-routing documentation](http://spray.io/documentation/1.2.3/spray-routing/key-concepts/routes/) or Akka Http route according to the Akka [High-level Server-Side API](http://doc.akka.io/docs/akka/2.4/scala/http/routing-dsl/index.html). In contrast to the actor implementation, the path matching of the route matches the path **AFTER** the registered web context. For instance, a route definition registered under the web context `"my-context"` would match `/segment1/segment2` for the url `http://mysite.com/my-context/segment1/segment2` not including the web context string itself.
-   
-3. A flow definition providing your `Flow[HttpRequest, HttpResponse, NotUsed]` by extending from the `org.squbs.unicomplex.streaming.FlowDefinition` trait. The flow definition only works with Akka Http, not with Spray. The `HttpRequest` path in the flow is the full path no matter the web context this service is serving.
-      
-Service metadata is declared in META-INF/squbs-meta.conf as shown in the following example.
+Services are described in full detail in [Implementing HTTP(S) Services](http-services.md). Service metadata is declared in `META-INF/squbs-meta.conf` as shown in the following example:
 
 ```
 cube-name = org.squbs.bottlesvc
@@ -189,49 +178,7 @@ squbs-services = [
 ]
 ```
 
-The class-name parameter identifies either the actor, `RouteDefinition`, or `FlowDefinition` class.
-
-The web-context is a string that uniquely identifies the web context of a request to be dispatched to this service. It **MUST NOT** start with a `/` character. It can have `/` characters inside as segment separators in case of multi-segment contexts. And it is allowed to be `""` for root context. If multiple services match the request, the longest context match takes precedence.
-
-Optionally, the listeners parameter declares a list of listeners to bind this service. Listener binding is discussed in the following section, below.
-
-The pipeline is a set of request pre-processors before the request gets processed by the request handler. The pipeline name can be specified by a `pipeline` parameter. A configured default pipeline will be used. To disable the default pipeline for this service, you can set `defaultPipelineOn = false` in META-INF/squbs-meta.conf. Please refer to [Streaming Request/Response Pipeline](streamingpipeline.md) for more information.
-
-Only actors can have another optional `init-required` parameter which allows the actor to feed back its state to the system. Please refer to the [Startup Hooks](lifecycle.md#startup-hooks) section of the [Runtime Lifecycles & API](lifecycle.md) documentation for a full discussion of startup/initialization hooks.
-
-
-### Listener Binding
-
-A listener is declared in `application.conf` or `reference.conf` usually living in the project's `src/main/resources` directory. Listeners declare interfaces, ports, and security attributes, and name aliases, and are explained in [Configuration](configuration.md)
-
-A service handler attaches itself to one or more listeners. The `listeners` attribute is a list of listeners or aliases the handler should bind to. If listeners are not defined, it will default to the `default-listener`.
-
-The wildcard value `"*"` (note, it has to be quoted or will not be properly be interpreted) is a special case which translates to attaching this handler to all active listeners. By itself, it will however not activate any listener if it is not already activated by a concrete attachment of a handler. If the handler should activate the default listener and attach to any other listener activated by other handlers, the concrete attachment has to be specified separately as follows:
-
-```
-    listeners = [ default-listener, "*" ]
-```
-
-### Runtime Access to Web Context
-While the web context is configured in metadata, the route, the actor, and the flow will sometimes need to know what web context it is serving. To do so, any service handler class (route, actor, flow) may want to mix in the `org.squbs.unicomplex.WebContext` trait. Doing so will add the following field to your object
-
-```
-    val webContext: String
-```
-
-The webContext field is initialized to the value of the configured web context as set in Metadata upon construction of the object as shown below:
-
-```
-class MySvcActor extends Actor with WebContext {
-  def receive = {
-    case HttpRequest(HttpMethods.GET, Uri.Path(p), _, _, _)
-        if p.startsWith(s"/$webContext") =>
-      // handle request...
-  }
-}
-```
-
-The `webContext` field will automatically be made available to this class
+Please see [Service Registration](http-services.md#service-registration) for a full description.
 
 ##Extensions
 

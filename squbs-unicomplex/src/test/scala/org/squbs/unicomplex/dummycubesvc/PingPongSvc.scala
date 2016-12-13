@@ -16,14 +16,12 @@
 
 package org.squbs.unicomplex.dummycubesvc
 
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse}
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
-import akka.pattern.ask
-import org.squbs.unicomplex.{EchoMsg, Ping, Pong, RouteDefinition}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.http.scaladsl.server.Route
+import akka.pattern.ask
 import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
 import org.squbs.unicomplex.Timeouts._
+import org.squbs.unicomplex.{Ping, Pong, RouteDefinition}
 
 class PingPongSvc extends RouteDefinition{
 
