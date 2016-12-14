@@ -18,9 +18,6 @@ package org.squbs.httpclient.japi;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by lma on 6/15/2015.
- */
 public class TeamBean {
 
     private String description;

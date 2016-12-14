@@ -19,23 +19,27 @@ package org.squbs.httpclient.dummy
 import java.util
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.Http.ServerBinding
+import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.RawHeader
+import akka.http.scaladsl.server.{Directives, Route}
+import akka.stream.ActorMaterializer
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
+import com.fasterxml.jackson.annotation.PropertyAccessor
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import org.json4s.CustomSerializer
+import org.json4s.{CustomSerializer, DefaultFormats}
 import org.json4s.JsonAST._
-//import org.squbs.httpclient.japi.{PageData, EmployeeBean, TeamBean, TeamBeanWithCaseClassMember}
-import org.squbs.httpclient.json.JsonProtocol
-import spray.http.HttpHeaders.RawHeader
-import spray.http._
-import spray.routing.SimpleRoutingApp
-import spray.util.Utils._
+import org.squbs.httpclient.japi.{EmployeeBean, PageData, TeamBean, TeamBeanWithCaseClassMember}
+import org.squbs.httpclient.json.XLangJsonSupport
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-
-/*
 //case class reference case class
 case class Employee(id: Long, firstName: String, lastName: String, age: Int, male: Boolean)
 
@@ -86,20 +90,9 @@ object EmployeeBeanSerializer extends CustomSerializer[EmployeeBean](format => (
 //scala class reference java class
 class Team2(val description: String, val members: List[EmployeeBean])
 
-*/
-object DummyService {
+class DummyServiceJavaTest extends DummyService
 
-  val (dummyServiceIpAddress, dummyServicePort) = temporaryServerHostnameAndPort()
-
-  val dummyServiceEndpoint = Uri(s"http://$dummyServiceIpAddress:$dummyServicePort")
-}
-/*
-object DummyServiceMain extends App with DummyService {
-  implicit val actorSystem = ActorSystem("DummyServiceMain")
-  startDummyService(actorSystem, address = "localhost", port = 8888)
-}
-
-trait DummyService extends SimpleRoutingApp {
+trait DummyService {
 
   val fullTeamBean = {
     val list = new util.ArrayList[EmployeeBean]()
@@ -176,176 +169,184 @@ trait DummyService extends SimpleRoutingApp {
 
   val fullTeamBeanWithAdd = fullTeamBean.addMember(newTeamMemberBean)
 
+  val caseClassMapper = new ObjectMapper().registerModule(DefaultScalaModule)
+  val fieldMapper = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
+    .registerModule(DefaultScalaModule)
 
-  //import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol.json4sUnmarshaller
-  import JsonProtocol.ManifestSupport._
+  XLangJsonSupport.JacksonMapperSupport.registerMapper[TeamBeanWithCaseClassMember](caseClassMapper)
+  XLangJsonSupport.JacksonMapperSupport.registerMapper[TeamBean](fieldMapper)
 
-  //import JsonProtocol.toResponseMarshallable
-  //  import scala.concurrent.ExecutionContext.Implicits.global
-  import DummyService._
-  import org.squbs.testkit.Timeouts._
-  import org.squbs.httpclient.json.JacksonProtocol
 
-  JacksonProtocol.registerMapper(classOf[TeamBeanWithCaseClassMember],
-    new ObjectMapper().registerModule(DefaultScalaModule))
-
-  def startDummyService(implicit system: ActorSystem, address: String = dummyServiceIpAddress,
-                        port: Int = dummyServicePort) {
+  def startService(implicit system: ActorSystem): Future[Int] = {
     import system.dispatcher
-    startServer(address, port = port) {
-      pathSingleSlash {
-        redirect("/view", StatusCodes.Found)
-      } ~
-        //get, head, options
-        path("view") {
-          (get | head | options | post) {
-            respondWithMediaType(MediaTypes.`application/json`)
-            headerValueByName("req1-name") { value =>
-              headerValueByName("req2-name") { value2 =>
-                  respondWithHeader(RawHeader("res-req1-name", "res-" + value))  {
-                    respondWithHeader(RawHeader("res-req2-name", "res2-" + value2)) {
-                      complete {
-                        fullTeam
-                      }
-                    }
-                  }
-                } ~
-                respondWithHeader(RawHeader("res-req1-name", "res-" + value)) {
-                  complete {
-                    fullTeam
-                  }
-                }
-            } ~
-              headerValueByName("req2-name") {
-                value =>
-                  respondWithHeader(RawHeader("res-req2-name", "res-" + value)){
-                    complete {
-                      fullTeam
-                    }
-                  }
 
-              } ~
-              complete {
-                fullTeam
-              }
-          }
-        } ~
-        //get, head, options
-        path("viewj") {
-          (get | head | options | post) {
-            respondWithMediaType(MediaTypes.`application/json`)
-              complete {
-                fullTeamBean
-              }
-          }
-        } ~
-        path("view1") {
-          (get | head | options | post) {
-            respondWithMediaType(MediaTypes.`application/json`)
-            complete {
-              fullTeam1
-            }
-          }
-        } ~
-        path("view2") {
-          (get | head | options | post) {
-            respondWithMediaType(MediaTypes.`application/json`)
-            complete {
-              fullTeam2
-            }
-          }
-        } ~
-        path("view3") {
-          (get | head | options | post) {
-            respondWithMediaType(MediaTypes.`application/json`)
-            complete {
-              fullTeam3
-            }
-          }
-        } ~
-        path("paged") {
-          get {
-            respondWithMediaType(MediaTypes.`application/json`)
-            complete {
-              pageTest
-            }
-          }
-        } ~
-        path("viewrange") {
-          (get | head | options) {
-            parameters('range) { range =>
-              respondWithMediaType(MediaTypes.`application/json`)
-              complete {
-                if (range == "new") newTeamMember else fullTeam
-              }
-            }
-          }
-        } ~
-        path("stop") {
-          (post | parameter('method ! "post")) {
-            complete {
-              system.scheduler.scheduleOnce(1.second)(system.shutdown())(system.dispatcher)
-              "Shutting down in 1 second..."
-            }
-          }
-        } ~
-        path("timeout") {
-          (get | head | options) {
-            complete {
-              Thread.sleep(3000)
-              "Thread 3 seconds, then return!"
-            }
-          }
-        } ~
-        //post, put
-        path("add") {
-          (post | put) {
-            entity[Employee](as[Employee]) {
-              employee: Employee =>
-                respondWithMediaType(MediaTypes.`application/json`)
-                complete {
-                  Team(fullTeam.description, fullTeam.members :+ employee)
-                }
-            }
-          }
-        } ~
-        path("addj") {
-          (post | put) {
-            entity[EmployeeBean](as[EmployeeBean]) {
-              employee: EmployeeBean =>
-                respondWithMediaType(MediaTypes.`application/json`)
-                complete {
-                  fullTeamBean.addMember(employee)
-                }
-            }
-          }
-        } ~
-        //del
-        path("del" / LongNumber) {
-          id =>
-            delete {
-              respondWithMediaType(MediaTypes.`application/json`)
-              complete {
-                val employee = fullTeam.members.find(_.id == id)
-                employee match {
-                  case Some(emp) => Team(fullTeam.description, fullTeam.members.filterNot(_ == emp))
-                  case None => "cannot find the employee"
-                }
-              }
-            }
-        } ~
-        path("emptyresponse") {
-          complete {
-            HttpResponse(status = StatusCodes.NoContent)
-          }
-        }
-    } onComplete {
+    implicit val mat = ActorMaterializer()
+
+    val serverBindingF: Future[ServerBinding] = Http().bindAndHandle(route, "0.0.0.0", 0)
+
+    serverBindingF onComplete {
       case Success(b) =>
-        println(s"Successfully bound to ${b.localAddress}")
+        println(StringContext("Successfully bound to ", "").s(b.localAddress))
       case Failure(ex) =>
         println(ex.getMessage)
         system.shutdown()
     }
+
+    serverBindingF map { binding => binding.localAddress.getPort }
+  }
+
+  def route(implicit system: ActorSystem): Route = {
+
+    implicit val formats = DefaultFormats + EmployeeBeanSerializer
+
+    import Directives._
+    import org.squbs.httpclient.json.XLangJsonSupport.TypeTagSupport
+
+    import scala.reflect.runtime.universe._
+
+    implicit def superMarshaller[T <: AnyRef: TypeTag]: ToEntityMarshaller[T] = Marshaller.oneOf[T, MessageEntity](
+      TypeTagSupport.typeTagToMarshaller[T]
+      // Add other marshallers for content type negotiation here.
+    )
+
+    import TypeTagSupport.typeTagToUnmarshaller
+
+    pathSingleSlash {
+      redirect("/view", StatusCodes.Found)
+    } ~
+      //get, head, options
+      path("view") {
+        (get | head | options | post) {
+          headerValueByName("req1-name") { value =>
+            headerValueByName("req2-name") { value2 =>
+              respondWithHeader(RawHeader("res-req1-name", "res-" + value)) {
+                respondWithHeader(RawHeader("res-req2-name", "res2-" + value2)) {
+                  complete {
+                    fullTeam
+                  }
+                }
+              }
+            } ~
+              respondWithHeader(RawHeader("res-req1-name", "res-" + value)) {
+                complete {
+                  fullTeam
+                }
+              }
+          } ~
+            headerValueByName("req2-name") {
+              value =>
+                respondWithHeader(RawHeader("res-req2-name", "res-" + value)) {
+                  complete {
+                    fullTeam
+                  }
+                }
+
+            } ~
+            complete {
+              fullTeam
+            }
+        }
+      } ~
+      //get, head, options
+      path("viewj") {
+        (get | head | options | post) {
+          complete {
+            fullTeamBean
+          }
+        }
+      } ~
+      path("view1") {
+        (get | head | options | post) {
+          complete {
+            fullTeam1
+          }
+        }
+      } ~
+      path("view2") {
+        (get | head | options | post) {
+          complete {
+            fullTeam2
+          }
+        }
+      } ~
+      path("view3") {
+        (get | head | options | post) {
+          complete {
+            fullTeam3
+          }
+        }
+      } ~
+      path("paged") {
+        get {
+          complete {
+            pageTest
+          }
+        }
+      } ~
+      path("viewrange") {
+        (get | head | options) {
+          parameters('range) { range =>
+            complete {
+              if (range == "new") newTeamMember else fullTeam
+            }
+          }
+        }
+      } ~
+      path("stop") {
+        (post | parameter('method ! "post")) {
+          complete {
+            system.scheduler.scheduleOnce(1.second)(system.shutdown())(system.dispatcher)
+            "Shutting down in 1 second..."
+          }
+        }
+      } ~
+      path("timeout") {
+        (get | head | options) {
+          complete {
+            Thread.sleep(3000)
+            "Thread 3 seconds, then return!"
+          }
+        }
+      } ~
+      //post, put
+      path("add") {
+        (post | put) {
+          entity[Employee](as[Employee]) {
+            employee: Employee =>
+              complete {
+                Team(fullTeam.description, fullTeam.members :+ employee)
+              }
+          }
+        }
+      } ~
+      path("addj") {
+        (post | put) {
+          entity[EmployeeBean](as[EmployeeBean]) {
+            employee: EmployeeBean =>
+              complete {
+                fullTeamBean.addMember(employee)
+              }
+          }
+        }
+      } ~
+      //del
+      path("del" / LongNumber) {
+        id =>
+          delete {
+            complete {
+              val employee = fullTeam.members.find(_.id == id)
+              employee match {
+                case Some(emp) => Team(fullTeam.description, fullTeam.members.filterNot(_ == emp))
+                case None => "cannot find the employee"
+              }
+            }
+          }
+      } ~
+      path("emptyresponse") {
+        complete {
+          HttpResponse(status = StatusCodes.NoContent)
+        }
+      }
   }
 }
-*/
+
