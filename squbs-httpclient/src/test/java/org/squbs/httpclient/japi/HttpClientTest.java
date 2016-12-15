@@ -50,7 +50,7 @@ public class HttpClientTest {
 
     public HttpClientTest() throws Exception {
         dummyService = new DummyServiceJavaTest();
-        final int port = (Integer) Await.result(dummyService.startDummyService(system), awaitMax());
+        final int port = (Integer) Await.result(dummyService.startService(system), awaitMax());
         baseUrl = "http://localhost:" + port;
         EndpointResolverRegistry.get(system).register(new DummyServiceEndpointResolver(baseUrl, system));
         clientFlow = ClientFlow.create("DummyService", system, materializer);
