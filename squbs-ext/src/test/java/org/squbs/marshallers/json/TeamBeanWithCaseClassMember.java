@@ -13,9 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.squbs.httpclient.japi;
-
-import org.squbs.httpclient.dummy.Employee;
+package org.squbs.marshallers.json;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,7 +63,7 @@ public class TeamBeanWithCaseClassMember {
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("TeamBean[")
+        sb.append("TeamWithPrivateMembers[")
                 .append("description=").append(description)
                 .append(",members=").append(members)
                 .append("]");

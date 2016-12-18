@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.squbs.httpclient.json
+package org.squbs.marshallers.json
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
@@ -62,8 +62,8 @@ class Json4sJacksonSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterA
     implicit val formats = DefaultFormats.withHints(FullTypeHints(classOf[Dog] :: classOf[Fish] :: Nil))
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
     val entity = HttpEntity(MediaTypes.`application/json`,
-      """{"animals":[{"jsonClass":"org.squbs.httpclient.json.Dog","name":"lucky"},""" +
-      """{"jsonClass":"org.squbs.httpclient.json.Fish","weight":3.4}]}""")
+      """{"animals":[{"jsonClass":"org.squbs.marshallers.json.Dog","name":"lucky"},""" +
+      """{"jsonClass":"org.squbs.marshallers.json.Fish","weight":3.4}]}""")
     Marshal(animals).to[MessageEntity] map { _ shouldBe entity }
     Unmarshal(entity).to[Animals] map { _ shouldBe animals }
   }
@@ -76,8 +76,8 @@ class Json4sJacksonSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterA
     }
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
     val entity = HttpEntity(MediaTypes.`application/json`,
-      """{"animals":[{"$type$":"org.squbs.httpclient.json.Dog","name":"lucky"},""" +
-      """{"$type$":"org.squbs.httpclient.json.Fish","weight":3.4}]}""")
+      """{"animals":[{"$type$":"org.squbs.marshallers.json.Dog","name":"lucky"},""" +
+      """{"$type$":"org.squbs.marshallers.json.Fish","weight":3.4}]}""")
     Marshal(animals).to[MessageEntity] map { _ shouldBe entity }
     Unmarshal(entity).to[Animals] map { _ shouldBe animals }
   }

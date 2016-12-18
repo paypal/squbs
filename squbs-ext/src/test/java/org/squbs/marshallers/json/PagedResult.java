@@ -1,4 +1,4 @@
-package org.squbs.httpclient.japi;
+package org.squbs.marshallers.json;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

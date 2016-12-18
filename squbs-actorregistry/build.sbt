@@ -14,7 +14,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
   "junit" % "junit" % "4.12" % "test",
-  "com.novocode" % "junit-interface" % "0.11" % "test->default"
+  "com.novocode" % "junit-interface" % junitInterfaceV % "test->default"
 )
 
 testOptions in Test ++= Seq(

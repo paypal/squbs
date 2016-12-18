@@ -29,7 +29,8 @@ import org.scalatest.OptionValues._
 import org.scalatest.{AsyncFlatSpecLike, BeforeAndAfterAll, Matchers}
 import org.squbs.endpoint.EndpointResolverRegistry
 import org.squbs.httpclient.dummy._
-import org.squbs.httpclient.japi.{TeamBean, TeamBeanWithCaseClassMember}
+import org.squbs.marshallers.json.TestData._
+import org.squbs.marshallers.json.{TeamBeanWithCaseClassMember, TeamWithPrivateMembers, _}
 import org.squbs.testkit.Timeouts._
 
 import scala.concurrent.{Await, Future}
@@ -197,30 +198,30 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow GET unmarshal object with JavaBean" should "get the correct response" in {
-    import org.squbs.httpclient.json.XLangJsonSupport.TypeTagSupport._
+    import org.squbs.marshallers.json.XLangJsonSupport._
     for {
       tryResponse <- doRequest(Get("/viewj"))
-      team <- Unmarshal(tryResponse.get).to[TeamBean]
+      team <- Unmarshal(tryResponse.get).to[TeamWithPrivateMembers]
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      team shouldBe fullTeamBean
+      team shouldBe fullTeamWithPrivateMembers
 
       // TODO: Missing the following case, not sure still applicable with new API
       // import JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
-      // result.unmarshalTo(classOf[TeamBean]) should be (Success(fullTeamBean))
+      // result.unmarshalTo(classOf[TeamWithPrivateMembers]) should be (Success(fullTeamBean))
     }
   }
 
   "ClientFlow GET unmarshal object to JavaBean with case class" should "get the correct response" in {
-    import org.squbs.httpclient.json.XLangJsonSupport.TypeTagSupport._
+    import org.squbs.marshallers.json.XLangJsonSupport._
     for {
       tryResponse <- doRequest(Get("/view3"))
       team <- Unmarshal(tryResponse.get).to[TeamBeanWithCaseClassMember]
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      team shouldBe fullTeam3
+      team shouldBe fullTeamWithCaseClassMember
 
       // TODO: Missing the following case, not sure still applicable with new API
       // import JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
@@ -229,14 +230,14 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow GET unmarshal object to simple Scala class" should "get the correct response" in {
-    import org.squbs.httpclient.json.XLangJsonSupport.TypeTagSupport._
+    import org.squbs.marshallers.json.XLangJsonSupport._
     for {
       tryResponse <- doRequest(Get("/view1"))
-      team <- Unmarshal(tryResponse.get).to[Team1]
+      team <- Unmarshal(tryResponse.get).to[TeamNonCaseClass]
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      team shouldBe fullTeam1
+      team shouldBe fullTeamNonCaseClass
 
       // TODO: Missing the following case, not sure still applicable with new API
       // import JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
@@ -377,15 +378,15 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow POST unmarshal JavaBean" should "get the correct response" in {
-    import org.squbs.httpclient.json.XLangJsonSupport.TypeTagSupport._
+    import org.squbs.marshallers.json.XLangJsonSupport._
     for {
       tryResponse <- doRequest(Post("/addj", newTeamMemberBean))
-      result <- Unmarshal(tryResponse.get).to[TeamBean]
+      result <- Unmarshal(tryResponse.get).to[TeamWithPrivateMembers]
     } yield {
       tryResponse shouldBe a [Success[_]]
       val response = tryResponse.get
       response.status shouldBe StatusCodes.OK
-      result shouldBe fullTeamBeanWithAdd
+      result shouldBe fullTeamPrivateMembersWithAdd
     }
   }
 

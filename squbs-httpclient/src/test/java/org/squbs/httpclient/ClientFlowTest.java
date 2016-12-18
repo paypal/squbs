@@ -47,18 +47,19 @@ public class ClientFlowTest {
     private static final ActorMaterializer mat = ActorMaterializer.create(system);
     private static final Flow<HttpRequest, HttpResponse, NotUsed> flow = new MyRoute().route().flow(system, mat);
 
-    private static ServerBinding binding;
+    private static final ServerBinding serverBinding;
+
     static {
+        ServerBinding binding;
         try {
             binding = Http.get(system).
-                    bindAndHandle(flow, ConnectHttp.toHost("localhost", 65529), mat).
+                    bindAndHandle(flow, ConnectHttp.toHost("localhost", 65525), mat).
                     toCompletableFuture().get();
         } catch(Exception e) {
             binding = null;
         }
-
+        serverBinding = binding;
     }
-    private static final ServerBinding serverBinding = binding;
     private static final int port = serverBinding.localAddress().getPort();
 
     private final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool> clientFlow;
