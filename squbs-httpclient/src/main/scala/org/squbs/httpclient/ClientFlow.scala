@@ -17,21 +17,26 @@
 package org.squbs.httpclient
 
 import java.lang.management.ManagementFactory
+import java.util.Optional
 import javax.management.ObjectName
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.settings.ConnectionPoolSettings
-import akka.http.scaladsl.{ConnectionContext, HttpsConnectionContext, Http}
+import akka.http.javadsl.{model => jm}
+import akka.http.org.squbs.httpclient.JavaConverters._
 import akka.http.scaladsl.Http.HostConnectionPool
-import akka.http.scaladsl.model.{HttpResponse, HttpRequest}
-import akka.stream.{FlowShape, Materializer}
-import akka.stream.scaladsl.{GraphDSL, Keep, Flow}
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.settings.ConnectionPoolSettings
+import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
+import akka.http.{javadsl => jd}
+import akka.japi.Pair
+import akka.stream.scaladsl.{Flow, GraphDSL, Keep}
+import akka.stream.{FlowShape, Materializer, javadsl => js}
 import com.typesafe.config.Config
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import com.typesafe.sslconfig.ssl.SSLConfigFactory
 import org.squbs.endpoint.EndpointResolverRegistry
-import org.squbs.env.{EnvironmentResolverRegistry, Default, Environment}
-import org.squbs.pipeline.streaming.{PipelineSetting, Context, RequestContext, PipelineExtension}
+import org.squbs.env.{Default, Environment, EnvironmentResolverRegistry}
+import org.squbs.pipeline.streaming.{Context, PipelineExtension, PipelineSetting, RequestContext}
 
 import scala.util.{Failure, Try}
 
@@ -39,6 +44,29 @@ object ClientFlow {
 
   val AkkaHttpClientCustomContext = "akka-http-client-custom-context"
   type ClientConnectionFlow[T] = Flow[(HttpRequest, T), (Try[HttpResponse], T), HostConnectionPool]
+
+  def create[T](name: String, system: ActorSystem, mat: Materializer):
+  js.Flow[Pair[jm.HttpRequest, T], Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] =
+    toJava[T](apply[T](name)(system, mat))
+
+  def create[T](name: String,
+                connectionContext: Optional[jd.HttpsConnectionContext],
+                settings: Optional[jd.settings.ConnectionPoolSettings],
+                system: ActorSystem, mat: Materializer):
+  js.Flow[Pair[jm.HttpRequest, T],Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] = {
+    val (cCtx, sSettings) = fromJava(connectionContext, settings)
+    toJava[T](apply[T](name, cCtx, sSettings)(system, mat))
+  }
+
+  def create[T](name: String,
+                connectionContext: Optional[jd.HttpsConnectionContext],
+                settings: Optional[jd.settings.ConnectionPoolSettings],
+                env: Environment,
+                system: ActorSystem, mat: Materializer):
+  js.Flow[Pair[jm.HttpRequest, T],Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] = {
+    val (cCtx, sSettings) = fromJava(connectionContext, settings)
+    toJava[T](apply[T](name, cCtx, sSettings, env)(system, mat))
+  }
 
   def apply[T](name: String,
               connectionContext: Option[HttpsConnectionContext] = None,
@@ -57,7 +85,7 @@ object ClientFlow {
     val config = system.settings.config
     import org.squbs.util.ConfigUtil._
     val clientSpecificConfig = config.getOption[Config](name).filter {
-      _.getOption[String]("type") == Some("squbs.httpclient")
+      _.getOption[String]("type") contains "squbs.httpclient"
     }
     val clientConfigWithDefaults = clientSpecificConfig.map(_.withFallback(config)).getOrElse(config)
     val cps = settings.getOrElse(ConnectionPoolSettings(clientConfigWithDefaults))

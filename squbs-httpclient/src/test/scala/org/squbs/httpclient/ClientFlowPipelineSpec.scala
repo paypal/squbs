@@ -20,17 +20,16 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
-import akka.stream.{BidiShape, ActorMaterializer}
 import akka.stream.scaladsl._
+import akka.stream.{ActorMaterializer, BidiShape}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, Matchers, AsyncFlatSpec}
-import org.squbs.endpoint.{EndpointResolverRegistry, Endpoint, EndpointResolver}
-import org.squbs.env.Environment
+import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+import org.squbs.endpoint.{Endpoint, EndpointResolverRegistry}
 import org.squbs.pipeline.streaming._
 import org.squbs.testkit.Timeouts._
 
-import scala.concurrent.{Future, Await}
+import scala.concurrent.{Await, Future}
 import scala.util.{Success, Try}
 
 object ClientFlowPipelineSpec {
@@ -81,8 +80,8 @@ object ClientFlowPipelineSpec {
 
   implicit val system: ActorSystem = ActorSystem("ClientFlowPipelineSpec", config)
   implicit val materializer = ActorMaterializer()
-  import system.dispatcher
   import akka.http.scaladsl.server.Directives._
+  import system.dispatcher
 
   val route =
     path("hello") {
@@ -96,7 +95,7 @@ object ClientFlowPipelineSpec {
   val port = serverBinding.localAddress.getPort
 }
 
-class ClientFlowPipelineSpec  extends AsyncFlatSpec with Matchers with BeforeAndAfterAll {
+class ClientFlowPipelineSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll {
 
   import ClientFlowPipelineSpec._
 
@@ -104,10 +103,8 @@ class ClientFlowPipelineSpec  extends AsyncFlatSpec with Matchers with BeforeAnd
     serverBinding.unbind() map {_ => system.terminate()}
   }
 
-  EndpointResolverRegistry(system).register(new EndpointResolver {
-    override def name: String = "LocalhostEndpointResolver"
-    override def resolve(svcName: String, env: Environment) = Some(Endpoint(s"http://localhost:$port"))
-  })
+  EndpointResolverRegistry(system).register("LocalhostEndpointResolver", (_, _) =>
+    Some(Endpoint(s"http://localhost:$port")))
 
   it should "build the flow with defaults" in {
     val expectedResponseHeaders = Seq(
