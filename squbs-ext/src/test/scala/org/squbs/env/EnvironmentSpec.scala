@@ -23,11 +23,11 @@ import org.scalatest._
 class EnvironmentSpec extends TestKit(ActorSystem("EnvironmentSpec")) with FlatSpecLike
 with Matchers with BeforeAndAfterEach{
 
-  override def beforeEach() = {
+  override def beforeEach(): Unit = {
     EnvironmentResolverRegistry(system).register(DummyProdEnvironmentResolver)
   }
 
-  override def afterEach() = {
+  override def afterEach(): Unit = {
     EnvironmentResolverRegistry(system).environmentResolvers = List[EnvironmentResolver]()
   }
 
@@ -55,6 +55,18 @@ with Matchers with BeforeAndAfterEach{
     EnvironmentResolverRegistry(system).resolve should be (QA)
     EnvironmentResolverRegistry(system).unregister("DummyQAEnvironmentResolver")
     EnvironmentResolverRegistry(system).resolve should be (PROD)
+  }
+
+  it should "not throw exceptions when unregister non-existing resolver" in {
+    val resolverCount = EnvironmentResolverRegistry(system).environmentResolvers.size
+    noException shouldBe thrownBy { EnvironmentResolverRegistry(system).unregister("DummyQAEnvironmentResolver") }
+    EnvironmentResolverRegistry(system).environmentResolvers.size shouldBe resolverCount
+  }
+
+  it should "represent the correct lowercase name" in {
+    PROD.lowercaseName shouldBe "prod"
+    QA.lowercaseName shouldBe "qa"
+    DEV.lowercaseName shouldBe "dev"
   }
 
 }

@@ -16,20 +16,21 @@
 
 package org.squbs.endpoint
 
+import javax.net.ssl.SSLContext
+
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import org.scalatest.{BeforeAndAfterEach, FlatSpecLike, Matchers}
 import org.scalatest.OptionValues._
+import org.scalatest.{BeforeAndAfterEach, FlatSpecLike, Matchers}
 import org.squbs.env._
 
 import scala.language.postfixOps
 
 class EndpointSpec extends TestKit(ActorSystem("EndpointSpec")) with FlatSpecLike with Matchers with BeforeAndAfterEach {
 
-  implicit val _system = system
-  override def afterEach() = {
-    EndpointResolverRegistry(system).endpointResolvers = List[EndpointResolver]()
-    EnvironmentResolverRegistry(system).environmentResolvers = List[EnvironmentResolver]()
+  override def afterEach(): Unit = {
+    EndpointTestHelper.clearRegistries(system)
+    EnvTestHelper.clearRegistries(system)
   }
 
   "EndpointResolverRegistry" should "register a resolver" in {
@@ -39,6 +40,24 @@ class EndpointSpec extends TestKit(ActorSystem("EndpointSpec")) with FlatSpecLik
     EndpointResolverRegistry(system).endpointResolvers.head should be (resolver)
   }
 
+  "EndpointResolverRegistry" should "register a resolver lambda" in {
+    EndpointResolverRegistry(system).register("RogueResolver", (_, _) => Some(Endpoint("http://myrogueservice.com")))
+    EndpointResolverRegistry(system).endpointResolvers should have size 1
+    EndpointResolverRegistry(system).endpointResolvers.head.name shouldBe "RogueResolver"
+  }
+
+  "EndpointResolverRegistry" should "register and resolve with a SSL resolver" in {
+    EndpointResolverRegistry(system).register("RogueResolver", (_, _) =>
+      Some(Endpoint("https://myrogueservice.com", Some(SSLContext.getDefault))))
+    EndpointResolverRegistry(system).endpointResolvers should have size 1
+    EndpointResolverRegistry(system).endpointResolvers.head.name shouldBe "RogueResolver"
+    val resolver = EndpointResolverRegistry(system).findResolver("abcService")
+    resolver shouldBe 'defined
+    resolver.value.name shouldBe "RogueResolver"
+    val endpointOption = resolver.value.resolve("abcService")
+    endpointOption map { _.uri.toString } shouldBe Some("https://myrogueservice.com")
+    endpointOption flatMap { _.sslContext } shouldBe Some(SSLContext.getDefault)
+  }
   it should "not register a resolver twice" in {
     val resolver = new DummyLocalhostResolver()
     EndpointResolverRegistry(system).register(resolver)
@@ -57,23 +76,36 @@ class EndpointSpec extends TestKit(ActorSystem("EndpointSpec")) with FlatSpecLik
 
   it should "resolve the endpoint" in {
     EndpointResolverRegistry(system).register(new DummyLocalhostResolver)
-    val resolver = EndpointResolverRegistry(system).route("abcService")
+    val resolver = EndpointResolverRegistry(system).findResolver("abcService")
     resolver should be ('defined)
     resolver.value.name should be ("DummyLocalhostResolver")
     resolver.value.resolve("abcService") should be (Some(Endpoint("http://localhost:8080")))
   }
 
+  it should "resolve the endpoint with resolver lambda" in {
+    EndpointResolverRegistry(system).register("RogueResolver", (_, _) => Some(Endpoint("http://myrogueservice.com")))
+    val resolver = EndpointResolverRegistry(system).findResolver("abcService")
+    resolver should be ('defined)
+    resolver.value.name should be ("RogueResolver")
+    resolver.value.resolve("abcService") should be (Some(Endpoint("http://myrogueservice.com")))
+  }
+
   it should "propagate exceptions from EndpointResolvers" in {
     a[RuntimeException] should be thrownBy {
       EndpointResolverRegistry(system).register(new DummyLocalhostResolver)
-      EndpointResolverRegistry(system).route("abcService", QA)
+      EndpointResolverRegistry(system).findResolver("abcService", QA)
     }
+  }
+
+  it should "return a None if service is not resolvable" in {
+    EndpointResolverRegistry(system).register("AlwaysDenyResolver", (_, _) => None)
+    EndpointResolverRegistry(system).resolve("abcService") shouldBe None
   }
 
   it should "resolve the endpoint when Environment is provided" in {
     EndpointResolverRegistry(system).register(new DummyLocalhostResolver)
-    EndpointResolverRegistry(system).route("abcService", DEV) should be ('defined)
-    EndpointResolverRegistry(system).route("abcService", DEV).value.name should be ("DummyLocalhostResolver")
+    EndpointResolverRegistry(system).findResolver("abcService", DEV) should be ('defined)
+    EndpointResolverRegistry(system).findResolver("abcService", DEV).value.name should be ("DummyLocalhostResolver")
     EndpointResolverRegistry(system).resolve("abcService", DEV) should be (Some(Endpoint("http://localhost:8080")))
   }
 
@@ -88,8 +120,8 @@ class EndpointSpec extends TestKit(ActorSystem("EndpointSpec")) with FlatSpecLik
     EndpointResolverRegistry(system).endpointResolvers should have size 2
     EndpointResolverRegistry(system).endpointResolvers.head should not be a [DummyLocalhostResolver]
     EndpointResolverRegistry(system).endpointResolvers.head.name should be ("override")
-    EndpointResolverRegistry(system).route("abcService") should be ('defined)
-    EndpointResolverRegistry(system).route("abcService").value.name should be ("override")
+    EndpointResolverRegistry(system).findResolver("abcService") should be ('defined)
+    EndpointResolverRegistry(system).findResolver("abcService").value.name should be ("override")
     EndpointResolverRegistry(system).resolve("abcService") should be (Some(Endpoint("http://localhost:9090")))
   }
 
@@ -106,10 +138,10 @@ class EndpointSpec extends TestKit(ActorSystem("EndpointSpec")) with FlatSpecLik
       override def name: String = "unique"
     })
     EndpointResolverRegistry(system).endpointResolvers should have size 2
-    EndpointResolverRegistry(system).route("abcService") should be ('defined)
-    EndpointResolverRegistry(system).route("abcService").value.name should be ("DummyLocalhostResolver")
-    EndpointResolverRegistry(system).route("unique") should be ('defined)
-    EndpointResolverRegistry(system).route("unique").value.name should be ("unique")
+    EndpointResolverRegistry(system).findResolver("abcService") should be ('defined)
+    EndpointResolverRegistry(system).findResolver("abcService").value.name should be ("DummyLocalhostResolver")
+    EndpointResolverRegistry(system).findResolver("unique") should be ('defined)
+    EndpointResolverRegistry(system).findResolver("unique").value.name should be ("unique")
     EndpointResolverRegistry(system).resolve("abcService") should be (Some(Endpoint("http://localhost:8080")))
     EndpointResolverRegistry(system).resolve("unique") should be (Some(Endpoint("http://www.ebay.com")))
   }

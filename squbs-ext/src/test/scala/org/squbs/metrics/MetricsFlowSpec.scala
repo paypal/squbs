@@ -125,7 +125,7 @@ class MetricsFlowSpec extends TestKit(ActorSystem("MetricsFlowSpec")) with Async
     }
   }
 
-  def jmxValue(beanName: String, key: String) = {
+  def jmxValue(beanName: String, key: String): Option[AnyRef] = {
     val oName =
       ObjectName.getInstance(s"${MetricsExtension(system).Domain}:name=${MetricsExtension(system).Domain}.$beanName")
     Option(ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key))

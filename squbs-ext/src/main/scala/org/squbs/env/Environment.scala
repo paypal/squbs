@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.squbs.env
 
 import java.beans.ConstructorProperties
@@ -38,7 +37,7 @@ case object Default extends Environment {
   /*
   java api
    */
-  val value = this
+  val value: Environment = this
 }
 
 case object QA extends Environment {
@@ -46,7 +45,7 @@ case object QA extends Environment {
   /*
   java api
  */
-  val value = this
+  val value: Environment = this
 }
 
 case object DEV extends Environment {
@@ -54,7 +53,7 @@ case object DEV extends Environment {
   /*
   java api
  */
-  val value = this
+  val value: Environment = this
 }
 
 case object PROD extends Environment {
@@ -62,7 +61,7 @@ case object PROD extends Environment {
   /*
   java api
  */
-  val value = this
+  val value: Environment = this
 }
 
 case class RawEnv(name: String) extends Environment
@@ -74,7 +73,7 @@ trait EnvironmentResolver {
 }
 
 class EnvironmentResolverRegistryExtension(system: ExtendedActorSystem) extends Extension with LazyLogging {
-  var environmentResolvers = List[EnvironmentResolver]()
+  private[env] var environmentResolvers = List.empty[EnvironmentResolver]
 
   def register(resolver: EnvironmentResolver) {
     environmentResolvers.find(_.name == resolver.name) match {

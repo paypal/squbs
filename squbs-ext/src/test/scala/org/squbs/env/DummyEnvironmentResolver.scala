@@ -19,14 +19,32 @@ package org.squbs.env
 object DummyProdEnvironmentResolver extends EnvironmentResolver {
   override def resolve: Environment = PROD
   override def name: String = "DummyProdEnvironmentResolver"
+
+  /**
+    * Java API for obtaining the instance.
+    * @return This instance
+    */
+  def get: EnvironmentResolver = this
 }
 
 object DummyQAEnvironmentResolver extends EnvironmentResolver {
   override def resolve: Environment = QA
   override def name: String = "DummyQAEnvironmentResolver"
+
+  /**
+    * Java API for obtaining the instance.
+    * @return This instance
+    */
+  def get: EnvironmentResolver = this
 }
 
 object DummyNotResolveEnvironmentResolver extends EnvironmentResolver {
   override def resolve: Environment = Default
   override def name: String = "DummyNotResolveEnvironmentResolver"
+
+  /**
+    * Java API for obtaining the instance.
+    * @return This instance
+    */
+  def get: EnvironmentResolver = this
 }
