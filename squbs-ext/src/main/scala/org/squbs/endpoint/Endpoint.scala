@@ -63,7 +63,6 @@ trait EndpointResolver {
 abstract class AbstractEndpointResolver {
   def name: String
   def resolve(svcName: String, env: Environment): Optional[Endpoint]
-  def resolve(svcName: String): Optional[Endpoint] = resolve(svcName, Default)
 
   private[endpoint] final def toEndpointResolver = new EndpointResolver {
     def name: String = AbstractEndpointResolver.this.name
@@ -131,9 +130,8 @@ class EndpointResolverRegistryExtension(system: ExtendedActorSystem) extends Ext
       logger.warn("Endpoint Resolver: {} cannot be found, skipped unregister!", name)
   }
 
-  def route(svcName: String, env: Environment = Default): Option[EndpointResolver] = {
+  private[endpoint] def findResolver(svcName: String, env: Environment = Default): Option[EndpointResolver] =
     endpointResolvers.find(_.resolve(svcName, env).isDefined)
-  }
 
   def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
     val resolvedEndpoint = endpointResolvers.view.map(_.resolve(svcName, env)).collectFirst {
