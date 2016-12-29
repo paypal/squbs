@@ -13,30 +13,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.squbs.httpclient.json
+package org.squbs.marshallers.json
 
-import scala.reflect.{ManifestFactory, ClassTag}
+import scala.reflect.{ClassTag, ManifestFactory}
+import scala.reflect.runtime.universe._
 
 object ReflectHelper {
 
-  import scala.reflect.runtime.universe._
-
   //TODO cache?
-  def isJavaClass(v: Any): Boolean = {
+  private[marshallers] def isJavaClass(v: Any): Boolean = {
     val typeMirror = runtimeMirror(v.getClass.getClassLoader)
     val instanceMirror = typeMirror.reflect(v)
     val symbol = instanceMirror.symbol
     symbol.isJava
   }
 
-  def isJavaClass(clazz: Class[_]): Boolean = {
+  private[marshallers] def isJavaClass(clazz: Class[_]): Boolean = {
     val typeMirror = runtimeMirror(clazz.getClassLoader)
     val classMirror = typeMirror.classSymbol(clazz)
     classMirror.isJava
   }
 
 
-  def toManifest[T: TypeTag]: Manifest[T] = {
+  private[marshallers] def toManifest[T: TypeTag]: Manifest[T] = {
     val t = typeTag[T]
     val mirror = t.mirror
     def toManifestRec(t: Type): Manifest[_] = {
@@ -54,7 +53,13 @@ object ReflectHelper {
     toManifestRec(t.tpe).asInstanceOf[Manifest[T]]
   }
 
-  def toClassTag[T: TypeTag]: ClassTag[T] = {
+  private[marshallers] def toClass[T: TypeTag]: Class[T] = {
+    val t = typeTag[T]
+    val mirror = t.mirror
+    mirror.runtimeClass(t.tpe).asInstanceOf[Class[T]]
+  }
+
+  private[marshallers] def toClassTag[T: TypeTag]: ClassTag[T] = {
     val t = typeTag[T]
     val mirror = t.mirror
     ClassTag[T](mirror.runtimeClass(t.tpe))

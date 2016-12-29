@@ -18,11 +18,11 @@ libraryDependencies ++= Seq(
   "junit" % "junit" % "4.12" % "test",
   "org.apache.commons"         %  "commons-math3"       % "3.3"   % "test->*",
   "org.scala-lang.modules"     %% "scala-java8-compat"  % "0.7.0" % "test",
-  "com.novocode" % "junit-interface" % "0.11" % "test->default",
+  "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
   "com.wix" %% "accord-core" % "0.5",
-  "org.json4s"                %% "json4s-jackson"               % "3.3.0",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.6.3",
-  "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % "2.6.3",
+  "org.json4s"                %% "json4s-jackson"               % json4sV,
+  "com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.8.4",
+  "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonV,
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 ) ++ akkaDependencies
 

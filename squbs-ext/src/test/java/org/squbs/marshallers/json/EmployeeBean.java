@@ -13,12 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package org.squbs.marshallers.json;
 
-package org.squbs.httpclient.japi;
-
-/**
- * Created by lma on 6/15/2015.
- */
 public class EmployeeBean {
     private long id;
     private String firstName;

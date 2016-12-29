@@ -26,10 +26,7 @@ import akka.stream.ActorMaterializer;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
-import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import com.typesafe.sslconfig.akka.AkkaSSLConfig;
-import com.typesafe.sslconfig.ssl.SSLConfigFactory;
 import org.junit.AfterClass;
 import org.junit.Test;
 import org.squbs.endpoint.Endpoint;
@@ -48,9 +45,16 @@ import java.util.concurrent.CompletionStage;
 
 import static org.junit.Assert.assertEquals;
 
-public class ClientFlowHttpsTest {
+public class ClientFlowHttpsEndpointTest {
 
-    private static final ActorSystem system = ActorSystem.create("ClientFlowHttpsTest");
+    private static final String cfg =
+            "helloHttps {\n" +
+            "  type = squbs.httpclient\n" +
+            "  akka.ssl-config.loose.disableHostnameVerification = true\n" +
+            "}\n";
+
+    private static final ActorSystem system = ActorSystem.create("ClientFlowHttpsEndpointTest",
+            ConfigFactory.parseString(cfg));
     private static final ActorMaterializer mat = ActorMaterializer.create(system);
     private static final Flow<HttpRequest, HttpResponse, NotUsed> flow = new MyRoute().route().flow(system, mat);
 
@@ -59,7 +63,7 @@ public class ClientFlowHttpsTest {
     static {
         ServerBinding binding;
         try {
-            final ConnectWithHttps ic = ConnectHttp.toHostHttps("localhost", 65527);
+            final ConnectWithHttps ic = ConnectHttp.toHostHttps("localhost", 65529);
             final ConnectWithHttps c = sslContext("example.com.jks", "1234567890")
                     .map(sc -> ic.withCustomHttpsContext(ConnectionContext.https(sc)))
                     .orElse(ic.withDefaultHttpsContext());
@@ -75,7 +79,8 @@ public class ClientFlowHttpsTest {
     static {
         EndpointResolverRegistry.get(system).register("LocalhostHttpsEndpointResolver", (svcName, env) -> {
             if ("helloHttps".equals(svcName)) {
-                return Optional.of(Endpoint.create("https://localhost:" + port));
+                return Optional.of(Endpoint.create("https://localhost:" + port,
+                        sslContext("exampletrust.jks", "changeit")));
             }
             return Optional.empty();
         });
@@ -83,16 +88,8 @@ public class ClientFlowHttpsTest {
 
     private final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool> clientFlow;
 
-    public ClientFlowHttpsTest() {
-        Config mySslConfig = ConfigFactory.parseString("loose.disableHostnameVerification = true")
-                .withFallback(system.settings().config().getConfig("ssl-config"));
-
-        AkkaSSLConfig sslConfig = AkkaSSLConfig.get(system).withSettings(
-                SSLConfigFactory.parse(mySslConfig));
-        Optional<HttpsConnectionContext> connCtxOption = sslContext("exampletrust.jks", "changeit")
-                .map(s -> ConnectionContext.https(s, Optional.of(sslConfig), Optional.empty(), Optional.empty(),
-                        Optional.empty(), Optional.empty()));
-        clientFlow = ClientFlow.create("helloHttps", connCtxOption, Optional.empty(), system, mat);
+    public ClientFlowHttpsEndpointTest() {
+        clientFlow = ClientFlow.create("helloHttps", system, mat);
     }
 
     static Optional<SSLContext> sslContext(String store, String pw) {

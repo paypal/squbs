@@ -13,30 +13,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.squbs.httpclient.japi;
+package org.squbs.marshallers.json;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class TeamBean {
+public class TeamWithPrivateMembers {
 
     private String description;
     private List<EmployeeBean> members;
     //private Map<String, String> nameMap;
 
     //must have a default one for unmarshalling
-    public TeamBean(){
+    public TeamWithPrivateMembers(){
 
     }
 
-    public TeamBean addMember(EmployeeBean employee){
+    public TeamWithPrivateMembers addMember(EmployeeBean employee){
         List<EmployeeBean> all = new ArrayList<EmployeeBean>();
         all.addAll(members);
         all.add(employee);
-        return new TeamBean(description, all);
+        return new TeamWithPrivateMembers(description, all);
     }
 
-    public TeamBean(String description1, List<EmployeeBean> members1) {
+    public TeamWithPrivateMembers(String description1, List<EmployeeBean> members1) {
         this.description = description1;
         this.members = members1;
 //        nameMap = new HashMap<String, String>();
@@ -48,7 +48,7 @@ public class TeamBean {
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("TeamBean[")
+        sb.append("TeamWithPrivateMembers[")
                 .append("description=").append(description)
                 .append(",members=").append(members)
                 .append("]");
@@ -56,9 +56,9 @@ public class TeamBean {
     }
 
     public boolean equals(Object other) {
-        if (!(other instanceof TeamBean)) return false;
+        if (!(other instanceof TeamWithPrivateMembers)) return false;
         else {
-            TeamBean otherTeam = (TeamBean) other;
+            TeamWithPrivateMembers otherTeam = (TeamWithPrivateMembers) other;
             return otherTeam.description.equals(description) && otherTeam.members.equals(members);
         }
     }

@@ -34,6 +34,7 @@ import org.junit.AfterClass;
 import org.junit.Test;
 import org.squbs.endpoint.Endpoint;
 import org.squbs.endpoint.EndpointResolverRegistry;
+import org.squbs.env.QA;
 import org.squbs.testkit.Timeouts;
 import scala.util.Try;
 
@@ -48,9 +49,9 @@ import java.util.concurrent.CompletionStage;
 
 import static org.junit.Assert.assertEquals;
 
-public class ClientFlowHttpsTest {
+public class ClientFlowHttpsEnvTest {
 
-    private static final ActorSystem system = ActorSystem.create("ClientFlowHttpsTest");
+    private static final ActorSystem system = ActorSystem.create("ClientFlowHttpsEnvTest");
     private static final ActorMaterializer mat = ActorMaterializer.create(system);
     private static final Flow<HttpRequest, HttpResponse, NotUsed> flow = new MyRoute().route().flow(system, mat);
 
@@ -59,7 +60,7 @@ public class ClientFlowHttpsTest {
     static {
         ServerBinding binding;
         try {
-            final ConnectWithHttps ic = ConnectHttp.toHostHttps("localhost", 65527);
+            final ConnectWithHttps ic = ConnectHttp.toHostHttps("localhost", 65528);
             final ConnectWithHttps c = sslContext("example.com.jks", "1234567890")
                     .map(sc -> ic.withCustomHttpsContext(ConnectionContext.https(sc)))
                     .orElse(ic.withDefaultHttpsContext());
@@ -67,14 +68,14 @@ public class ClientFlowHttpsTest {
         } catch(Exception e) {
             binding = null;
         }
-        serverBinding = binding;
+        serverBinding  = binding;
     }
 
     private static final int port = serverBinding.localAddress().getPort();
 
     static {
         EndpointResolverRegistry.get(system).register("LocalhostHttpsEndpointResolver", (svcName, env) -> {
-            if ("helloHttps".equals(svcName)) {
+            if ("helloHttps".equals(svcName) && QA.value().equals(env)) {
                 return Optional.of(Endpoint.create("https://localhost:" + port));
             }
             return Optional.empty();
@@ -83,7 +84,7 @@ public class ClientFlowHttpsTest {
 
     private final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool> clientFlow;
 
-    public ClientFlowHttpsTest() {
+    public ClientFlowHttpsEnvTest() {
         Config mySslConfig = ConfigFactory.parseString("loose.disableHostnameVerification = true")
                 .withFallback(system.settings().config().getConfig("ssl-config"));
 
@@ -92,7 +93,7 @@ public class ClientFlowHttpsTest {
         Optional<HttpsConnectionContext> connCtxOption = sslContext("exampletrust.jks", "changeit")
                 .map(s -> ConnectionContext.https(s, Optional.of(sslConfig), Optional.empty(), Optional.empty(),
                         Optional.empty(), Optional.empty()));
-        clientFlow = ClientFlow.create("helloHttps", connCtxOption, Optional.empty(), system, mat);
+        clientFlow = ClientFlow.create("helloHttps", connCtxOption, Optional.empty(), QA.value(), system, mat);
     }
 
     static Optional<SSLContext> sslContext(String store, String pw) {

@@ -89,20 +89,21 @@ public class ClientFlowPipelineTest {
             ConfigFactory.parseString(cfg));
     private static final Materializer mat = ActorMaterializer.create(system);
     private static final Flow<HttpRequest, HttpResponse, NotUsed> flow = new MyRoute().route().flow(system, mat);
-    private static ServerBinding binding;
+
+    private static final ServerBinding serverBinding;
 
     static {
+        ServerBinding binding;
         try {
             binding = Http.get(system).
-                    bindAndHandle(flow, ConnectHttp.toHost("localhost", 65527), mat).
+                    bindAndHandle(flow, ConnectHttp.toHost("localhost", 65526), mat).
                     toCompletableFuture().get();
         } catch(Exception e) {
             binding = null;
         }
-
+        serverBinding = binding;
     }
 
-    private static final ServerBinding serverBinding = binding;
     private static final int port = serverBinding.localAddress().getPort();
 
     static {
