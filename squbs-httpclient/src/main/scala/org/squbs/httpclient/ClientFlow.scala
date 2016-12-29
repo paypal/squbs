@@ -22,7 +22,7 @@ import javax.management.ObjectName
 
 import akka.actor.ActorSystem
 import akka.http.javadsl.{model => jm}
-import akka.http.org.squbs.httpclient.JavaConverters._
+import akka.http.org.squbs.util.JavaConverters._
 import akka.http.scaladsl.Http.HostConnectionPool
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.settings.ConnectionPoolSettings

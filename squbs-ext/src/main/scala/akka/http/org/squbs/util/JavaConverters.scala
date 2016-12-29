@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package akka.http.org.squbs.httpclient
+package akka.http.org.squbs.util
 
 import java.util.Optional
 
+import akka.NotUsed
 import akka.http.impl.util.JavaMapping
 import akka.http.javadsl.{model => jm}
 import akka.http.scaladsl.Http.HostConnectionPool
@@ -26,8 +27,8 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.http.{javadsl => jd}
 import akka.japi.Pair
-import akka.stream.scaladsl.Flow
-import akka.stream.{javadsl => js}
+import akka.stream.scaladsl.{BidiFlow, Flow}
+import akka.stream.{scaladsl, javadsl => js}
 
 import scala.util.Try
 
@@ -42,6 +43,18 @@ object JavaConverters {
     val cCtx = connectionContext.asScala.asInstanceOf[Option[HttpsConnectionContext]]
     val sSettings = settings.asScala.asInstanceOf[Option[ConnectionPoolSettings]]
     (cCtx, sSettings)
+  }
+
+  def toJava[In1, Out1, In2, Out2, Context](bidiFlow: BidiFlow[(In1, Context), (Out1, Context), (In2, Context), (Out2, Context), NotUsed]):
+  js.BidiFlow[Pair[In1, Context], Pair[Out1, Context], Pair[In2, Context], Pair[Out2, Context], NotUsed] = {
+    implicit val sIn1Mapping = JavaMapping.identity[In1]
+    implicit val sOut1Mapping = JavaMapping.identity[Out1]
+    implicit val sIn2Mapping = JavaMapping.identity[In2]
+    implicit val sOut2Mapping = JavaMapping.identity[Out2]
+    implicit val contextMapping = JavaMapping.identity[Context]
+    val javaToScalaAdapter = JavaMapping.adapterBidiFlow[Pair[In1, Context], (In1, Context), (Out2, Context), Pair[Out2, Context]]
+    val scalaToJavaAdapter = JavaMapping.adapterBidiFlow[Pair[In2, Context], (In2, Context), (Out1, Context), Pair[Out1, Context]].reversed
+    javaToScalaAdapter.atop(bidiFlow).atop(scalaToJavaAdapter).asJava
   }
 
   private def adaptTupleFlow[T, Mat](scalaFlow: Flow[(HttpRequest, T), (Try[HttpResponse], T), Mat]):
