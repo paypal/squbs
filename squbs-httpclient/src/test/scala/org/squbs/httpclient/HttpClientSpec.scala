@@ -27,7 +27,7 @@ import akka.testkit.TestKit
 import org.json4s.{DefaultFormats, MappingException, jackson}
 import org.scalatest.OptionValues._
 import org.scalatest.{AsyncFlatSpecLike, BeforeAndAfterAll, Matchers}
-import org.squbs.endpoint.EndpointResolverRegistry
+import org.squbs.resolver.ResolverRegistry
 import org.squbs.httpclient.dummy._
 import org.squbs.marshallers.json.TestData._
 import org.squbs.marshallers.json.{TeamBeanWithCaseClassMember, TeamWithPrivateMembers, _}
@@ -44,7 +44,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
 
   private [httpclient] val port = Await.result(startService, awaitMax)
   val baseUrl = s"http://localhost:$port"
-  EndpointResolverRegistry(system).register(new DummyServiceEndpointResolver(baseUrl))
+  ResolverRegistry(system).register[HttpEndpoint](new DummyServiceResolver(baseUrl))
   private [httpclient] val clientFlow = ClientFlow[Int]("DummyService")
 
   def doRequest(request: HttpRequest): Future[Try[HttpResponse]] = {

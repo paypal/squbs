@@ -13,16 +13,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.squbs.endpoint
+package org.squbs.resolver
 
 import akka.actor.ActorSystem
 
 /**
   * Test helper for Java tests.
   */
-object EndpointTestHelper {
+object ResolverTestHelper {
 
-  def clearRegistries(system: ActorSystem) {
-    EndpointResolverRegistry(system).endpointResolvers = List.empty[EndpointResolver]
-  }
+  def clearRegistries(system: ActorSystem): Unit =
+    ResolverRegistry(system).resolvers = List.empty[(Class[_], Resolver[_])]
 }

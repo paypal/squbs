@@ -25,7 +25,7 @@ import akka.stream.{ActorMaterializer, BidiShape}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
-import org.squbs.endpoint.{Endpoint, EndpointResolverRegistry}
+import org.squbs.resolver.ResolverRegistry
 import org.squbs.pipeline.streaming._
 import org.squbs.testkit.Timeouts._
 
@@ -103,8 +103,8 @@ class ClientFlowPipelineSpec extends AsyncFlatSpec with Matchers with BeforeAndA
     serverBinding.unbind() map {_ => system.terminate()}
   }
 
-  EndpointResolverRegistry(system).register("LocalhostEndpointResolver", (_, _) =>
-    Some(Endpoint(s"http://localhost:$port")))
+  ResolverRegistry(system).register[HttpEndpoint]("LocalhostEndpointResolver")
+    { (_, _) => Some(HttpEndpoint(s"http://localhost:$port")) }
 
   it should "build the flow with defaults" in {
     val expectedResponseHeaders = Seq(

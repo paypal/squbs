@@ -23,8 +23,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
-import org.squbs.endpoint.{Endpoint, EndpointResolver, EndpointResolverRegistry}
-import org.squbs.env.Environment
+import org.squbs.resolver._
 import org.squbs.testkit.Timeouts._
 
 import scala.concurrent.{Await, Future}
@@ -35,14 +34,10 @@ object ClientFlowSpec {
   implicit val system = ActorSystem("ClientFlowSpec")
   implicit val materializer = ActorMaterializer()
 
-  EndpointResolverRegistry(system).register(new EndpointResolver {
-    override def name: String = "LocalhostEndpointResolver"
-
-    override def resolve(svcName: String, env: Environment): Option[Endpoint] = svcName match {
-      case "hello" => Some(Endpoint(s"http://localhost:$port"))
-      case _ => None
-    }
-  })
+  ResolverRegistry(system).register[HttpEndpoint]("LocalhostEndpointResolver") { (svcName, _) => svcName match {
+    case "hello" => Some(HttpEndpoint(s"http://localhost:$port"))
+    case _ => None
+  }}
 
   import akka.http.scaladsl.server.Directives._
   import system.dispatcher
