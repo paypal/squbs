@@ -174,6 +174,15 @@ with FlatSpecLike with Matchers {
   }
 }
 
+class CustomTestKitWithResourceDetectSpec extends CustomTestKit(false)
+  with FlatSpecLike with Matchers {
+
+  it should "start default-listener" in {
+    noException should be thrownBy port
+    port shouldEqual port("default-listener")
+  }
+}
+
 object CustomTestKitConfigAndResourcesSpec {
 
   val resources = Seq(getClass.getClassLoader.getResource("").getPath + "/CustomTestKitTest/META-INF/squbs-meta.conf")

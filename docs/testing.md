@@ -16,7 +16,7 @@ The `CustomTestKit` is used for starting a full blown squbs instance needed for 
    * It automatically sets actor system name to spec/test class name for simplicity and also to ensure `ActorSystem` instances do not conflict.  But, it also allows actor system name to be passed in the constructor.
    * Tests extending `CustomTestKit` can run in parallel in the same JVM.
    * Starts and stops squbs automatically.
-   * Starts well-known actors and service in `src/test/resources/META-INF/squbs-meta.conf` by default.  But, allows passing `resources` to be scanned in the constructor.
+   * Starts well-known actors and service in `src/main/resources/META-INF/squbs-meta.conf` and `src/test/resources/META-INF/squbs-meta.conf` by default.  But, allows passing `resources` to be scanned in the constructor.
    * Allows custom configuration to be passed in the constructor.
 
 Here is an example usage of `CustomTestKit` in ScalaTest:

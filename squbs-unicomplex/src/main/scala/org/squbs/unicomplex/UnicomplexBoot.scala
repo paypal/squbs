@@ -35,6 +35,7 @@ import org.squbs.unicomplex.UnicomplexBoot.CubeInit
 
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
@@ -114,7 +115,9 @@ object UnicomplexBoot extends LazyLogging {
         Seq("conf", "json", "properties") flatMap { ext => loader.getResources(s"META-INF/squbs-meta.$ext") }
       } else Seq.empty
 
-    val jarConfigs = (cpResources ++ resources) map readConfigs collect { case Some(jarCfg) => jarCfg }
+    // Dedup the resources, just in case.
+    val allResources = mutable.LinkedHashSet(cpResources ++ resources : _*).toSeq
+    val jarConfigs = allResources map readConfigs collect { case Some(jarCfg) => jarCfg }
     resolveCubes(jarConfigs, boot)
   }
 
