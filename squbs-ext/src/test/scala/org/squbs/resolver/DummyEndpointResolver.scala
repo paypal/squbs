@@ -14,32 +14,34 @@
  *  limitations under the License.
  */
 
-package org.squbs.endpoint
+package org.squbs.resolver
+
+import java.net.URI
 
 import akka.actor.ActorSystem
 import org.squbs.env.{DEV, Default, Environment}
 
-class DummyServiceEndpointResolver(implicit system: ActorSystem) extends EndpointResolver{
+class DummyServiceResolver(implicit system: ActorSystem) extends Resolver[URI] {
 
-  override def resolve(svcName: String, env: Environment): Option[Endpoint] = {
-    if (svcName == name) Some(Endpoint("http://www.google.com"))
+  override def resolve(svcName: String, env: Environment): Option[URI] = {
+    if (svcName == name) Some(URI.create("http://www.google.com"))
     else None
   }
 
   override def name: String = "DummyService"
 }
 
-class DummyLocalhostResolver(implicit system: ActorSystem) extends EndpointResolver {
-  override def resolve(svcName: String, env: Environment = Default): Option[Endpoint] = {
+class DummyLocalhostResolver(implicit system: ActorSystem) extends Resolver[URI] {
+
+  override def resolve(svcName: String, env: Environment = Default): Option[URI] = {
     require(svcName != null, "Service name cannot be null")
     require(svcName.length > 0, "Service name must not be blank")
 
     env match {
-      case Default | DEV => Some(Endpoint("http://localhost:8080"))
-      case _   => throw new RuntimeException("DummyLocalhostResolver cannot support " + env + " environment")
+      case Default | DEV => Some(URI.create("http://localhost:8080"))
+      case _ => throw new RuntimeException("DummyLocalhostResolver cannot support " + env + " environment")
     }
   }
 
   override def name: String = "DummyLocalhostResolver"
 }
-

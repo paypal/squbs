@@ -84,9 +84,9 @@ class EnvironmentResolverRegistryExtension(system: ExtendedActorSystem) extends 
   }
 
   def unregister(name: String) {
-    val originalLentgh = environmentResolvers.length
+    val originalLength = environmentResolvers.length
     environmentResolvers = environmentResolvers.filterNot(_.name == name)
-    if(environmentResolvers.length == originalLentgh)
+    if(environmentResolvers.length == originalLength)
       logger.warn("Env Resolver:" + name + " cannot be found, skipping unregister!")
   }
 

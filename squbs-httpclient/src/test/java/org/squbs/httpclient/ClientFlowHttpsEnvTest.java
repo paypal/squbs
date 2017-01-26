@@ -32,8 +32,7 @@ import com.typesafe.sslconfig.akka.AkkaSSLConfig;
 import com.typesafe.sslconfig.ssl.SSLConfigFactory;
 import org.junit.AfterClass;
 import org.junit.Test;
-import org.squbs.endpoint.Endpoint;
-import org.squbs.endpoint.EndpointResolverRegistry;
+import org.squbs.resolver.ResolverRegistry;
 import org.squbs.env.QA;
 import org.squbs.testkit.Timeouts;
 import scala.util.Try;
@@ -74,9 +73,9 @@ public class ClientFlowHttpsEnvTest {
     private static final int port = serverBinding.localAddress().getPort();
 
     static {
-        EndpointResolverRegistry.get(system).register("LocalhostHttpsEndpointResolver", (svcName, env) -> {
+        ResolverRegistry.get(system).register(HttpEndpoint.class, "LocalhostHttpsEndpointResolver", (svcName, env) -> {
             if ("helloHttps".equals(svcName) && QA.value().equals(env)) {
-                return Optional.of(Endpoint.create("https://localhost:" + port));
+                return Optional.of(HttpEndpoint.create("https://localhost:" + port));
             }
             return Optional.empty();
         });

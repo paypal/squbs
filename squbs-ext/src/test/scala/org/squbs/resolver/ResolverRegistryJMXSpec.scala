@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.squbs.endpoint
+package org.squbs.resolver
 
 import java.lang.management.ManagementFactory
 import javax.management.{InstanceNotFoundException, ObjectName}
@@ -26,35 +26,35 @@ import org.scalatest.{FlatSpecLike, Matchers}
 
 import scala.language.postfixOps
 
-class EndpointResolverRegistryJMXSpec extends TestKit(ActorSystem("EndpointResolverRegistryJMXSpec"))
+class ResolverRegistryJMXSpec extends TestKit(ActorSystem("ResolverRegistryJMXSpec"))
 with FlatSpecLike with Matchers {
 
-  val oName = ObjectName.getInstance(s"org.squbs.configuration.${system.name}:type=EndpointResolverRegistry")
+  private val oName = ObjectName.getInstance(s"org.squbs.configuration.${system.name}:type=ResolverRegistry")
 
   it should "not be registered at all when not accessed" in {
     an [InstanceNotFoundException] should be thrownBy {
-      ManagementFactory.getPlatformMBeanServer.getAttribute(oName, "EndpointResolverInfo").
+      ManagementFactory.getPlatformMBeanServer.getAttribute(oName, "ResolverInfo").
         asInstanceOf[Array[CompositeData]]
     }
   }
 
   it should "not list any endpoint resolvers when not registered" in {
-    EndpointResolverRegistry(system)
-    val resolvers = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, "EndpointResolverInfo").
+    ResolverRegistry(system)
+    val resolvers = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, "ResolverInfo").
       asInstanceOf[Array[CompositeData]]
 
     resolvers should have length 0
   }
 
-  it should "list all endpoint resolvers with position" in {
+  it should "list all resolvers with position" in {
 
     val dummyLocalhostResolver = new DummyLocalhostResolver
-    val dummyServiceEndpointResolver = new DummyServiceEndpointResolver
+    val dummyServiceEndpointResolver = new DummyServiceResolver
 
-    EndpointResolverRegistry(system).register(dummyLocalhostResolver)
-    EndpointResolverRegistry(system).register(dummyServiceEndpointResolver)
+    ResolverRegistry(system).register(dummyLocalhostResolver)
+    ResolverRegistry(system).register(dummyServiceEndpointResolver)
 
-    val resolvers = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, "EndpointResolverInfo").
+    val resolvers = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, "ResolverInfo").
       asInstanceOf[Array[CompositeData]]
 
     resolvers should have length 2

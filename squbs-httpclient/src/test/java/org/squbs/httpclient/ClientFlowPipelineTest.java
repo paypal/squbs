@@ -34,8 +34,7 @@ import akka.stream.javadsl.Source;
 import com.typesafe.config.ConfigFactory;
 import org.junit.AfterClass;
 import org.junit.Test;
-import org.squbs.endpoint.Endpoint;
-import org.squbs.endpoint.EndpointResolverRegistry;
+import org.squbs.resolver.ResolverRegistry;
 import org.squbs.testkit.Timeouts;
 import scala.util.Try;
 
@@ -107,8 +106,8 @@ public class ClientFlowPipelineTest {
     private static final int port = serverBinding.localAddress().getPort();
 
     static {
-        EndpointResolverRegistry.get(system).register("LocalhostEndpointResolver", (svcName, env) ->
-                Optional.of(Endpoint.create("http://localhost:" + port)));
+        ResolverRegistry.get(system).register(HttpEndpoint.class, "LocalhostEndpointResolver", (svcName, env) ->
+                Optional.of(HttpEndpoint.create("http://localhost:" + port)));
     }
 
     static class MyRoute extends AllDirectives {
