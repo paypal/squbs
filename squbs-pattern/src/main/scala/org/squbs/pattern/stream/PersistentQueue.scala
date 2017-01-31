@@ -193,8 +193,8 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
     private def fileNameToLong(file: File): Long = file.getName
       .stripSuffix(SingleChronicleQueue.SUFFIX).split("-").last.toLong
 
-    private def deleteFiles(cycle: Int, fileNameInLong: Long) = Option(persistDir.listFiles) map {
-      f => f.filterNot(f => f.getName.equals(Tailer) || fileNameToLong(f) >= fileNameInLong).map {
+    private def deleteFiles(cycle: Int, fileNameInLong: Long): Unit = Option(persistDir.listFiles) foreach {
+      f => f.filterNot(f => f.getName.equals(Tailer) || fileNameToLong(f) >= fileNameInLong).foreach {
         file => logger.info("File released {} - {}", cycle.toString, file.getPath)
           file.delete()
       }
