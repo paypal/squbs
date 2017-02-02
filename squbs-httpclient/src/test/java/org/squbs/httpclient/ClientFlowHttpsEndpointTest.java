@@ -62,7 +62,7 @@ public class ClientFlowHttpsEndpointTest {
     static {
         ServerBinding binding;
         try {
-            final ConnectWithHttps ic = ConnectHttp.toHostHttps("localhost", 65529);
+            final ConnectWithHttps ic = ConnectHttp.toHostHttps("localhost", 0);
             final ConnectWithHttps c = sslContext("example.com.jks", "1234567890")
                     .map(sc -> ic.withCustomHttpsContext(ConnectionContext.https(sc)))
                     .orElse(ic.withDefaultHttpsContext());

@@ -95,7 +95,7 @@ public class ClientFlowPipelineTest {
         ServerBinding binding;
         try {
             binding = Http.get(system).
-                    bindAndHandle(flow, ConnectHttp.toHost("localhost", 65526), mat).
+                    bindAndHandle(flow, ConnectHttp.toHost("localhost", 0), mat).
                     toCompletableFuture().get();
         } catch(Exception e) {
             binding = null;
