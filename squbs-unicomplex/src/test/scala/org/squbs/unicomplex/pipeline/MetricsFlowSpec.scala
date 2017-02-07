@@ -31,8 +31,8 @@ import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{AsyncFlatSpecLike, Matchers}
 import org.scalatest.OptionValues._
-import org.squbs.metrics.{MetricsFlow, MetricsExtension}
-import org.squbs.pipeline.streaming._
+import org.squbs.metrics.{MetricsExtension, MetricsFlow}
+import org.squbs.pipeline.{Context, PipelineFlow, PipelineFlowFactory}
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex._
 

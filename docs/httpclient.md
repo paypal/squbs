@@ -194,7 +194,7 @@ sample {
 
 ### Pipeline
 
-We often need to have common infrastructure functionality or organizational standards across different clients.  Such infrastructure includes, but is not limited to, logging, metrics collection, request tracing, authentication/authorization, tracking, cookie management, A/B testing, etc.  As squbs promotes separation of concerns, such logic would belong to infrastructure and not client implementation. The [squbs pipeline](streamingpipeline.md) allows infrastructure to provide components installed into a client without client owner having to worry about such aspects.  Please see [squbs pipeline](streamingpipeline.md) for more details.
+We often need to have common infrastructure functionality or organizational standards across different clients.  Such infrastructure includes, but is not limited to, logging, metrics collection, request tracing, authentication/authorization, tracking, cookie management, A/B testing, etc.  As squbs promotes separation of concerns, such logic would belong to infrastructure and not client implementation. The [squbs pipeline](pipeline.md) allows infrastructure to provide components installed into a client without client owner having to worry about such aspects.  Please see [squbs pipeline](pipeline.md) for more details.
 
 Generally speaking, a pipeline is a Bidi Flow acting as a bridge in between squbs client and the Akka HTTP layer.  `squbs-httpclient` allows registering a Bidi Akka Streams flow globally for all clients (default pipeline) or for individual clients.  To register a client specific pipeline, set the `pipeline` configuration.  You can turn on/off the default pipeline via `defaultPipeline` setting (it is set to `on`, if not specified):   
 
@@ -206,7 +206,7 @@ sample {
 }
 ```
 
-Please see [squbs pipeline](streamingpipeline.md) to find out how to create a pipeline and configure default pipeline.
+Please see [squbs pipeline](pipeline.md) to find out how to create a pipeline and configure default pipeline.
 
 ### Metrics
 

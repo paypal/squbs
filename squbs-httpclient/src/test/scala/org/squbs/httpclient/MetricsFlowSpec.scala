@@ -30,7 +30,7 @@ import org.scalatest.OptionValues._
 import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
 import org.squbs.resolver._
 import org.squbs.metrics.{MetricsExtension, MetricsFlow}
-import org.squbs.pipeline.streaming._
+import org.squbs.pipeline.{Context, PipelineFlow, PipelineFlowFactory, RequestContext}
 import org.squbs.testkit.Timeouts._
 
 import scala.concurrent.{Await, Future}

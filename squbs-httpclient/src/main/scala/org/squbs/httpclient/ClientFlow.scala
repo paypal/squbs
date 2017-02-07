@@ -36,7 +36,7 @@ import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import com.typesafe.sslconfig.ssl.SSLConfigFactory
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.env.{Default, Environment, EnvironmentResolverRegistry}
-import org.squbs.pipeline.streaming.{ClientPipeline, Context, PipelineExtension, PipelineSetting, RequestContext}
+import org.squbs.pipeline.{ClientPipeline, Context, PipelineExtension, PipelineSetting, RequestContext}
 
 import scala.util.{Failure, Try}
 

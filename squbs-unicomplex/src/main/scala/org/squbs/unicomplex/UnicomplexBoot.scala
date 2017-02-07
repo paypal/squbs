@@ -29,7 +29,7 @@ import akka.util.Timeout
 import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.lifecycle.ExtensionLifecycle
-import org.squbs.pipeline.streaming.PipelineSetting
+import org.squbs.pipeline.PipelineSetting
 import org.squbs.util.ConfigUtil._
 import org.squbs.unicomplex.UnicomplexBoot.CubeInit
 
@@ -366,7 +366,7 @@ object UnicomplexBoot extends LazyLogging {
         val webContext = serviceConfig.getString("web-context")
         val pipeline = serviceConfig.getOption[String]("pipeline")
         val defaultFlowsOn = serviceConfig.getOption[Boolean]("defaultPipeline")
-        val streamingPipelineSettings = (pipeline, defaultFlowsOn)
+        val pipelineSettings = (pipeline, defaultFlowsOn)
 
         val listeners = serviceConfig.getOption[Seq[String]]("listeners").fold(Seq("default-listener")) { list =>
           if (list.contains("*")) aliases.values.toSeq.distinct
@@ -380,8 +380,8 @@ object UnicomplexBoot extends LazyLogging {
           }
         }
 
-        val service = startServiceRoute(clazz, webContext, listeners, streamingPipelineSettings) orElse
-          startServiceActor(clazz, webContext, listeners, streamingPipelineSettings,
+        val service = startServiceRoute(clazz, webContext, listeners, pipelineSettings) orElse
+          startServiceActor(clazz, webContext, listeners, pipelineSettings,
             serviceConfig.get[Boolean]("init-required", false))
         service match {
           case Success(svc) => svc

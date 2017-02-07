@@ -24,7 +24,7 @@ import akka.pattern._
 import akka.stream.FlowShape
 import akka.stream.scaladsl._
 import akka.util.Timeout
-import org.squbs.pipeline.streaming.{Context, PipelineExtension, PipelineSetting, RequestContext, ServerPipeline}
+import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, RequestContext, ServerPipeline}
 
 import scala.annotation.tailrec
 import scala.language.postfixOps

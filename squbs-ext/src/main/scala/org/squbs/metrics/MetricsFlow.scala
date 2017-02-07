@@ -17,11 +17,11 @@
 package org.squbs.metrics
 
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Flow, BidiFlow}
-import com.codahale.metrics.{Timer, MetricRegistry}
-import org.squbs.pipeline.streaming._
+import akka.stream.scaladsl.{BidiFlow, Flow}
+import com.codahale.metrics.{MetricRegistry, Timer}
+import org.squbs.pipeline.RequestContext
 
-import scala.util.{Try, Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object MetricsFlow {
 

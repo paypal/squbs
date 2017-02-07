@@ -33,7 +33,7 @@ import akka.stream.scaladsl.Flow
 import akka.util.Timeout
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
-import org.squbs.pipeline.streaming.PipelineSetting
+import org.squbs.pipeline.PipelineSetting
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 
 import scala.annotation.varargs

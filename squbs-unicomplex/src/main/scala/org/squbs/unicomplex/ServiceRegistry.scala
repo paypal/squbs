@@ -33,7 +33,7 @@ import akka.stream.TLSClientAuth.{Need, Want}
 import akka.stream.scaladsl.Flow
 import akka.stream.{ActorMaterializer, BindFailedException}
 import com.typesafe.config.Config
-import org.squbs.pipeline.streaming.{Context, PipelineExtension, PipelineSetting, ServerPipeline}
+import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, ServerPipeline}
 import org.squbs.unicomplex.StatsSupport.StatsHolder
 
 import scala.language.postfixOps

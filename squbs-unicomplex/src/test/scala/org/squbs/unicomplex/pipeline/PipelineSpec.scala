@@ -28,7 +28,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
-import org.squbs.pipeline.streaming._
+import org.squbs.pipeline.{Context, PipelineFlow, PipelineFlowFactory, RequestContext}
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex._
 

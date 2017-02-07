@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package org.squbs.pipeline.streaming
+package org.squbs.pipeline
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.stream.{ActorMaterializer, BidiShape}
 import akka.stream.scaladsl._
+import akka.stream.{ActorMaterializer, BidiShape}
 import akka.testkit.TestKit
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{Matchers, FlatSpecLike}
-import Timeouts._
+import org.scalatest.{FlatSpecLike, Matchers}
+import Timeouts.awaitMax
 
 import scala.concurrent.Await
 import scala.util.{Success, Try}
@@ -101,17 +101,17 @@ object PipelineExtensionSpec {
     s"""
        |dummyFlow1 {
        |  type = squbs.pipelineflow
-       |  factory = org.squbs.pipeline.streaming.DummyFlow1
+       |  factory = org.squbs.pipeline.DummyFlow1
        |}
        |
        |preFlow {
        |  type = squbs.pipelineflow
-       |  factory = org.squbs.pipeline.streaming.PreFlow
+       |  factory = org.squbs.pipeline.PreFlow
        |}
        |
        |postFlow {
        |  type = squbs.pipelineflow
-       |  factory = org.squbs.pipeline.streaming.PostFlow
+       |  factory = org.squbs.pipeline.PostFlow
        |}
        |
        |squbs.pipeline.server.default {
@@ -126,7 +126,7 @@ class PipelineExtensionSpec2 extends TestKit(ActorSystem("PipelineExtensionSpec2
   s"""
      |notExists {
      |  type = squbs.pipelineflow
-     |  factory = org.squbs.pipeline.streaming.NotExists
+     |  factory = org.squbs.pipeline.NotExists
      |}
    """.stripMargin))) with FlatSpecLike with Matchers {
 
@@ -141,7 +141,7 @@ class PipelineExtensionSpec3 extends TestKit(ActorSystem("PipelineExtensionSpec3
   s"""
      |dummyFlow1 {
      |  type = squbs.pipelineflow
-     |  factory = org.squbs.pipeline.streaming.DummyFlow1
+     |  factory = org.squbs.pipeline.DummyFlow1
      |}
    """.stripMargin))) with FlatSpecLike with Matchers {
 

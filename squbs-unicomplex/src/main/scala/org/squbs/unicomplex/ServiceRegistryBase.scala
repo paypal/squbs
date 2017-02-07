@@ -21,7 +21,7 @@ import akka.actor.Actor._
 import akka.actor.{ActorRef, ActorContext}
 import akka.event.LoggingAdapter
 import com.typesafe.config.Config
-import org.squbs.pipeline.streaming.PipelineSetting
+import org.squbs.pipeline.PipelineSetting
 import org.squbs.util.ConfigUtil._
 
 import scala.concurrent.ExecutionContext

@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package org.squbs.pipeline.streaming
+package org.squbs.pipeline
 
 import java.util
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{HttpResponse, HttpRequest}
 import akka.http.scaladsl.model.headers.RawHeader
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.testkit.TestKit
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
 import org.scalatest.OptionValues._
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 import scala.util.Try
 

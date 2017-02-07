@@ -1,6 +1,6 @@
 import Versions._
 
-name := "squbs-streamingpipeline"
+name := "squbs-pipeline"
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % scalatestV % "test->*",
@@ -12,6 +12,6 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 )
 
-(testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-streamingpipeline")
+(testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pipeline")
 
 updateOptions := updateOptions.value.withCachedResolution(true)

@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package org.squbs.pipeline
+package org.squbs
 
 import akka.NotUsed
 import akka.stream.BidiShape
-import akka.stream.scaladsl.{Merge, Broadcast, GraphDSL, BidiFlow}
+import akka.stream.scaladsl.{BidiFlow, Broadcast, GraphDSL, Merge}
 
-package object streaming {
+package object pipeline {
 
   // (BidiFlow name, defaults on/off )
   type PipelineSetting = (Option[String], Option[Boolean])
