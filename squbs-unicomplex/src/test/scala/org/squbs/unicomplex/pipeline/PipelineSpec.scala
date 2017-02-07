@@ -61,7 +61,7 @@ object PipelineSpec {
        |  factory = org.squbs.unicomplex.pipeline.PostFlow
        |}
        |
-       |squbs.pipeline.streaming.defaults {
+       |squbs.pipeline.server.default {
        |  pre-flow =  preFlow
        |  post-flow = postFlow
        |}

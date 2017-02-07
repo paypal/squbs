@@ -40,7 +40,7 @@ class AbortableBidiFlowSpec extends TestKit(ActorSystem("AbortableBidiFlowSpec",
   }
 
   it should "run the entire flow" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow2"), Some(true)), Context("dummy"))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow2"), Some(true)), Context("dummy", ServerPipeline))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)
@@ -66,7 +66,7 @@ class AbortableBidiFlowSpec extends TestKit(ActorSystem("AbortableBidiFlowSpec",
   }
 
   it should "bypass rest of the flow when HttpResponse is set in RequestContext" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow2"), Some(true)), Context("dummy"))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow2"), Some(true)), Context("dummy", ServerPipeline))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)
@@ -110,7 +110,7 @@ object AbortableBidiFlowSpec {
        |  factory = org.squbs.pipeline.streaming.PostFlow
        |}
        |
-       |squbs.pipeline.streaming.defaults {
+       |squbs.pipeline.server.default {
        |  pre-flow =  preFlow
        |  post-flow = postFlow
        |}

@@ -1,12 +1,12 @@
-#Streaming Request/Response Pipeline
+#Request/Response Pipeline
 
 ### Overview
 
 We often need to have common infrastructure functionality or organizational standards across different services/clients.  Such infrastructure includes, but is not limited, to logging, metrics collection, request tracing, authentication/authorization, tracking, cookie management, A/B testing, etc.
 
-As squbs promotes separation of concerns, such logic would belong to infrastructure and not service/client implementation.  The squbs streaming pipeline allows infrastructure to provide components installed into a service/client without service/client owner having to worry about such aspects.
+As squbs promotes separation of concerns, such logic would belong to infrastructure and not service/client implementation.  The squbs pipeline allows infrastructure to provide components installed into a service/client without service/client owner having to worry about such aspects.
 
-Generally speaking, a squbs streaming pipeline is a Bidi Flow acting as a bridge in between: 
+Generally speaking, a squbs pipeline is a Bidi Flow acting as a bridge in between: 
 
   * the Akka HTTP layer and the squbs service:
     * All request messages sent from Akka Http to squbs service will go thru the pipeline
@@ -15,14 +15,19 @@ Generally speaking, a squbs streaming pipeline is a Bidi Flow acting as a bridge
     * 	All request messages sent from squbs client to Akka HTTP host connection pool will go thru the pipeline
     * Vice versa, all response messages sent from Akka HTTP host connection pool to squbs client will go thru the pipeline. 
 
-### Streaming pipeline declaration
+### Pipeline declaration
 
 Default pre/post flows specified via the below configuration are automatically connected to the server/client side pipeline unless `defaultPipeline` in individual service/client configuration is set to `off`:
 
 ```
-squbs.pipeline.streaming.defaults {
-	pre-flow = defaultPreFlow
-	post-flow = defaultPostFlow
+squbs.pipeline.server.default {
+	pre-flow = defaultServerPreFlow
+	post-flow = defaultServerPostFlow
+}
+
+squbs.pipeline.client.default {
+	pre-flow = defaultClientPreFlow
+	post-flow = defaultClientPostFlow
 }
 ```
 

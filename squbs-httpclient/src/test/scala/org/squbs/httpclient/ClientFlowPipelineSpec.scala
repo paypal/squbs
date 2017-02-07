@@ -51,7 +51,7 @@ object ClientFlowPipelineSpec {
        |  factory = org.squbs.httpclient.PostFlow
        |}
        |
-       |squbs.pipeline.streaming.defaults {
+       |squbs.pipeline.client.default {
        |  pre-flow =  preFlow
        |  post-flow = postFlow
        |}

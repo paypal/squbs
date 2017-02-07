@@ -24,7 +24,11 @@ import com.typesafe.config.ConfigObject
 import scala.annotation.tailrec
 import scala.util.Try
 
-case class Context(name: String)
+sealed trait PipelineType
+case object ServerPipeline extends PipelineType
+case object ClientPipeline extends PipelineType
+
+case class Context(name: String, pipelineType: PipelineType)
 
 trait PipelineFlowFactory {
 
@@ -33,15 +37,23 @@ trait PipelineFlowFactory {
 }
 
 class PipelineExtensionImpl(flowFactoryMap: Map[String, PipelineFlowFactory],
-                            defaultPreFlow: Option[String],
-                            defaultPostFlow: Option[String])(implicit system: ActorSystem) extends Extension {
+                            serverDefaultFlows: (Option[String], Option[String]),
+                            clientDefaultFlows: (Option[String], Option[String]))
+                           (implicit system: ActorSystem) extends Extension {
 
   def getFlow(pipelineSetting: PipelineSetting, context: Context): Option[PipelineFlow] = {
 
     val (appFlow, defaultsOn) = pipelineSetting
 
-    val pipelineFlowNames = (if(defaultsOn getOrElse true) { defaultPreFlow :: appFlow :: defaultPostFlow :: Nil }
-                             else { appFlow :: Nil }).flatten
+    val (defaultPreFlow, defaultPostFlow) =
+      if(defaultsOn getOrElse true) {
+        context.pipelineType match {
+          case ServerPipeline => serverDefaultFlows
+          case ClientPipeline => clientDefaultFlows
+        }
+      } else (None, None)
+
+    val pipelineFlowNames = (defaultPreFlow :: appFlow :: defaultPostFlow :: Nil).flatten
 
     if(pipelineFlowNames.isEmpty) None
     else buildPipeline(pipelineFlowNames, context)
@@ -71,8 +83,10 @@ object PipelineExtension extends ExtensionId[PipelineExtensionImpl] with Extensi
 
   override def createExtension(system: ExtendedActorSystem): PipelineExtensionImpl = {
 
+    val config = system.settings.config
+
     import collection.JavaConversions._
-    val flows = system.settings.config.root.toSeq collect {
+    val flows = config.root.toSeq collect {
       case (n, v: ConfigObject) if v.toConfig.hasPath("type") && v.toConfig.getString("type") == "squbs.pipelineflow" =>
         (n, v.toConfig)
     }
@@ -86,9 +100,15 @@ object PipelineExtension extends ExtensionId[PipelineExtensionImpl] with Extensi
       flowMap = flowMap + (name -> flowFactory)
     }
 
-    val pre = Try(system.settings.config.getString("squbs.pipeline.streaming.defaults.pre-flow")).toOption
-    val post = Try(system.settings.config.getString("squbs.pipeline.streaming.defaults.post-flow")).toOption
-    new PipelineExtensionImpl(flowMap, pre, post)(system)
+    val serverDefaultPreFlow = Try(config.getString("squbs.pipeline.server.default.pre-flow")).toOption
+    val serverDefaultPostFlow = Try(config.getString("squbs.pipeline.server.default.post-flow")).toOption
+    val clientDefaultPreFlow = Try(config.getString("squbs.pipeline.client.default.pre-flow")).toOption
+    val clientDefaultPostFlow = Try(config.getString("squbs.pipeline.client.default.post-flow")).toOption
+
+    new PipelineExtensionImpl(
+      flowMap,
+      (serverDefaultPreFlow, serverDefaultPostFlow),
+      (clientDefaultPreFlow, clientDefaultPostFlow))(system)
   }
 
   override def lookup(): ExtensionId[_ <: Extension] = PipelineExtension

@@ -63,7 +63,7 @@ public class ClientFlowPipelineTest {
             "  type = squbs.pipelineflow\n" +
             "  factory = org.squbs.httpclient.PostFlow\n" +
             "}\n" +
-            "squbs.pipeline.streaming.defaults {\n" +
+            "squbs.pipeline.client.default {\n" +
             "  pre-flow =  preFlow\n" +
             "  post-flow = postFlow\n" +
             "}\n" +

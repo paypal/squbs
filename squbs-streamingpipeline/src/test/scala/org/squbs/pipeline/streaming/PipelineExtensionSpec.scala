@@ -40,7 +40,7 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
   }
 
   it should "build the flow with defaults" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)), Context("dummy"))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)), Context("dummy", ServerPipeline))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)
@@ -63,7 +63,7 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
   }
 
   it should "build the flow without defaults when defaults are turned off" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(false)), Context("dummy"))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(false)), Context("dummy", ServerPipeline))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)
@@ -83,16 +83,16 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
 
   it should "throw IllegalArgumentException when getFlow is called with a bad flow name" in {
     intercept[IllegalArgumentException] {
-      pipelineExtension.getFlow((Some("badPipelineName"), Some(true)), Context("dummy"))
+      pipelineExtension.getFlow((Some("badPipelineName"), Some(true)), Context("dummy", ServerPipeline))
     }
   }
 
   it should "return None when no custom flow exists and defaults are off" in {
-    pipelineExtension.getFlow((None, Some(false)), Context("dummy")) should be (None)
+    pipelineExtension.getFlow((None, Some(false)), Context("dummy", ServerPipeline)) should be (None)
   }
 
   it should "build the flow with defaults when defaultsOn param is set to None" in {
-    pipelineExtension.getFlow((None, None), Context("dummy")) should not be (None)
+    pipelineExtension.getFlow((None, None), Context("dummy", ServerPipeline)) should not be (None)
   }
 }
 
@@ -114,7 +114,7 @@ object PipelineExtensionSpec {
        |  factory = org.squbs.pipeline.streaming.PostFlow
        |}
        |
-       |squbs.pipeline.streaming.defaults {
+       |squbs.pipeline.server.default {
        |  pre-flow =  preFlow
        |  post-flow = postFlow
        |}
@@ -152,11 +152,11 @@ class PipelineExtensionSpec3 extends TestKit(ActorSystem("PipelineExtensionSpec3
   }
 
   it should "return None when no custom flow exists and no defaults specified in config" in {
-    pipelineExtension.getFlow((None, Some(true)), Context("dummy")) should be (None)
+    pipelineExtension.getFlow((None, Some(true)), Context("dummy", ServerPipeline)) should be (None)
   }
 
   it should "be able to build the flow when no defaults are specified in config" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)), Context("dummy"))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)), Context("dummy", ServerPipeline))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)

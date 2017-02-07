@@ -53,7 +53,7 @@ object MetricsFlowSpec {
        |  type = squbs.pipelineflow
        |  factory = org.squbs.unicomplex.pipeline.DefaultFlow
        |}
-       |squbs.pipeline.streaming.defaults {
+       |squbs.pipeline.server.default {
        |  pre-flow =  preFlow
        |}
     """.stripMargin

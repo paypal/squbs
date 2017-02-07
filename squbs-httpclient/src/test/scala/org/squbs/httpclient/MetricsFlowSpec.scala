@@ -45,7 +45,7 @@ object MetricsFlowSpec {
        |  factory = org.squbs.httpclient.DefaultFlow
        |}
        |
-       |squbs.pipeline.streaming.defaults {
+       |squbs.pipeline.client.default {
        |  pre-flow =  preFlow
        |}
        |
