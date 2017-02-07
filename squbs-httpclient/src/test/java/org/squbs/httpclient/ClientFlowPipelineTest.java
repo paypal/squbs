@@ -77,11 +77,11 @@ public class ClientFlowPipelineTest {
             "clientWithCustomPipelineWithoutDefaults {\n" +
             "  type = squbs.httpclient\n" +
             "  pipeline = dummyFlow\n" +
-            "  defaultPipelineOn = false\n" +
+            "  defaultPipeline = off\n" +
             "}\n" +
             "clientWithNoPipeline {\n" +
             "  type = squbs.httpclient\n" +
-            "  defaultPipelineOn = false\n" +
+            "  defaultPipeline = off\n" +
             "}\n";
 
     private static final ActorSystem system = ActorSystem.create("ClientFlowPipelineSpec",

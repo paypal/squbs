@@ -108,7 +108,7 @@ object ClientFlow {
       }
 
     val pipelineName = clientSpecificConfig.flatMap(_.getOption[String]("pipeline"))
-    val defaultFlowsOn = clientSpecificConfig.flatMap(_.getOption[Boolean]("defaultPipelineOn"))
+    val defaultFlowsOn = clientSpecificConfig.flatMap(_.getOption[Boolean]("defaultPipeline"))
 
     val mBeanServer = ManagementFactory.getPlatformMBeanServer
     val beanName = new ObjectName(s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=$name")

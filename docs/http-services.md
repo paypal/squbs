@@ -175,8 +175,8 @@ squbs-services = [
     # Optional, defaults to a default pipeline.
     pipeline = some-pipeline
     
-    # Optional, disables the default pipeline if set to false.
-    defaultPipelineOn = true                
+    # Optional, disables the default pipeline if set to false.  If missing, it is set to on.
+    defaultPipeline = on
     
     # Optional, only applies to actors.
     init-required = false
@@ -190,7 +190,7 @@ The web-context is a string that uniquely identifies the web context of a reques
 
 Optionally, the listeners parameter declares a list of listeners to bind this service. Listener binding is discussed in the [Listener Binding](#listener-binding) section, below.
 
-The pipeline is a set of request pre- and post-processors before and after the request gets processed by the request handler. The pipeline name can be specified by a `pipeline` parameter. Along with the pipeline specified, a default pipeline set in the configuration will be plugged together for the request/response. To disable the default pipeline for this service, you can set `defaultPipelineOn = false` in `META-INF/squbs-meta.conf`. Please refer to [Streaming Request/Response Pipeline](streamingpipeline.md) for more information.
+The pipeline is a set of request pre- and post-processors before and after the request gets processed by the request handler. The pipeline name can be specified by a `pipeline` parameter. Along with the pipeline specified, a default pipeline set in the configuration will be plugged together for the request/response. To disable the default pipeline for this service, you can set `defaultPipeline = off` in `META-INF/squbs-meta.conf`. Please refer to [Request/Response Pipeline](streamingpipeline.md) for more information.
 
 ### Listener Binding
 

@@ -68,12 +68,12 @@ object ClientFlowPipelineSpec {
        |clientWithCustomPipelineWithoutDefaults {
        |  type = squbs.httpclient
        |  pipeline = dummyFlow
-       |  defaultPipelineOn = false
+       |  defaultPipeline = off
        |}
        |
        |clientWithNoPipeline {
        |  type = squbs.httpclient
-       |  defaultPipelineOn = false
+       |  defaultPipeline = off
        |}
     """.stripMargin
   )

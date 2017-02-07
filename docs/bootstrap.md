@@ -169,8 +169,8 @@ squbs-services = [
     # Optional, defaults to a default pipeline.
     pipeline = some-pipeline
     
-    # Optional, disables the default pipeline if set to false.
-    defaultPipelineOn = true                
+    # Optional, disables the default pipeline if set to off.  If missing, it is set to on.
+    defaultPipeline = on
     
     # Optional, only applies to actors.
     init-required = false

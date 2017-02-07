@@ -365,7 +365,7 @@ object UnicomplexBoot extends LazyLogging {
         val clazz = Class.forName(className, true, getClass.getClassLoader)
         val webContext = serviceConfig.getString("web-context")
         val pipeline = serviceConfig.getOption[String]("pipeline")
-        val defaultFlowsOn = serviceConfig.getOption[Boolean]("defaultPipelineOn")
+        val defaultFlowsOn = serviceConfig.getOption[Boolean]("defaultPipeline")
         val streamingPipelineSettings = (pipeline, defaultFlowsOn)
 
         val listeners = serviceConfig.getOption[Seq[String]]("listeners").fold(Seq("default-listener")) { list =>
