@@ -158,7 +158,8 @@ class ClientConfigurationSpec extends FlatSpec with Matchers {
   }
 
   def assertJmxValue(clientName: String, key: String, expectedValue: Any) = {
-    val oName = ObjectName.getInstance(s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=$clientName")
+    val oName = ObjectName.getInstance(
+      s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=${ObjectName.quote(clientName)}")
     val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
     actualValue shouldEqual expectedValue
   }

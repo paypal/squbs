@@ -18,6 +18,7 @@ package org.squbs.httpclient
 
 import java.lang.management.ManagementFactory
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
 import javax.management.ObjectName
 
 import akka.actor.ActorSystem
@@ -44,6 +45,7 @@ object ClientFlow {
 
   val AkkaHttpClientCustomContext = "akka-http-client-custom-context"
   type ClientConnectionFlow[T] = Flow[(HttpRequest, T), (Try[HttpResponse], T), HostConnectionPool]
+  private[httpclient] val defaultResolverRegistrationRecord = new ConcurrentHashMap[String, Unit]
 
   def create[T](name: String, system: ActorSystem, mat: Materializer):
   js.Flow[Pair[jm.HttpRequest, T], Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] =
@@ -73,6 +75,12 @@ object ClientFlow {
               settings: Option[ConnectionPoolSettings] = None,
               env: Environment = Default)(implicit system: ActorSystem, fm: Materializer): ClientConnectionFlow[T] = {
 
+    defaultResolverRegistrationRecord.computeIfAbsent(system.name,
+      new java.util.function.Function[String, Unit] {
+        override def apply(t: String): Unit =
+          ResolverRegistry(system).register[HttpEndpoint](new DefaultHttpEndpointResolver)
+      })
+
     val environment = env match {
       case Default => EnvironmentResolverRegistry(system).resolve
       case _ => env
@@ -84,7 +92,7 @@ object ClientFlow {
 
     val config = system.settings.config
     import org.squbs.util.ConfigUtil._
-    val clientSpecificConfig = config.getOption[Config](name).filter {
+    val clientSpecificConfig = config.getOption[Config](s""""$name"""").filter {
       _.getOption[String]("type") contains "squbs.httpclient"
     }
     val clientConfigWithDefaults = clientSpecificConfig.map(_.withFallback(config)).getOrElse(config)
@@ -111,7 +119,8 @@ object ClientFlow {
     val defaultFlowsOn = clientSpecificConfig.flatMap(_.getOption[Boolean]("defaultPipelineOn"))
 
     val mBeanServer = ManagementFactory.getPlatformMBeanServer
-    val beanName = new ObjectName(s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=$name")
+    val beanName = new ObjectName(
+      s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=${ObjectName.quote(name)}")
     if(!mBeanServer.isRegistered(beanName)) mBeanServer.registerMBean(HttpClientConfigMXBeanImpl(name,
                                                                                                  endpoint.uri.toString,
                                                                                                  environment.name,

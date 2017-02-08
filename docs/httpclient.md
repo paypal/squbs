@@ -98,6 +98,11 @@ HttpRequest complexRequest =
 
 `squbs-httpclient` does not require hostname/port combination to be provided during client pool creation.  Instead it allows a service discovery chain to be registered which allows resolving `HttpEndpoint`s by a string identifier by running through the registered service discovery mechanisms.  For instance, in the above example, `"sample"` is the logical name of the service that client wants to connect, the configured service discovery chain will resolve it to an `HttpEndpoint` which includes host and port, e.g., `http://akka.io:80`.
 
+Please note, you can still pass a valid http URI as a string to `ClientFlow` as a default resolver to resolve valid http URIs is pre-registered in the service discovery chain by default:
+
+   * `ClientFlow[Int]("http://akka.io")` in Scala
+   * `ClientFlow.create("http://akka.io", system, mat)` in Java
+
 There are two variations of registering resolvers as shown below. The closure style allows more compact and readable code. However, the subclass has the power to keep state and make resolution decisions based on such state:
 
 ##### Scala
