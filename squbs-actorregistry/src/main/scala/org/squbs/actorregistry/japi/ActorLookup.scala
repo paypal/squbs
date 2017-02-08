@@ -1,5 +1,5 @@
 /*
- *  Copyright 2015 PayPal
+ *  Copyright 2015-2017 PayPal
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,11 +16,13 @@
 package org.squbs.actorregistry.japi
 
 import java.util.Optional
+import java.util.concurrent.CompletionStage
 
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.util.Timeout
 import org.squbs.actorregistry.{ActorLookup => SActorLookup}
 
+import scala.compat.java8.FutureConverters._
 import scala.compat.java8.OptionConverters._
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -66,17 +68,17 @@ class ActorLookup[T <: AnyRef] private[japi] (private[japi] val name: Option[Str
  *
     * @param msg The message to send
     * @param timeout The response timeout, in milliseconds
-    * @return The Future of the response
+    * @return The CompletionStage of the response
     */
-  def ask(msg: Any, timeout: Long): Future[T] = ask(msg, timeout.milliseconds)
+  def ask(msg: Any, timeout: Long): CompletionStage[T] = ask(msg, timeout.milliseconds)
 
   /**
     * Sends a message to an ActorRef
     * @param msg The message to send
     * @param timeout The response timeout
-    * @return The Future of the response
+    * @return The CompletionStage of the response
     */
-  def ask(msg: Any, timeout: Timeout): Future[T] = getLookup(msg).ask(msg)(timeout, refFactory)
+  def ask(msg: Any, timeout: Timeout): CompletionStage[T] = getLookup(msg).ask(msg)(timeout, refFactory).toJava
 
   def resolveOne(timeout: FiniteDuration): Future[ActorRef] =
     new SActorLookup(responseType, requestType, name, responseType != classOf[AnyRef]).resolveOne(timeout)
@@ -110,6 +112,7 @@ class ActorLookup[T <: AnyRef] private[japi] (private[japi] val name: Option[Str
     */
   def lookup[U <: AnyRef](name: String, responseType: Class[U]): ActorLookup[U] =
     new ActorLookup(Some(name), None, responseType)(refFactory)
+
 
   /**
     * Creates an ActorLookup looking up an actor by name.
