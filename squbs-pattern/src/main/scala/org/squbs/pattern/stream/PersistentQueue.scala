@@ -16,14 +16,15 @@
 package org.squbs.pattern.stream
 
 import java.io.{File, FileNotFoundException}
+import java.util.function.{Function => JFunc}
 
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
 import net.openhft.chronicle.bytes.MappedBytesStore
 import net.openhft.chronicle.core.OS
 import net.openhft.chronicle.queue.ChronicleQueueBuilder
-import net.openhft.chronicle.queue.impl.StoreFileListener
 import net.openhft.chronicle.queue.impl.single.SingleChronicleQueue
+import net.openhft.chronicle.queue.impl.{RollingResourcesCache, StoreFileListener}
 import net.openhft.chronicle.wire.{ReadMarshallable, WireIn, WireOut, WriteMarshallable}
 import org.slf4j.LoggerFactory
 
@@ -33,7 +34,7 @@ case class Event[T](outputPortId: Int, index: Long, entry: T)
   *
   * @tparam T The type of elements to be stored in the queue.
   */
-class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x => {}))(implicit val serializer: QueueSerializer[T]) {
+class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ => {})(implicit val serializer: QueueSerializer[T]) {
 
   def this(config: Config)(implicit serializer: QueueSerializer[T]) = this(QueueConfig.from(config))
 
@@ -47,15 +48,18 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
 
   val logger = Logger(LoggerFactory.getLogger(this.getClass))
 
-  private val queue = ChronicleQueueBuilder
+  private[stream] val resourceManager = new ResourceManager
+
+  private val builder = ChronicleQueueBuilder
     .single(persistDir.getAbsolutePath)
     .wireType(wireType)
     .rollCycle(rollCycle)
     .blockSize(blockSize.toInt)
     .indexSpacing(indexSpacing)
     .indexCount(indexCount)
-    .storeFileListener(new ResourceManager)
-    .build()
+    .storeFileListener(resourceManager)
+
+  private val queue = builder.build()
 
   private val appender = queue.acquireAppender
   private val reader = Vector.tabulate(outputPorts)(_ => queue.createTailer)
@@ -70,7 +74,21 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
   private val cycle = Array.ofDim[Int](outputPorts)
   private val lastCommitIndex = Array.ofDim[Long](outputPorts)
 
-  val totalOutputPorts = outputPorts
+  val totalOutputPorts: Int = outputPorts
+
+  import SingleChronicleQueue.SUFFIX
+
+  // `fileIdParser` will parse a given filename to its long value.
+  // The value is based on epoch time and grows incrementally.
+  // https://github.com/OpenHFT/Chronicle-Queue/blob/chronicle-queue-4.5.13/src/main/java/net/openhft/chronicle/queue/RollCycle.java#L35
+  private[stream] val fileIdParser = new RollingResourcesCache(queue.rollCycle(), queue.epoch(),
+    new JFunc[String, File] {
+      def apply(name: String) = new File(builder.path(), name + SUFFIX)
+    },
+    new JFunc[File, String] {
+      def apply(file: File): String = file.getName.stripSuffix(SUFFIX)
+    }
+  )
 
   private def mountIndexFile(): Unit = {
     indexFile = IndexFile.of(path, OS.pageSize())
@@ -186,17 +204,21 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = (x
     }
 
     override def onReleased(cycle: Int, file: File): Unit =
-      if (minCycle >= cycle) deleteFiles(cycle, fileNameToLong(file))
+      if (minCycle >= cycle) deleteOlderFiles(cycle, file)
 
     private def minCycle = reader.iterator.map(_.cycle).min
 
-    private def fileNameToLong(file: File): Long = file.getName
-      .stripSuffix(SingleChronicleQueue.SUFFIX).split("-").last.toLong
-
-    private def deleteFiles(cycle: Int, fileNameInLong: Long): Unit = Option(persistDir.listFiles) foreach {
-      f => f.filterNot(f => f.getName.equals(Tailer) || fileNameToLong(f) >= fileNameInLong).foreach {
-        file => logger.info("File released {} - {}", cycle.toString, file.getPath)
+    // deletes old files whose long value (based on epoch) is < released file's long value.
+    private def deleteOlderFiles(cycle: Int, releasedFile: File): Unit = {
+      val files = Option(persistDir.listFiles).toArray.flatten.filterNot(_.getName == Tailer).toSeq
+      if (files.nonEmpty) {
+        val releasedFileLong = fileIdParser.toLong(releasedFile)
+        files.filter { file =>
+          file.getName.endsWith(SUFFIX) && (fileIdParser.toLong(file) < releasedFileLong)
+        } foreach { file =>
+          logger.info("File released {} - {}", cycle.toString, file.getPath)
           file.delete()
+        }
       }
     }
   }

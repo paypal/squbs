@@ -19,10 +19,13 @@ import java.io.{File, FileNotFoundException}
 import java.nio.file.Files
 
 import akka.util.ByteString
+import net.openhft.chronicle.queue.RollCycles
 import org.scalatest.OptionValues._
 import org.scalatest._
 
-class PersistentQueueSpec extends FlatSpec with Matchers {
+import scala.annotation.tailrec
+
+class PersistentQueueSpec extends FlatSpec with Matchers with PrivateMethodTester {
 
   implicit val serializer = QueueSerializer[ByteString]()
 
@@ -144,5 +147,40 @@ class PersistentQueueSpec extends FlatSpec with Matchers {
     val badPath = Files.createTempFile("testException", "test")
     a [FileNotFoundException] should be thrownBy new PersistentQueue[ByteString](QueueConfig(badPath.toFile))
     Files.delete(badPath)
+  }
+
+  it should "clean up buffer resources automatically" in {
+    val tempPath = Files.createTempDirectory("persistent_queue")
+    val queue = new PersistentQueue[ByteString](QueueConfig(tempPath.toFile, rollCycle = RollCycles.TEST_SECONDLY))
+
+    def dataFiles = tempPath.toFile.listFiles().toList.filterNot(_.getName == "tailer.idx")
+
+    addToQueue(0, 0)
+
+    @tailrec
+    def addToQueue(size: Int, i: Int): Unit = {
+      if (size < 4) {
+        val element = ByteString(s"Hello $i")
+        queue.enqueue(element)
+        addToQueue(dataFiles.size, i + 1)
+      }
+    }
+
+    dataFiles should not be empty
+    val deleteOlderFiles = PrivateMethod[(Int, File)]('deleteOlderFiles)
+
+    // case 1: it should not cleanup unprocessed queue file
+    val parser = queue.fileIdParser
+    val oldestFile = dataFiles.minBy(parser.toLong)
+    queue.resourceManager invokePrivate deleteOlderFiles(0, dataFiles.filter(_ != oldestFile).head)
+    dataFiles.filter(f => f == oldestFile) shouldBe empty
+    dataFiles should not be empty
+
+    // case 2: it should cleanup processed queue file, except last file
+    val newestFile = dataFiles.maxBy(parser.toLong)
+    queue.resourceManager invokePrivate deleteOlderFiles(0, newestFile)
+    dataFiles.filterNot(f => f == newestFile) shouldBe empty
+    queue.close()
+    delete(tempPath.toFile)
   }
 }
