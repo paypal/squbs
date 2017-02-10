@@ -74,6 +74,26 @@ class ClientFlowSpec  extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
     entity map { e => e shouldEqual "Hello World!" }
   }
 
+  it should "register the default http endpoint resolver" in {
+    val clientFlow = ClientFlow[Int](s"http://localhost:$port")
+    val responseFuture: Future[(Try[HttpResponse], Int)] =
+      Source.single(HttpRequest(uri = "/hello") -> 42)
+        .via(clientFlow)
+        .runWith(Sink.head)
+
+    val (Success(response), _) = Await.result(responseFuture, awaitMax)
+    response.status should be (StatusCodes.OK)
+    val entity = response.entity.dataBytes.runFold(ByteString(""))(_ ++ _) map(_.utf8String)
+    entity map { e => e shouldEqual "Hello World!" }
+  }
+
+  it should "register the default http endpoint resolver for each actor system" in {
+    implicit val system = ActorSystem("ClientFlowSecondSpec")
+    implicit val materializer = ActorMaterializer()
+    ClientFlow[Int]("https://akka.io")
+    Future { ClientFlow.defaultResolverRegistrationRecord.size should be >= 2 }
+  }
+
   it should "throw HttpClientEndpointNotExistException if it cannot resolve the client" in {
     an [HttpClientEndpointNotExistException] should be thrownBy {
       ClientFlow[Int]("cannotResolve")
