@@ -19,8 +19,8 @@ package org.squbs.streams
 import java.util.UUID
 
 import akka.actor.{Actor, ActorSystem, Props}
-import akka.stream.{ActorMaterializer, Attributes, FlowShape}
 import akka.stream.scaladsl._
+import akka.stream.{ActorMaterializer, Attributes, FlowShape}
 import akka.testkit.TestKit
 import akka.util.Timeout
 import org.scalatest.{AsyncFlatSpecLike, Matchers}
@@ -33,7 +33,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
 
   implicit val materializer = ActorMaterializer()
 
-  val timeout = 100 milliseconds
+  val timeout = 300 milliseconds
   val timeoutFailure = Failure(FlowTimeoutException("Flow timed out!"))
 
   it should "timeout a message if the flow does not process it within provided timeout" in {
@@ -99,7 +99,9 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
     implicit val askTimeout = Timeout(5.seconds)
-    val flow = Flow[(String, Long)].mapAsyncUnordered(1) { elem =>
+    val flow = Flow[(String, Long)]
+      .withAttributes(Attributes.inputBuffer(initial = 1, max = 1))
+      .mapAsyncUnordered(1) { elem =>
       (delayActor ? elem).mapTo[(String, Long)]
     }
 
@@ -180,7 +182,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
 
 class DelayActor extends Actor {
 
-  val delay = Map("a" -> 10.milliseconds, "b" -> 500.milliseconds, "c" -> 10.milliseconds)
+  val delay = Map("a" -> 10.milliseconds, "b" -> 1000.milliseconds, "c" -> 10.milliseconds)
   import context.dispatcher
 
   def receive = {

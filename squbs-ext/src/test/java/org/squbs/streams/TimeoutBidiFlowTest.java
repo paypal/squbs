@@ -47,7 +47,7 @@ public class TimeoutBidiFlowTest {
 
     final ActorSystem system = ActorSystem.create("TimeoutBidiFlowTest");
     final Materializer mat = ActorMaterializer.create(system);
-    final FiniteDuration timeout = FiniteDuration.apply(100, TimeUnit.MILLISECONDS);
+    final FiniteDuration timeout = FiniteDuration.apply(300, TimeUnit.MILLISECONDS);
     final Try<String> timeoutFailure = Failure.apply(new FlowTimeoutException("Flow timed out!"));
 
     @Test
