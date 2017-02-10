@@ -18,6 +18,7 @@ package org.squbs.httpclient;
 import akka.actor.ActorSystem;
 import akka.http.javadsl.HostConnectionPool;
 import akka.http.javadsl.model.*;
+import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.headers.RawHeader;
 import akka.japi.Pair;
 import akka.stream.ActorMaterializer;
@@ -26,8 +27,7 @@ import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import org.junit.AfterClass;
 import org.junit.Test;
-import org.squbs.endpoint.EndpointResolverRegistry;
-import org.squbs.httpclient.dummy.DummyServiceEndpointResolver;
+import org.squbs.resolver.ResolverRegistry;
 import org.squbs.httpclient.dummy.DummyServiceJavaTest;
 import org.squbs.marshallers.MarshalUnmarshal;
 import org.squbs.marshallers.json.*;
@@ -37,8 +37,9 @@ import scala.util.Try;
 import java.util.concurrent.CompletionStage;
 
 import static akka.http.javadsl.model.HttpRequest.*;
-import static org.junit.Assert.*;
-import static org.squbs.marshallers.json.XLangJsonSupport.*;
+import static org.junit.Assert.assertEquals;
+import static org.squbs.marshallers.json.XLangJsonSupport.marshaller;
+import static org.squbs.marshallers.json.XLangJsonSupport.unmarshaller;
 import static org.squbs.testkit.Timeouts.awaitMax;
 
 public class HttpClientTest {
@@ -59,7 +60,7 @@ public class HttpClientTest {
         }
         port = myPort;
         baseUrl = "http://localhost:" + port;
-        EndpointResolverRegistry.get(system).register(new DummyServiceEndpointResolver(baseUrl, system));
+        ResolverRegistry.get(system).register(HttpEndpoint.class, new JavaEndpointResolver(baseUrl));
     }
 
     private static final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool>

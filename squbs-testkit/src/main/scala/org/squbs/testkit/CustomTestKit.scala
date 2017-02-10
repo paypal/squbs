@@ -24,16 +24,19 @@ import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import org.squbs.lifecycle.GracefulStop
-import org.squbs.unicomplex.{UnicomplexBoot, JMX, Unicomplex}
+import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
+
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration
+import scala.collection.JavaConversions._
+import scala.util.Try
 
 object CustomTestKit {
 
-  val actorSystems = collection.concurrent.TrieMap.empty[String, ActorSystem]
+  private[testkit] val actorSystems = collection.concurrent.TrieMap.empty[String, ActorSystem]
 
   private[testkit] def checkInit(actorSystem: ActorSystem) {
-    if (actorSystems.putIfAbsent(actorSystem.name, actorSystem) == None)
+    if (actorSystems.putIfAbsent(actorSystem.name, actorSystem).isEmpty)
       sys.addShutdownHook {
         val stopTimeoutInMs = actorSystem.settings.config.getDuration("squbs.default-stop-timeout", TimeUnit.MILLISECONDS)
         Await.ready(actorSystem.terminate(), FiniteDuration(stopTimeoutInMs, TimeUnit.MILLISECONDS))
@@ -47,18 +50,41 @@ object CustomTestKit {
   def defaultActorSystemName =
     s"${actorSystemNameFrom((new Exception).getStackTrace.apply(stackTraceDepth).getClassName)}-${counter.getAndIncrement()}"
 
-  def actorSystemNameFrom(className: String) =
+  def actorSystemNameFrom(className: String): String =
     className
       .replace('.', '-')
       .replace('_', '-')
       .filter(_ != '$')
 
-  val defaultResource = Seq(getClass.getClassLoader.getResource("").getPath + "/META-INF/squbs-meta.conf")
+  /**
+    * Detects default resources for this test. These are usually at two locations:
+    * <ul>
+    *   <li>$project-path/target/scala-2.11/classes/META-INF/squbs-meta.conf</li>
+    *   <li>$project-path/target/scala-2.11/test-classes/META-INF/squbs-meta.conf</li>
+    * </ul>
+    * @return The list of detected resources
+    */
+  val defaultResources: Seq[String] = {
+    val loader = getClass.getClassLoader
+    val resourceHome = loader.getResource("").getPath
+    val lastSlashOption = Try {
+      if (resourceHome endsWith "/") resourceHome.lastIndexOf("/", resourceHome.length - 2)
+      else resourceHome.lastIndexOf("/")
+    }   .toOption.filter { _ > 0 }
+    val targetPathOption = lastSlashOption map { lastSlash => resourceHome.substring(0, lastSlash + 1) }
 
-  def defaultConfig(actorSystemName: String) = ConfigFactory.parseString(
+    targetPathOption map { targetPath =>
+      Seq("conf", "json", "properties")
+        .flatMap { ext => loader.getResources(s"META-INF/squbs-meta.$ext") }
+        .map { _.getPath}
+        .filter { _.startsWith(targetPath) }
+    } getOrElse Seq.empty
+  }
+
+  def defaultConfig(actorSystemName: String): Config = ConfigFactory.parseString(
     s"""
        |squbs {
-       |  actorsystem-name = ${actorSystemName}
+       |  actorsystem-name = $actorSystemName
        |  ${JMX.prefixConfig} = true
        |}
        |default-listener.bind-port = 0
@@ -73,10 +99,11 @@ object CustomTestKit {
     boot(config.map(_.withFallback(baseConfig)).getOrElse(baseConfig), resources, withClassPath)
   }
 
-  def boot(config: Config, resources: Option[Seq[String]], withClassPath: Option[Boolean]) = UnicomplexBoot(config)
-    .createUsing {(name, config) => ActorSystem(name, config)}
-    .scanResources(withClassPath.getOrElse(false), resources.getOrElse(defaultResource):_*)
-    .initExtensions.start()
+  def boot(config: Config, resources: Option[Seq[String]], withClassPath: Option[Boolean]): UnicomplexBoot =
+    UnicomplexBoot(config)
+      .createUsing {(name, config) => ActorSystem(name, config)}
+      .scanResources(withClassPath.getOrElse(false), resources.getOrElse(defaultResources):_*)
+      .initExtensions.start()
 }
 
 /**
@@ -96,6 +123,10 @@ abstract class CustomTestKit(val boot: UnicomplexBoot) extends TestKit(boot.acto
 
   def this(config: Config) {
     this(CustomTestKit.boot(config = Option(config)))
+  }
+
+  def this(withClassPath: Boolean) {
+    this(CustomTestKit.boot(withClassPath = Option(withClassPath)))
   }
 
   def this(resources: Seq[String], withClassPath: Boolean) {

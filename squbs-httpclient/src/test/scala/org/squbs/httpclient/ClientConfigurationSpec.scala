@@ -24,10 +24,9 @@ import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{FlatSpec, Matchers}
-import org.squbs.endpoint.{Endpoint, EndpointResolver, EndpointResolverRegistry}
-import org.squbs.env.Environment
-import org.squbs.util.ConfigUtil._
+import org.squbs.resolver._
 import org.squbs.unicomplex.JMX
+import org.squbs.util.ConfigUtil._
 
 import scala.concurrent.duration.Duration
 
@@ -90,11 +89,9 @@ object ClientConfigurationSpec {
   implicit val system = ActorSystem("ClientConfigurationSpec", appConfig.withFallback(defaultConfig))
   implicit val materializer = ActorMaterializer()
 
-  EndpointResolverRegistry(system).register(new EndpointResolver {
-    override def name: String = "LocalhostEndpointResolver"
+  ResolverRegistry(system).register[HttpEndpoint]("LocalhostEndpointResolver")
+    { (_, _) => Some(HttpEndpoint(s"http://localhost:1234")) }
 
-    override def resolve(svcName: String, env: Environment): Option[Endpoint] = Some(Endpoint(s"http://localhost:1234"))
-  })
 
 }
 

@@ -76,6 +76,7 @@ Also check out these [slightly more advanced samples](https://github.com/paypal/
 * [Streams Lifecycle](docs/streams-lifecycle.md)
 * [Experimental Support for Akka HTTP](docs/akka-http-experimental.md)
 * [Streaming Pipeline](docs/streamingpipeline.md)
+* [Resource Resolution](docs/resolver.md)
 
 ##Contributing to squbs
 Thank you very much for contributing to squbs. Please read the [contribution guidelines](CONTRIBUTING.md) for the process.

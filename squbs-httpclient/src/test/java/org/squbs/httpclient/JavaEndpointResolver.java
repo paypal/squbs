@@ -13,25 +13,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.squbs.endpoint;
+package org.squbs.httpclient;
 
-import org.squbs.env.DEV;
-import org.squbs.env.Default;
+import org.squbs.resolver.AbstractResolver;
 import org.squbs.env.Environment;
 
 import java.util.Optional;
 
-public class DummyLocalhostJavaResolver extends AbstractEndpointResolver {
+public class JavaEndpointResolver extends AbstractResolver<HttpEndpoint> {
 
-    @Override
-    public String name() {
-        return "DummyLocalhostJavaResolver";
+    private final String dummyServiceEndpoint;
+
+    public JavaEndpointResolver(String dummyServiceEndpoint) {
+        this.dummyServiceEndpoint = dummyServiceEndpoint;
     }
 
     @Override
-    public Optional<Endpoint> resolve(String svcName, Environment env) {
-        if (Default.value().equals(env) || DEV.value().equals(env)) {
-            return Optional.of(Endpoint.create("http://localhost:8080"));
+    public String name() {
+        return "DummyService";
+    }
+
+    @Override
+    public Optional<HttpEndpoint> resolve(String svcName, Environment env) {
+        if (name().equals(svcName)) {
+            return Optional.of(HttpEndpoint.apply(dummyServiceEndpoint));
         } else {
             return Optional.empty();
         }

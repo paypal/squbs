@@ -17,22 +17,21 @@
 package org.squbs.httpclient
 
 import java.io.InputStream
-import java.security.{SecureRandom, KeyStore}
-import javax.net.ssl.{SSLContext, TrustManagerFactory, KeyManagerFactory}
+import java.security.{KeyStore, SecureRandom}
+import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, Matchers, AsyncFlatSpec}
-import org.squbs.endpoint.{EndpointResolverRegistry, Endpoint, EndpointResolver}
-import org.squbs.env.Environment
+import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+import org.squbs.resolver.ResolverRegistry
 import org.squbs.testkit.Timeouts._
 
-import scala.concurrent.{Future, Await}
+import scala.concurrent.{Await, Future}
 import scala.util.{Success, Try}
 
 object ClientFlowHttpsSpec {
@@ -48,14 +47,13 @@ object ClientFlowHttpsSpec {
   implicit val system = ActorSystem("ClientFlowHttpsSpec", config)
   implicit val materializer = ActorMaterializer()
 
-  EndpointResolverRegistry(system).register(new EndpointResolver {
-    override def name: String = "LocalhostHttpsEndpointResolver"
-
-    override def resolve(svcName: String, env: Environment): Option[Endpoint] = svcName match {
-      case "helloHttps" => Some(Endpoint(s"https://localhost:$port", Some(sslContext("exampletrust.jks", "changeit"))))
+  ResolverRegistry(system).register[HttpEndpoint]("LocalhostHttpsEndpointResolver") { (name, _) =>
+    name match {
+      case "helloHttps" =>
+        Some(HttpEndpoint(s"https://localhost:$port", Some(sslContext("exampletrust.jks", "changeit"))))
       case _ => None
     }
-  })
+  }
 
   import akka.http.scaladsl.server.Directives._
   import system.dispatcher

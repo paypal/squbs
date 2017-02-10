@@ -34,7 +34,7 @@ import akka.stream.{FlowShape, Materializer, javadsl => js}
 import com.typesafe.config.Config
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import com.typesafe.sslconfig.ssl.SSLConfigFactory
-import org.squbs.endpoint.EndpointResolverRegistry
+import org.squbs.resolver.ResolverRegistry
 import org.squbs.env.{Default, Environment, EnvironmentResolverRegistry}
 import org.squbs.pipeline.streaming.{Context, PipelineExtension, PipelineSetting, RequestContext}
 
@@ -78,7 +78,7 @@ object ClientFlow {
       case _ => env
     }
 
-    val endpoint = EndpointResolverRegistry(system).resolve(name, environment) getOrElse {
+    val endpoint = ResolverRegistry(system).resolve[HttpEndpoint](name, environment) getOrElse {
       throw HttpClientEndpointNotExistException(name, environment)
     }
 
@@ -98,7 +98,7 @@ object ClientFlow {
         val sslConfig = AkkaSSLConfig().withSettings(SSLConfigFactory.parse(akkaOverrides withFallback defaults))
 
         val httpsConnectionContext = connectionContext orElse {
-          endpoint.sslContext map { sc => ConnectionContext.https(sc, Some(sslConfig)) }
+          endpoint.asInstanceOf[HttpEndpoint].sslContext map { sc => ConnectionContext.https(sc, Some(sslConfig)) }
         } getOrElse Http().defaultClientHttpsContext
 
         Http().cachedHostConnectionPoolHttps[RequestContext](endpoint.uri.getHost, endpoint.uri.getPort,

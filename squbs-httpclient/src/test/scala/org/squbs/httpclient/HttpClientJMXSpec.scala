@@ -22,8 +22,8 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
-import org.squbs.endpoint.{Endpoint, EndpointResolver, EndpointResolverRegistry}
-import org.squbs.env.{QA, Environment}
+import org.squbs.resolver._
+import org.squbs.env.QA
 
 import scala.concurrent.duration.Duration
 
@@ -94,13 +94,8 @@ object HttpClientJMXSpec {
   implicit val system = ActorSystem("HttpClientJMXSpec", config)
   implicit val materializer = ActorMaterializer()
 
-  EndpointResolverRegistry(system).register(new EndpointResolver {
-    override def name: String = "DummyEndpointResolver"
-
-    override def resolve(svcName: String, env: Environment): Option[Endpoint] =
-      Some(Endpoint("http://localhost:8080"))
-
-  })
+  ResolverRegistry(system).register[HttpEndpoint]("DummyEndpointResolver")
+    { (_, _) => Some(HttpEndpoint("http://localhost:8080")) }
 }
 
 class HttpClientJMXSpec extends FlatSpecLike with Matchers {

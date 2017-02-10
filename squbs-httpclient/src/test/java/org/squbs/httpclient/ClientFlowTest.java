@@ -31,8 +31,7 @@ import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import org.junit.AfterClass;
 import org.junit.Test;
-import org.squbs.endpoint.Endpoint;
-import org.squbs.endpoint.EndpointResolverRegistry;
+import org.squbs.resolver.ResolverRegistry;
 import org.squbs.testkit.Timeouts;
 import scala.util.Try;
 
@@ -53,7 +52,7 @@ public class ClientFlowTest {
         ServerBinding binding;
         try {
             binding = Http.get(system).
-                    bindAndHandle(flow, ConnectHttp.toHost("localhost", 65525), mat).
+                    bindAndHandle(flow, ConnectHttp.toHost("localhost", 0), mat).
                     toCompletableFuture().get();
         } catch(Exception e) {
             binding = null;
@@ -65,9 +64,9 @@ public class ClientFlowTest {
     private final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool> clientFlow;
 
     static {
-        EndpointResolverRegistry.get(system).register("LocalhostEndpointResolver", (svcName, env) -> {
+        ResolverRegistry.get(system).register(HttpEndpoint.class, "LocalhostEndpointResolver", (svcName, env) -> {
             if ("hello".equals(svcName)) {
-                return Optional.of(Endpoint.create("http://localhost:" + port));
+                return Optional.of(HttpEndpoint.create("http://localhost:" + port));
             }
             return Optional.empty();
         });
