@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package org.squbs.pipeline.streaming
+package org.squbs.pipeline
 
-import akka.http.scaladsl.model.{HttpHeader, HttpResponse, HttpRequest}
+import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse}
 
 import scala.collection.JavaConversions._
 import scala.util.{Success, Try}

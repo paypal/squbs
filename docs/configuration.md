@@ -98,4 +98,4 @@ A declared listener is not started unless a service route attaches itself to thi
 
 ##Pipeline
 
-If defined, a default pipeline is installed for pre-processing every single request and post-processing every response. Services can specify a different pipeline, or none at all as described under [Bootstrapping squbs](bootstrap.md#services). Applications or infrastructure can implement their own pipelines for pre-processing needs such as logging or tracing. Please see detailed description of pipelines under [Streaming Request/Response Pipeline](streamingpipeline.md).
+If defined, a default pipeline is installed for pre-processing every single request and post-processing every response. Services can specify a different pipeline, or none at all as described under [Bootstrapping squbs](bootstrap.md#services). Applications or infrastructure can implement their own pipelines for pre-processing needs such as logging or tracing. Please see detailed description of pipelines under [Request/Response Pipeline](pipeline.md).

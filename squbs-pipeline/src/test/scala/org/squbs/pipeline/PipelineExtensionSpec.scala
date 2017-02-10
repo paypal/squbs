@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package org.squbs.pipeline.streaming
+package org.squbs.pipeline
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.stream.{ActorMaterializer, BidiShape}
 import akka.stream.scaladsl._
+import akka.stream.{ActorMaterializer, BidiShape}
 import akka.testkit.TestKit
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{Matchers, FlatSpecLike}
-import Timeouts._
+import org.scalatest.{FlatSpecLike, Matchers}
+import Timeouts.awaitMax
 
 import scala.concurrent.Await
 import scala.util.{Success, Try}
@@ -40,7 +40,7 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
   }
 
   it should "build the flow with defaults" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)), Context("dummy"))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)), Context("dummy", ServerPipeline))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)
@@ -63,7 +63,7 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
   }
 
   it should "build the flow without defaults when defaults are turned off" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(false)), Context("dummy"))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(false)), Context("dummy", ServerPipeline))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)
@@ -83,16 +83,16 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
 
   it should "throw IllegalArgumentException when getFlow is called with a bad flow name" in {
     intercept[IllegalArgumentException] {
-      pipelineExtension.getFlow((Some("badPipelineName"), Some(true)), Context("dummy"))
+      pipelineExtension.getFlow((Some("badPipelineName"), Some(true)), Context("dummy", ServerPipeline))
     }
   }
 
   it should "return None when no custom flow exists and defaults are off" in {
-    pipelineExtension.getFlow((None, Some(false)), Context("dummy")) should be (None)
+    pipelineExtension.getFlow((None, Some(false)), Context("dummy", ServerPipeline)) should be (None)
   }
 
   it should "build the flow with defaults when defaultsOn param is set to None" in {
-    pipelineExtension.getFlow((None, None), Context("dummy")) should not be (None)
+    pipelineExtension.getFlow((None, None), Context("dummy", ServerPipeline)) should not be (None)
   }
 }
 
@@ -101,20 +101,20 @@ object PipelineExtensionSpec {
     s"""
        |dummyFlow1 {
        |  type = squbs.pipelineflow
-       |  factory = org.squbs.pipeline.streaming.DummyFlow1
+       |  factory = org.squbs.pipeline.DummyFlow1
        |}
        |
        |preFlow {
        |  type = squbs.pipelineflow
-       |  factory = org.squbs.pipeline.streaming.PreFlow
+       |  factory = org.squbs.pipeline.PreFlow
        |}
        |
        |postFlow {
        |  type = squbs.pipelineflow
-       |  factory = org.squbs.pipeline.streaming.PostFlow
+       |  factory = org.squbs.pipeline.PostFlow
        |}
        |
-       |squbs.pipeline.streaming.defaults {
+       |squbs.pipeline.server.default {
        |  pre-flow =  preFlow
        |  post-flow = postFlow
        |}
@@ -126,7 +126,7 @@ class PipelineExtensionSpec2 extends TestKit(ActorSystem("PipelineExtensionSpec2
   s"""
      |notExists {
      |  type = squbs.pipelineflow
-     |  factory = org.squbs.pipeline.streaming.NotExists
+     |  factory = org.squbs.pipeline.NotExists
      |}
    """.stripMargin))) with FlatSpecLike with Matchers {
 
@@ -141,7 +141,7 @@ class PipelineExtensionSpec3 extends TestKit(ActorSystem("PipelineExtensionSpec3
   s"""
      |dummyFlow1 {
      |  type = squbs.pipelineflow
-     |  factory = org.squbs.pipeline.streaming.DummyFlow1
+     |  factory = org.squbs.pipeline.DummyFlow1
      |}
    """.stripMargin))) with FlatSpecLike with Matchers {
 
@@ -152,11 +152,11 @@ class PipelineExtensionSpec3 extends TestKit(ActorSystem("PipelineExtensionSpec3
   }
 
   it should "return None when no custom flow exists and no defaults specified in config" in {
-    pipelineExtension.getFlow((None, Some(true)), Context("dummy")) should be (None)
+    pipelineExtension.getFlow((None, Some(true)), Context("dummy", ServerPipeline)) should be (None)
   }
 
   it should "be able to build the flow when no defaults are specified in config" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)), Context("dummy"))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow1"), Some(true)), Context("dummy", ServerPipeline))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)

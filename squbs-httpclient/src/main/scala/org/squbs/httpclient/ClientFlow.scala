@@ -36,7 +36,7 @@ import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import com.typesafe.sslconfig.ssl.SSLConfigFactory
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.env.{Default, Environment, EnvironmentResolverRegistry}
-import org.squbs.pipeline.streaming.{Context, PipelineExtension, PipelineSetting, RequestContext}
+import org.squbs.pipeline.{ClientPipeline, Context, PipelineExtension, PipelineSetting, RequestContext}
 
 import scala.util.{Failure, Try}
 
@@ -108,7 +108,7 @@ object ClientFlow {
       }
 
     val pipelineName = clientSpecificConfig.flatMap(_.getOption[String]("pipeline"))
-    val defaultFlowsOn = clientSpecificConfig.flatMap(_.getOption[Boolean]("defaultPipelineOn"))
+    val defaultFlowsOn = clientSpecificConfig.flatMap(_.getOption[Boolean]("defaultPipeline"))
 
     val mBeanServer = ManagementFactory.getPlatformMBeanServer
     val beanName = new ObjectName(s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=$name")
@@ -126,7 +126,7 @@ object ClientFlow {
                                           clientConnectionFlow: ClientConnectionFlow[RequestContext])
                                           (implicit system: ActorSystem): ClientConnectionFlow[T] = {
 
-    PipelineExtension(system).getFlow(pipelineSetting, Context(name)) match {
+    PipelineExtension(system).getFlow(pipelineSetting, Context(name, ClientPipeline)) match {
       case Some(pipeline) =>
         val tupleToRequestContext = Flow[(HttpRequest, T)].map { case (request, t) =>
           RequestContext(request, 0) ++ (AkkaHttpClientCustomContext -> t)

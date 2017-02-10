@@ -24,7 +24,7 @@ import akka.pattern._
 import akka.stream.FlowShape
 import akka.stream.scaladsl._
 import akka.util.Timeout
-import org.squbs.pipeline.streaming.{Context, PipelineExtension, PipelineSetting, RequestContext}
+import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, RequestContext, ServerPipeline}
 
 import scala.annotation.tailrec
 import scala.language.postfixOps
@@ -118,7 +118,7 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
         val serviceFlow = toRequestContextFlow(fw.flow)
         val pathString = paths(i).toString
         val wc = if(pathString.isEmpty) "/" else pathString
-        pipelineExtension.getFlow(pipelineSettings(i), Context(name = wc)) match {
+        pipelineExtension.getFlow(pipelineSettings(i), Context(wc, ServerPipeline)) match {
           case Some(pipeline) => partition.out(i) ~> pipeline.join(serviceFlow) ~> routesMerge
           case None => partition.out(i) ~> serviceFlow ~> routesMerge
         }

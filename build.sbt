@@ -27,16 +27,16 @@ val par = {
 
 concurrentRestrictions in Global := Seq(Tags.limitAll(par))
 
-lazy val `squbs-streamingpipeline` = project
+lazy val `squbs-pipeline` = project
 
-lazy val `squbs-unicomplex` = project dependsOn (`squbs-streamingpipeline`, `squbs-ext`)
+lazy val `squbs-unicomplex` = project dependsOn (`squbs-pipeline`, `squbs-ext`)
 
 lazy val `squbs-testkit` = project dependsOn `squbs-unicomplex`
 
 lazy val `squbs-zkcluster` = project dependsOn `squbs-testkit` % "test"
 
 lazy val `squbs-httpclient` = project dependsOn(`squbs-ext` % "compile->compile;test->test",
-  `squbs-streamingpipeline`, `squbs-testkit` % "test")
+  `squbs-pipeline`, `squbs-testkit` % "test")
 
 // Add SlowTest configuration to squbs-pattern to run the long-running tests.
 // To run standard tests> test
@@ -68,7 +68,7 @@ lazy val `squbs-actormonitor` = project dependsOn (`squbs-unicomplex`, `squbs-te
 
 lazy val `squbs-admin` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
 
-lazy val `squbs-ext` = project dependsOn `squbs-streamingpipeline` % "provided"
+lazy val `squbs-ext` = project dependsOn `squbs-pipeline` % "provided"
 
 publishTo in ThisBuild := {
   val nexus = "https://oss.sonatype.org/"

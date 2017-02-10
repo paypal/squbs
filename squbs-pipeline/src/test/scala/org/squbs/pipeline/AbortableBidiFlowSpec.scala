@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-package org.squbs.pipeline.streaming
+package org.squbs.pipeline
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.stream.{BidiShape, ActorMaterializer}
 import akka.stream.scaladsl._
+import akka.stream.{ActorMaterializer, BidiShape}
 import akka.testkit.TestKit
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{Matchers, FlatSpecLike}
-import org.squbs.pipeline.streaming.Timeouts._
+import org.scalatest.{FlatSpecLike, Matchers}
+import Timeouts._
 
-import scala.concurrent.{Future, Await}
+import scala.concurrent.{Await, Future}
 import scala.util.{Success, Try}
 
 class AbortableBidiFlowSpec extends TestKit(ActorSystem("AbortableBidiFlowSpec", AbortableBidiFlowSpec.config))
@@ -40,7 +40,7 @@ class AbortableBidiFlowSpec extends TestKit(ActorSystem("AbortableBidiFlowSpec",
   }
 
   it should "run the entire flow" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow2"), Some(true)), Context("dummy"))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow2"), Some(true)), Context("dummy", ServerPipeline))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)
@@ -66,7 +66,7 @@ class AbortableBidiFlowSpec extends TestKit(ActorSystem("AbortableBidiFlowSpec",
   }
 
   it should "bypass rest of the flow when HttpResponse is set in RequestContext" in {
-    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow2"), Some(true)), Context("dummy"))
+    val pipelineFlow = pipelineExtension.getFlow((Some("dummyFlow2"), Some(true)), Context("dummy", ServerPipeline))
 
     pipelineFlow should not be (None)
     val httpFlow = pipelineFlow.get.join(dummyEndpoint)
@@ -97,20 +97,20 @@ object AbortableBidiFlowSpec {
     s"""
        |dummyFlow2 {
        |  type = squbs.pipelineflow
-       |  factory = org.squbs.pipeline.streaming.DummyFlow2
+       |  factory = org.squbs.pipeline.DummyFlow2
        |}
        |
        |preFlow {
        |  type = squbs.pipelineflow
-       |  factory = org.squbs.pipeline.streaming.PreFlow
+       |  factory = org.squbs.pipeline.PreFlow
        |}
        |
        |postFlow {
        |  type = squbs.pipelineflow
-       |  factory = org.squbs.pipeline.streaming.PostFlow
+       |  factory = org.squbs.pipeline.PostFlow
        |}
        |
-       |squbs.pipeline.streaming.defaults {
+       |squbs.pipeline.server.default {
        |  pre-flow =  preFlow
        |  post-flow = postFlow
        |}

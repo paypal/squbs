@@ -27,7 +27,7 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.testkit.TestKit
 import org.scalatest.{AsyncFlatSpecLike, Matchers}
 import org.scalatest.OptionValues._
-import org.squbs.pipeline.streaming.RequestContext
+import org.squbs.pipeline.RequestContext
 
 import scala.concurrent.Future
 import scala.util.{Failure, Try}

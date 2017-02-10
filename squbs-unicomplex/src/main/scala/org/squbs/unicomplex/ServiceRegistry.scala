@@ -33,7 +33,7 @@ import akka.stream.TLSClientAuth.{Need, Want}
 import akka.stream.scaladsl.Flow
 import akka.stream.{ActorMaterializer, BindFailedException}
 import com.typesafe.config.Config
-import org.squbs.pipeline.streaming.{Context, PipelineExtension, PipelineSetting}
+import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, ServerPipeline}
 import org.squbs.unicomplex.StatsSupport.StatsHolder
 
 import scala.language.postfixOps
@@ -114,7 +114,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
     // Calling this here just to see if it would throw an exception.
     // We do not want it to be thrown at materialization time, instead face it during startup.
-    PipelineExtension(context.system).getFlow(ps, Context(webContext))
+    PipelineExtension(context.system).getFlow(ps, Context(webContext, ServerPipeline))
 
     listeners foreach { listener =>
       val currentListenerRoutes = listenerRoutes(listener)

@@ -25,8 +25,8 @@ import akka.stream.{ActorMaterializer, BidiShape}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+import org.squbs.pipeline.{Context, PipelineFlow, PipelineFlowFactory, RequestContext}
 import org.squbs.resolver.ResolverRegistry
-import org.squbs.pipeline.streaming._
 import org.squbs.testkit.Timeouts._
 
 import scala.concurrent.{Await, Future}
@@ -51,7 +51,7 @@ object ClientFlowPipelineSpec {
        |  factory = org.squbs.httpclient.PostFlow
        |}
        |
-       |squbs.pipeline.streaming.defaults {
+       |squbs.pipeline.client.default {
        |  pre-flow =  preFlow
        |  post-flow = postFlow
        |}
@@ -68,12 +68,12 @@ object ClientFlowPipelineSpec {
        |clientWithCustomPipelineWithoutDefaults {
        |  type = squbs.httpclient
        |  pipeline = dummyFlow
-       |  defaultPipelineOn = false
+       |  defaultPipeline = off
        |}
        |
        |clientWithNoPipeline {
        |  type = squbs.httpclient
-       |  defaultPipelineOn = false
+       |  defaultPipeline = off
        |}
     """.stripMargin
   )

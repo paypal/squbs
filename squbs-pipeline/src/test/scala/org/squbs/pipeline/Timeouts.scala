@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.squbs.pipeline.streaming
+package org.squbs.pipeline
 
 import akka.util.Timeout
 
