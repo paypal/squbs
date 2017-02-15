@@ -30,8 +30,8 @@ import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.lifecycle.ExtensionLifecycle
 import org.squbs.pipeline.PipelineSetting
-import org.squbs.util.ConfigUtil._
 import org.squbs.unicomplex.UnicomplexBoot.CubeInit
+import org.squbs.util.ConfigUtil._
 
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
@@ -133,54 +133,52 @@ object UnicomplexBoot extends LazyLogging {
     boot.copy(cubes = cubeList, jarConfigs = jarConfigs, listeners = activeListeners, listenerAliases = activeAliases)
   }
 
-  private[this] def readConfigs(jarName: String): Option[Config] = {
+  private def createReaderFromFS(directory: File): String => Option[Reader] = {
+    (filePath: String) => Option(new File(directory, filePath)) collect {
+      case configFile if configFile.isFile => new InputStreamReader(new FileInputStream(configFile), "UTF-8")
+    }
+  }
 
+  private def createReaderFromJarFile(file: File): String => Option[Reader] = {
+    val triedJarFile = Try(new JarFile(file))
+    (filePath: String) => triedJarFile match {
+      case Success(jarFile) => Option(jarFile.getEntry(filePath)) collect {
+        case configFile if !configFile.isDirectory => new InputStreamReader(jarFile.getInputStream(configFile), "UTF-8")
+      }
+      case Failure(e)       => throw e
+      }
+  }
+
+  private def getConfigReader(jarName: String): Option[(Option[Reader], String)] = {
     // Make it extra lazy, so that we do not create the next File if the previous one succeeds.
     val configExtensions = Stream("conf", "json", "properties")
-
-    val jarFile = new File(jarName)
-
-    var fileName: String = "" // Contains the evaluated config file name, used for reporting errors.
-    var configReader: Option[Reader] = None
-
-    try {
-      configReader =
-        if (jarFile.isDirectory) {
-
-          def getConfFile(ext: String) = {
-            fileName = "META-INF/squbs-meta." + ext
-            val confFile = new File(jarFile, fileName)
-            if (confFile.isFile) Option(new InputStreamReader(new FileInputStream(confFile), "UTF-8"))
-            else None
-          }
-          (configExtensions map getConfFile find { _.isDefined }).flatten
-
-        } else if (jarFile.isFile) {
-
-          val jar = new JarFile(jarFile)
-
-          def getConfFile(ext: String) = {
-            fileName = "META-INF/squbs-meta." + ext
-            val confFile = jar.getEntry(fileName)
-            if (confFile != null && !confFile.isDirectory)
-              Option(new InputStreamReader(jar.getInputStream(confFile), "UTF-8"))
-            else None
-          }
-          (configExtensions map getConfFile find { _.isDefined }).flatten
-        } else None
-
-      configReader map ConfigFactory.parseReader
-
-    } catch {
-      case e: Exception =>
-        logger.info(s"${e.getClass.getName} reading configuration from $jarName : $fileName.\n ${e.getMessage}")
-        None
-    } finally {
-      configReader match {
-        case Some(reader) => reader.close()
-        case None =>
-      }
+    val maybeConfFileReader = Option(new File(jarName)) collect {
+      case file if file.isDirectory => createReaderFromFS(file)
+      case file if file.isFile      => createReaderFromJarFile(file)
     }
+
+    maybeConfFileReader flatMap (fileReader => configExtensions map { ext =>
+      val currentFile = s"META-INF/squbs-meta.$ext"
+      Try(fileReader(currentFile)) match {
+        case Failure(e) =>
+          logger.info(s"${e.getClass.getName} reading configuration from $jarName : $currentFile.\n${e.getMessage}")
+          None
+        case Success(maybeReader) => Option(maybeReader, currentFile)
+      }
+    } find (_.isDefined) flatten)
+  }
+
+  private[this] def readConfigs(jarName: String): Option[Config] = {
+    getConfigReader(jarName) flatMap ((maybeReader: Option[Reader], fileName: String) => {
+      val maybeConfig = Try(maybeReader map ConfigFactory.parseReader) match {
+        case Failure(e)   =>
+          logger.info(s"${e.getClass.getName} reading configuration from $jarName : $fileName.\n${e.getMessage}")
+          None
+        case Success(cfg) => cfg
+      }
+      maybeReader foreach(_.close())
+      maybeConfig
+    }).tupled
   }
 
   private[this] def readConfigs(resource: URL): Option[(String, Config)] = {
