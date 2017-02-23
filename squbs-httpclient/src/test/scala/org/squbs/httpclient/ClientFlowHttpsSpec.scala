@@ -66,7 +66,7 @@ object ClientFlowHttpsSpec {
     }
 
   val serverBinding = Await.result(Http().bindAndHandle(route, "localhost", 0,
-    ConnectionContext.https(sslContext("example.com.jks", "1234567890"))), awaitMax)
+    ConnectionContext.https(sslContext("example.com.jks", "changeit"))), awaitMax)
   val port = serverBinding.localAddress.getPort
 
   def sslContext(store: String, pw: String) = {
