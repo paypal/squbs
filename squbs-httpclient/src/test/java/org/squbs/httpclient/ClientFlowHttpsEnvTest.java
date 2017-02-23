@@ -60,7 +60,7 @@ public class ClientFlowHttpsEnvTest {
         ServerBinding binding;
         try {
             final ConnectWithHttps ic = ConnectHttp.toHostHttps("localhost", 0);
-            final ConnectWithHttps c = sslContext("example.com.jks", "1234567890")
+            final ConnectWithHttps c = sslContext("example.com.jks", "changeit")
                     .map(sc -> ic.withCustomHttpsContext(ConnectionContext.https(sc)))
                     .orElse(ic.withDefaultHttpsContext());
             binding = Http.get(system).bindAndHandle(flow, c, mat).toCompletableFuture().get();
