@@ -39,6 +39,7 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 object UnicomplexBoot extends LazyLogging {
@@ -302,7 +303,7 @@ object UnicomplexBoot extends LazyLogging {
         cubeSupervisor ! StartCubeActor(props, name, initRequired)
         Some((fullName, name, version, clazz))
       } catch {
-        case e: Exception =>
+        case NonFatal(e) =>
           val t = getRootCause(e)
           logger.warn(s"Can't load actor: $className.\n" +
             s"Cube: $fullName $version\n" +
@@ -661,7 +662,7 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
       val extLifecycle = ExtensionLifecycle(this) { clazz.asSubclass(classOf[ExtensionLifecycle]).newInstance }
       Extension(cube.info, seqNo, Some(extLifecycle), Seq.empty)
     } catch {
-      case e: Exception =>
+      case NonFatal(e) =>
         import cube.info._
         val t = getRootCause(e)
         logger.warn(s"Can't load extension $className.\n" +
