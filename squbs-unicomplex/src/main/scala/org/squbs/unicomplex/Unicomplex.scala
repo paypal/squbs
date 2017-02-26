@@ -23,22 +23,19 @@ import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 
 import akka.NotUsed
-import akka.actor.Actor.Receive
 import akka.actor.SupervisorStrategy._
 import akka.actor.{Extension => AkkaExtension, _}
 import akka.agent.Agent
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.model.HttpResponse
 import akka.pattern._
 import akka.stream.scaladsl.Flow
-import akka.util.Timeout
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
-import org.squbs.pipeline.PipelineSetting
+import org.squbs.pipeline.{PipelineSetting, RequestContext}
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 
 import scala.annotation.varargs
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
@@ -151,7 +148,7 @@ private[unicomplex] case object HttpBindFailed
 
 case object PortBindings
 
-case class FlowWrapper(flow: Flow[HttpRequest, HttpResponse, NotUsed], actor: ActorRef)
+case class FlowWrapper(flow: Flow[RequestContext, RequestContext, NotUsed], actor: ActorRef)
 
 /**
  * The Unicomplex actor is the supervisor of the Unicomplex.
@@ -191,8 +188,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   private var servicesStarted= false
 
-  import org.squbs.util.ConfigUtil._
-
   lazy val serviceRegistry = new ServiceRegistry(log)
 
   private val unicomplexExtension = Unicomplex(context.system)
@@ -216,8 +211,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     override def getActivationMillis: Int = activationDuration
   }
-
-
 
   // $COVERAGE-ON$
 
@@ -641,7 +634,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       val hostActor = context.actorOf(props, name)
       initMap += hostActor -> None
       pendingContexts += 1
-      (hostActor ? FlowRequest).mapTo[Try[Flow[HttpRequest, HttpResponse, NotUsed]]] onSuccess {
+      (hostActor ? FlowRequest).mapTo[Try[Flow[RequestContext, RequestContext, NotUsed]]] onSuccess {
         case Success(flow) =>
           val reg = RegisterContext(listeners, webContext, FlowWrapper(flow, hostActor), ps)
           (Unicomplex() ? reg).mapTo[Try[_]].map {
@@ -656,7 +649,11 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       val hostActor = context.actorOf(props, name)
       import org.squbs.util.ConfigUtil._
       val concurrency = context.system.settings.config.get[Int]("akka.http.server.pipelining-limit")
-      val flow = Flow[HttpRequest].mapAsync(concurrency) { request => (hostActor ? request).mapTo[HttpResponse] }
+      val flow = Flow[RequestContext].mapAsync(concurrency) { requestContext =>
+        (hostActor ? requestContext.request)
+          .collect { case response: HttpResponse => requestContext.copy(response = Some(Success(response))) }
+          .recover { case e => requestContext.copy(response = Some(Failure(e))) }
+      }
       val wrapper = FlowWrapper(flow, hostActor)
 
       if (initRequired && !(initMap contains hostActor)) initMap += hostActor -> None

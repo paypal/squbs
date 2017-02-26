@@ -16,7 +16,6 @@
 
 package org.squbs.unicomplex
 
-import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
@@ -76,6 +75,7 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
   // Even then, I am not sure if that would be the right value..
   import scala.concurrent.duration._
   implicit val askTimeOut: Timeout = 5 seconds
+
   private def asyncHandler(routeActor: ActorRef) = (req: HttpRequest) => (routeActor ? req).mapTo[HttpResponse]
   def runRoute(routeActor: ActorRef, rc: RequestContext) = asyncHandler(routeActor)(rc.request) map {
     httpResponse => rc.copy(response = Option(Try(httpResponse)))
@@ -84,19 +84,6 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
   val NotFound = HttpResponse(StatusCodes.NotFound, entity = StatusCodes.NotFound.defaultMessage)
   val InternalServerError = HttpResponse(StatusCodes.InternalServerError,
                                          entity = StatusCodes.InternalServerError.defaultMessage)
-
-  def toRequestContextFlow(myFlow: Flow[HttpRequest, HttpResponse, NotUsed]):
-      Flow[RequestContext, RequestContext, NotUsed] =
-    Flow.fromGraph(GraphDSL.create() { implicit b =>
-      import GraphDSL.Implicits._
-      val unzip = b.add(UnzipWith[RequestContext, RequestContext, HttpRequest] { rc => (rc, rc.request)})
-      val zip = b.add(ZipWith[RequestContext, HttpResponse, RequestContext] {
-        case (rc, resp) => rc.copy(response = Some(Try(resp)))
-      })
-      unzip.out0 ~> zip.in0
-      unzip.out1 ~> myFlow ~> zip.in1
-      FlowShape(unzip.in, zip.out)
-    })
 
   lazy val routeFlow =
     Flow.fromGraph(GraphDSL.create() { implicit b =>
@@ -115,12 +102,11 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
       val partition = b.add(Partition(paths.size + 1, partitioner))
 
       flowWrappers.zipWithIndex foreach { case (fw, i) =>
-        val serviceFlow = toRequestContextFlow(fw.flow)
         val pathString = paths(i).toString
         val wc = if(pathString.isEmpty) "/" else pathString
         pipelineExtension.getFlow(pipelineSettings(i), Context(wc, ServerPipeline)) match {
-          case Some(pipeline) => partition.out(i) ~> pipeline.join(serviceFlow) ~> routesMerge
-          case None => partition.out(i) ~> serviceFlow ~> routesMerge
+          case Some(pipeline) => partition.out(i) ~> pipeline.join(fw.flow) ~> routesMerge
+          case None => partition.out(i) ~> fw.flow ~> routesMerge
         }
       }
 
