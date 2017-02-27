@@ -27,15 +27,17 @@ import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.PathDirectives
+import akka.http.scaladsl.settings.{ParserSettings, RoutingSettings}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.pattern.pipe
 import akka.stream.TLSClientAuth.{Need, Want}
-import akka.stream.scaladsl.Flow
-import akka.stream.{ActorMaterializer, BindFailedException}
+import akka.stream.scaladsl.{Flow, GraphDSL, UnzipWith, ZipWith}
+import akka.stream.{ActorMaterializer, BindFailedException, FlowShape, Materializer}
 import com.typesafe.config.Config
-import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, ServerPipeline}
+import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, RequestContext, ServerPipeline}
 import org.squbs.unicomplex.StatsSupport.StatsHolder
 
+import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
@@ -199,7 +201,7 @@ private[unicomplex] trait FlowSupplier { this: Actor with ActorLogging =>
         Escalate
     }
 
-  val flowTry: Try[Flow[HttpRequest, HttpResponse, NotUsed]]
+  val flowTry: Try[Flow[RequestContext, RequestContext, NotUsed]]
 
   final def receive: Receive = {
     case FlowRequest =>
@@ -221,7 +223,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 
   implicit val am = ActorMaterializer()
 
-  val flowTry: Try[Flow[HttpRequest, HttpResponse, NotUsed]] = routeDefTry match {
+  val flowTry: Try[Flow[RequestContext, RequestContext, NotUsed]] = routeDefTry match {
 
     case Success(routeDef) =>
       context.parent ! Initialized(Success(None))
@@ -230,10 +232,11 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
       implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.getOrElse(PartialFunction.empty[Throwable, Route])
 
       if (webContext.nonEmpty) {
-        Success(PathDirectives.pathPrefix(PathMatchers.separateOnSlashes(webContext)) {routeDef.route})
+        val finalRoute = PathDirectives.pathPrefix(PathMatchers.separateOnSlashes(webContext)) {routeDef.route}
+        Success(RequestContextFlow(finalRoute))
       } else {
         // don't append pathPrefix if webContext is empty, won't be null due to the top check
-        Success(routeDef.route)
+        Success(RequestContextFlow(routeDef.route))
       }
 
     case Failure(e) =>
@@ -289,11 +292,11 @@ private[unicomplex] class FlowActor(webContext: String, clazz: Class[FlowDefinit
     }
   }
 
-  val flowTry: Try[Flow[HttpRequest, HttpResponse, NotUsed]] = flowDefTry match {
+  val flowTry: Try[Flow[RequestContext, RequestContext, NotUsed]] = flowDefTry match {
 
     case Success(flowDef) =>
       context.parent ! Initialized(Success(None))
-      Success(flowDef.flow)
+      Success(RequestContextFlow(flowDef.flow))
 
     case Failure(e) =>
       log.error(e, s"Error instantiating flow from {}: {}", clazz.getName, e)
@@ -306,4 +309,37 @@ trait FlowDefinition {
   protected implicit final val context: ActorContext = WithActorContext.localContext.get.get
 
   def flow: Flow[HttpRequest, HttpResponse, NotUsed]
+}
+
+object RequestContextFlow {
+
+  def apply(myFlow: Flow[HttpRequest, HttpResponse, NotUsed]): Flow[RequestContext, RequestContext, NotUsed] =
+    Flow.fromGraph(GraphDSL.create() { implicit b =>
+      import GraphDSL.Implicits._
+      val unzip = b.add(UnzipWith[RequestContext, RequestContext, HttpRequest] { rc => (rc, rc.request)})
+      val zip = b.add(ZipWith[RequestContext, HttpResponse, RequestContext] {
+        case (rc, resp) => rc.copy(response = Some(Try(resp)))
+      })
+      unzip.out0 ~> zip.in0
+      unzip.out1 ~> myFlow ~> zip.in1
+      FlowShape(unzip.in, zip.out)
+    })
+
+  def apply(route: Route)(implicit
+                          routingSettings: RoutingSettings,
+                          parserSettings:   ParserSettings,
+                          materializer:     Materializer,
+                          routingLog:       RoutingLog,
+                          rejectionHandler: RejectionHandler = RejectionHandler.default,
+                          exceptionHandler: ExceptionHandler = PartialFunction.empty[Throwable, Route]
+  ): Flow[RequestContext, RequestContext, NotUsed] =
+    Flow[RequestContext].mapAsync(1) { asyncCall(_, materializer, Route.asyncHandler(route)) }
+
+  def asyncCall(reqContext: RequestContext, mat: Materializer,
+                asyncHandler: HttpRequest => Future[HttpResponse]): Future[RequestContext] = {
+    implicit val ec = mat.executionContext
+    asyncHandler(reqContext.request)
+      .map { response => reqContext.copy(response = Some(Success(response))) }
+      .recover { case e => reqContext.copy(response = Some(Failure(e))) }
+  }
 }

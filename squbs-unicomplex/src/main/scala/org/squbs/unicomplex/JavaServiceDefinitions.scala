@@ -21,10 +21,11 @@ import akka.NotUsed
 import akka.actor.{Actor, ActorContext, ActorLogging}
 import akka.http.javadsl.model.{HttpRequest, HttpResponse}
 import akka.http.javadsl.server._
-import akka.http.javadsl.server.directives.PathDirectives
-import akka.http.scaladsl.{model => sm}
+import akka.http.javadsl.server.directives.{PathDirectives, RouteAdapter}
+import akka.http.scaladsl.{model => sm, server => ss}
 import akka.stream.javadsl.Flow
 import akka.stream.{ActorMaterializer, scaladsl => sd}
+import org.squbs.pipeline.RequestContext
 
 import scala.util.{Failure, Success, Try}
 
@@ -54,11 +55,12 @@ private[unicomplex] class JavaFlowActor(webContext: String, clazz: Class[Abstrac
     }
   }
 
-  val flowTry: Try[sd.Flow[sm.HttpRequest, sm.HttpResponse, NotUsed]] = flowDefTry match {
+  val flowTry: Try[sd.Flow[RequestContext, RequestContext, NotUsed]] = flowDefTry match {
 
     case Success(flowDef) =>
       context.parent ! Initialized(Success(None))
-      Success(flowDef.flow.asScala.asInstanceOf[sd.Flow[sm.HttpRequest, sm.HttpResponse, NotUsed]])
+      val reqFlow = flowDef.flow.asScala.asInstanceOf[sd.Flow[sm.HttpRequest, sm.HttpResponse, NotUsed]]
+      Success(RequestContextFlow(reqFlow))
 
     case Failure(e) =>
       log.error(e, s"Error instantiating flow from {}: {}", clazz.getName, e)
@@ -108,9 +110,16 @@ private[unicomplex] class JavaRouteActor(webContext: String, clazz: Class[Abstra
       Failure(e)
   }
 
-  val flowTry: Try[sd.Flow[sm.HttpRequest, sm.HttpResponse, NotUsed]] =
-    routeTry.map(_.flow(context.system, am).asScala
-      .asInstanceOf[sd.Flow[sm.HttpRequest, sm.HttpResponse, NotUsed]])
+  val flowTry: Try[sd.Flow[RequestContext, RequestContext, NotUsed]] =
+    routeTry.map {
+      case r: RouteAdapter => RequestContextFlow(r.delegate)
+      case r => // There should be NO java Route that is not a RouteAdapter. This code is to catch such cases.
+        // $COVERAGE-OFF$
+        val requestFlow = r.flow(context.system, am).asScala
+          .asInstanceOf[sd.Flow[sm.HttpRequest, sm.HttpResponse, NotUsed]]
+        RequestContextFlow(requestFlow)
+        // $COVERAGE-ON$
+    }
 }
 
 private[unicomplex] object BuildRoute extends PathDirectives {
