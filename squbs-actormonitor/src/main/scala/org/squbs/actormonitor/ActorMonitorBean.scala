@@ -23,6 +23,7 @@ import akka.actor.{ActorContext, ActorRef, Props}
 import org.squbs.unicomplex.JMX._
 
 import scala.annotation.tailrec
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 
@@ -57,7 +58,7 @@ private[actormonitor] object ActorMonitorBean {
           val clazz = obj.getClass
           clazz.getDeclaredMethod(methodName)
         } recoverWith {
-          case e: Exception => Try {
+          case NonFatal(_) => Try {
             val clazz = obj.getClass.getSuperclass
             clazz.getDeclaredMethod(methodName)
           }

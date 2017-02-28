@@ -29,6 +29,7 @@ import org.apache.zookeeper.KeeperException.NodeExistsException
 
 import scala.language.implicitConversions
 import scala.util.Try
+import scala.util.control.NonFatal
 
 package object cluster {
 
@@ -56,7 +57,7 @@ package object cluster {
           zkClient.setData().forPath(path, data.get)
         }
         path
-      case e: Throwable =>
+      case NonFatal(e) =>
         logger.info("leader znode creation failed due to %s\n", e)
         path
     }

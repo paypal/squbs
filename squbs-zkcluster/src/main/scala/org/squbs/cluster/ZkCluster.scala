@@ -37,6 +37,7 @@ import org.squbs.cluster.rebalance.{DataCenterAwareRebalanceLogic, RebalanceLogi
 import scala.collection.JavaConversions._
 import scala.language.implicitConversions
 import scala.util.Try
+import scala.util.control.NonFatal
 
 case class ZkCluster(zkAddress: Address,
                      initConnStr: String,
@@ -116,7 +117,7 @@ case class ZkCluster(zkAddress: Address,
       logger.warn("[ZkCluster] detected Zookeeper cluster config change {}", connStr)
     }
   } recover {
-    case e: Throwable => logger.error(e.getMessage)
+    case NonFatal(e) => logger.error(e.getMessage)
   }
 
   private implicit def bytesToConnectString(bytes: Array[Byte]): String = {
