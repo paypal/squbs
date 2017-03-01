@@ -38,6 +38,7 @@ import scala.annotation.varargs
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
@@ -162,7 +163,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
-      case e: Exception =>
+      case NonFatal(e) =>
         log.warning(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender().path}")
         Restart
     }
@@ -591,7 +592,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
-      case e: Exception =>
+      case NonFatal(e) =>
         val actorPath = sender().path.toStringWithoutAddress
         log.warning(s"Received ${e.getClass.getName} with message ${e.getMessage} from $actorPath")
         actorErrorStatesAgent.send{states =>

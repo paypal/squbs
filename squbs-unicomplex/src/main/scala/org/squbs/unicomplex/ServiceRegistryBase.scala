@@ -17,8 +17,9 @@
 package org.squbs.unicomplex
 
 import javax.net.ssl.SSLContext
+
 import akka.actor.Actor._
-import akka.actor.{ActorRef, ActorContext}
+import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
 import com.typesafe.config.Config
 import org.squbs.pipeline.PipelineSetting
@@ -26,6 +27,7 @@ import org.squbs.util.ConfigUtil._
 
 import scala.concurrent.ExecutionContext
 import scala.collection.mutable.ListBuffer
+import scala.util.control.NonFatal
 
 trait ServiceRegistryBase[A] {
 
@@ -109,7 +111,7 @@ trait ServiceRegistryBase[A] {
               val clazz = Class.forName(sslContextClassName)
               clazz.getMethod("getServerSslContext").invoke(clazz.newInstance()).asInstanceOf[SSLContext]
             } catch {
-              case e: Throwable =>
+              case NonFatal(e) =>
                 log.error(e, s"Failure obtaining SSLContext from $sslContextClassName.")
                 throw e
             }

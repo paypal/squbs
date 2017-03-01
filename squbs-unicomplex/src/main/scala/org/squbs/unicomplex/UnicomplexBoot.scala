@@ -206,7 +206,7 @@ object UnicomplexBoot extends LazyLogging {
       val config = ConfigFactory.parseURL(resource, ConfigParseOptions.defaults().setAllowMissing(false))
       Some((jarName, config))
     } catch {
-      case e: Exception =>
+      case NonFatal(e) =>
         logger.warn(s"${e.getClass.getName} reading configuration from $jarName.\n ${e.getMessage}")
         None
     }
@@ -686,7 +686,7 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
           logger.info(s"Success $opName extension ${l.getClass.getName} in $fullName $version")
           extension
         } catch {
-          case e: Exception =>
+          case NonFatal(e) =>
             val t = getRootCause(e)
             logger.warn(s"Error on $opName extension ${l.getClass.getName}\n" +
               s"Cube: $fullName $version\n" +

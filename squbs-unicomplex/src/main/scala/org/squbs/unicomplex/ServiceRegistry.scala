@@ -39,6 +39,7 @@ import org.squbs.unicomplex.StatsSupport.StatsHolder
 
 import scala.concurrent.Future
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -71,7 +72,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     implicit val am = ActorMaterializer()
     import context.system
 
-    val handler = try { FlowHandler(listenerRoutes(name), localPort) } catch { case e: Throwable =>
+    val handler = try { FlowHandler(listenerRoutes(name), localPort) } catch { case NonFatal(e) =>
       serverBindings = serverBindings + (name -> ServerBindingInfo(None, Some(e)))
       log.error(s"Failed to build streaming flow handler.  System may not function properly.")
       notifySender ! Failure(e)
@@ -196,7 +197,7 @@ private[unicomplex] trait FlowSupplier { this: Actor with ActorLogging =>
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
-      case e: Exception =>
+      case NonFatal(e) =>
         log.error(s"Received ${e.getClass.getName} with message ${e.getMessage} from ${sender().path}")
         Escalate
     }
