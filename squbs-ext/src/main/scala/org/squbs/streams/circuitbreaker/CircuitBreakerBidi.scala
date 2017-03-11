@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.squbs.circuitbreaker
+package org.squbs.streams.circuitbreaker
 
 import java.util.Optional
 import java.util.function.{Function => JFunction}
@@ -26,7 +26,7 @@ import akka.japi.Pair
 import akka.stream._
 import akka.stream.scaladsl.{BidiFlow, Flow}
 import akka.stream.stage._
-import org.squbs.streams.TimeoutBidiUnordered
+import org.squbs.streams.{TimeoutBidiUnordered, UniqueId}
 
 import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
@@ -43,7 +43,7 @@ import scala.util.{Failure, Success, Try}
   * scenarios, make sure to select a [[CircuitBreakerState]] implementation that can work across materializations
   * concurrently.
   *
-  * A [[fallback]] function can be passed to provide an alternative response when circuit is OPEN, .
+  * A [[fallback]] function can be passed to provide an alternative response when circuit is OPEN.
   *
   * The joined [[Flow]] pushes down a [[Try]].  By default, any [[Failure]] is considered a problem and causes the
   * circuit breaker failure count to be incremented.  However, [[CircuitBreakerBidi]] also accepts a [[failureDecider]]
@@ -164,8 +164,7 @@ class CircuitBreakerBidi[In, Out, Context](circuitBreakerState: CircuitBreakerSt
 object CircuitBreakerBidi {
 
   /**
-    * Creates a bidi [[GraphStage]] that is joined with a [[Flow]] to add Circuit Breaker functionality
-    * functionality.
+    * Creates a bidi [[GraphStage]] that is joined with a [[Flow]] to add Circuit Breaker functionality.
     *
     * @param circuitBreakerState the [[CircuitBreakerState]] implementation that holds the state of the circuit breaker
     * @param fallback the function that gets called to provide an alternative response when the circuit is OPEN
@@ -189,27 +188,13 @@ object CircuitBreakerBidi {
 object CircuitBreakerBidiFlow {
 
   /**
-    * Creates a [[CircuitBreakerBidiFlow]] with the default unique id retriever: {{{(context: Context) => context }}}.
-    *
-    * @see the API that takes a {{{uniqueId: Context => Id)}}} for more details.
-    *
-    * @param circuitBreakerState the [[CircuitBreakerState]] implementation that holds the state of the circuit breaker
-    * @param fallback the function that gets called to provide an alternative response when the circuit is OPEN
-    * @param failureDecider the function that gets called to determine if an element passed by the joined [[Flow]] is
-    *                       actually a failure or not
-    * @tparam In the type of the elements pulled from the upstream along with the [[Context]] and pushed down to joined
-    *            flow
-    * @tparam Out the type that's contained in a [[Try]] and pushed downstream along with the [[Context]]
-    * @tparam Context the type of the context that is carried around along with the elements.  The context may be of any
-    *                 type that can be used to uniquely identify each element
-    * @return a [[CircuitBreakerBidiFlow]] that can be joined with a [[Flow]] with corresponding types to add timeout
-    *         functionality.
+    * @see [[apply]] that takes a {{{uniqueIdMapper: Context => Option[Any]}}} parameter for details.
     */
   def apply[In, Out, Context](circuitBreakerState: CircuitBreakerState,
                               fallback: Option[((In, Context)) => (Try[Out], Context)] = None,
                               failureDecider: Option[((Try[Out], Context)) => Boolean] = None):
   BidiFlow[(In, Context), (In, Context), (Out, Context), (Try[Out], Context), NotUsed] =
-    apply(circuitBreakerState, fallback, failureDecider, (context: Context) => context)
+    apply(circuitBreakerState, fallback, failureDecider, (_: Any) => None)
 
   /**
     * Java API
@@ -235,18 +220,20 @@ object CircuitBreakerBidiFlow {
     * Creates a [[BidiFlow]] that can be joined with a [[Flow]] to add Circuit Breaker functionality.
     *
     * Circuit Breaker functionality requires each element to be uniquely identified, so it requires a [[Context]], of
-    * any type defined by the application, to be carried along with the [[Flow]]'s input and output as a tuple.
+    * any type defined by the application, to be carried along with the flow's input and output as a [[Tuple2]] (Scala)
+    * or [[Pair]] (Java).  The requirement is that either the [[Context]] itself or a mapping from [[Context]] should be
+    * able to uniquely identify an element.  Here is the ways how a unique id can be retrieved:
     *
-    * The requirement is that either the [[Context]] itself or an attribute accessed via the [[Context]] should be able
-    * to uniquely identify an element.
-    *
-    * This API takes a unique id retriever.  Please also see the API with the default
-    * unique id retriever: {{{(context: Context) => context }}}.
+    *   - [[Context]] itself is a type that can be used as a unique id, e.g., [[Int]], [[Long]], [[java.util.UUID]]
+    *   - [[Context]] extends [[UniqueId.Provider]] and implements [[UniqueId.Provider.uniqueId]] method
+    *   - [[Context]] is of type [[UniqueId.Envelope]]
+    *   - [[Context]] can be mapped to a unique id by calling {{{uniqueIdMapper}}}
     *
     * @param circuitBreakerState the [[CircuitBreakerState]] implementation that holds the state of the circuit breaker
     * @param fallback the function that gets called to provide an alternative response when the circuit is OPEN
     * @param failureDecider the function that gets called to determine if an element passed by the joined [[Flow]] is
     *                       actually a failure or not
+    * @param uniqueIdMapper the function that maps [[Context]] to a unique id
     * @tparam In the type of the elements pulled from the upstream along with the [[Context]] and pushed down to joined
     *            flow
     * @tparam Out the type that's contained in a [[Try]] and pushed downstream along with the [[Context]]
@@ -254,26 +241,29 @@ object CircuitBreakerBidiFlow {
     *                 type that can be used to uniquely identify each element
     * @return a [[BidiFlow]] with Circuit Breaker functionality
     */
-  def apply[In, Out, Context, Id](circuitBreakerState: CircuitBreakerState,
-                                  fallback: Option[((In, Context)) => (Try[Out], Context)],
-                                  failureDecider: Option[((Try[Out], Context)) => Boolean],
-                                  uniqueId: Context => Id):
+  def apply[In, Out, Context](circuitBreakerState: CircuitBreakerState,
+                              fallback: Option[((In, Context)) => (Try[Out], Context)],
+                              failureDecider: Option[((Try[Out], Context)) => Boolean],
+                              uniqueIdMapper: Context => Option[Any]):
   BidiFlow[(In, Context), (In, Context), (Out, Context), (Try[Out], Context), NotUsed] =
     BidiFlow
       .fromGraph(CircuitBreakerBidi(circuitBreakerState, fallback, failureDecider))
-      .atop(TimeoutBidiUnordered(circuitBreakerState.callTimeout, uniqueId))
+      .atop(TimeoutBidiUnordered(circuitBreakerState.callTimeout, uniqueIdMapper))
 
   /**
     * Java API
     */
-  def create[In, Out, Context, Id](circuitBreakerState: CircuitBreakerState,
-                               fallback: Optional[JFunction[Pair[In, Context], Pair[Try[Out], Context]]],
-                               failureDecider: Optional[JFunction[Pair[Try[Out], Context], Boolean]],
-                               uniqueId: JFunction[Context, Id]):
+  def create[In, Out, Context](circuitBreakerState: CircuitBreakerState,
+                                   fallback: Optional[JFunction[Pair[In, Context], Pair[Try[Out], Context]]],
+                                   failureDecider: Optional[JFunction[Pair[Try[Out], Context], Boolean]],
+                                   uniqueIdMapper: java.util.function.Function[Context, Optional[Any]]):
   akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
-    import scala.compat.java8.FunctionConverters._
     JavaConverters.toJava[In, In, Out, Try[Out], Context] {
-      apply(circuitBreakerState, fallbackAsScala(fallback), failureDeciderAsScala(failureDecider), uniqueId.asScala)
+      apply(
+        circuitBreakerState,
+        fallbackAsScala(fallback),
+        failureDeciderAsScala(failureDecider),
+        UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper))
     }
   }
 

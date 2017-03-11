@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.squbs.circuitbreaker
+package org.squbs.streams.circuitbreaker
 
 import akka.actor.ActorRef
 import akka.event.{EventBus, SubchannelClassification}

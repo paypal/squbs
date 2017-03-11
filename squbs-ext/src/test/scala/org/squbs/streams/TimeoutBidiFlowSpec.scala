@@ -17,6 +17,7 @@
 package org.squbs.streams
 
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.{Actor, ActorSystem, Props}
 import akka.stream.scaladsl._
@@ -24,6 +25,7 @@ import akka.stream.{ActorMaterializer, Attributes, FlowShape}
 import akka.testkit.TestKit
 import akka.util.Timeout
 import org.scalatest.{AsyncFlatSpecLike, Matchers}
+import org.squbs.streams.UniqueId.{Envelope, Provider}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -157,8 +159,12 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
     result map { _ should contain theSameElementsAs expected }
   }
 
-  it should "allow a custom uniqueId function to be passed in" in {
-    case class MyContext(s: String, uudi: UUID)
+  it should "allow a custom uniqueId mapper to be passed in" in {
+    val counter = new AtomicInteger(0)
+
+    case class MyContext(s: String, uuid: UUID) {
+      override def hashCode(): Int = counter.incrementAndGet() // On purpose, a problematic hashcode
+    }
 
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
@@ -167,7 +173,8 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
       (delayActor ? elem).mapTo[(String, MyContext)]
     }
 
-    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, MyContext, UUID](timeout, (mc: MyContext) => mc.uudi)
+    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, MyContext](timeout,
+                                                                             (context: MyContext) => Some(context.uuid))
 
     val result = Source("a" :: "b" :: "c" :: Nil)
       .map { s => (s, MyContext("dummy", UUID.randomUUID())) }
@@ -177,6 +184,65 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
     // "c" does NOT fail because the original flow lets it go earlier than "b"
     val expected = Success("a") :: timeoutFailure :: Success("c") :: Nil
     result map { _ should contain theSameElementsAs expected }
+  }
+
+  it should "get the id from uniqueId function" in {
+    val counter = new AtomicInteger(0)
+
+    case class MyContext(s: String, uuid: UUID) extends Provider {
+      override def uniqueId: Any = uuid
+      override def hashCode(): Int = counter.incrementAndGet() // On purpose, a problematic hashcode
+    }
+
+    val delayActor = system.actorOf(Props[DelayActor])
+    import akka.pattern.ask
+    implicit val askTimeout = Timeout(5.seconds)
+    val flow = Flow[(String, MyContext)].mapAsyncUnordered(3) { elem =>
+      (delayActor ? elem).mapTo[(String, MyContext)]
+    }
+
+    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, MyContext](timeout)
+
+    val result = Source("a" :: "b" :: "c" :: Nil)
+      .map { s => (s, MyContext("dummy", UUID.randomUUID())) }
+      .via(timeoutBidiFlow.join(flow))
+      .map { case(s, _) => s }
+      .runWith(Sink.seq)
+    // "c" does NOT fail because the original flow lets it go earlier than "b"
+    val expected = Success("a") :: timeoutFailure :: Success("c") :: Nil
+    result map { _ should contain theSameElementsAs expected }
+  }
+
+  it should "use the id that is passed with UniqueIdEnvelope" in {
+    val delayActor = system.actorOf(Props[DelayActor])
+    import akka.pattern.ask
+    implicit val askTimeout = Timeout(5.seconds)
+    val flow = Flow[(String, Envelope)].mapAsyncUnordered(3) { elem =>
+      (delayActor ? elem).mapTo[(String, Envelope)]
+    }
+
+    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, Envelope](timeout)
+
+    val result = Source("a" :: "b" :: "c" :: Nil)
+      .map { s => (s, Envelope("dummy", UUID.randomUUID())) }
+      .via(timeoutBidiFlow.join(flow))
+      .map { case(s, _) => s }
+      .runWith(Sink.seq)
+    // "c" does NOT fail because the original flow lets it go earlier than "b"
+    val expected = Success("a") :: timeoutFailure :: Success("c") :: Nil
+    result map { _ should contain theSameElementsAs expected }
+  }
+
+  it should "retrieve the unique id correctly" in {
+    case class MyContext(id: Int) extends Provider {
+      override def uniqueId: Any = id
+    }
+
+    TimeoutBidiUnordered[String, String, Int](timeout).uniqueId(1) should be(1)
+    TimeoutBidiUnordered[String, String, MyContext](timeout).uniqueId(MyContext(2)) should be(2)
+    TimeoutBidiUnordered[String, String, Envelope](timeout).uniqueId(Envelope("dummy", 3)) should be(3)
+    TimeoutBidiUnordered[String, String, MyContext](timeout,
+                                                    context => Some(context.id + 1)).uniqueId(MyContext(4)) should be(5)
   }
 }
 
@@ -188,11 +254,9 @@ class DelayActor extends Actor {
   def receive = {
     case element: String =>
       context.system.scheduler.scheduleOnce(delay(element), sender(), element)
-    case element: (String, Long) =>
+    case element: (String, Any) =>
       context.system.scheduler.scheduleOnce(delay(element._1), sender(), element)
-    case element: (String, UUID) =>
-      context.system.scheduler.scheduleOnce(delay(element._1), sender(), element)
-    case element: akka.japi.Pair[String, Long] =>
+    case element: akka.japi.Pair[String, Any] =>
       context.system.scheduler.scheduleOnce(delay(element.first), sender(), element)
   }
 }

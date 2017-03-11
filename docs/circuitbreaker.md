@@ -16,7 +16,7 @@ Add the following dependency to your `build.sbt` or scala build file:
 
 ### Usage
 
-The circuit breaker functionality is provided as a `BidiFlow` that can be connected to a flow via the `join` operator.  `CircuitBreakerBidi` might potentially change the order of messages, so it requires a `Context` to be carried around.  The requirement is that either the `Context` itself or an attribute accessed via the `Context` should be able to uniquely identify an element.  Along with the `Context`, a `Try` is pushed downstream: 
+The circuit breaker functionality is provided as a `BidiFlow` that can be connected to a flow via the `join` operator.  `CircuitBreakerBidi` might potentially change the order of messages, so it requires a `Context` to be carried around.  The requirement is that either the `Context` itself or a mapping from `Context` should be able to uniquely identify an element (see [Context to Unique Id Mapping](#context-to-unique-id-mapping) section for more details).  Along with the `Context`, a `Try` is pushed downstream: 
 
 Circuit is `Closed`:
 
@@ -82,7 +82,7 @@ Source.from(Arrays.asList("a", "b", "c"))
 
 #### Fallback Response
 
-`CircuitBreakerBidiFlow` optionally takes a fallback function that gets called when the curcuit is `Open` to provide an alternative path.
+`CircuitBreakerBidiFlow` optionally takes a fallback function that gets called when the circuit is `Open` to provide an alternative path.
 
 ##### Scala
 Scala API takes an `Option` of function `Option[((In, Context)) => (Try[Out], Context)]`:
@@ -96,7 +96,7 @@ CircuitBreakerBidiFlow[String, String, UUID](
 
 ##### Java
 
-Java API takes an `Optional` of `Optional[java.util.function.Function[Pair[In, Context], Pair[Try[Out], Context]]]`:
+Java API takes an `Optional` of `Optional<Function<Pair<In, Context>, Pair<Try<Out>, Context>>>`:
 
 ```java
 CircuitBreakerBidiFlow.create(
@@ -127,7 +127,7 @@ CircuitBreakerBidiFlow[String, String, UUID](
 
 ##### Java
 
-Java API takes an `Optional` of `Optional[java.util.function.Function[Pair[Try[Out], Context], Boolean]]`.  Below is an example where `Success("b")` is considered a failure:
+Java API takes an `Optional` of `Optional<Function<Pair<Try<Out>, Context>, Boolean>>`.  Below is an example where `Success("b")` is considered a failure:
 
 ```java
 CircuitBreakerBidiFlow.create(
@@ -165,31 +165,42 @@ final CircuitBreakerState circuitBreakerState =
 
 Please note, in many scenarios, the same circuit breaker instance is used across multiple materializations of the same flow.  For such scenarios, make sure to use a `CircuitBreakerState` instance that can be modified concurrently.  The default implementation `AtomicCircuitBreakerState` uses `Atomic` variables and can be used across multiple materializations.  More implementations, e.g., `Agent` based, can be introduced in the future.
 
-#### Customizing unique id retriever
+#### Context to Unique Id Mapping
 
-There may be scenarios where the `context` contains more than the unique id itself or the unique id might be calculated as a function of the `context`.  Accordingly, `CircuitBreakerBidiFlow` allows a function from `context` to `id` to be passed in as a parameter.
+`Context` itself might be used as a unique id.  However, in many scenarios, `Context` contains more than the unique id itself or the unique id might be retrieved as a mapping from the `Context`.  squbs allows different options to provide a unique id:
+
+   * `Context` itself is a type that can be used as a unique id, e.g., `Int`, `Long`, `java.util.UUID`
+   * `Context` extends `UniqueId.Provider` and implements `def uniqueId`
+   * `Context` is wrapped with `UniqueId.Envelope`
+   * `Context` is mapped to a unique id by calling a function
+
+
+With the first three options, a unique id can be retrieved directly through the context.
+
+For the last option, `CircuitBreakerBidiFlow` allows a function to be passed in as a parameter.
 
 ##### Scala
 
-The following API is used to pass a custom id retriever:
+The following API is used to pass a uniqueId mapper:
 
 ```scala
-CircuitBreakerBidiFlow[In, Out, Context, Id](circuitBreakerState: CircuitBreakerState,
-                                             fallback: Option[((In, Context)) => (Try[Out], Context)],
-                                             failureDecider: Option[((Try[Out], Context)) => Boolean],
-                                             uniqueId: Context => Id)
+CircuitBreakerBidiFlow[In, Out, Context](
+  circuitBreakerState: CircuitBreakerState,
+  fallback: Option[((In, Context)) => (Try[Out], Context)],
+  failureDecider: Option[((Try[Out], Context)) => Boolean],
+  uniqueIdMapper: Context => Option[Any])
 ```
-Here is an example with a custom unique id retriever:
+Here is an example with a uniqueId mapper:
 
 ```scala
 case class MyContext(s: String, uuid: UUID)
 
 val circuitBreakerState = AtomicCircuitBreakerState("sample", system.scheduler, 2, 20 milliseconds, 10 milliseconds)
-val circuitBreakerBidiFlow = CircuitBreakerBidiFlow[String, String, MyContext, UUID](
+val circuitBreakerBidiFlow = CircuitBreakerBidiFlow[String, String, MyContext](
   circuitBreakerState,
   None,
   None,
-  (mc: MyContext) => mc.uuid)
+  (context: MyContext) => Some(context.id))
 
 val flow = Flow[(String, MyContext)].mapAsyncUnordered(10) { elem =>
   (ref ? elem).mapTo[(String, MyContext)]
@@ -203,16 +214,23 @@ Source("a" :: "b" :: "b" :: "a" :: Nil)
 
 ##### Java
 
-The following API is used to pass a custom id retriever:
+The following API is used to pass a uniqueId mapper:
 
 ```java
-CircuitBreakerBidiFlow.create[In, Out, Context, Id](circuitBreakerState: CircuitBreakerState,
-                                                    fallback: Optional[Function[Pair[In, Context], Pair[Try[Out], Context]]],
-                                                    failureDecider: Optional[Function[Pair[Try[Out], Context], Boolean]],
-                                                    uniqueId: Function[Context, Id])
+public class CircuitBreakerBidiFlow {
+	public static <In, Out, Context> BidiFlow<Pair<In, Context>, 
+	                                          Pair<In, Context>,
+	                                          Pair<Out, Context>,
+	                                          Pair<Try<Out>, Context>,
+	                                          NotUsed>
+	create(CircuitBreakerState circuitBreakerState,
+           Optional<Function<Pair<In, Context>, Pair<Try<Out>, Context>>> fallback,
+           Optional<Function<Pair<Try<Out>, Context>, Boolean>> failureDecider,
+           Function<Context, Optional<Object>> uniqueIdMapper);
+}
 ```
 
-Here is an example with a custom unique id retriever:
+Here is an example with a uniqueId mapper:
 
 ```java
 class MyContext {
@@ -238,8 +256,17 @@ final CircuitBreakerState circuitBreakerState =
                 FiniteDuration.apply(10, TimeUnit.MILLISECONDS),
                 system.dispatcher());
 
-final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> circuitBreakerBidiFlow =
-        CircuitBreakerBidiFlow.create(circuitBreakerState, Optional.empty(), Optional.empty(), MyContext::uuid);
+final BidiFlow<Pair<String, MyContext>,
+               Pair<String, MyContext>,
+               Pair<String, MyContext>,
+               Pair<Try<String>, MyContext>,
+               NotUsed>
+        circuitBreakerBidiFlow =
+        CircuitBreakerBidiFlow.create(
+                circuitBreakerState,
+                Optional.empty(),
+                Optional.empty(),
+                context -> Optional.of(context.id));
 
 final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
         Flow.<Pair<String, MyContext>>create()

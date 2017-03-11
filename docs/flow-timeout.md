@@ -56,7 +56,7 @@ Source.from(Arrays.asList("a", "b", "c"))
 
 #### Flows without message order guarantee
 
-`TimeoutBidiFlowUnordered` is used to create a timeout `BidiFlow` to wrap flows that do not guarantee the order of messages.  To uniquely identify each element and its corresponding timing marks, a `context`, of any type defined by the application, needs to be carried around by the wrapped flow.  The requirement is that either the `context` itself or an attribute accessed via the `context` should be able to uniquely identify an element.  By default, the `context` itself is used to uniquely identify an element (e.g., `context` is of type `UUID` or `Long`); however, the unique id accessor can be customized (e.g., the `context` is a `case class` with a field `val id: UUID`), please see  [Customizing unique id retriever](#customizing-unique-id-retriever) section.
+`TimeoutBidiFlowUnordered` is used to create a timeout `BidiFlow` to wrap flows that do not guarantee the order of messages.  To uniquely identify each element and its corresponding timing marks, a `context`, of any type defined by the application, needs to be carried around by the wrapped flow.  The requirement is that either the `Context` itself or a mapping from `Context` should be able to uniquely identify an element (see [Context to Unique Id Mapping](#context-to-unique-id-mapping) section for more details).
 
 ##### Scala
 
@@ -76,7 +76,20 @@ Source("a" :: "b" :: "c" :: Nil)
 
 ##### Java
 
-`TimeoutBidiFlowUnordered.create[In, Out, Context](timeout: FiniteDuration)` is used to create an unordered timeout `BidiFlow`.  This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair[In, Context]` and outputs a `akka.japi.Pair[Out, Context]`.
+The following API is used to create an unordered timeout `BidiFlow`:
+
+```java
+public class TimeoutBidiFlowUnordered {
+	public static <In, Out, Context> BidiFlow<Pair<In, Context>, 
+	                                          Pair<In, Context>,
+	                                          Pair<Out, Context>,
+	                                          Pair<Try<Out>, Context>,
+	                                          NotUsed>
+	create(FiniteDuration timeout);
+}
+```
+
+This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair<In, Context>` and outputs a `akka.japi.Pair<Out, Context>`.
 
 ```java
 final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> timeoutBidiFlow =
@@ -92,54 +105,86 @@ Source.from(Arrays.asList("a", "b", "c"))
         .runWith(Sink.seq(), mat);    
 ```
 
-##### Customizing unique id retriever
+##### Context to Unique Id Mapping
 
-There may be scenarios where the `context` contains more than the unique id itself or the unique id might be calculated as a function of the `context`.  Accordingly, `TimeoutBidiFlowUnordered` allows a function from `context` to `id` to be passed in as a parameter.
+`Context` itself might be used as a unique id.  However, in many scenarios, `Context` contains more than the unique id itself or the unique id might be retrieved as a mapping from the `Context`.  squbs allows different options to provide a unique id:
+
+   * `Context` itself is a type that can be used as a unique id, e.g., `Int`, `Long`, `java.util.UUID`
+   * `Context` extends `UniqueId.Provider` and implements `def uniqueId`
+   * `Context` is wrapped with `UniqueId.Envelope`
+   * `Context` is mapped to a unique id by calling a function
+
+
+With the first three options, a unique id can be retrieved directly through the context.
+
+For the last option, `TimeoutBidiFlowUnordered` allows a function to be passed in as a parameter.
+
 
 ###### Scala
 
-`TimeoutBidiFlowUnordered[In, Out, Context, Id](timeout: FiniteDuration, uniqueId: Context => Id)` is used to create an unordered timeout `BidiFlow` with a unique id retriever function.  This `BidiFlow` can be joined with any flow that takes in a `(In, Context)` and outputs a `(Out, Context)`.
+The following API is used to pass a uniqueId mapper:
+
+```scala
+TimeoutBidiFlowUnordered[In, Out, Context](timeout: FiniteDuration,
+                                           uniqueIdMapper: Context => Option[Any])
+```
+  
+  This `BidiFlow` can be joined with any flow that takes in a `(In, Context)` and outputs a `(Out, Context)`.
 
 ```scala
 case class MyContext(s: String, uuid: UUID)
 
-val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, MyContext, UUID](timeout, (mc: MyContext) => mc.uuid)
+val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, MyContext](timeout,
+                                                                         (context: MyContext) => Some(context.uuid))
 val flow = Flow[(String, MyContext)].mapAsyncUnordered(10) { elem =>
   (ref ? elem).mapTo[(String, MyContext)]
 }
 
 Source("a" :: "b" :: "c" :: Nil)
-  .map { s => (s, MyContext("dummy", UUID.randomUUID())) }
+  .map( _ -> MyContext("dummy", UUID.randomUUID))
   .via(timeoutBidiFlow.join(flow))
-  .runWith(Sink.seq)  
+  .runWith(Sink.seq) 
 ```
 
 ###### Java
 
+The following API is used to pass a uniqueId mapper:
+
 ```java
-TimeoutBidiFlowUnordered
-    .create[In, Out, Context, Id]
-    (timeout: FiniteDuration, uniqueId: java.util.function.Function[Context, Id])
-``` 
-is used to create an unordered timeout `BidiFlow` with a unique id retriever function.  This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair[In, Context]` and outputs a `akka.japi.Pair[Out, Context]`.
+public class TimeoutBidiFlowUnordered {
+	public static <In, Out, Context> BidiFlow<Pair<In, Context>, 
+	                                          Pair<In, Context>,
+	                                          Pair<Out, Context>,
+	                                          Pair<Try<Out>, Context>,
+	                                          NotUsed>
+	create(FiniteDuration timeout, Function<Context, Optional<Object>> uniqueIdMapper);
+}
+```
+
+This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair<In, Context>` and outputs a `akka.japi.Pair<Out, Context>`.
 
 ```java
 class MyContext {
     private String s;
     private UUID uuid;
-    
+
     public MyContext(String s, UUID uuid) {
         this.s = s;
         this.uuid = uuid;
     }
-   
+
     public UUID uuid() {
         return uuid;
     }
 }
 
-final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> timeoutBidiFlow =
-        TimeoutBidiFlowUnordered.create(timeout, MyContext::uuid);
+final BidiFlow<Pair<String, MyContext>,
+               Pair<String, MyContext>,
+               Pair<String, MyContext>,
+               Pair<Try<String>, MyContext>,
+               NotUsed>
+    timeoutBidiFlow = TimeoutBidiFlowUnordered.create(timeout, context -> Optional.of(context.uuid));
+
 final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
         Flow.<Pair<String, MyContext>>create()
                 .mapAsyncUnordered(10, elem -> ask(ref, elem, 5000))

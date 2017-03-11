@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.squbs.circuitbreaker;
+package org.squbs.streams.circuitbreaker;
 
 import akka.NotUsed;
 import akka.actor.ActorRef;
@@ -32,9 +32,9 @@ import akka.testkit.JavaTestKit;
 import com.typesafe.config.ConfigFactory;
 import org.junit.Assert;
 import org.junit.Test;
-import org.squbs.circuitbreaker.impl.AtomicCircuitBreakerState;
 import org.squbs.streams.DelayActor;
 import org.squbs.streams.FlowTimeoutException;
+import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState;
 import scala.concurrent.duration.FiniteDuration;
 import scala.util.Failure;
 import scala.util.Success;
@@ -47,6 +47,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static akka.pattern.PatternsCS.ask;
 
@@ -223,7 +224,9 @@ public class CircuitBreakerBidiFlowTest {
 
 
     @Test
-    public void testWithCustomUniqueIdFunction() throws ExecutionException, InterruptedException {
+    public void testWithUniqueIdMapper() throws ExecutionException, InterruptedException {
+
+        final AtomicInteger counter = new AtomicInteger(0);
 
         class MyContext {
             private String s;
@@ -237,6 +240,9 @@ public class CircuitBreakerBidiFlowTest {
             public long id() {
                 return id;
             }
+
+            @Override
+            public int hashCode() { return counter.incrementAndGet(); } // On purpose, a problematic hashcode
 
             @Override
             public boolean equals(Object obj) {
@@ -269,8 +275,17 @@ public class CircuitBreakerBidiFlowTest {
                         FiniteDuration.apply(10, TimeUnit.MILLISECONDS),
                         system.dispatcher());
 
-        final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> circuitBreakerBidiFlow =
-                CircuitBreakerBidiFlow.create(circuitBreakerState, Optional.empty(), Optional.empty(), MyContext::id);
+        final BidiFlow<Pair<String, MyContext>,
+                       Pair<String, MyContext>,
+                       Pair<String, MyContext>,
+                       Pair<Try<String>, MyContext>,
+                       NotUsed>
+                circuitBreakerBidiFlow =
+                CircuitBreakerBidiFlow.create(
+                        circuitBreakerState,
+                        Optional.empty(),
+                        Optional.empty(),
+                        context -> Optional.of(context.id));
 
         IdGen idGen = new IdGen();
         final CompletionStage<List<Pair<Try<String>, MyContext>>> result =

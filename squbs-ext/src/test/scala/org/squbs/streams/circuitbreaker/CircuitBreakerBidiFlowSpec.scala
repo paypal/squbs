@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
-package org.squbs.circuitbreaker
+package org.squbs.streams.circuitbreaker
 
 import java.lang.management.ManagementFactory
 import java.util.UUID
 import javax.management.ObjectName
 
 import akka.actor.{Actor, ActorSystem, Props}
-import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.stream.scaladsl.{BidiFlow, Flow, Keep, Sink, Source}
+import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import com.typesafe.config.{ConfigException, ConfigFactory}
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{FlatSpecLike, Matchers}
 import org.scalatest.OptionValues._
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.squbs.circuitbreaker.impl.AtomicCircuitBreakerState
+import org.scalatest.{FlatSpecLike, Matchers}
 import org.squbs.metrics.MetricsExtension
 import org.squbs.streams.FlowTimeoutException
+import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -201,7 +201,7 @@ class CircuitBreakerBidiFlowSpec
     awaitAssert(jmxValue("MetricsCB.circuit-breaker.short-circuit-count", "Count").value shouldBe 1)
   }
 
-  it should "allow a custom uniqueId function to be passed in" in {
+  it should "allow a uniqueId mapper to be passed in" in {
     case class MyContext(s: String, id: Long)
 
     val delayActor = system.actorOf(Props[DelayActor])
@@ -211,11 +211,11 @@ class CircuitBreakerBidiFlowSpec
       (delayActor ? elem).mapTo[(String, MyContext)]
     }
 
-    val circuitBreakerBidiFlow = CircuitBreakerBidiFlow[String, String, MyContext, Long](
+    val circuitBreakerBidiFlow = CircuitBreakerBidiFlow[String, String, MyContext](
       AtomicCircuitBreakerState("UniqueId", system.scheduler, 2, timeout, 10 milliseconds),
       None,
       None,
-      (mc: MyContext) => mc.id)
+      (context: MyContext) => Some(context.id))
 
 
     var counter = 0L
