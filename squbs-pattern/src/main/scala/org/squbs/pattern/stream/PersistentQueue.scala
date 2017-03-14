@@ -161,7 +161,7 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
       } else {
         config.commitOrderPolicy match {
           case Lenient =>
-            logger.warn(s"Missing or out of order commits.  previous: ${lastCommitIndex(outputPortId)} latest: $index cycle: ${cycle(outputPortId)}")
+            logger.info(s"Missing or out of order commits.  previous: ${lastCommitIndex(outputPortId)} latest: $index cycle: ${cycle(outputPortId)}")
             lastCommitIndex(outputPortId) = index
           case Strict =>
             val msg = s"Missing or out of order commits.  previous: ${lastCommitIndex(outputPortId)} latest: $index cycle: ${cycle(outputPortId)}"
