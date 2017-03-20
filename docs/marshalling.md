@@ -1,15 +1,21 @@
-#Marshalling and Unmarshalling
+# Marshalling and Unmarshalling
 
-###Overview
+### Overview
 
-Marshalling and unmarshalling is used both on the client and server side. On the server side it is used to map an incoming request to a Scala or Java object and to map a Scala or Java object to an outgoing response. Similarly, on the client side, it is used to marshal an object to an outgoing HTTP request and unmarshal it from an incoming response. There could be a multitude of content formats for marshalling/unmarshalling, common ones are JSON and XML.
+Marshalling and unmarshalling is used both on the client and server side. On the server side it is used to map an incoming request to a Scala or Java object and to map a Scala or Java object to an outgoing response. Similarly, on the client side, it is used to marshal an object to an outgoing HTTP request and unmarshal it from an incoming response. There could be a multitude of content formats for marshalling/unmarshalling, common ones are JSON and XML. Please see following pages for quick examples of JSON marshalling and unmarshalling in Akka HTTP:
+
+* Scala - [spray-json Support](http://doc.akka.io/docs/akka-http/current/scala/http/common/json-support.html#spray-json-support)
+* Java - [Jackson Support](http://doc.akka.io/docs/akka-http/current/java/http/common/json-support.html#json-support-via-jackson).
 
 Akka HTTP provides marshalling/unmarshalling facilities explained in [Scala marshalling](http://doc.akka.io/docs/akka-http/current/scala/http/common/marshalling.html)/[unmarshalling](http://doc.akka.io/docs/akka-http/current/scala/http/common/unmarshalling.html) and [Java marshalling](http://doc.akka.io/docs/akka-http/current/java/http/common/marshalling.html)/[unmarshalling](http://doc.akka.io/docs/akka-http/current/java/http/common/unmarshalling.html). Also, there are other open source marshallers and unmarshallers for Akka HTTP available for different formats and using different object marshalling/unmarshalling implementations.
 
-squbs provides a Java API for manual marshalling/marshalling as well as adding facilities for working in a Scala/Java cross-language environment. Manual access to marshallers and unmarshallers is useful for stream-based applications where some work may need to be done in a stream stage. It is also useful for testing marshaller configurations to ensure the right format is achieved.
+squbs provides marshallers for cross-language environments. For instance, when working with a mixed object hierarchy having both Scala case classes as well as Java beans. For simple, single-language environments, please use the provided marshallers or other open source marshallers directly.
+
+In addition, squbs also adds a Java API for manual marshalling/marshalling. Manual access to marshallers and unmarshallers is useful for stream-based applications where some work may need to be done in a stream stage. It is also useful for testing marshaller configurations to ensure the right format is achieved.
 
 This document discusses the marshallers and unmarshallers provided by squbs, and the facilities you can use to invoke these marshallers and unmarshallers manually. This document **does not** address the use of marshallers and unmarshallers as part of the Akka HTTP Routing DSL. Please see the Akka HTTP Routing DSL [Scala](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/directives/marshalling-directives/index.html#marshallingdirectives) and [Java](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/directives/marshalling-directives/index.html#marshallingdirectives-java) marshalling directives for using marshallers, including ones provided in this document, in the Routing DSL.
-###Dependency
+
+### Dependency
 
 Add the following dependency to your `build.sbt` or scala build file:
 
@@ -17,15 +23,15 @@ Add the following dependency to your `build.sbt` or scala build file:
 "org.squbs" %% "squbs-ext" % squbsVersion
 ```
 
-###Usage
+### Usage
 
-####JacksonMapperSupport
+#### JacksonMapperSupport
 
 The `JacksonMapperSupport` provides JSON marshallers/unmarshallers based on the popular Jackson library. It allows global as well as per-type configuration of Jackson `ObjectMapper`s.
 
 Please see [Jackson Data Binding documentation](http://wiki.fasterxml.com/JacksonFAQ#Data_Binding.2C_general) for detail on `ObjectMapper` configuration.
 
-#####Scala
+##### Scala
 
 You just need to import the `JacksonMapperSupport._` to expose its implicit members in the scope of marshaller/unmarshaller usage in Scala code:
 
@@ -56,7 +62,7 @@ JacksonMapperSupport.register[MyScalaClass](
   new ObjectMapper().registerModule(DefaultScalaModule))
 ```
 
-#####Java
+##### Java
 
 The marshallers and unmarshallers can be obtained from the `marshaller` and `unmarshaller` methods in `JacksonMapperSupport`, passing the class instance of the type to marshal/unmarshal as follows:
 
@@ -100,7 +106,7 @@ JacksonMapperSupport.register(MyClass.class
 ```
 
 
-####XLangJsonSupport
+#### XLangJsonSupport
 
 The XLangJsonSupport adds cross language support by delegating marshalling and unmarshalling to:
 
@@ -118,7 +124,7 @@ A general guideline for marshalling/unmarshalling mixed language  object hierarc
 
 Like `JacksonMapperSupport`, it supports per-type configuration of the marshaller and unmarshaller. It allows configuration both for Json4s and Jackson.
 
-#####Scala
+##### Scala
 
 You just need to import the `XLangJsonSupport._` to expose its implicit members in the scope of marshaller/unmarshaller usage in Scala code:
 
@@ -163,7 +169,7 @@ XLangJsonSupport.register[MyOtherClass](jackson.Serialization)
 XLangJsonSupport.register[MyOtherClass](DefaultFormats + MySerializer)
 ```
 
-#####Java
+##### Java
 
 The marshallers and unmarshallers can be obtained from the `marshaller` and `unmarshaller` methods in `XLangJsonSupport`, passing the class instance of the type to marshal/unmarshal as follows:
 
@@ -219,11 +225,11 @@ XLangJsonSupport.register(MyOtherClass.class, XLangJsonSupport.jacksonSerializat
 XLangJsonSupport.addSerializers(MyOtherClass.class, new MySerializer(), new MyOtherSerializer());
 ```
 
-####Invoking Marshalling/Unmarshalling
+#### Invoking Marshalling/Unmarshalling
 
 Besides using marshallers and marshallers as part of Akka HTTP Routing DSL, manual invocation of marshalling and unmarshalling is often required for use in both server-side and client-side `Flow`s as well as for testing.
 
-#####Scala
+##### Scala
 
 Akka provides a great [Scala DSL for marshalling and unmarshalling](http://doc.akka.io/docs/akka-http/current/scala/http/common/marshalling.html#using-marshallers). It's use can be seen in the example below:
 
@@ -246,7 +252,7 @@ Marshal(myObject).to[MessageEntity]
 Unmarshal(entity).to[MyType]
 ```
 
-#####Java
+##### Java
 The `MarshalUnmarshal` utility class is used for manually marshalling and unmarshalling objects using any `Marshaller` and `Unmarshaller` defined in Akka HTTP's JavaDSL. It's use can be seen in the example below:
 
 ```java
