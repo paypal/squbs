@@ -95,7 +95,10 @@ object ClientFlow {
     val clientSpecificConfig = config.getOption[Config](s""""$name"""").filter {
       _.getOption[String]("type") contains "squbs.httpclient"
     }
-    val clientConfigWithDefaults = clientSpecificConfig.map(_.withFallback(config)).getOrElse(config)
+    val envSpecificConfig = clientSpecificConfig.map { cfg =>
+      cfg.getOption[Config](environment.name).map(_.withFallback(cfg)).getOrElse(cfg)
+    }
+    val clientConfigWithDefaults = envSpecificConfig.map(_.withFallback(config)).getOrElse(config)
     val cps = settings.getOrElse(ConnectionPoolSettings(clientConfigWithDefaults))
 
     val clientConnectionFlow =

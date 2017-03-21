@@ -24,6 +24,7 @@ import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{FlatSpec, Matchers}
+import org.squbs.env.QA
 import org.squbs.resolver._
 import org.squbs.unicomplex.JMX
 import org.squbs.util.ConfigUtil._
@@ -40,49 +41,62 @@ object ClientConfigurationSpec {
        |  ${JMX.prefixConfig} = true
        |}
        |
-      |sampleClient {
-       | type = squbs.httpclient
+       |sampleClient {
+       |  type = squbs.httpclient
        |
-      | akka.http {
-       |   host-connection-pool {
-       |     max-connections = 987
-       |     max-retries = 123
+       |  akka.http {
+       |    host-connection-pool {
+       |      max-connections = 987
+       |      max-retries = 123
        |
-      |     client = {
-       |       connecting-timeout = 123 ms
-       |     }
-       |   }
-       | }
+       |      client = {
+       |        connecting-timeout = 123 ms
+       |      }
+       |    }
+       |  }
        |}
        |
-      |sampleClient2 {
-       | type = squbs.httpclient
+       |sampleClient2 {
+       |  type = squbs.httpclient
        |
-      | akka.http.host-connection-pool {
-       |   max-connections = 666
-       | }
+       |  akka.http.host-connection-pool {
+       |    max-connections = 666
+       |  }
        |}
        |
-      |noOverrides {
-       | type = squbs.httpclient
+       |sampleClientWithEnv {
+       |  type = squbs.httpclient
+       |
+       |  akka.http.host-connection-pool {
+       |    max-connections = 100
+       |  }
+       |
+       |  QA {
+       |    akka.http.host-connection-pool {
+       |      max-connections = 5
+       |    }
+       |  }
        |}
        |
-      |noType {
-       |
-      | akka.http.host-connection-pool {
-       |   max-connections = 987
-       |   max-retries = 123
-       | }
+       |noOverrides {
+       |  type = squbs.httpclient
        |}
        |
-      |passedAsParameter {
-       | type = squbs.httpclient
+       |noType {
        |
-      | akka.http.host-connection-pool {
-       |   max-connections = 111
-       | }
+       |  akka.http.host-connection-pool {
+       |    max-connections = 987
+       |    max-retries = 123
+       |  }
        |}
        |
+       |passedAsParameter {
+       |  type = squbs.httpclient
+       |
+       |  akka.http.host-connection-pool {
+       |    max-connections = 111
+       |  }
+       |}
     """.stripMargin)
 
 
@@ -142,6 +156,16 @@ class ClientConfigurationSpec extends FlatSpec with Matchers {
       appConfig.getInt("sampleClient2.akka.http.host-connection-pool.max-connections"))
     assertJmxValue("sampleClient2", "MaxRetries", defaultConfig.getInt("akka.http.host-connection-pool.max-retries"))
     assertJmxValue("sampleClient2", "ConnectionPoolIdleTimeout",
+      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
+  }
+
+  it should "honor environment-specific overrides" in {
+    ClientFlow("sampleClientWithEnv", env = QA)
+
+    assertJmxValue("sampleClientWithEnv", "MaxConnections",
+      appConfig.getInt("sampleClientWithEnv.QA.akka.http.host-connection-pool.max-connections"))
+    assertJmxValue("sampleClientWithEnv", "MaxRetries", defaultConfig.getInt("akka.http.host-connection-pool.max-retries"))
+    assertJmxValue("sampleClientWithEnv", "ConnectionPoolIdleTimeout",
       defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
   }
 

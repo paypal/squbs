@@ -185,7 +185,7 @@ Please see [Resource Resolution](resolver.md) for details on resolution in gener
 
 [Akka HTTP Configuration](http://doc.akka.io/docs/akka-http/current/scala/http/configuration.html) defines the default values for configuration.  You can override these defaults in `application.conf`; however, that would affect all the clients.  To do a client specific override, Akka HTTP allows passing a `ConnectionPoolSettings` during `HostConnectionPool` flow creation. This is supported by squbs as well.
 
-In addition to the above, squbs allows a client specific override in `application.conf`.  You just need to specify a configuration section with the client's name that has `type = squbs.httpclient`.  Then, you can specify any client configuration inside the section.  For instance, if we would like to override the `max-connections` setting only for the above `"sample"` client, but no other client, we can do it as follows: 
+In addition to the above, squbs allows client and environment specific overrides in `application.conf`.  You just need to specify a configuration section with the client's name that has `type = squbs.httpclient`.  Then, you can specify any client configuration inside the section.  For instance, if we would like to override the `max-connections` setting only for the above `"sample"` client, but no other client, we can do it as follows: 
 
 ```
 sample {
@@ -196,6 +196,26 @@ sample {
   }
 }
 ```
+
+Similarly, if you need to specify the configuration just for certain environments, the client configuration can have another override under its environment-specific section as follows:
+
+```
+sample {
+  type = squbs.httpclient
+  
+  akka.http.host-connection-pool {
+    max-connections = 10
+  }
+  
+  QA {
+    akka.http.host-connection-pool {
+      max-connections = 4
+    }    
+  }
+}
+```
+
+In this case if the `ClientFlow` is created for the `QA` environment, the settings `max-connections = 4` would apply instead of `max-connections = 10` as specified for all other environments.
 
 ### Pipeline
 
