@@ -1,18 +1,18 @@
 
-#The Actor Registry
+# The Actor Registry
 
-##Overview
+## Overview
 
 The actor registry provides squbs applications an easy way to send/receive message to squbs well-known actors, especially across cubes. This provides an additional layer of abstraction across cubes allowing actors to find other actors without knowing much about them. The actor registry also acts as a facade that may manage access control, security, timeouts across modules or even simulate non-actor systems as external actors.
 
-###Concepts
+### Concepts
 
 * Well-known actors are actors registered with the cube throught `squbs-meta.conf` as described in [Unicomplex & Cube Bootstrapping](bootstrap.md).
 * `ActorLookup` API for Scala and `japi.ActorLookup` API for Java is used to send/receive message to well-known actors.
 * `ActorRegistry` is the common façade actor holding all well-known actor information. 
 
 
-##Well-Known Actor
+## Well-Known Actor
 
 Squbs well-known actors are defined at the squbs-actors section of `META-INF/squbs-meta.conf` as described in [Unicomplex & Cube Bootstrapping](bootstrap.md). The actor registry extends that registration and provides further metadata describing the message types this actor may consume and return:
 
@@ -43,7 +43,7 @@ squbs-actors = [
 ]
 ```
 
-##Scala API & Samples
+## Scala API & Samples
 
 * Send message (!/?/tell/ask) to an actor which registered its request message class type as "TestRequest"
 
@@ -106,7 +106,7 @@ squbs-actors = [
   al.resolveOne
   ```
 
-##Java API & Samples
+## Java API & Samples
 
 * Create your initial ActorLookup object.
 
@@ -164,11 +164,11 @@ squbs-actors = [
   lookup.lookup(Optional.of("TestActor"), Optional.of(TestRequest.class), Object.class)
   ```
 
-##Response Types
+## Response Types
 
 The response type of an actor discovered by ActorLookup response type discovery (when the response type is provided) is maintained across the result of the lookup. While the programmatic response type is less significant on `tell` or `!`, it becomes significant on `ask` or `?`. The return type of an `ask` is generally `Future[Any]` in Scala or `Future<Object>` in Java. However the return type from an `ask` or `?` on ActorLookup carries the response type when looked up with it. So you'll get a `Future[T]` or `Future<T>` if you lookup with response type `T` as can be demonstrated in the examples below. No further MapTo is needed:
 
-###Scala
+### Scala
 
 ```scala
 // In this example, we show full type annotation. The Scala compiler is able
@@ -178,17 +178,17 @@ The response type of an actor discovered by ActorLookup response type discovery 
 val f: Future[TestResponse] = ActorLookup[TestResponse] ? TestRequest(...)
 ```
 
-###Java
+### Java
 
 ```java
 Future<TestResponse> f = lookup.lookup(TestResponse.class).ask(new TestRequest(...), timeout)
 ```
 
-##Error Handling
+## Error Handling
 
 Unlike with `actorSelection` which will send a message to dead letters, ActorLookup will respond with `ActorNotFound` if the wanted actor is not in the system or not registered.
 
-##Monitoring
+## Monitoring
 
 There is JMX Bean created for each well-known actor. It is named `org.squbs.unicomplex:type=ActorRegistry,name=${actorPath}`
 

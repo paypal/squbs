@@ -1,6 +1,6 @@
-#Implementing HTTP(S) Services
+# Implementing HTTP(S) Services
 
-##Overview
+## Overview
 
 HTTP is the most pervasive integration protocol. It is the basis for web services, both client and server side. Akka HTTP provides great server and client side APIs. squbs has the intention to maintain these APIs without change. Instead, squbs provides the infrastructure allowing production-ready use of these APIs by providing standard configuration for HTTP listeners that services can use to accept and handle requests, and pipelines allowing logging, monitoring, authentication/authorization, before the request comes to the application and after the response leaves the application before it goes onto the wire.
 
@@ -8,7 +8,7 @@ squbs supports Akka HTTP, both the low-level and high-level server-side APIs, fo
 
 All squbs service definitions have access to the field `context` which is an `akka.actor.ActorContext` useful for accessing the actor system, scheduler, and a variety of Akka facilities.
 
-##Dependencies
+## Dependencies
 
 The following dependency is needed for starting the server as well as registering service definitions:
 
@@ -17,11 +17,11 @@ The following dependency is needed for starting the server as well as registerin
 ```
 
 
-##Defining the Service
+## Defining the Service
 
 Services can be defined in either Scala or Java, using either the high-level or low-level API. Service definition classes **MUST HAVE no-argument constructors** and must be registered in order to handle incoming Http requests.
 
-###High-Level Scala API
+### High-Level Scala API
 
 The high-level server-side API is represented by Akka HTTP's `Route` artifact and it's directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` function as follows:
 
@@ -55,7 +55,7 @@ In addition to defining the `route`, you can also provide a [`RejectionHandler`]
 
 Please refer to the [Akka HTTP high-level API](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/index.html), [Routing DSL](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/overview.html), [Directives](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/directives/index.html), [Rejection](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/rejections.html), and [Exception Handling](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/exception-handling.html) documentation to fully utilize these APIs.
 
-###Low-Level Scala API
+### Low-Level Scala API
 
 Using the Scala low-level API, just extend `org.squbs.unicomplex.FlowDefinition` and override the `flow` function. The `flow` needs to be of type `Flow[HttpRequest, HttpResponse, NotUsed]` using the Scala DSL and model provided by Akka HTTP as follows:
 
@@ -77,7 +77,7 @@ class SampleFlowSvc extends FlowDefinition {
 
 This provides access to the `Flow` representation of the Akka HTTP low-level server-side API. Please refer to the [Akka HTTP low-level API](http://doc.akka.io/docs/akka-http/current/scala/http/low-level-server-side-api.html#streams-and-http), [Akka Streams](http://doc.akka.io/docs/akka/current/scala/stream/stream-quickstart.html), and the [HTTP Model](http://doc.akka.io/docs/akka-http/current/scala/http/common/http-model.html#http-model-scala) documentation for further information on constructing more sophisticated `Flow`s.
 
-###High-Level Java API
+### High-Level Java API
 
 The high-level server-side API is represented by Akka HTTP's `Route` artifact and it's directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` method as follows:
 
@@ -126,7 +126,7 @@ In addition to defining the `route`, you can also provide a [`RejectionHandler`]
 
 Please refer to the [Akka HTTP high-level API](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/index.html), [Routing DSL](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/overview.html), [Directives](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/directives/index.html), [Rejection](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/rejections.html), and [Exception Handling](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/exception-handling.html) documentation to fully utilize these APIs.
 
-###Low-Level Java API
+### Low-Level Java API
 
 To use the Java low-level API, just extend `org.squbs.unicomplex.AbstractFlowDefinition` and override the `flow` method. The `flow` needs to be of type `Flow[HttpRequest, HttpResponse, NotUsed]` using the Java DSL and model provided by Akka Http. Note the imports in the followings:
 
@@ -157,7 +157,7 @@ public class JavaFlowSvc extends AbstractFlowDefinition {
 
 This provides access to the `Flow` representation of the Akka Http low-level server-side API. Please refer to the [Akka HTTP low-level API](http://doc.akka.io/docs/akka-http/current/java/http/server-side/low-level-server-side-api.html#streams-and-http), [Akka Streams](http://doc.akka.io/docs/akka/current/java/stream/stream-quickstart.html), and the [Http model](http://doc.akka.io/docs/akka-http/current/java/http/http-model.html#http-model-java) documentation for further information on constructing more sophisticated `Flow`s.
 
-##Service Registration
+## Service Registration
 
 Service metadata is declared in `META-INF/squbs-meta.conf` as shown in the following example.
 
@@ -206,7 +206,7 @@ The wildcard value `"*"` (note, it has to be quoted or will not be properly be i
 listeners = [ default-listener, "*" ]
 ```
 
-##The Web Context
+## The Web Context
 
 Each service entry point is bound to a unique web context which is the leading path segments separated by the `/` character. For instance, the url `http://mysite.com/my-context/index` would match the context `"my-context"`, if registered. It can also match the root context if `"my-context"` is not registered. Web contexts are not necessarily the first slash-separated segment of the path. Dependent on the context registration, it may match multiple such segments. A concrete example would be a URL with service versioning. The URL `http://mysite.com/my-context/v2/index` may have either `my-context` or `my-context/v2` as the web context, depending on what contexts are registered. If both `my-context` and `my-context/v2` are registered, the longest match - in this case `my-context/v2` will be used for routing the request. This is useful for separating different versions of the web interface or API into different cubes/modules.
 
@@ -235,13 +235,13 @@ class SampleFlowSvc extends FlowDefinition with WebContext {
 }
 ```
 
-##Rules and Behaviors the High-Level Route API
+## Rules and Behaviors the High-Level Route API
 
 1. **Concurrent state access:** The provided `route` can be used by multiple connections, and therefore threads, concurrently. If the `route` accesses any state in the encapsulating `RouteDefinition` (Scala) or `AbstractRouteDefinition` (Java) class, it is important to note such access can be concurrent, both for reads and writes. It is not safe for such accesses to read or write mutable state inside the encapsulating class. The use of Akka `Actor`s or `Agent`s is highly encouraged in such situations.
 2. **Access to actor context:** The `RouteDefinition`/`AbstractRouteDefinition` has access to the `ActorContext` with the `context` field (Scala) or `context()` method (Java) by default. This can be used to create new actors or access other actors.
 3. **Access to web context:** For the Scala `RouteDefinition`, if the `WebContext` trait is mixed in, it will have access to the field `webContext`. The Java `AbstractRouteDefinition` provides the `webContext()` method in all cases. This field/method is used to determine the web context or path from the root where this `RouteDefinition`/`AbstractRouteDefinition` is handling requests. 
 
-##Rules and Behaviors of the Low-Level Flow API
+## Rules and Behaviors of the Low-Level Flow API
 
 There are a few rules you have to keep in mind when implementing a `FlowDefinition` (Scala) or `AbstractFlowDefinition` (Java):
 

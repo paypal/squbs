@@ -1,12 +1,12 @@
-#Clustering squbs Services using ZooKeeper
+# Clustering squbs Services using ZooKeeper
 
-##Overview
+## Overview
 
 squbs is achieving clustering of services through the zkcluster module. zkcluster is an [Akka extension](http://doc.akka.io/docs/akka/snapshot/scala/extending-akka.html) which leverages [ZooKeeper](https://zookeeper.apache.org/) to manage akka cluster & partitions.
 it's similar to [Akka Cluster](http://doc.akka.io/docs/akka/snapshot/common/cluster.html) for the functions of leadership & membership management.
 But it's richer as it provides partitioning support, and eliminates the need of `entry-nodes`.
 
-##Configuration
+## Configuration
 
 We'll need a `squbsconfig/zkcluster.conf` file under the runtime directory. It should provide the following properties:
 
@@ -24,7 +24,7 @@ zkCluster {
 }
 ```
 
-##User Guide
+## User Guide
 
 Start by simply registering the extension as all normal akka extension. Then you access the `zkClusterActor` and use it as follows:
 
@@ -81,13 +81,13 @@ zkCluster(system).zkClusterActor ! PoisonPill
 zkCluster(system).addShutdownListener(listener: () => Unit)
 ```
 
-##Dependencies
+## Dependencies
 
 Add the following dependency to your build.sbt or scala build file:
 
 "org.squbs" %% "squbs-zkcluster" % squbsVersion
 
-##Design
+## Design
 
 Read this if you're making changes of zkcluster
 

@@ -1,5 +1,4 @@
-
-#Runtime Lifecycle & API
+# Runtime Lifecycle & API
 
 Lifecycle is really a concern of the infrastructure. Applications rarely have to touch on or even be aware of the system's lifecycle. System components, admin consoles, or even application components or actors that take a long time to initialize, and need to be fully initialized before the system can be made available for traffic will need to be aware of the system lifecycle. The latter includes functions such as cache controllers, cache loaders, device initializers, etc.
 
@@ -17,7 +16,7 @@ The squbs runtime exposes the following lifecycle states:
 
 * **Stopped** - squbs runtime stopped. Unicomplex terminated. ActorSystem terminated.
 
-##Lifecycle Hooks
+## Lifecycle Hooks
 
 Most actors don't care when they are started or shut down. However, there may be a category of actors that require
 execution certain initializations before they get to the state of accepting general traffic. Similarly, certain actors
@@ -37,7 +36,7 @@ You can also obtain the current state by sending `SystemState` to `Unicomplex()`
 * `case object Stopped extends LifecycleState`
  
 
-##Startup Hooks
+## Startup Hooks
 
 An actor wishing to participate in initialization must indicate so in the squbs metadata META-INF/squbs-meta.conf as
 follows:
@@ -61,7 +60,7 @@ all cubes are successfully initialized. This also means each actor with init-req
 Initialized(report) with success. If any one cube reports an initialization error via the Initialization(report), the
 squbs runtime will end up in *Failed* state instead.
 
-##Shutdown Hooks
+## Shutdown Hooks
 
 ### Stop Actors
 

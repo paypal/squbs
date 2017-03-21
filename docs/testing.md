@@ -1,7 +1,7 @@
-#Testing squbs Applications
+# Testing squbs Applications
 All tests on squbs have been written using ScalaTest 2.x. Specs2 has not yet been tested.
 
-##Dependencies
+## Dependencies
 
 To use test utilities mentioned in this documentation,, simply add the following dependencies in your `build.sbt` file or Scala build script:
 
@@ -9,7 +9,7 @@ To use test utilities mentioned in this documentation,, simply add the following
 "org.squbs" %% "squbs-testkit" % squbsVersion
 ```
 
-##CustomTestKit
+## CustomTestKit
 
 The `CustomTestKit` is used for starting a full blown squbs instance needed for testing bits and pieces of applications.  `CustomTestKit` is simple to use and needs no configuration by default, yet allows customizations and flexibility for your tests.  With `CustomTestKit` you can start any number of `ActorSystem` and `Unicomplex` instances (one per `ActorSystem`) with different configurations - all on the same JVM.  Here are some features:
 
@@ -41,7 +41,7 @@ public class SampleTest extends AbstractCustomTestKit {
 }
 ```
 
-###Passing configuration to `CustomTestKit`
+### Passing configuration to `CustomTestKit`
 
 If you would like to customize the actor system configuration, you can pass a `Config` object to `CustomTestKit`:
 
@@ -88,7 +88,7 @@ The following sections show customizations only in ScalaTest; however, all these
 
 Specifically for JUnit, avoid setting actor system name in your tests (letting `CustomTestKit` set the actor system name is in general a good practice though).  JUnit creates a new fixture instance for each `@Test` method which potentially causes actor system conflicts.  `AbstractCustomTestKit` avoids this by appending an incremented integer to each actor system name.
 
-###Starting well-known actors and services with `CustomTestKit`
+### Starting well-known actors and services with `CustomTestKit`
 
 `CustomTestKit` will automatically start well-known actors and services in `src/test/resources/META-INF/squbs-meta.conf` (see [Bootstrapping squbs](bootstrap.md#well-known-actors)).  However, if you would like provide different resource paths, you can do so by passing a `Seq` of resources to the constructor.  `withClassPath` controls whether to scan entire test classpath for `META-INF/squbs-meta.conf` files or not.
 
@@ -106,7 +106,7 @@ class SampleSpec extends CustomTestKit(SampleSpec.resources, withClassPath = fal
 
 Please note, `CustomTestKit` allows passing `config` and `resources` together as well.
 
-####Port binding in tests
+#### Port binding in tests
 
 Starting services requires port binding.  To prevent port conflicts, we should let the system pick a port by setting listeners' `bind-port` to 0, e.g., `default-listener.bind-port = 0` (this is what `CustomTestKit` sets by default).  `squbs-testkit` comes with a `trait` named `PortGetter` that allows retrieving the port picked by the system.  `CustomTestKit` comes with `PortGetter` already mixed in, so you can use `port` value.  
 
@@ -134,7 +134,7 @@ class SampleSpec extends CustomTestKit(SampleSpec.resources)
 }
 ```
 
-###Manual `UnicomplexBoot` initialization
+### Manual `UnicomplexBoot` initialization
 
 `CustomTestKit` allows a `UnicomplexBoot` instance to be passed as well.  This allows full customization of the bootrap.  Please see [Bootstrapping squbs](bootstrap.md) for more information on booting the Unicomplex.
 
@@ -163,7 +163,7 @@ class SampleSpec extends CustomTestKit(SampleSpec.boot) with FunSpecLike with Ma
 }
 ```
 
-##Testing Spray/Akka Http Routes using Spray/Akka Http TestKit
+## Testing Spray/Akka Http Routes using Spray/Akka Http TestKit
 
 The `spray-testkit` or `akka-http-testkit` needs to be added to the dependencies in order to test routes.  Please add the followings to your dependencies:
 
@@ -236,7 +236,7 @@ Alternatively, you may also want to pass a web context to your route. This can b
 
 or just pass `"mycontext"` without the parameter name. The `TestRoute` signature without parameters is equivalent to passing the root context `""`.
 
-###Using TestRoute with CustomTestKit
+### Using TestRoute with CustomTestKit
 
 A need may arise to bootstrap `Unicomplex` while testing with `TestRoute`, such as when:
 

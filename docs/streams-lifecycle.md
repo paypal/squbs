@@ -35,7 +35,7 @@ class WellBehavedStream extends PerpetualStream[Future[Done]] {
 
 That's it. This stream is well behaved because it materializes to the sink's materialized value, which is a `Future[Done]`.
 
-###Shutdown Overrides
+### Shutdown Overrides
 It is sometimes not possible to define a well behaved stream. For instance, the `Sink` may not materialize to a `Future` or you need to do further cleanup at shutdown. For this reason, it is possible to override `shutdown` as in the following code:
 
 ```scala
@@ -57,17 +57,17 @@ It is sometimes not possible to define a well behaved stream. For instance, the 
 
 Note: It is always advisable to call `super.shutdown`. There is no harm or other side-effect in making this call.
 
-###Alternate Shutdown Mechanisms
+### Alternate Shutdown Mechanisms
 The `source` may provide a better way to do a proper shutdown than using the `killSwitch`. Just use the shutdown mechanism of the `source` in such cases and override `shutdown` to initiate the shutdown of the source. The `killSwitch` remains unused.
 
-###Kill Switch Overrides
+### Kill Switch Overrides
 If the `killSwitch` needs to be shared across multiple streams, you can override `killSwitch` to reflect the shared instance.
 
 ```scala
   override lazy val killSwitch = mySharedKillSwitch
 ```
 
-###Receiving and forwarding a message to the stream
+### Receiving and forwarding a message to the stream
 Some streams take input from actor messages. While it is possible for some stream configurations to materialize to the `ActorRef` of the source, it is difficult to address this actor. Since `PerpetualStream` itself is an actor, it can have a well known address/path and forward to message to the stream source. To do so, we need to override the `receive` as follows:
 
 ```scala
@@ -78,7 +78,7 @@ Some streams take input from actor messages. While it is possible for some strea
   }
 ```
 
-###Handling Stream Errors
+### Handling Stream Errors
 The `PerpetualStream` default behavior resumes on errors uncaught by the stream stages. The message causing the error is ignored. Override `decider` if a different behavior is desired.
 
 ```scala
@@ -91,7 +91,7 @@ The `PerpetualStream` default behavior resumes on errors uncaught by the stream 
 
 `Restart` will restart the stage that has an error without shutting down the stream. Please see [Supervision Strategies](http://doc.akka.io/docs/akka/current/scala/stream/stream-error.html#Supervision_Strategies) for possible strategies.
 
-###Putting It Together
+### Putting It Together
 The following example makes many of the possible overrides discussed above.
 
 ```scala
@@ -125,7 +125,7 @@ class MsgReceivingStream extends PerpetualStream[(ActorRef, Future[Done])] {
 }
 ```
 
-##Making A Lifecycle-Sensitive Source
+## Making A Lifecycle-Sensitive Source
 If you wish to have a source that is fully connected to the lifecycle events of squbs, you can wrap any source with `LifecycleManaged`.
 
 **Scala**
