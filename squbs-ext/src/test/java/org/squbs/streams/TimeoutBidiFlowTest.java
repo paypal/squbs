@@ -34,14 +34,16 @@ import scala.util.Failure;
 import scala.util.Success;
 import scala.util.Try;
 
-import static akka.pattern.PatternsCS.ask;
-
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static akka.pattern.PatternsCS.ask;
 
 public class TimeoutBidiFlowTest {
 
@@ -93,7 +95,9 @@ public class TimeoutBidiFlowTest {
     }
 
     @Test
-    public void testWithCustomIdRetriever() throws ExecutionException, InterruptedException {
+    public void testWithUniqueIdMapper() throws ExecutionException, InterruptedException {
+
+        final AtomicInteger counter = new AtomicInteger(0);
 
         class MyContext {
             private String s;
@@ -104,9 +108,8 @@ public class TimeoutBidiFlowTest {
                 this.uuid = uuid;
             }
 
-            public UUID uuid() {
-                return uuid;
-            }
+            @Override
+            public int hashCode() { return counter.incrementAndGet(); } // On purpose, a problematic hashcode
         }
 
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
@@ -116,7 +119,7 @@ public class TimeoutBidiFlowTest {
                         .map(elem -> (Pair<String, MyContext>)elem);
 
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> timeoutBidiFlow =
-                TimeoutBidiFlowUnordered.create(timeout, MyContext::uuid);
+                TimeoutBidiFlowUnordered.create(timeout, context -> Optional.of(context.uuid));
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -125,6 +128,91 @@ public class TimeoutBidiFlowTest {
                         .map(t -> t.first())
                         .runWith(Sink.seq(), mat);
         final List<Try<String>> expected = Arrays.asList(Success.apply("a"), Success.apply("c"), timeoutFailure);
-        Assert.assertTrue(result.toCompletableFuture().get().containsAll(expected));
+        List<Try<String>> actual = result.toCompletableFuture().get();
+        Assert.assertEquals(3, actual.size());
+        Assert.assertTrue(actual.containsAll(expected));
+    }
+
+    @Test
+    public void testWithUniqueIdProvider() throws ExecutionException, InterruptedException {
+
+        final AtomicInteger counter = new AtomicInteger(0);
+
+        class MyContext implements UniqueId.Provider {
+            private String s;
+            private UUID uuid;
+
+            public MyContext(String s, UUID uuid) {
+                this.s = s;
+                this.uuid = uuid;
+            }
+
+            @Override
+            public Object uniqueId() {
+                return uuid;
+            }
+
+            @Override
+            public int hashCode() { return counter.incrementAndGet(); } // On purpose, a problematic hashcode
+        }
+
+        final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
+        final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
+                Flow.<Pair<String, MyContext>>create()
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .map(elem -> (Pair<String, MyContext>)elem);
+
+
+        final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> timeoutBidiFlow =
+                TimeoutBidiFlowUnordered.create(timeout);
+
+        final CompletionStage<List<Try<String>>> result =
+                Source.from(Arrays.asList("a", "b", "c"))
+                        .map(s -> new Pair<>(s, new MyContext("dummy", UUID.randomUUID())))
+                        .via(timeoutBidiFlow.join(flow))
+                        .map(t -> t.first())
+                        .runWith(Sink.seq(), mat);
+        final List<Try<String>> expected = Arrays.asList(Success.apply("a"), Success.apply("c"), timeoutFailure);
+        List<Try<String>> actual = result.toCompletableFuture().get();
+        Assert.assertEquals(3, actual.size());
+        Assert.assertTrue(actual.containsAll(expected));
+    }
+
+    @Test
+    public void testWithUniqueIdEnvelope() throws ExecutionException, InterruptedException {
+
+        final AtomicInteger counter = new AtomicInteger(0);
+
+        class MyContext {
+            private String s;
+
+            public MyContext(String s) {
+                this.s = s;
+            }
+
+            @Override
+            public int hashCode() { return counter.incrementAndGet(); } // On purpose, a problematic hashcode
+        }
+
+        final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
+        final Flow<Pair<String, UniqueId.Envelope>, Pair<String, UniqueId.Envelope>, NotUsed> flow =
+                Flow.<Pair<String, UniqueId.Envelope>>create()
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .map(elem -> (Pair<String, UniqueId.Envelope>)elem);
+
+
+        final BidiFlow<Pair<String, UniqueId.Envelope>, Pair<String, UniqueId.Envelope>, Pair<String, UniqueId.Envelope>, Pair<Try<String>, UniqueId.Envelope>, NotUsed> timeoutBidiFlow =
+                TimeoutBidiFlowUnordered.create(timeout);
+
+        final CompletionStage<List<Try<String>>> result =
+                Source.from(Arrays.asList("a", "b", "c"))
+                        .map(s -> new Pair<>(s, new UniqueId.Envelope(new MyContext("dummy"), UUID.randomUUID())))
+                        .via(timeoutBidiFlow.join(flow))
+                        .map(t -> t.first())
+                        .runWith(Sink.seq(), mat);
+        final List<Try<String>> expected = Arrays.asList(Success.apply("a"), Success.apply("c"), timeoutFailure);
+        List<Try<String>> actual = result.toCompletableFuture().get();
+        Assert.assertEquals(3, actual.size());
+        Assert.assertTrue(actual.containsAll(expected));
     }
 }

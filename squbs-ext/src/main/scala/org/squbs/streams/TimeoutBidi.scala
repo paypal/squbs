@@ -16,16 +16,17 @@
 
 package org.squbs.streams
 
+import java.util.Optional
 import java.util.concurrent.TimeUnit.NANOSECONDS
 import java.util.concurrent.TimeoutException
 
+import akka.NotUsed
 import akka.http.org.squbs.util.JavaConverters._
 import akka.japi.Pair
-import akka.NotUsed
-import akka.stream.scaladsl.BidiFlow
-import akka.stream.scaladsl.Flow
-import akka.stream.stage.{GraphStage, _}
 import akka.stream._
+import akka.stream.scaladsl.{BidiFlow, Flow}
+import akka.stream.stage.{GraphStage, _}
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -158,27 +159,18 @@ abstract class TimeoutGraphStageLogic[In, FromWrapped, Out](shape: BidiShape[In,
 object TimeoutBidiFlowUnordered {
 
   /**
-    * Creates a [[TimeoutBidiFlowUnordered]] with the default unique id retriever: {{{(context: Context) => context }}}.
-    *
-    * @see the API that takes a {{{uniqueId: Context => Id)}}} for more details.
-    *
-    * @param timeout Duration after which a message should be considered timed out.
-    * @tparam In the type of the elements pulled from the upstream along with the [[Context]]
-    * @tparam Out the type of the elements that are pushed to downstream along with the [[Context]]
-    * @tparam Context the type of the context that is carried around along with the elements.  The context may be of any
-    *                 type that can be used to uniquely identify each element
-    * @return a [[BidiFlow]] with timeout functionality
+    * @see [[apply]] that takes a {{{uniqueIdMapper: Context => Option[Any]}}} parameter for details.
     */
   def apply[In, Out, Context](timeout: FiniteDuration):
   BidiFlow[(In, Context), (In, Context), (Out, Context), (Try[Out], Context), NotUsed] =
-    apply(timeout, (context: Context) => context)
+    BidiFlow.fromGraph(TimeoutBidiUnordered(timeout, (_: Any) => None))
 
   /**
     * Java API
     */
   def create[In, Out, Context](timeout: FiniteDuration):
   akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
-    toJava[In, In, Out, Try[Out], Context](apply(timeout, (context: Context) => context))
+    toJava[In, In, Out, Try[Out], Context](apply(timeout))
   }
 
   /**
@@ -187,46 +179,45 @@ object TimeoutBidiFlowUnordered {
     * ordering, please use [[TimeoutBidiOrdered]].
     *
     * Timeout functionality requires each element to be uniquely identified, so it requires a [[Context]], of any type
-    * defined by the application, to be carried along with the flow's input and output as a tuple.
+    * defined by the application, to be carried along with the flow's input and output as a [[Tuple2]] (Scala) or
+    * [[Pair]] (Java).  The requirement is that either the [[Context]] itself or a mapping from [[Context]] should be
+    * able to uniquely identify an element.  Here is the ways how a unique id can be retrieved:
     *
-    * The requirement is that either the [[Context]] itself or an attribute accessed via the [[Context]] should be able
-    * to uniquely identify an element.
-    *
-    * This API takes a unique id retriever.  Please also see the API with the default
-    * unique id retriever: {{{(context: Context) => context }}}.
+    *   - [[Context]] itself is a type that can be used as a unique id, e.g., [[Int]], [[Long]], [[java.util.UUID]]
+    *   - [[Context]] extends [[UniqueId.Provider]] and implements [[UniqueId.Provider.uniqueId]] method
+    *   - [[Context]] is of type [[UniqueId.Envelope]]
+    *   - [[Context]] can be mapped to a unique id by calling {{{uniqueIdMapper}}}
     *
     * @param timeout the duration after which the processing of an element would be considered timed out
-    * @param uniqueId the function that retrieves a unique id from the [[Context]]
+    * @param uniqueIdMapper the function that maps [[Context]] to a unique id
     * @tparam In the type of the elements pulled from the upstream along with the [[Context]]
     * @tparam Out the type of the elements that are pushed to downstream along with the [[Context]]
-    * @tparam Context the type of the context that is carried around along with the elements.  The context may be of any
-    *                 type and may contain any information given that it also contains information that is retrieved
-    *                 via `uniqueId` function to uniquely identify each element
-    * @tparam Id the type that is used to uniquely identify each element
+    * @tparam Context the type of the context that is carried around along with the elements.
     * @return a [[BidiFlow]] with timeout functionality
     */
-  def apply[In, Out, Context, Id](timeout: FiniteDuration, uniqueId: Context => Id):
+  def apply[In, Out, Context](timeout: FiniteDuration, uniqueIdMapper: Context => Option[Any]):
   BidiFlow[(In, Context), (In, Context), (Out, Context), (Try[Out], Context), NotUsed] =
-    BidiFlow.fromGraph(TimeoutBidiUnordered(timeout, uniqueId))
+    BidiFlow.fromGraph(TimeoutBidiUnordered(timeout, uniqueIdMapper))
 
   /**
     * Java API
     */
-  def create[In, Out, Context, Id](timeout: FiniteDuration, uniqueId: java.util.function.Function[Context, Id]):
+  def create[In, Out, Context](timeout: FiniteDuration,
+                               uniqueIdMapper: java.util.function.Function[Context, Optional[Any]]):
   akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
-    import scala.compat.java8.FunctionConverters._
-    toJava(apply(timeout, uniqueId.asScala))
+
+    toJava(apply(timeout, UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper)))
   }
 }
 
 object TimeoutBidiUnordered {
 
   /**
-    * Creates a [[TimeoutBidiUnordered]] with the default unique id retriever: {{{(context: Context) => context }}}.
-    *
-    * @see the API that takes a {{{uniqueId: (Context) => Id)}}} for more details.
+    * Creates a bidi [[GraphStage]] that is joined with a [[Flow]], that do not guarantee message ordering, to add
+    * timeout functionality.
     *
     * @param timeout the duration after which the processing of an element would be considered timed out.
+    * @param uniqueIdMapper the function that maps [[Context]] to a unique id
     * @tparam In the type of the elements pulled from the upstream along with the [[Context]]
     * @tparam Out the type of the elements that are pushed to downstream along with the [[Context]]
     * @tparam Context the type of the context that is carried around along with the elements.  The context may be of any
@@ -234,28 +225,9 @@ object TimeoutBidiUnordered {
     * @return a [[TimeoutBidiUnordered]] that can be joined with a [[Flow]] with corresponding types to add timeout
     *         functionality.
     */
-  def apply[In, Out, Context](timeout: FiniteDuration):
-  TimeoutBidiUnordered[In, Out, Context, Context] =
-    new TimeoutBidiUnordered(timeout, (context: Context) => context)
-
-  /**
-    * Creates a bidi [[GraphStage]] that is joined with a [[Flow]], that do not guarantee message ordering, to add
-    * timeout functionality.
-    *
-    * @param timeout the duration after which the processing of an element would be considered timed out
-    * @param uniqueId the function that retrieves a unique id from the [[Context]]
-    * @tparam In the type of the elements pulled from the upstream along with the [[Context]]
-    * @tparam Out the type of the elements that are pushed to downstream along with the [[Context]]
-    * @tparam Context the type of the context that is carried around along with the elements.  The context may be of any
-    *                 type and may contain any information given that it also contains information that is retrieved
-    *                 via `uniqueId` function to uniquely identify each element.
-    * @tparam Id the type that is used to uniquely identify each element.
-    * @return a [[TimeoutBidiUnordered]] that can be joined with a [[Flow]] with corresponding types to add timeout
-    *         functionality
-    */
-  def apply[In, Out, Context, Id](timeout: FiniteDuration, uniqueId: (Context) => Id):
-  TimeoutBidiUnordered[In, Out, Context, Id] =
-    new TimeoutBidiUnordered(timeout, uniqueId)
+  def apply[In, Out, Context](timeout: FiniteDuration, uniqueIdMapper: Context => Option[Any] = (_: Any) => None):
+  TimeoutBidiUnordered[In, Out, Context] =
+    new TimeoutBidiUnordered(timeout, uniqueIdMapper)
 }
 
 /**
@@ -282,17 +254,14 @@ object TimeoutBidiUnordered {
   * }}}
   *
   * @param timeout the duration after which the processing of an element would be considered timed out.
-  * @param uniqueId the function that retrieves a unique id from the [[Context]]
+  * @param uniqueIdMapper the function that maps a [[Context]] to a unique id
   * @tparam In the type of the elements pulled from the upstream along with the [[Context]]
   * @tparam Out the type of the elements that are pushed by the joined [[Flow]] along with the [[Context]].
   *             This then gets wrapped with a [[Try]] and pushed downstream with a [[Context]]
-  * @tparam Context the type of the context that is carried around along with the elements.  The context may be of any
-  *                 type and may contain any information given that it also contains information that is retrieved
-  *                 via `uniqueId` function to uniquely identify each element.
-  * @tparam Id Id the type that is used to uniquely identify each element.
+  * @tparam Context the type of the context that is carried around along with the elements.
   */
-final class TimeoutBidiUnordered[In, Out, Context, Id](timeout: FiniteDuration, uniqueId: Context => Id) extends
- GraphStage[BidiShape[(In, Context), (In, Context), (Out, Context), (Try[Out], Context)]]{
+final class TimeoutBidiUnordered[In, Out, Context](timeout: FiniteDuration, uniqueIdMapper: Context => Option[Any])
+  extends GraphStage[BidiShape[(In, Context), (In, Context), (Out, Context), (Try[Out], Context)]] with LazyLogging {
 
   private val in = Inlet[(In, Context)]("TimeoutBidiUnordered.in")
   private val fromWrapped = Inlet[(Out, Context)]("TimeoutBidiUnordered.fromWrapped")
@@ -300,9 +269,17 @@ final class TimeoutBidiUnordered[In, Out, Context, Id](timeout: FiniteDuration, 
   private val out = Outlet[(Try[Out], Context)]("TimeoutBidiUnordered.out")
   val shape = BidiShape(in, toWrapped, fromWrapped, out)
 
+  private[streams] def uniqueId(context: Context) =
+    uniqueIdMapper(context).getOrElse {
+      context match {
+        case uniqueIdProvider: UniqueId.Provider ⇒ uniqueIdProvider.uniqueId
+        case context ⇒ context
+      }
+    }
+
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new TimeoutGraphStageLogic(shape) {
 
-    val timeouts = mutable.LinkedHashMap.empty[Id, (Context, Long)]
+    val timeouts = mutable.LinkedHashMap.empty[Any, (Context, Long)]
     val readyToPush = mutable.Queue[((Try[Out], Context), Long)]()
 
     override protected def timeoutDuration: FiniteDuration = timeout

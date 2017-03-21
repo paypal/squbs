@@ -17,14 +17,14 @@
 /**
   * Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
   */
-package org.squbs.circuitbreaker.impl
+package org.squbs.streams.circuitbreaker.impl
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong}
 
 import akka.actor.{ActorSystem, Scheduler}
 import akka.util.Unsafe
 import com.codahale.metrics.MetricRegistry
-import org.squbs.circuitbreaker._
+import org.squbs.streams.circuitbreaker._
 import org.squbs.metrics.MetricsExtension
 
 import scala.concurrent.ExecutionContext
