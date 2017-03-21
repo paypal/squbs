@@ -1,4 +1,4 @@
-#Configuration Reference
+# Configuration Reference
 
 The followings lists the squbs configuration as defined in `reference.conf`:
 
@@ -84,11 +84,11 @@ blocking-dispatcher {
 }
 ```
 
-##Blocking Dispatcher
+## Blocking Dispatcher
 
 The squbs `reference.conf` declares a `blocking-dispatcher` used for blocking I/O calls. This is a standard Akka dispatcher configuration. Please see [dispatchers](http://doc.akka.io/docs/akka/2.3.13/scala/dispatchers.html) in the Akka documentation for more detail.
 
-##Listeners
+## Listeners
 
 A listener defines a port binding and the behavior of this port binding such as security, authentication, etc. A default listener is provided by the squbs `reference.conf`. This can be overridden by the application providing it's `application.conf` file or the `application.conf` file in its external config directory. Please see [Bootstrapping squbs](bootstrap.md#configuration-resolution) for details how squbs reads its configuration file.
 
@@ -96,6 +96,6 @@ A listener is declared at the root level of the configuiration file. The name ge
 
 A declared listener is not started unless a service route attaches itself to this listener. In other words, just declaring the listener does not automatically cause the listener to start unless there is a real use for the listener.
 
-##Pipeline
+## Pipeline
 
 If defined, a default pipeline is installed for pre-processing every single request and post-processing every response. Services can specify a different pipeline, or none at all as described under [Bootstrapping squbs](bootstrap.md#services). Applications or infrastructure can implement their own pipelines for pre-processing needs such as logging or tracing. Please see detailed description of pipelines under [Request/Response Pipeline](pipeline.md).

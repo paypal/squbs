@@ -1,5 +1,5 @@
 
-#Message Guidelines
+# Message Guidelines
 
 Akka actors communicate via immutable messages. These can be defined anywhere in code. As squbs deals with messages
 communicated across cubes, such messages will have to be defined in a message project (or jar) that is a dependency
@@ -13,7 +13,7 @@ are declared in a particular Scala file. Java classes are required to have one m
 Message jars should not have other dependencies. Ideally, they are all self-contained. Senders and/or receivers of such
 messages should not be subject to additional dependencies introduced by messages.
 
-##Constructing messages
+## Constructing messages
 
 Following the Scala case class and case object pattern, construction of the messages are very straightforward and do not
 need an explicit call into the constructor. Case classes implicitly generate an associated factory object with proper
@@ -45,7 +45,7 @@ in Java.
 This way the construction of messages which is dependent on the infrastructure will be contained in the cube producing
 such messages. Such dependencies won't leak to consumers of the message.
 
-##Dealing with Large, Complex Messages
+## Dealing with Large, Complex Messages
 
 In some instances, especially with data objects, these objects have a class hierarchy and heavyweight constructors
 that could not easily be dealth with in a simple case class. The number of fields can be far beyond what is possible in

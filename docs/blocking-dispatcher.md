@@ -1,5 +1,5 @@
 
-#The Blocking Dispatcher for Blocking API Calls
+# The Blocking Dispatcher for Blocking API Calls
 
 This topic is not about dispatchers in general, but about squbs-specific dispatcher configurations. Please check the [Akka documentation](http://doc.akka.io/docs/akka/2.3.13/scala/dispatchers.html) for descriptions and details of dispatchers.
 

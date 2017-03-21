@@ -1,4 +1,4 @@
-#Unicomplex & Cube Bootstrapping
+# Unicomplex & Cube Bootstrapping
 
 squbs comes with a default bootstrap class `org.squbs.unicomplex.Bootstrap`. This can be started from IDEs, command line, sbt, or even Maven. Bootstrap scans the class loader and finds META-INF/squbs-meta.&lt;ext&gt; in each loaded jar resource.
 If squbs metadata is available, the jar resource is treated as squbs cube or extension and initialized according to the metadata declarations. The bootstrap then first initializes extensions, cubes, then service handlers last regardless of
@@ -57,7 +57,7 @@ timeouts, it can be set lower by passing the desired timeout as an argument to `
 `start(Timeout(5 seconds))` or in short `start(5 seconds)` using implicit conversions from duration to a timeout.
 
 
-#Configuration Resolution
+# Configuration Resolution
 
 squbs chooses one application configuration and merges it with the aggregated application.conf and reference.conf in the classpath. The application configuration being merged are chosen from the following order.
 
@@ -67,7 +67,7 @@ squbs chooses one application configuration and merges it with the aggregated ap
 
 3. Otherwise, the `application.conf` provided with the application, if any, will be used. This then falls back to the `reference.conf`.
 
-#Drop-in Modular System 
+# Drop-in Modular System 
 
 squbs divides applications into modules called cubes. Modules in squbs are intended to be run in modular isolation as
 well as on a flat classpath. Modular isolation is intended for true loose coupling of the modules, without incurring
@@ -75,7 +75,7 @@ any classpath conflicts due to the dependencies.
 
 The current implementation bootstraps from a flat classpath. On bootstrapping, squbs will automatically detect the modules by classpath scanning. Scanned cubes are detected and started automatically.
 
-##Cube Jars
+## Cube Jars
 
 All cubes are represented by a top-level jar file with the cube logic itself. All cubes must have the cube metadata
 residing in META-INF/squbs-meta.&lt;ext&gt;. Supported extensions are .conf, .json, and .properties. The format follows the
@@ -90,11 +90,11 @@ the followings:
 
 *Extension*: Identifies a squbs framework extension. The extension entry point has to extend from `org.squbs.lifecycle.ExtensionLifecycle` trait.
     
-##Configuration Resolution
+## Configuration Resolution
 
 Providing `application.conf` for a cube may cause issues when multiple cubes try to provide their internal `application.conf`. The precedence rules for merging such configuration is undefined. It is recommended cubes only provide a `reference.conf` and can be overridden by an external `application.conf` for deployment.
 
-##Well Known Actors
+## Well Known Actors
 
 Well known actors are just [Akka actors](http://doc.akka.io/docs/akka/2.3.13/scala/actors.html) as defined by the
 [Akka documentation](http://doc.akka.io/docs/akka/2.3.13/scala.html). They are started by a supervisor actor that is created for each cube. The supervisor carries the name of the cube. Therefore any well known actor has a path of
@@ -151,7 +151,7 @@ akka.actor.deployment {
 Router concepts, examples, and configuration, are documented in the
 [Akka documentation](http://doc.akka.io/docs/akka/2.3.13/scala/routing.html).
 
-##Services
+## Services
 
 Services are described in full detail in [Implementing HTTP(S) Services](http-services.md). Service metadata is declared in `META-INF/squbs-meta.conf` as shown in the following example:
 
@@ -180,7 +180,7 @@ squbs-services = [
 
 Please see [Service Registration](http-services.md#service-registration) for a full description.
 
-##Extensions
+## Extensions
 
 Extensions for squbs are low level facilities that need to be started for the environment. The extension initializer
 has to extend from the `org.squbs.lifecycle.ExtensionLifecycle` trait and override the proper callbacks. An extension
@@ -193,7 +193,7 @@ in the extension declaration. If the sequence is not specified, it defaults to I
 after all extensions that provide a sequence number. If there is more than one extension not specifying the sequence or specifying the same sequence number,
 the order between starting these is indeterministic. The shutdown order is the reverse of the startup order.
 
-#Shutting Down squbs
+# Shutting Down squbs
 
 The squbs runtime can be properly shutdown by sending the `Unicomplex()` a `GracefulStop` message. 
  

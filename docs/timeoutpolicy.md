@@ -1,8 +1,8 @@
-#Timeout Policy
+# Timeout Policy
 
 Timeouts are a key part of every asynchronous system and every distributed system. They are usually configured statically and hard to get right. squbs provides the Timeout Policy facility as part of the squbs-pattern package to help dynamically determine the correct timeout given a policy instead of static setting.  This dynamically determined timeout value from the policy can then be utilized for setting the timeouts.  Please note that timeout policy helps only in deriving timeout values and its usage itself will not cause the timeouts to occur.
 
-##Dependencies
+## Dependencies
 
 Add the following dependency to your build.sbt or scala build file:
 
@@ -10,7 +10,7 @@ Add the following dependency to your build.sbt or scala build file:
 "org.squbs" %% "squbs-pattern" % squbsVersion
 ```
 
-##Quick Example
+## Quick Example
 
 In a normal case of awaits as shown in the Scala code below...
 
@@ -27,7 +27,7 @@ val result = policy.execute(duration => {
 })
 ```
 
-##Scala API
+## Scala API
 
 You can create the TimeoutPolicy by just passing a rule to it as follows:
 
@@ -69,7 +69,7 @@ tx.end
 
 The `tx.end` is important as it provides closure to a single operation watched by the timeout policy, something that is automatically detected when using the preferred closure version of the API. This is used as a feedback loop to observe actual execution times and feed this information back into the heuristics.
 
-##Java API
+## Java API
 
 In the Java API, we create the timeout policy using a policy builder, as can be seen in the following examples...
 
@@ -128,7 +128,7 @@ try {
 
 The `tx.end` is important as it provides closure to a single operation watched by the timeout policy, something that is automatically detected when using the preferred closure version of the API. This is used as a feedback loop to observe actual execution times and feed this information back into the heuristics.
 
-##Heuristics in the TimeoutPolicy
+## Heuristics in the TimeoutPolicy
 The default timeout policy is fixed timeout, which means you'll always get the initial value in regular mode and the debug value in debug mode. But the basic premise of having a timeout policy is providing heuristics-based timeouts. Following are the main concepts used in the timeout policy.
 
 In statistics, the [**68–95–99.7  rule**](http://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule), also known as the **three-sigma rule** or **empirical rule**, states that nearly all values lie within three standard deviations of the mean in a normal distribution.
@@ -148,13 +148,13 @@ There are three ways to reset/start over the statistics
 2. Call `policy.reset` to reset the statistics, you can also give new `initial` and `startOverCount` on calling the reset method.
 3. Call `TimeoutPolicy.resetPolicy("yourName")` to reset the policy on global level.
 
-##The Name
+## The Name
 
 Any construction of a timeout policy takes an optional name. Timeout policies share their metrics with other policy instances using the same name. A policy-by-name would prevent users from having to create an instance of the policy and pass it out to all usages sharing the same policies. Users can then cleanly replicate the policy creation at any point of use while still collecting the metrics together. In addition, using a name in the policy allows for a centralized clearing of the metrics by calling `TimeoutPolicy.resetPolicy("name")`
 
 **Caution**: Do not use the same name for policies of totally different nature as that could mess up your stats. The results may not be predictable.
 
-##Debugging
+## Debugging
 For debugging purposes, the default timeout in a timeout policy is 1,000 seconds when you are executing in debug mode. You can set this by passing a `debug` parameter into the TimeoutPolicy as follows:
 
 ```scala

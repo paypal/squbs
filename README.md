@@ -9,7 +9,7 @@
 
 squbs (pronounced "skewbs")is a software container and a suite of components enabling standardization and operationalization of Akka and Spray applications/services in a large scale, managed, cloud environment. It standardizes how Akka/Spray applications are deployed in different environments and how they are hooked up to the operational environments of large, internet-scale organizations.
 
-##squbs Components
+## squbs Components
 
 1. **Unicomplex**: The micro-container that bootstraps and standardizes the deployment of Akka/Spray applications and how they are configured, allowing teams other than PD to understand the configuration and tweak the configuration of applications, partly at runtime, as needed. In addition, the Unicomplex encourages coexistence of different modules, called cubes, and/or operational tooling in a flexible, loosely-coupled fashion that will not incur any code change in order to include new ops tooling or drop out/change some ops tooling. For instance, in cases where we have mixed cloud environments such as private and public cloud needing different operational tools, the same codebase will work with both allowing deployment-time addition of environment-specific tooling.
 
@@ -35,7 +35,7 @@ Each of the components have virtually no dependency on each others. They are tru
 
 9. **Console**: A drop-in module allowing web access to system and application stats through a simple web and service interface returning pretty-printed JSON.
 
-##Getting Started
+## Getting Started
 
 The easiest way to getting started is to create a project from one of the squbs templates. The followings are currently available Activator templates:
 
@@ -44,9 +44,8 @@ The easiest way to getting started is to create a project from one of the squbs 
 
 Also check out these [slightly more advanced samples](https://github.com/paypal/squbs/tree/master/samples).
 
+## Documentation
 
-
-##Documentation
 * [Unicomplex & Cube Bootstrapping](docs/bootstrap.md)
 * [Unicomplex Actor Hierarchy](docs/actor-hierarchy.md)
 * [Runtime Lifecycle & API](docs/lifecycle.md)
@@ -70,8 +69,10 @@ Also check out these [slightly more advanced samples](https://github.com/paypal/
 * [Pipeline](docs/pipeline.md)
 * [Resource Resolution](docs/resolver.md)
 
-##Contributing to squbs
+## Contributing to squbs
+
 Thank you very much for contributing to squbs. Please read the [contribution guidelines](CONTRIBUTING.md) for the process.
 
-##License
+## License
+
 squbs is licensed under the [Apache License, v2.0](LICENSE.txt)

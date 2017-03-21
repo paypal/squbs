@@ -1,8 +1,8 @@
-#Persistent Buffer
+# Persistent Buffer
 
 `PersistentBuffer` is the first of a series of practical Akka Streams flow components. It works like the Akka Streams buffer with the difference that the content of the buffer is stored in a series of memory-mapped files in the directory given at construction of the `PersistentBuffer`. This allows the buffer size to be virtually limitless, not use the JVM heap for storage, and have extremely good performance in the range of a million messages/second at the same time.
 
-##Dependencies
+## Dependencies
 
 The following dependencies are required for Persistent Buffer to work:
 
@@ -11,7 +11,7 @@ The following dependencies are required for Persistent Buffer to work:
 "net.openhft" % "chronicle-queue" % "4.5.13"
 ```
 
-##Examples
+## Examples
 
 The following example shows the use of `PersistentBuffer` in a stream:
 
@@ -40,12 +40,12 @@ val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit bu
 val countFuture = streamGraph.run()
 ```
 
-##Back-Pressure
+## Back-Pressure
 `PersistentBuffer` does not back-pressure upstream. It will take all the stream elements given to it and grow its storage by increasing, or rotating, the number of queue files. It does not have any means to determine a limit on the buffer size or determine the storage capacity. Downstream back-pressure is honored as per Akka Streams and Reactive Streams requirements.
 
 If the `PersistentBuffer` stage gets fused with the downstream, `PersistentBuffer` would not buffer and it would actually back-pressure.  To make sure `PersistentBuffer` actually runs in its own pace, add an `async` boundary just after it. 
 
-##Failure & Recovery
+## Failure & Recovery
 
 Due to it's persistent nature, `PersistentBuffer` can recover from abrupt stream shutdowns, failures, JVM failures or even potential system failures. A restart of a stream with the `PersistentBuffer` on the same directory will start emitting the elements stored in the buffer and not yet consumed before the newly added elements. Elements consumed from the buffer but not yet finished processing at the time of the previous stream failure or shutdown will cause a loss of only those elements.
 
@@ -53,7 +53,7 @@ Since the buffer is backed by local storage, spindles or SSD, the performance an
 
 Akka Streams stages batch the requests and buffers the records internally.  `PersistentBuffer` guarantees the recovery and persistence of the records that reached to `onPush`, the records that are in Akka Stream stage's internal buffer that has not reached to `onPush` yet would be lost during a failure.
 
-##Commit Guarantee
+## Commit Guarantee
 
 In case of an unexpected failure, elements emitted from the `PersistentBuffer` stage but not yet reached to a `sink` would be lost. Sometimes, it might be required to avoid such data loss. Using a `commit` stage before a `sink` might help in such case.  To add a `commit` stage, use `PersistentBufferAtLeastOnce` instead.  Please see below example for `commit` stage usage:  
 
@@ -82,11 +82,11 @@ val countFuture = streamGraph.run()
 
 Please note, `commit` does not prevent the loss of messages in a `sink`'s (or any other stage's after `commit`) internal buffer.
 
-###Commit Order
+### Commit Order
 
 The `commit` stage should normally receive the elements in the index order.  However, a potential bug in a stream may cause an element to be dropped or reach to `commit` stage out of order.  The default `commit-order-policy` is set to `lenient` to let the stream continue in such scenarios.  You can set it to `strict` for a `CommitOrderException` to be thrown and let the `Supervision.Decider` determine what action to take.
 
-##Space Management
+## Space Management
 
 A typical directory for persisting the queue looks like the followings:
 
@@ -98,7 +98,7 @@ $ ls -l
 
 Queue files are deleted automatically once all the readers have successfully processed reading the queue.
 
-##Configuration
+## Configuration
 The queue can be created by passing just a location of the persistent directory keeping all default configuration. This is seen in all the examples above. Alternatively, it can be created by passing a `Config` object at construction. The `Config` object is a standard [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md) configuration. The following example shows constructing a `PersistentBuffer` using a `Config`:
 
 ```scala
@@ -151,7 +151,7 @@ Wire-type can be specified in lower or upper case. Supported values for `wire-ty
 
 The memory sizes such as `block-size` and `index-spacing` are specified according to the [memory size format defined in the HOCON specification](https://github.com/typesafehub/config/blob/master/HOCON.md#size-in-bytes-format).
 
-##Serialization
+## Serialization
 A `QueueSerializer[T]` needs to be implicitly provided for a `PersistentBuffer[T]`, as seen in the examples above:
 
 ```scala
@@ -160,7 +160,7 @@ implicit val serializer = QueueSerializer[ByteString]()
 
 The `QueueSerializer[T]()` call produces a serializer for your target type. It depends on the serialization and deserialization of the underlying infrastructure.
 
-###Implementing a Serializer
+### Implementing a Serializer
 To control the fine-grained persistent format in the queue, you may want to implement your own serializer as follows:
 
 ```scala
@@ -189,7 +189,7 @@ implicit val serializer = new PersonSerializer()
 val buffer = new PersistentBuffer[Person](new File("/tmp/myqueue")
 ```
 
-##Broadcast Buffer
+## Broadcast Buffer
 `BroadcastBuffer` is a variant of persistent buffer. This works similar to `PersistentBuffer` except that stream elements are broadcasted to multiple output ports. Hence it is a combination of buffer and broadcast stages. The configuration takes an additional parameter named `output-ports` which specifies the number of output ports.
 
 A broadcast buffer is specially required when stream elements are to be emitted from each output port at an independent rate depending on the speed of downstream demand.
@@ -209,7 +209,7 @@ val config = ConfigFactory.parseString(configText)
 val bcBuffer = new BroadcastBuffer[ByteString](config)
 ``` 
 
-##Examples
+## Examples
 
 ```scala
 implicit val serializer = QueueSerializer[ByteString]()
@@ -232,6 +232,6 @@ val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implici
     
 val countFuture = streamGraph.run()
 ```
-##Credits
+## Credits
 
 `PersistentBuffer` utilizes [Chronicle-Queue](https://github.com/OpenHFT/Chronicle-Queue) 4.x as high-performance memory-mapped queue persistence.

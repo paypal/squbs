@@ -1,14 +1,14 @@
-#Contributing to squbs
+# Contributing to squbs
 
 We love your contributions. Please use the steps below to determine the path of contribution.
 
-##Discussions/Proposals
+## Discussions/Proposals
 We all should discuss new ideas before they turn into code. The [squbs gitter chat](https://gitter.im/paypal/squbs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) is a great starting point for such discussions. Once we get to a certain conclusion, please file an issue in the [issue tracker](https://github.com/paypal/squbs/issues) with reference to the forum discussion.
 
-##Bugs
+## Bugs
 If you have determined you are facing a bug or defect, please log the bug in the [issue tracker](https://github.com/paypal/squbs/issues). If the bug has any reference to forum discussions, please add the reference to the forum discussion.
 
-##Contribution Process
+## Contribution Process
 The standard way of contributing ideas/features and bug fixes is by pull requests.
 
 * Make sure you have an active github account.
@@ -24,7 +24,7 @@ The standard way of contributing ideas/features and bug fixes is by pull request
 * We merge the pull request after successful submission and review, and close the issue. In case of bug fixes that need to go into a current release branch, we'll do the proper cherry-pick.
 * Upon successful merge and regression tests, the SNAPSHOT artifact reflecting the change will be published on [maven central snapshot repository](https://oss.sonatype.org/content/repositories/snapshots/).
 
-##Traceability
+## Traceability
 
 We place great value on traceability of all changes. All features must have use cases and have been discussed publicly
 in the forum. Issues filed for such features **MUST** have a reference to the forum discussion in form of the discussion

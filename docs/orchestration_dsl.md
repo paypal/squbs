@@ -1,8 +1,8 @@
-#The Orchestration DSL
+# The Orchestration DSL
 
 Orchestration is one of the major use cases for services, whether you try to orchestrate multiple service calls with as much concurrency, and therefore as good a response time, as possible, or you try to do multiple business operations, data writes, data reads, service calls, etc. dependent on each others, etc. The ability to concisely describe your business logic is essential to making the service easy to understand and maintain. The orchestration DSL - part of squbs-pattern - will make asynchronous code easy to write, read, and reason about.
 
-##Getting Started
+## Getting Started
 Lets get started with a simple, but complete example of orchestration. This orchestrator composes 3 interrelated asynchronous tasks:
 
 1. Loading the viewing user requesting this orchestration.
@@ -11,7 +11,7 @@ Lets get started with a simple, but complete example of orchestration. This orch
 
 Lets dive into the flow and detail.
 
-####Scala
+#### Scala
 
 ```scala
     // 1. Define the orchestrator actor.
@@ -70,7 +70,7 @@ class MyOrchestrator extends Actor with Orchestrator {
 }
 ```
 
-####Java
+#### Java
 Due to language limitations in Java, the same implementation looks quite a bit more verbose:
 
 ```java
@@ -136,7 +136,7 @@ public class MyOrchestrator extends AbstractOrchestrator {
 
 You may stop here and come back reading the rest later for a deep dive. Feel free to go further and satisfy your curious minds, though.
 
-##Dependencies
+## Dependencies
 
 Add the following dependency to your build.sbt or scala build file:
 
@@ -144,9 +144,9 @@ Add the following dependency to your build.sbt or scala build file:
 "org.squbs" %% "squbs-pattern" % squbsVersion
 ```
 
-##Core Concepts
+## Core Concepts
 
-###Orchestrator
+### Orchestrator
 
 `Orchestrator` is a trait extended by actors to support the orchestration functionality. It is technically a child trait of the [Aggregator](http://doc.akka.io/docs/akka/snapshot/contrib/aggregator.html) and provides all its functionality. In addition, it provides functionality and syntax allowing effective orchestration composition - plus utilities often needed in the creation of orchestration functions discussed in detail below. To use the orchestrator, an actor would simply extend the `Orchestrator` trait.
 
@@ -170,7 +170,7 @@ public class MyOrchestrator extends AbstractOrchestrator {
 
 Similar to Aggregator, an orchestrator generally does not declare the Akka actor receive block but allows the expect/expectOnce/unexpect blocks to define what responses are expected at any point. These expect blocks are generally used from inside orchestration functions.
 
-###Scala: Orchestration Future and Promise
+### Scala: Orchestration Future and Promise
 
 The orchestration promise and future is very similar to [`scala.concurrent.Future`](http://www.scala-lang.org/api/2.11.4/index.html#scala.concurrent.Future) and [`scala.concurrent.Promise`](http://www.scala-lang.org/api/2.11.4/index.html#scala.concurrent.Promise$) described [here](http://docs.scala-lang.org/overviews/core/futures.html) with only a name change to `OFuture` and `OPromise`, signifying them to be used with the Orchestrator, inside an actor. The orchestration versions differentiate themselves from the concurrent versions of the artifacts by having no concurrency behavior. They do not use an (implicit) `ExecutionContext` in their signatures, and for execution. They also lack a few functions explicitly executing a closure asynchronously. Used inside an actor, their callbacks will never be called outside the scope of an actor. This will eliminate the danger of concurrently modifying actor state from a different thread due to callbacks. In addition, they include performance optimizations assuming they will always be used inside an actor.
 
@@ -180,7 +180,7 @@ The orchestration promise and future is very similar to [`scala.concurrent.Futur
 import org.squbs.pattern.orchestration.{OFuture, OPromise} 
 ```
 
-###Java: `CompletableFuture`
+### Java: `CompletableFuture`
 
 The java CompletableFuture with it's **synchronous** callbacks are used as placeholders for values to be satisfied during the orchestration. The synchronous callbacks ensures the processing of the future to happen on the thread it is completed. In the orchestration model, it would be the thread the orchestrator actor is scheduled for receiving and processing the message. This ensures there is no concurrent close-over of the actor state. All callbacks are processed in the scope of the actor.
 
@@ -188,7 +188,7 @@ The java CompletableFuture with it's **synchronous** callbacks are used as place
 import java.util.concurrent.CompletableFuture;
 ```
 
-###Asynchronous Orchestration Functions
+### Asynchronous Orchestration Functions
 
 Orchestration functions are the functions called by the orchestration flow to execute single orchestration tasks, such as making a service or database call. An orchestration function must comply to the following guideline:
 
@@ -200,7 +200,7 @@ Orchestration functions are the functions called by the orchestration flow to ex
 
 Lets look at a few examples of orchestration functions:
 
-####Scala
+#### Scala
 
 ```scala
 def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
@@ -219,7 +219,7 @@ def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
 
 In this example, the function is curried. The `itemId` argument is delivered synchronously and the seller is delivered asynchronously.
 
-####Java
+#### Java
 
 ```java
 private CompletableFuture<Optional<Item>> loadItem(User seller, String itemId) {
@@ -241,7 +241,7 @@ We start the function with creating an `OPromise` (Scala) or `CompletableFuture`
 
 The example below is logically the same as the first example, just using ask instead of tell:
 
-####Scala
+#### Scala
 
 ```scala
 private def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
@@ -255,7 +255,7 @@ private def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
 
 In this case, the ask `?` operation returns a [`scala.concurrent.Future`](http://www.scala-lang.org/api/2.11.4/index.html#scala.concurrent.Future). The Orchestrator trait provides implicit conversions between scala.concurrent.Future and OFuture so the result of the ask `?` can be returned from this function declaring an OFuture as a return type without explicitly calling a conversion.
 
-####Java
+#### Java
 
 ```java
 private CompletableFuture<Optional<Item>> loadItem(User seller, String itemId) {
@@ -276,9 +276,9 @@ While `ask` or `?` may seem to require writing less code, it is both less perfor
 
 Tests have shown sligtly higher latency as well as CPU utilizations when using ask as opposed to expect/expectOnce.
 
-###Composition
+### Composition
 
-####Scala
+#### Scala
 
 The pipe, or `>>` symbol takes one or more orchestration future `OFuture` and makes its outcome as the input to the orchestration function. The actual orchestration function invocation will happen asynchronously, when all the `OFuture`s representing the input to the function are resolved.
 
@@ -300,7 +300,7 @@ The flow above can be described as follows:
 * When the viewing user becomes available, use the viewing user as an input to call loadItem (in this case with an itemId available in prior). loadItem in this case follows the exact signature in the orchestration function declaration above.
 * When both user and item becomes available, call buildItemView.
 
-####Java
+#### Java
 
 The composition of multiple `CompletableFuture`s can be achieved by using composition function `CompletableFuture.thenCompose()`. Each `thenCompose` takes a lambda with the resolved future value as input. This will be called when the `CompletableFuture` is completed.
 
@@ -323,7 +323,7 @@ The flow above can be described as follows:
 * When the viewing user becomes available, use the viewing user as an input to call loadItem (in this case with an itemId available in prior).
 * When both user and item becomes available, call buildItemView.
 
-##Orchestrator Instance Lifecycle
+## Orchestrator Instance Lifecycle
 
 Orchestrators are generally single-use actors. They receive the initial request and then multiple responses based on what requests the invoked orchestration functions send out.
 
@@ -331,11 +331,11 @@ To allow an orchestrator to serve multiple orchestration requests, the orchestra
 
 The last part of an orchestration callback should stop the actor. This is done in Scala by calling `context.stop(self)` or `context stop self` if the infix notation is preferred. Java implementations need to call `context().stop(self());`
 
-##Complete Orchestration Flow
+## Complete Orchestration Flow
 
 Here, we put all the above concepts together. Repeating the same example from Getting Started above with more complete explanations:
 
-####Scala
+#### Scala
 
 ```scala
     // 1. Define the orchestrator actor.
@@ -411,7 +411,7 @@ class MyOrchestrator extends Actor with Orchestrator {
 }
 ```
 
-####Java
+#### Java
 
 ```java
     // 1. Define the orchestrator actor.
@@ -477,9 +477,9 @@ public class MyOrchestrator extends AbstractOrchestrator {
 }
 ```
 
-##Re-use of Orchestration Functions
+## Re-use of Orchestration Functions
 
-####Scala
+#### Scala
 
 Orchestration functions often rely on the facilities provided by the `Orchestrator` trait and cannot live stand-alone. However, in many cases, re-use of the orchestration functions across multiple orchestrators that orchestrate differently are desired. In such cases it is important to separate the orchestration functions into different trait(s) that will be mixed into each of the orchestrators. The trait has to have access to orchestration functionality and needs a self reference to the `Orchestrator`. The following shows a sample of such a trait:
 
@@ -502,7 +502,7 @@ class MyOrchestrator extends Actor with Orchestrator with OrchestrationFunctions
 }
 ```
 
-####Java
+#### Java
 
 Java requires a single hierarchy and cannot support traits or multiple inheritance. Re-use is achieved by extending the AbstractOrchestrator, implementing the orchestration functions, and leaving the rest abstract - to be implemented by the concrete implementation of the orchestrator as illustrated in the followings:
 
@@ -529,13 +529,13 @@ abstract class MyAbstractOrchestrator extends AbstractOrchestrator {
 
 The concrete implementation of the orchestrator then just extends from `MyAbstractOrchestrator` above and implements the different orchestration.
 
-##Ensuring Response Uniqueness
+## Ensuring Response Uniqueness
 
 When using `expect` or `expectOnce`, we're limited by the pattern match capabilities of a single expect block which is limited in scope and cannot distinguish between matches across multiple expect blocks in multiple orchestration functions. There is no logical link that the received message is from the request message sent just before declaring the expect in the same orchestration function. For complicated orchestrations, we may run into issues of message confusion. The response is not associated with the right request and not processed correctly. There are a few strategies for dealing with this problem:
 
 If the recipient of the initial message, and therefore the sender of the response message is unique, the match could include a reference to the message's sender as in the sample pattern match below.
 
-####Scala
+#### Scala
 
 ```scala
 def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
@@ -553,7 +553,7 @@ def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
 }
 ```
 
-####Java
+#### Java
 
 ```java
 private CompletableFuture<Optional<Item>> loadItem(User seller, String itemId) {
@@ -573,7 +573,7 @@ private CompletableFuture<Optional<Item>> loadItem(User seller, String itemId) {
 
 Alternatively, the `Orchestrator` trait provides a message id generator that is unique when combined with the actor instance. We can use this id generator to generate a unique message id. Actors that accept such messages will just need to return this message id as part of the response message. The sample below shows an orchestration function using the message id generator.
 
-####Scala
+#### Scala
 
 ```scala
 def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
@@ -595,7 +595,7 @@ def loadItem(itemId: String)(seller: User): OFuture[Option[Item]] = {
 }
 ```
 
-####Java
+#### Java
 
 ```java
 private CompletableFuture<Optional<Item>> loadItem(User seller, String itemId) {
@@ -613,9 +613,3 @@ private CompletableFuture<Optional<Item>> loadItem(User seller, String itemId) {
     return itemF;
 }
 ```
-
-
-
-
-
-

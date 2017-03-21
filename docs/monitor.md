@@ -1,6 +1,6 @@
-#Monitoring Actors at Runtime
+# Monitoring Actors at Runtime
 
-##Overview
+## Overview
 
 The squbs-actormonitor module attaches monitoring to each actor in the actor system. For large number of actors, this can get intrusive. The number of actors to monitor can be configured through `application.conf`. Use judgement attaching this module in production. There is no user API to this module.
 

@@ -1,10 +1,10 @@
-#Admin Console
+# Admin Console
 
 The squbs admin console provides a web/JSON interface into system state and statistics of both squbs and the JVM. All state and statistics of squbs and the JVM is provided as JMX MXBeans. Cubes, applications, or components are free to register their own monitors.
 
 **Note**: The squbs admin console does not allow JMX method execution or modifications of any settings just yet.
 
-##Dependencies
+## Dependencies
 
 To use the squbs admin console, simply add the following dependencies in your build.sbt file or Scala build script:
 
@@ -14,7 +14,7 @@ To use the squbs admin console, simply add the following dependencies in your bu
 
 squbs-admin will be auto-detected. No API is required.
 
-##Accessing Bean Information
+## Accessing Bean Information
 
 squbs-admin uses the context `/adm`. Just hitting `/adm` alone will list out the catalog of JMX MXBeans and the corresponding URLs to access the beans as in the following example:
 
@@ -67,7 +67,7 @@ JSON plugins for your browser would detect and allow easy clicking on the links.
 }
 ```
 
-##Bean URL & Encoding
+## Bean URL & Encoding
 
 All beans are under the `/adm/bean/` path, followed by the full bean object name. The bean object name gets translated as follows to make it possible for easy URL access:
 
@@ -76,7 +76,7 @@ All beans are under the `/adm/bean/` path, followed by the full bean object name
 
 For instance, to access the bean with object name `java.lang:type=GarbageCollector,name=PS Scavenge`, the URL path would be `/adm/bean/java.lang:type~GarbageCollector,name~PS%20Scavenge`
 
-##Listener
+## Listener
 
 squbs-admin binds to the `admin-listener`. By default, this is an alias of the `default-listener`. Services can override the Unicomplex configuration and re-assign the `admin-listener` alias to any other defined listener of choice. The following example shows how to re-assign aliases in your `application.conf`:
 
@@ -100,11 +100,11 @@ my-listener {
 }
 ```
 
-##Exclusions
+## Exclusions
 
 In many cases, an MXBean may contain information deemed sensitive, and should not be displayed in the admin console. The best way around this is, of course, to not include such information into a JMX bean in the first place. However, sometimes these beans are not exposed by your component but by a third party component or library and there is no way to hide such information short of modifying the third party component. Exclusions are a feature provided by the admin console to hide such information from showing in the JSON.
 
-###Configuring Exclusions
+### Configuring Exclusions
 
 Exclusions are configured under squbs.admin in your standard configuration in `application.conf` as can be seen in the following example:
 
@@ -124,6 +124,5 @@ squbs.admin {
   * The field name acts as a filter of any attribute or field at any depth in the MXBean. If the field name matches the provided name, it will be excluded.
 * Multiple field exclusion on the same bean can be achieved by listing `beanName::field1`, `beanName::field2`, and so forth.
 
-##Error Responses
+## Error Responses
 A 404 (NotFound) response is provided on a request to obtain an invalid bean object name, or a name of a blacklisted bean. The results of either case is indistinguishable for security reasons.
-
