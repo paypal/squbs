@@ -50,7 +50,7 @@ object ClientFlowHttpsSpec {
   ResolverRegistry(system).register[HttpEndpoint]("LocalhostHttpsEndpointResolver") { (name, _) =>
     name match {
       case "helloHttps" =>
-        Some(HttpEndpoint(s"https://localhost:$port", Some(sslContext("exampletrust.jks", "changeit"))))
+        Some(HttpEndpoint(s"https://localhost:$port", Some(sslContext("exampletrust.jks", "changeit")), None))
       case _ => None
     }
   }

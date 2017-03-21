@@ -179,6 +179,8 @@ You can register multiple `Resolver`s.  The chain is executed in the reverse ord
 
 If the resolved endpoint is a secure one, e.g., https, an `SSLContext` can be passed to `HttpEndpoint` as an optional parameter.
 
+An optional `Config` can also be passed to `HttpEndpoint` to override the default configuration.  However, the client specific configuration has always higher precendence over the passed in configuration.
+
 Please see [Resource Resolution](resolver.md) for details on resolution in general.
 
 ### Per Client Configuration

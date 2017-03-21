@@ -90,7 +90,8 @@ object ClientFlow {
       throw HttpClientEndpointNotExistException(name, environment)
     }
 
-    val config = system.settings.config
+    // The resolver may also contribute to the configuration and if it does, it has higher priority over the defaults.
+    val config = endpoint.config.map(_.withFallback(system.settings.config)).getOrElse(system.settings.config)
     import org.squbs.util.ConfigUtil._
     val clientSpecificConfig = config.getOption[Config](s""""$name"""").filter {
       _.getOption[String]("type") contains "squbs.httpclient"
@@ -106,7 +107,7 @@ object ClientFlow {
         val sslConfig = AkkaSSLConfig().withSettings(SSLConfigFactory.parse(akkaOverrides withFallback defaults))
 
         val httpsConnectionContext = connectionContext orElse {
-          endpoint.asInstanceOf[HttpEndpoint].sslContext map { sc => ConnectionContext.https(sc, Some(sslConfig)) }
+          endpoint.sslContext map { sc => ConnectionContext.https(sc, Some(sslConfig)) }
         } getOrElse Http().defaultClientHttpsContext
 
         Http().cachedHostConnectionPoolHttps[RequestContext](endpoint.uri.getHost, endpoint.uri.getPort,

@@ -19,6 +19,8 @@ import java.net.URI
 import java.util.Optional
 import javax.net.ssl.SSLContext
 
+import com.typesafe.config.Config
+
 import scala.compat.java8.OptionConverters._
 
 /**
@@ -26,7 +28,7 @@ import scala.compat.java8.OptionConverters._
   * @param uri The HTTP request URI.
   * @param sslContext The SSL context, if any.
   */
-case class HttpEndpoint(uri: URI, sslContext: Option[SSLContext] = None)
+case class HttpEndpoint(uri: URI, sslContext: Option[SSLContext] = None, config: Option[Config] = None)
 
 /**
   * Creators for HttpEndpoint.
@@ -34,7 +36,8 @@ case class HttpEndpoint(uri: URI, sslContext: Option[SSLContext] = None)
 object HttpEndpoint {
   def apply(s: String): HttpEndpoint = HttpEndpoint(new URI(s))
 
-  def apply(s: String, sslContext: Option[SSLContext]): HttpEndpoint = HttpEndpoint(new URI(s), sslContext)
+  def apply(s: String, sslContext: Option[SSLContext], config: Option[Config]): HttpEndpoint =
+    HttpEndpoint(new URI(s), sslContext, config)
 
   /**
     * Java API
@@ -44,6 +47,6 @@ object HttpEndpoint {
   /**
     * Java API
     */
-  def create(s: String, sslContext: Optional[SSLContext]): HttpEndpoint =
-    HttpEndpoint(new URI(s), sslContext.asScala)
+  def create(s: String, sslContext: Optional[SSLContext], config: Optional[Config]): HttpEndpoint =
+    HttpEndpoint(new URI(s), sslContext.asScala, config.asScala)
 }
