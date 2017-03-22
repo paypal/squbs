@@ -79,7 +79,8 @@ public class ClientFlowHttpsEndpointTest {
         ResolverRegistry.get(system).register(HttpEndpoint.class, "LocalhostHttpsEndpointResolver", (svcName, env) -> {
             if ("helloHttps".equals(svcName)) {
                 return Optional.of(HttpEndpoint.create("https://localhost:" + port,
-                        sslContext("exampletrust.jks", "changeit")));
+                        sslContext("exampletrust.jks", "changeit"),
+                        Optional.empty()));
             }
             return Optional.empty();
         });

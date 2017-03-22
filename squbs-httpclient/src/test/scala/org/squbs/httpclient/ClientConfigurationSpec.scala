@@ -40,57 +40,74 @@ object ClientConfigurationSpec {
        |  ${JMX.prefixConfig} = true
        |}
        |
-      |sampleClient {
+       |sampleClient {
        | type = squbs.httpclient
        |
-      | akka.http {
+       | akka.http {
        |   host-connection-pool {
        |     max-connections = 987
        |     max-retries = 123
        |
-      |     client = {
+       |     client = {
        |       connecting-timeout = 123 ms
        |     }
        |   }
        | }
        |}
        |
-      |sampleClient2 {
+       |sampleClient2 {
        | type = squbs.httpclient
        |
-      | akka.http.host-connection-pool {
+       | akka.http.host-connection-pool {
        |   max-connections = 666
        | }
        |}
        |
-      |noOverrides {
+       |noOverrides {
        | type = squbs.httpclient
        |}
        |
-      |noType {
+       |noType {
        |
-      | akka.http.host-connection-pool {
+       | akka.http.host-connection-pool {
        |   max-connections = 987
        |   max-retries = 123
        | }
        |}
        |
-      |passedAsParameter {
+       |passedAsParameter {
        | type = squbs.httpclient
        |
-      | akka.http.host-connection-pool {
+       | akka.http.host-connection-pool {
        |   max-connections = 111
        | }
        |}
        |
+       |resolverConfig {
+       |  type = squbs.httpclient
+       |  akka.http.host-connection-pool {
+       |    max-connections = 111
+       |  }
+       |}
     """.stripMargin)
 
+  val resolverConfig = ConfigFactory.parseString(
+    """
+      |akka.http.host-connection-pool {
+      |  max-connections = 987
+      |  max-retries = 123
+      |}
+    """.stripMargin)
 
   implicit val system = ActorSystem("ClientConfigurationSpec", appConfig.withFallback(defaultConfig))
   implicit val materializer = ActorMaterializer()
 
-  ResolverRegistry(system).register[HttpEndpoint]("LocalhostEndpointResolver")
-    { (_, _) => Some(HttpEndpoint(s"http://localhost:1234")) }
+  ResolverRegistry(system).register[HttpEndpoint]("LocalhostEndpointResolver") { (name, _) =>
+    name match {
+      case "resolverConfig" => Some(HttpEndpoint(s"http://localhost:1234", None, Some(resolverConfig)))
+      case _ => Some(HttpEndpoint(s"http://localhost:1234"))
+    }
+  }
 
 
 }
@@ -119,6 +136,14 @@ class ClientConfigurationSpec extends FlatSpec with Matchers {
   it should "fallback to default values if client configuration does not override any properties" in {
     ClientFlow("noOverrides")
     assertDefaults("noOverrides")
+  }
+
+  it should "fallback to resolver config first then default values if client configuration is missing the property" in {
+    ClientFlow("resolverConfig")
+    assertJmxValue("resolverConfig", "MaxConnections", 111)
+    assertJmxValue("resolverConfig", "MaxRetries", 123)
+    assertJmxValue("resolverConfig", "ConnectionPoolIdleTimeout",
+      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
   }
 
   it should "ignore client specific configuration if type is not set to squbs.httpclient" in {
