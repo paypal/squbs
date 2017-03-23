@@ -21,10 +21,11 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigObject}
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
+import org.squbs.util.ConfigUtil._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration
@@ -81,15 +82,23 @@ object CustomTestKit {
     } getOrElse Seq.empty
   }
 
-  def defaultConfig(actorSystemName: String): Config = ConfigFactory.parseString(
-    s"""
-       |squbs {
-       |  actorsystem-name = $actorSystemName
-       |  ${JMX.prefixConfig} = true
-       |}
-       |default-listener.bind-port = 0
-    """.stripMargin
-  )
+  def defaultConfig(actorSystemName: String): Config = {
+    val baseConfig = ConfigFactory.load()
+    val listeners = baseConfig.root.toSeq collect {
+      case (n, v: ConfigObject) if v.toConfig.getOption[String]("type").contains("squbs.listener") => n
+    }
+
+    val portOverrides = listeners.map { listener => s"$listener.bind-port = 0" }   .mkString("\n")
+
+    ConfigFactory.parseString(
+      s"""
+         |squbs {
+         |  actorsystem-name = $actorSystemName
+         |  ${JMX.prefixConfig} = true
+         |}
+      """.stripMargin + portOverrides
+    )
+  }
 
   def boot(actorSystemName: Option[String] = None,
            config: Option[Config] = None,
@@ -99,7 +108,7 @@ object CustomTestKit {
     boot(config.map(_.withFallback(baseConfig)).getOrElse(baseConfig), resources, withClassPath)
   }
 
-  def boot(config: Config, resources: Option[Seq[String]], withClassPath: Option[Boolean]): UnicomplexBoot =
+  private def boot(config: Config, resources: Option[Seq[String]], withClassPath: Option[Boolean]): UnicomplexBoot =
     UnicomplexBoot(config)
       .createUsing {(name, config) => ActorSystem(name, config)}
       .scanResources(withClassPath.getOrElse(false), resources.getOrElse(defaultResources):_*)

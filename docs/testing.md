@@ -108,7 +108,7 @@ Please note, `CustomTestKit` allows passing `config` and `resources` together as
 
 #### Port binding in tests
 
-Starting services requires port binding.  To prevent port conflicts, we should let the system pick a port by setting listeners' `bind-port` to 0, e.g., `default-listener.bind-port = 0` (this is what `CustomTestKit` sets by default).  `squbs-testkit` comes with a `trait` named `PortGetter` that allows retrieving the port picked by the system.  `CustomTestKit` comes with `PortGetter` already mixed in, so you can use `port` value.  
+Starting services requires port binding.  To prevent port conflicts, we should let the system pick a port by setting listeners' `bind-port` to 0, e.g., `default-listener.bind-port = 0` (`CustomTestKit`, if used with default configuration, sets `bind-port = 0` for all listeners).  `squbs-testkit` comes with a `trait` named `PortGetter` that allows retrieving the port picked by the system.  `CustomTestKit` comes with `PortGetter` already mixed in, so you can use `port` value.  
 
 ```scala
 class SampleSpec extends CustomTestKit(SampleSpec.resources)
