@@ -34,7 +34,8 @@ trait HttpClientConfigMXBean {
   def getEndpointUri: String
   def getEnvironment: String
   def getPipeline: String
-  def getDefaultPipelineOn: Boolean
+  def getDefaultPipeline: String
+  def getCircuitBreakerStateName: String
   def getMaxConnections: Int
   def getMinConnections: Int
   def getMaxRetries: Int
@@ -88,10 +89,13 @@ case class HttpClientConfigMXBeanImpl(name: String,
                                       environment: String,
                                       pipeline: Option[String],
                                       defaultPipelineOn: Option[Boolean],
+                                      circuitBreakerStateName: String,
                                       cps: ConnectionPoolSettings) extends HttpClientConfigMXBean {
 
   val `N/A` = "N/A"
   val undefined = "undefined"
+  val on = "on"
+  val off = "off"
 
   val userAgentHeader = cps.connectionSettings.userAgentHeader.map(_.value()).getOrElse(`N/A`)
 
@@ -145,7 +149,9 @@ case class HttpClientConfigMXBeanImpl(name: String,
 
   override def getPipeline: String = pipeline.getOrElse(`N/A`)
 
-  override def getDefaultPipelineOn: Boolean = defaultPipelineOn.getOrElse(true)
+  override def getDefaultPipeline: String = defaultPipelineOn.map(if(_) on else off ).getOrElse(on)
+
+  override def getCircuitBreakerStateName: String = circuitBreakerStateName
 
   override def getMaxConnections: Int = cps.maxConnections
 

@@ -32,14 +32,18 @@ import akka.http.{javadsl => jd}
 import akka.japi.Pair
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep}
 import akka.stream.{FlowShape, Materializer, javadsl => js}
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import com.typesafe.sslconfig.ssl.SSLConfigFactory
-import org.squbs.resolver.ResolverRegistry
 import org.squbs.env.{Default, Environment, EnvironmentResolverRegistry}
 import org.squbs.pipeline.{ClientPipeline, Context, PipelineExtension, PipelineSetting, RequestContext}
+import org.squbs.resolver.ResolverRegistry
+import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
+import org.squbs.streams.circuitbreaker.{CircuitBreakerBidiFlow, CircuitBreakerSettings, japi}
+import org.squbs.util.ConfigUtil._
 
-import scala.util.{Failure, Try}
+import scala.compat.java8.OptionConverters
+import scala.util.{Failure, Success, Try}
 
 object ClientFlow {
 
@@ -47,32 +51,80 @@ object ClientFlow {
   type ClientConnectionFlow[T] = Flow[(HttpRequest, T), (Try[HttpResponse], T), HostConnectionPool]
   private[httpclient] val defaultResolverRegistrationRecord = new ConcurrentHashMap[String, Unit]
 
+  /**
+    * Java API
+    *
+    * Helps to create a [[ClientConnectionFlow]] using builder pattern.
+    */
+  def builder[T]() = Builder[T]()
+
+  /**
+    * Java API
+    */
+  case class Builder[T](
+    connectionContext: Optional[jd.HttpsConnectionContext] = Optional.empty(),
+    settings: Optional[jd.settings.ConnectionPoolSettings] = Optional.empty(),
+    circuitBreakerSettings: Optional[japi.CircuitBreakerSettings[jm.HttpRequest, jm.HttpResponse, T]] =
+      Optional.empty[japi.CircuitBreakerSettings[jm.HttpRequest, jm.HttpResponse, T]](),
+    environment: Environment = Default) {
+
+    def withConnectionContext(connectionContext: jd.HttpsConnectionContext) =
+      copy(connectionContext = Optional.of(connectionContext))
+
+    def withSettings(settings: jd.settings.ConnectionPoolSettings) =
+      copy(settings = Optional.of(settings))
+
+    def withCircuitBreakerSettings(
+      circuitBreakerSettings: japi.CircuitBreakerSettings[jm.HttpRequest, jm.HttpResponse, T]) =
+      copy(circuitBreakerSettings = Optional.of(circuitBreakerSettings))
+
+    def withEnvironment(environment: Environment) = copy(environment = environment)
+
+    def create(name: String, system: ActorSystem, mat: Materializer) =
+      ClientFlow.create(name, connectionContext, settings, circuitBreakerSettings, environment, system, mat)
+  }
+
+  /**
+    * Java API
+    *
+    * Creates a [[ClientConnectionFlow]] from client specific configuration specified in application.conf falling
+    * back to the default settings.
+    */
   def create[T](name: String, system: ActorSystem, mat: Materializer):
   js.Flow[Pair[jm.HttpRequest, T], Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] =
     toJava[T](apply[T](name)(system, mat))
 
+  /**
+    * Java API
+    *
+    * Creates a [[ClientConnectionFlow]] from provided settings
+    */
   def create[T](name: String,
                 connectionContext: Optional[jd.HttpsConnectionContext],
                 settings: Optional[jd.settings.ConnectionPoolSettings],
-                system: ActorSystem, mat: Materializer):
-  js.Flow[Pair[jm.HttpRequest, T],Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] = {
-    val (cCtx, sSettings) = fromJava(connectionContext, settings)
-    toJava[T](apply[T](name, cCtx, sSettings)(system, mat))
-  }
-
-  def create[T](name: String,
-                connectionContext: Optional[jd.HttpsConnectionContext],
-                settings: Optional[jd.settings.ConnectionPoolSettings],
+                circuitBreakerSettings: Optional[japi.CircuitBreakerSettings[jm.HttpRequest, jm.HttpResponse, T]],
                 env: Environment,
                 system: ActorSystem, mat: Materializer):
   js.Flow[Pair[jm.HttpRequest, T],Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] = {
     val (cCtx, sSettings) = fromJava(connectionContext, settings)
-    toJava[T](apply[T](name, cCtx, sSettings, env)(system, mat))
+    toJava[T](apply[T](name, cCtx, sSettings, toScala(circuitBreakerSettings), env)(system, mat))
+  }
+
+  private def toScala[T](circuitBreakerSettings: Optional[japi.CircuitBreakerSettings[jm.HttpRequest, jm.HttpResponse, T]]) = {
+    OptionConverters.toScala(circuitBreakerSettings).map(_.toScala).map { sCircuitBreakerSettings =>
+      CircuitBreakerSettings[HttpRequest, HttpResponse, T](sCircuitBreakerSettings.circuitBreakerState)
+        .copy(fallback = sCircuitBreakerSettings.fallback
+          .map(f => (httpRequest: HttpRequest) => f(httpRequest).map(_.asInstanceOf[HttpResponse])))
+        .copy(failureDecider = sCircuitBreakerSettings.failureDecider
+          .map(f => (httpResponse: Try[HttpResponse]) => f(httpResponse)))
+        .copy(uniqueIdMapper = sCircuitBreakerSettings.uniqueIdMapper)
+    }
   }
 
   def apply[T](name: String,
               connectionContext: Option[HttpsConnectionContext] = None,
               settings: Option[ConnectionPoolSettings] = None,
+              circuitBreakerSettings: Option[CircuitBreakerSettings[HttpRequest, HttpResponse, T]] = None,
               env: Environment = Default)(implicit system: ActorSystem, fm: Materializer): ClientConnectionFlow[T] = {
 
     defaultResolverRegistrationRecord.computeIfAbsent(system.name,
@@ -92,7 +144,6 @@ object ClientFlow {
 
     // The resolver may also contribute to the configuration and if it does, it has higher priority over the defaults.
     val config = endpoint.config.map(_.withFallback(system.settings.config)).getOrElse(system.settings.config)
-    import org.squbs.util.ConfigUtil._
     val clientSpecificConfig = config.getOption[Config](s""""$name"""").filter {
       _.getOption[String]("type") contains "squbs.httpclient"
     }
@@ -116,20 +167,79 @@ object ClientFlow {
         Http().cachedHostConnectionPool[RequestContext](endpoint.uri.getHost, endpoint.uri.getPort, cps)
       }
 
+    val disableCircuitBreaker =
+      clientSpecificConfig
+        .flatMap(_.getOption[Boolean]("disable-circuit-breaker"))
+        .getOrElse(false)
+
+    val circuitBreakerStateName =
+      if(disableCircuitBreaker) "N/A"
+      else circuitBreakerSettings.map(_.circuitBreakerState.name).getOrElse(s"$name-httpclient")
+
     val pipelineName = clientSpecificConfig.flatMap(_.getOption[String]("pipeline"))
     val defaultFlowsOn = clientSpecificConfig.flatMap(_.getOption[Boolean]("defaultPipeline"))
+    val pipelineSetting = (pipelineName, defaultFlowsOn)
 
     val mBeanServer = ManagementFactory.getPlatformMBeanServer
     val beanName = new ObjectName(
       s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=${ObjectName.quote(name)}")
-    if(!mBeanServer.isRegistered(beanName)) mBeanServer.registerMBean(HttpClientConfigMXBeanImpl(name,
-                                                                                                 endpoint.uri.toString,
-                                                                                                 environment.name,
-                                                                                                 pipelineName,
-                                                                                                 defaultFlowsOn,
-                                                                                                 cps), beanName)
+    if(!mBeanServer.isRegistered(beanName)) mBeanServer.registerMBean(HttpClientConfigMXBeanImpl(
+      name,
+      endpoint.uri.toString,
+      environment.name,
+      pipelineName,
+      defaultFlowsOn,
+      circuitBreakerStateName,
+      cps), beanName)
 
-    withPipeline[T](name, (pipelineName, defaultFlowsOn), clientConnectionFlow)
+    if(disableCircuitBreaker)
+      withPipeline[T](name, pipelineSetting, clientConnectionFlow)
+    else
+      withPipeline[T](name, pipelineSetting,
+        withCircuitBreaker[T](name, clientSpecificConfig, circuitBreakerSettings, clientConnectionFlow))
+  }
+
+  private[httpclient] def withCircuitBreaker[T](
+    name: String,
+    clientSpecificConfig: Option[Config],
+    circuitBreakerSettings: Option[CircuitBreakerSettings[HttpRequest, HttpResponse, T]],
+    clientConnectionFlow: ClientConnectionFlow[RequestContext])
+    (implicit system: ActorSystem):
+  ClientConnectionFlow[RequestContext] = {
+
+    val cbs =
+      circuitBreakerSettings.collect {
+        case circuitBreakerSettings @ CircuitBreakerSettings(_, _, None, _) =>
+          circuitBreakerSettings.withFailureDecider(
+            tryHttpResponse => tryHttpResponse.isFailure || tryHttpResponse.get.status.isFailure)
+        case circuitBreakerSettings => circuitBreakerSettings
+      }.getOrElse {
+        val clientSpecificCircuitBreakerConfig =
+        clientSpecificConfig
+          .flatMap(_.getOption[Config]("circuit-breaker"))
+          .getOrElse(ConfigFactory.empty)
+        CircuitBreakerSettings[HttpRequest, HttpResponse, T](
+          AtomicCircuitBreakerState(s"$name-httpclient", clientSpecificCircuitBreakerConfig))
+          .withFailureDecider(tryHttpResponse => tryHttpResponse.isFailure || tryHttpResponse.get.status.isFailure)
+    }
+
+    val clientFlowCircuitBreakerSettings =
+      CircuitBreakerSettings[HttpRequest, Try[HttpResponse], RequestContext](cbs.circuitBreakerState)
+        .copy(fallback = cbs.fallback.map(f => (httpRequest: HttpRequest) => Try(f(httpRequest))))
+        .copy(failureDecider =
+          cbs.failureDecider
+            .map(f => (tryTryHttpResponse: Try[Try[HttpResponse]]) => tryTryHttpResponse match {
+              case Success(tryHttpResponse) => f(tryHttpResponse)
+              case _ => true
+            }))
+        .withUniqueIdMapper(
+          (rc: RequestContext) => rc.attribute[T](AkkaHttpClientCustomContext).flatMap(cbs.uniqueIdMapper(_)))
+
+    val circuitBreakerBidiFlow = CircuitBreakerBidiFlow(clientFlowCircuitBreakerSettings)
+
+    circuitBreakerBidiFlow
+      .joinMat(clientConnectionFlow)(Keep.right)
+      .map { case(tryTryHttpResponse, requestContext) => (tryTryHttpResponse.flatten -> requestContext) }
   }
 
   private[httpclient] def withPipeline[T](name: String, pipelineSetting: PipelineSetting,

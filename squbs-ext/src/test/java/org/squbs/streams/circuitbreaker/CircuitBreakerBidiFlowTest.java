@@ -29,12 +29,13 @@ import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import akka.testkit.JavaTestKit;
-import com.typesafe.config.ConfigFactory;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 import org.squbs.streams.DelayActor;
 import org.squbs.streams.FlowTimeoutException;
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState;
+import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
 import scala.concurrent.duration.FiniteDuration;
 import scala.util.Failure;
 import scala.util.Success;
@@ -53,18 +54,15 @@ import static akka.pattern.PatternsCS.ask;
 
 public class CircuitBreakerBidiFlowTest {
 
-    final ActorSystem system = ActorSystem.create(
-            "CircuitBreakerBidiFlowTest",
-            ConfigFactory.parseString(
-                    "sample-circuit-breaker {\n" +
-                        "  type = squbs.circuitbreaker\n" +
-                        "  max-failures = 1\n" +
-                        "  call-timeout = 50 ms\n" +
-                        "  reset-timeout = 20 ms\n" +
-                        "}"));
-    final Materializer mat = ActorMaterializer.create(system);
-    final FiniteDuration timeout = FiniteDuration.apply(300, TimeUnit.MILLISECONDS);
-    final Try<String> timeoutFailure = Failure.apply(new FlowTimeoutException("Flow timed out!"));
+    private static final ActorSystem system = ActorSystem.create("CircuitBreakerBidiFlowTest");
+    private static final Materializer mat = ActorMaterializer.create(system);
+    private static final FiniteDuration timeout = FiniteDuration.create(300, TimeUnit.MILLISECONDS);
+    private static final Try<String> timeoutFailure = Failure.apply(new FlowTimeoutException("Flow timed out!"));
+
+    @AfterClass
+    public static void afterClass() {
+        system.terminate();
+    }
 
     @Test
     public void testIncrementFailureCountOnCallTimeout() {
@@ -78,16 +76,17 @@ public class CircuitBreakerBidiFlowTest {
         final CircuitBreakerState circuitBreakerState =
                 AtomicCircuitBreakerState.create(
                         "JavaIncFailCount",
-                        system.scheduler(),
                         2,
                         timeout,
-                        FiniteDuration.apply(10, TimeUnit.MILLISECONDS),
-                        system.dispatcher());
+                        FiniteDuration.create(10, TimeUnit.MILLISECONDS),
+                        system.dispatcher(),
+                        system.scheduler());
 
-
+        final CircuitBreakerSettings<String, String, UUID> circuitBreakerSettings =
+                CircuitBreakerSettings.create(circuitBreakerState);
         final ActorRef ref = Flow.<String>create()
                 .map(s -> Pair.create(s, UUID.randomUUID()))
-                .via(CircuitBreakerBidiFlow.<String, String, UUID>create(circuitBreakerState).join(flow))
+                .via(CircuitBreakerBidiFlow.create(circuitBreakerSettings).join(flow))
                 .to(Sink.ignore())
                 .runWith(Source.actorRef(25, OverflowStrategy.fail()), mat);
 
@@ -102,37 +101,6 @@ public class CircuitBreakerBidiFlowTest {
     }
 
     @Test
-    public void testCreateCircuitBreakerFromConfiguration() {
-        final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
-        final Flow<Pair<String, UUID>, Pair<String, UUID>, NotUsed> flow =
-                Flow.<Pair<String, UUID>>create()
-                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
-                        .map(elem -> (Pair<String, UUID>)elem);
-
-
-        final CircuitBreakerState circuitBreakerState =
-                AtomicCircuitBreakerState.create("sample-circuit-breaker", system);
-
-
-        final ActorRef ref = Flow.<String>create()
-                .map(s -> Pair.create(s, UUID.randomUUID()))
-                .via(CircuitBreakerBidiFlow.<String, String, UUID>create(circuitBreakerState).join(flow))
-                .to(Sink.ignore())
-                .runWith(Source.actorRef(25, OverflowStrategy.fail()), mat);
-
-
-        new JavaTestKit(system) {{
-            circuitBreakerState.subscribe(getRef(), TransitionEvents.instance());
-            ref.tell("a", ActorRef.noSender());
-            ref.tell("b", ActorRef.noSender());
-            expectMsgEquals(Open.instance());
-            expectMsgEquals(HalfOpen.instance());
-            ref.tell("a", ActorRef.noSender());
-            expectMsgEquals(Closed.instance());
-        }};
-    }
-
-    @Test
     public void testIncrementFailureCountBasedOnTheProvidedFunction() {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, UUID>, Pair<String, UUID>, NotUsed> flow =
@@ -143,17 +111,18 @@ public class CircuitBreakerBidiFlowTest {
         final CircuitBreakerState circuitBreakerState =
                 AtomicCircuitBreakerState.create(
                         "JavaFailureDecider",
-                        system.scheduler(),
                         2,
-                        FiniteDuration.apply(10, TimeUnit.SECONDS),
-                        FiniteDuration.apply(10, TimeUnit.MILLISECONDS),
-                        system.dispatcher());
+                        FiniteDuration.create(10, TimeUnit.SECONDS),
+                        FiniteDuration.create(10, TimeUnit.MILLISECONDS),
+                        system.dispatcher(),
+                        system.scheduler());
+
+        final CircuitBreakerSettings circuitBreakerSettings =
+                CircuitBreakerSettings.<String, String, UUID>create(circuitBreakerState)
+                        .withFailureDecider(out -> out.get().equals("c"));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed>
-                circuitBreakerBidiFlow = CircuitBreakerBidiFlow.create(
-                        circuitBreakerState,
-                        Optional.empty(),
-                        Optional.of(pair -> pair.first().get().equals("c")));
+                circuitBreakerBidiFlow = CircuitBreakerBidiFlow.create(circuitBreakerSettings);
 
 
         final ActorRef ref = Flow.<String>create()
@@ -193,17 +162,22 @@ public class CircuitBreakerBidiFlowTest {
         final CircuitBreakerState circuitBreakerState =
                 AtomicCircuitBreakerState.create(
                         "JavaFallback",
-                        system.scheduler(),
                         2,
-                        FiniteDuration.apply(10, TimeUnit.MILLISECONDS),
-                        FiniteDuration.apply(10, TimeUnit.SECONDS),
-                        system.dispatcher());
+                        FiniteDuration.create(10, TimeUnit.MILLISECONDS),
+                        FiniteDuration.create(10, TimeUnit.SECONDS),
+                        system.dispatcher(),
+                        system.scheduler());
 
-        final BidiFlow<Pair<String, Integer>, Pair<String, Integer>, Pair<String, Integer>, Pair<Try<String>, Integer>, NotUsed> circuitBreakerBidiFlow =
-                CircuitBreakerBidiFlow.create(
-                        circuitBreakerState,
-                        Optional.of(pair -> Pair.create(Success.apply("fb"), pair.second())),
-                        Optional.empty());
+        final CircuitBreakerSettings circuitBreakerSettings =
+                CircuitBreakerSettings.<String, String, Integer>create(circuitBreakerState)
+                        .withFallback(s -> Success.apply("fb"));
+
+        final BidiFlow<Pair<String, Integer>,
+                       Pair<String, Integer>,
+                       Pair<String, Integer>,
+                       Pair<Try<String>, Integer>,
+                       NotUsed>
+                circuitBreakerBidiFlow = CircuitBreakerBidiFlow.create(circuitBreakerSettings);
 
         IdGen idGen = new IdGen();
         final CompletionStage<List<Pair<Try<String>, Integer>>> result =
@@ -269,23 +243,22 @@ public class CircuitBreakerBidiFlowTest {
         final CircuitBreakerState circuitBreakerState =
                 AtomicCircuitBreakerState.create(
                         "JavaUniqueId",
-                        system.scheduler(),
                         2,
                         timeout,
-                        FiniteDuration.apply(10, TimeUnit.MILLISECONDS),
-                        system.dispatcher());
+                        FiniteDuration.create(10, TimeUnit.MILLISECONDS),
+                        system.dispatcher(),
+                        system.scheduler());
+
+        final CircuitBreakerSettings circuitBreakerSettings =
+                CircuitBreakerSettings.<String, String, MyContext>create(circuitBreakerState)
+                        .withUniqueIdMapper(context -> Optional.of(context.id));
 
         final BidiFlow<Pair<String, MyContext>,
                        Pair<String, MyContext>,
                        Pair<String, MyContext>,
                        Pair<Try<String>, MyContext>,
                        NotUsed>
-                circuitBreakerBidiFlow =
-                CircuitBreakerBidiFlow.create(
-                        circuitBreakerState,
-                        Optional.empty(),
-                        Optional.empty(),
-                        context -> Optional.of(context.id));
+                circuitBreakerBidiFlow = CircuitBreakerBidiFlow.create(circuitBreakerSettings);
 
         IdGen idGen = new IdGen();
         final CompletionStage<List<Pair<Try<String>, MyContext>>> result =

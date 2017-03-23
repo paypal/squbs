@@ -17,13 +17,11 @@ package org.squbs.httpclient;
 
 import akka.NotUsed;
 import akka.actor.ActorSystem;
-import akka.http.javadsl.ConnectHttp;
-import akka.http.javadsl.HostConnectionPool;
-import akka.http.javadsl.Http;
-import akka.http.javadsl.ServerBinding;
+import akka.http.javadsl.*;
 import akka.http.javadsl.model.*;
 import akka.http.javadsl.server.AllDirectives;
 import akka.http.javadsl.server.Route;
+import akka.http.javadsl.settings.ConnectionPoolSettings;
 import akka.japi.Pair;
 import akka.stream.ActorMaterializer;
 import akka.stream.javadsl.Flow;
@@ -31,12 +29,20 @@ import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.squbs.env.PROD;
 import org.squbs.resolver.ResolverRegistry;
+import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState;
+import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
 import org.squbs.testkit.Timeouts;
+import scala.concurrent.duration.FiniteDuration;
 import scala.util.Try;
 
+import javax.management.ObjectName;
+import javax.net.ssl.SSLContext;
+import java.lang.management.ManagementFactory;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 
@@ -65,7 +71,7 @@ public class ClientFlowTest {
 
     static {
         ResolverRegistry.get(system).register(HttpEndpoint.class, "LocalhostEndpointResolver", (svcName, env) -> {
-            if ("hello".equals(svcName)) {
+            if (svcName.matches("hello|javaBuilderClient|javaAllInputsClient")) {
                 return Optional.of(HttpEndpoint.create("http://localhost:" + port));
             }
             return Optional.empty();
@@ -103,6 +109,96 @@ public class ClientFlowTest {
     @Test(expected = HttpClientEndpointNotExistException.class)
     public void endPointNotExist() throws Exception {
         ClientFlow.<Integer>create("cannotResolve", system, mat);
+    }
+
+    @Test
+    public void testBuilderAPI() throws Exception {
+        ConnectionPoolSettings connectionPoolSettings = ConnectionPoolSettings.create(system).withMaxConnections(41);
+        CircuitBreakerSettings circuitBreakerSettings =
+                CircuitBreakerSettings.create(
+                        AtomicCircuitBreakerState.create(
+                                "javaBuilderClient",
+                                11,
+                                FiniteDuration.apply(12, TimeUnit.SECONDS),
+                                FiniteDuration.apply(13, TimeUnit.MINUTES),
+                                FiniteDuration.apply(14, TimeUnit.DAYS),
+                                16.0,
+                                system.dispatcher(),
+                                system.scheduler()));
+
+        ClientFlow.builder()
+                .withConnectionContext(ConnectionContext.https(SSLContext.getInstance("TLS")))
+                .withSettings(connectionPoolSettings)
+                .withCircuitBreakerSettings(circuitBreakerSettings)
+                .withEnvironment(PROD.value())
+                .create("javaBuilderClient", system, mat);
+
+        ObjectName oNameHC = ObjectName.getInstance(
+                "org.squbs.configuration." + system.name() + ":type=squbs.httpclient,name=" +
+                        ObjectName.quote("javaBuilderClient"));
+
+        ObjectName oNameCB = ObjectName.getInstance(
+                "org.squbs.configuration:type=squbs.circuitbreaker,name=" + ObjectName.quote("javaBuilderClient"));
+
+        assertJmxValue(oNameHC, "MaxConnections", 41);
+        assertJmxValue(oNameHC, "Environment", "PROD");
+        assertJmxValue(oNameCB, "MaxFailures", 11);
+        assertJmxValue(oNameCB, "CallTimeout", "12 seconds");
+        assertJmxValue(oNameCB, "ResetTimeout", "13 minutes");
+        assertJmxValue(oNameCB, "MaxResetTimeout", "14 days");
+        assertJmxValue(oNameCB, "ExponentialBackoffFactor", 16.0);
+    }
+
+    @Test
+    public void testAllInputsAPI() throws Exception {
+        ConnectionPoolSettings connectionPoolSettings = ConnectionPoolSettings.create(system).withMaxConnections(41);
+        CircuitBreakerSettings circuitBreakerSettings =
+                CircuitBreakerSettings.create(
+                        AtomicCircuitBreakerState.create(
+                                "javaAllInputsClient",
+                                11,
+                                FiniteDuration.apply(12, TimeUnit.SECONDS),
+                                FiniteDuration.apply(13, TimeUnit.MINUTES),
+                                FiniteDuration.apply(14, TimeUnit.DAYS),
+                                16.0,
+                                system.dispatcher(),
+                                system.scheduler()));
+
+        ClientFlow.builder()
+                .withConnectionContext(ConnectionContext.https(SSLContext.getInstance("TLS")))
+                .withSettings(connectionPoolSettings)
+                .withCircuitBreakerSettings(circuitBreakerSettings)
+                .withEnvironment(PROD.value())
+                .create("javaAllInputsClient", system, mat);
+
+        ClientFlow.create(
+                "javaAllInputsClient",
+                Optional.of(ConnectionContext.https(SSLContext.getInstance("TLS"))),
+                Optional.of(connectionPoolSettings),
+                Optional.of(circuitBreakerSettings),
+                PROD.value(),
+                system,
+                mat);
+
+        ObjectName oNameHC = ObjectName.getInstance(
+                "org.squbs.configuration." + system.name() + ":type=squbs.httpclient,name=" +
+                        ObjectName.quote("javaAllInputsClient"));
+
+        ObjectName oNameCB = ObjectName.getInstance(
+                "org.squbs.configuration:type=squbs.circuitbreaker,name=" + ObjectName.quote("javaAllInputsClient"));
+
+        assertJmxValue(oNameHC, "MaxConnections", 41);
+        assertJmxValue(oNameHC, "Environment", "PROD");
+        assertJmxValue(oNameCB, "MaxFailures", 11);
+        assertJmxValue(oNameCB, "CallTimeout", "12 seconds");
+        assertJmxValue(oNameCB, "ResetTimeout", "13 minutes");
+        assertJmxValue(oNameCB, "MaxResetTimeout", "14 days");
+        assertJmxValue(oNameCB, "ExponentialBackoffFactor", 16.0);
+    }
+
+    private void assertJmxValue(ObjectName oName, String key, Object expectedValue) throws Exception {
+        Object actualValue = ManagementFactory.getPlatformMBeanServer().getAttribute(oName, key);
+        assertEquals(oName + "." + key, expectedValue, actualValue);
     }
 }
 

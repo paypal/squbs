@@ -19,13 +19,17 @@ import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.squbs.resolver._
 import org.squbs.env.QA
+import org.squbs.streams.circuitbreaker.CircuitBreakerSettings
+import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 
 import scala.concurrent.duration.Duration
+import scala.util.Try
 
 object HttpClientJMXSpec {
 
@@ -89,6 +93,36 @@ object HttpClientJMXSpec {
       |    }
       |  }
       |}
+      |
+      |clientWithPipeline {
+      |  type = squbs.httpclient
+      |
+      |  pipeline = dummyPipeline
+      |}
+      |
+      |clientWithDefaultsOn {
+      |  type = squbs.httpclient
+      |
+      |  defaultPipeline = on
+      |}
+      |
+      |clientWithDefaultsOff {
+      |  type = squbs.httpclient
+      |
+      |  defaultPipeline = off
+      |}
+      |
+      |clientWithCircuitBreakerDisabled {
+      |  type = squbs.httpclient
+      |
+      |  disable-circuit-breaker = yes
+      |}
+      |
+      |clientWithCircuitBreakerEnabled {
+      |  type = squbs.httpclient
+      |
+      |  disable-circuit-breaker = no
+      |}
     """.stripMargin).withFallback(ConfigFactory.load())
 
   implicit val system = ActorSystem("HttpClientJMXSpec", config)
@@ -110,6 +144,9 @@ class HttpClientJMXSpec extends FlatSpecLike with Matchers {
     assertJmxValue("sampleClient", "Name", "sampleClient")
     assertJmxValue("sampleClient", "EndpointUri", "http://localhost:8080")
     assertJmxValue("sampleClient", "Environment", "DEFAULT")
+    assertJmxValue("sampleClient", "Pipeline", "N/A")
+    assertJmxValue("sampleClient", "DefaultPipeline", "on")
+    assertJmxValue("sampleClient", "CircuitBreakerStateName", "sampleClient-httpclient")
     assertJmxValue("sampleClient", "MaxConnections", config.getInt("akka.http.host-connection-pool.max-connections"))
     assertJmxValue("sampleClient", "MinConnections", config.getInt("akka.http.host-connection-pool.min-connections"))
     assertJmxValue("sampleClient", "MaxRetries", config.getInt("akka.http.host-connection-pool.max-retries"))
@@ -254,6 +291,43 @@ class HttpClientJMXSpec extends FlatSpecLike with Matchers {
     ClientFlow("clientWithDifferntEnvironment", env = QA)
     assertJmxValue("clientWithDifferntEnvironment", "Name", "clientWithDifferntEnvironment")
     assertJmxValue("clientWithDifferntEnvironment", "Environment", "QA")
+  }
+
+  it should "show pipeline name correctly" in {
+    Try(ClientFlow("clientWithPipeline")) // Since pipeline does not exist, it may throw an exception
+    assertJmxValue("clientWithPipeline", "Pipeline", "dummyPipeline")
+  }
+
+  it should "show defaults on" in {
+    ClientFlow("clientWithDefaultsOn")
+    assertJmxValue("clientWithDefaultsOn", "DefaultPipeline", "on")
+  }
+
+  it should "show defaults off" in {
+    ClientFlow("clientWithDefaultsOff")
+    assertJmxValue("clientWithDefaultsOff", "DefaultPipeline", "off")
+  }
+
+  it should "show circuit breaker state as N/A" in {
+    ClientFlow("clientWithCircuitBreakerDisabled")
+    assertJmxValue("clientWithCircuitBreakerDisabled", "CircuitBreakerStateName", "N/A")
+  }
+
+  it should "show circuit breaker name with default pattern correctly" in {
+    ClientFlow("clientWithCircuitBreakerEnabled")
+    assertJmxValue(
+      "clientWithCircuitBreakerEnabled",
+      "CircuitBreakerStateName",
+      "clientWithCircuitBreakerEnabled-httpclient")
+  }
+
+  it should "show custom circuit breaker state name correctly" in {
+    val circuitBreakerSettings =
+      CircuitBreakerSettings[HttpRequest, HttpResponse, Int](
+        AtomicCircuitBreakerState("SomeDummyCircuitBreakerStateName", ConfigFactory.empty()))
+
+    ClientFlow("clientWithCustomCircuitBreakerState", circuitBreakerSettings = Some(circuitBreakerSettings))
+    assertJmxValue("clientWithCustomCircuitBreakerState", "CircuitBreakerStateName", "SomeDummyCircuitBreakerStateName")
   }
 
   def assertJmxValue(clientName: String, key: String, expectedValue: Any) = {
