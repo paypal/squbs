@@ -640,8 +640,10 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
         Future {
           extensions.reverse foreach { e =>
             import e.info._
-            e.extLifecycle foreach (_.shutdown())
-            logger.info(s"Shutting down extension ${e.extLifecycle.getClass.getName} in $fullName $version")
+            e.extLifecycle foreach { elc =>
+              logger.info(s"Shutting down extension ${elc.getClass.getName} in $fullName $version")
+              elc.shutdown()
+            }
           }
         } onComplete {
           case Success(result) =>
