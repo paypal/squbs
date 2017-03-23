@@ -371,6 +371,6 @@ class DelayActor extends Actor {
 
   def receive = {
     case element: String => context.system.scheduler.scheduleOnce(delay(element), sender(), element)
-    case element: (String, _) => context.system.scheduler.scheduleOnce(delay(element._1), sender(), element)
+    case element @ (s: String, _) => context.system.scheduler.scheduleOnce(delay(s), sender(), element)
   }
 }
