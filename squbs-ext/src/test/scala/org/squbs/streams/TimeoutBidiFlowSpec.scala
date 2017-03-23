@@ -254,9 +254,9 @@ class DelayActor extends Actor {
   def receive = {
     case element: String =>
       context.system.scheduler.scheduleOnce(delay(element), sender(), element)
-    case element: (String, Any) =>
-      context.system.scheduler.scheduleOnce(delay(element._1), sender(), element)
-    case element: akka.japi.Pair[String, Any] =>
-      context.system.scheduler.scheduleOnce(delay(element.first), sender(), element)
+    case element @ (s: String, _) =>
+      context.system.scheduler.scheduleOnce(delay(s), sender(), element)
+    case element @ akka.japi.Pair(s: String, _) =>
+      context.system.scheduler.scheduleOnce(delay(s), sender(), element)
   }
 }
