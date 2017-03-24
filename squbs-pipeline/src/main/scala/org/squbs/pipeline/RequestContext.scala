@@ -22,7 +22,7 @@ import scala.collection.JavaConversions._
 import scala.util.{Success, Try}
 
 case class RequestContext(request: HttpRequest,
-                          httpPipeliningOrder: Int, // TODO Come up with a better val name
+                          httpPipeliningOrder: Long, // TODO Come up with a better val name
                           response: Option[Try[HttpResponse]] = None,
                           attributes: Map[String, Any] = Map.empty) {
 

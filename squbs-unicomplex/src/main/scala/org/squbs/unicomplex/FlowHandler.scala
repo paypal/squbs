@@ -39,7 +39,7 @@ object FlowHandler {
     if(path.length < target.length) { false }
     else {
       @tailrec
-      def innerMatch(path: Path, target:Path):Boolean =
+      def innerMatch(path: Path, target: Path): Boolean =
         if (target.isEmpty) true
         else if (target.head == path.head) innerMatch(path.tail, target.tail)
         else false
@@ -108,9 +108,7 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
       }
 
       val httpPipeliningOrder = b.add(
-        new OrderingStage[RequestContext, Int](0, (x: Int) => x + 1,
-                                               (rc: RequestContext) => rc.httpPipeliningOrder)
-                                               (RequestContextOrdering))
+        new OrderingStage[RequestContext, Long](0L, _ + 1L, _.httpPipeliningOrder)(RequestContextOrdering))
 
       val responseFlow = b.add(Flow[RequestContext].map { rc =>
         rc.response map {
@@ -119,20 +117,20 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
         } getOrElse NotFound
       })
 
-      val zipF = localPort map { port =>
+      val zipF: (HttpRequest, Long) => RequestContext = localPort map { port =>
         if (port != 0) {
           // Port is configured, we use the configured port.
-          (hr: HttpRequest, po: Int) => RequestContext(hr, po).addRequestHeaders(LocalPortHeader(port))
+          (hr: HttpRequest, po: Long) => RequestContext(hr, po).addRequestHeaders(LocalPortHeader(port))
         } else {
           // Else we use the port from the URI.
-          (hr: HttpRequest, po: Int) => RequestContext(hr, po).addRequestHeaders(LocalPortHeader(hr.uri.effectivePort))
+          (hr: HttpRequest, po: Long) => RequestContext(hr, po).addRequestHeaders(LocalPortHeader(hr.uri.effectivePort))
         }
-      } getOrElse { (hr: HttpRequest, po: Int) => RequestContext(hr, po) }
+      } getOrElse { (hr: HttpRequest, po: Long) => RequestContext(hr, po) }
 
-      val zip = b.add(ZipWith[HttpRequest, Int, RequestContext](zipF))
+      val zip = b.add(ZipWith[HttpRequest, Long, RequestContext](zipF))
 
       // Generate id for each request to order requests for  Http Pipelining
-      Source.fromIterator(() => Iterator.from(0)) ~> zip.in1
+      Source.fromIterator(() => Iterator.iterate(0L)(_ + 1L)) ~> zip.in1
       zip.out ~> routeFlow ~> httpPipeliningOrder ~> responseFlow
 
       // expose ports
