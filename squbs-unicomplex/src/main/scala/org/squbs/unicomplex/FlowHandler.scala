@@ -16,13 +16,12 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.NotUsed
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
-import akka.pattern._
 import akka.stream.FlowShape
 import akka.stream.scaladsl._
-import akka.util.Timeout
 import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, RequestContext, ServerPipeline}
 
 import scala.annotation.tailrec
@@ -40,15 +39,11 @@ object FlowHandler {
     if(path.length < target.length) { false }
     else {
       @tailrec
-      def innerMatch(path: Path, target:Path):Boolean = {
-        if (target.isEmpty) { true }
-        else {
-          target.head.equals(path.head) match {
-            case true => innerMatch(path.tail, target.tail)
-            case _ => false
-          }
-        }
-      }
+      def innerMatch(path: Path, target:Path):Boolean =
+        if (target.isEmpty) true
+        else if (target.head == path.head) innerMatch(path.tail, target.tail)
+        else false
+
       innerMatch(path, target)
     }
   }
@@ -59,33 +54,17 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
 
   import FlowHandler._
 
-  val akkaHttpConfig = system.settings.config.getConfig("akka.http")
-
   def flow: Flow[HttpRequest, HttpResponse, Any] = dispatchFlow
 
   val pipelineExtension = PipelineExtension(system)
 
-  import system.dispatcher
-
   def normPath(path: Path): Path = if (path.startsWithSlash) path.tail else path
-
-  // TODO FIX ME - Discuss with Akara and Qian.
-  // I am not sure what exactly the timeout should be set to.  One option is to use akka.http.server.request-timeout; however,
-  // that will be available in the next release: https://github.com/akka/akka/issues/16819.
-  // Even then, I am not sure if that would be the right value..
-  import scala.concurrent.duration._
-  implicit val askTimeOut: Timeout = 5 seconds
-
-  private def asyncHandler(routeActor: ActorRef) = (req: HttpRequest) => (routeActor ? req).mapTo[HttpResponse]
-  def runRoute(routeActor: ActorRef, rc: RequestContext) = asyncHandler(routeActor)(rc.request) map {
-    httpResponse => rc.copy(response = Option(Try(httpResponse)))
-  }
 
   val NotFound = HttpResponse(StatusCodes.NotFound, entity = StatusCodes.NotFound.defaultMessage)
   val InternalServerError = HttpResponse(StatusCodes.InternalServerError,
                                          entity = StatusCodes.InternalServerError.defaultMessage)
 
-  lazy val routeFlow =
+  lazy val routeFlow: Flow[RequestContext, RequestContext, NotUsed] =
     Flow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
 
@@ -125,7 +104,7 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
       import GraphDSL.Implicits._
 
       object RequestContextOrdering extends Ordering[RequestContext] {
-        def compare(x: RequestContext, y: RequestContext) = x.httpPipeliningOrder compare y.httpPipeliningOrder
+        def compare(x: RequestContext, y: RequestContext): Int = x.httpPipeliningOrder compare y.httpPipeliningOrder
       }
 
       val httpPipeliningOrder = b.add(
