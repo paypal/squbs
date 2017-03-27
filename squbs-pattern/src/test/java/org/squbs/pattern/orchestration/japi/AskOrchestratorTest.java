@@ -18,49 +18,34 @@ package org.squbs.pattern.orchestration.japi;
 
 import akka.actor.ActorRef;
 import akka.actor.Props;
-import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
 import org.junit.Test;
 import org.squbs.testkit.Timeouts;
 import org.squbs.testkit.japi.CustomTestKit;
 import org.squbs.testkit.japi.DebugTimingTestKit;
-import org.squbs.unicomplex.UnicomplexBoot;
 import scala.concurrent.duration.FiniteDuration;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.squbs.pattern.orchestration.japi.Messages.*;
 
-public class AskOrchestratorTest {
+public class AskOrchestratorTest extends CustomTestKit {
 
-    private static CustomTestKit testKit;
-
-    @BeforeClass
-    public static void beforeAll() {
-        Map<String, Object> configMap = new HashMap<>();
-        configMap.put("squbs.actorsystem-name", "AskOrchestratorTest");
-        configMap.put("squbs.external-config-dir", "askOrchestratorTestConfig");
-        configMap.put("squbs.prefix-jmx-name", Boolean.TRUE);
-
-        Config testConfig = ConfigFactory.parseMap(configMap);
-        UnicomplexBoot boot = UnicomplexBoot.apply(testConfig).start();
-        testKit = new CustomTestKit(boot);
+    public AskOrchestratorTest() {
+        super(ConfigFactory.parseString("squbs.external-config-dir = askOrchestratorTestConfig"));
     }
 
-    @AfterClass
-    public static void afterAll() {
-        testKit.shutdown();
+    @After
+    public void tearDown() {
+        shutdown();
     }
 
     @Test
     public void testResultAfterFinish() {
-        new DebugTimingTestKit(testKit.actorSystem()) {{
+        new DebugTimingTestKit(system()) {{
             ActorRef orchestrator = getSystem().actorOf(Props.create(AskOrchestrator.class,
                     new FiniteDuration(10, TimeUnit.MILLISECONDS), Timeouts.askTimeout()));
             orchestrator.tell(new TestRequest("test"), getRef());

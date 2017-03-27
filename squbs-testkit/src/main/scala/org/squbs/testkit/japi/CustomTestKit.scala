@@ -16,19 +16,16 @@
 
 package org.squbs.testkit.japi
 
+import akka.actor.ActorSystem
 import com.typesafe.config.Config
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot}
-import org.squbs.testkit.{CustomTestKit => SCustomTestKit, PortGetter}
+import org.squbs.testkit.{PortGetter, CustomTestKit => SCustomTestKit}
+
 import scala.collection.JavaConversions.asScalaBuffer
 
-@deprecated("use org.squbs.testkit.japi.AbstractCustomTestKit instead")
-class CustomTestKit(override val boot: UnicomplexBoot) extends AbstractCustomTestKit(boot) {
-  val actorSystem = system
-}
-
-abstract class AbstractCustomTestKit(val boot: UnicomplexBoot) extends PortGetter {
-  val system = boot.actorSystem
+abstract class CustomTestKit(val boot: UnicomplexBoot) extends PortGetter {
+  val system: ActorSystem = boot.actorSystem
 
   SCustomTestKit.checkInit(system)
 

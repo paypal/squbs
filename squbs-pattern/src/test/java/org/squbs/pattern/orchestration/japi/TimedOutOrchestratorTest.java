@@ -19,50 +19,36 @@ package org.squbs.pattern.orchestration.japi;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.util.Timeout;
-import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
 import org.junit.Test;
 import org.squbs.testkit.japi.CustomTestKit;
 import org.squbs.testkit.japi.DebugTimingTestKit;
-import org.squbs.unicomplex.UnicomplexBoot;
 import scala.concurrent.duration.FiniteDuration;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.squbs.pattern.orchestration.japi.Messages.*;
 
-public class TimedOutOrchestratorTest {
+public class TimedOutOrchestratorTest extends CustomTestKit {
 
-    private static CustomTestKit testKit;
-
-    @BeforeClass
-    public static void beforeAll() {
-        Map<String, Object> configMap = new HashMap<>();
-        configMap.put("squbs.actorsystem-name", "TimedOutOrchestratorTest");
-        configMap.put("squbs.external-config-dir", "TimedOutOrchestratorTestConfig");
-        configMap.put("squbs.prefix-jmx-name", Boolean.TRUE);
-
-        Config testConfig = ConfigFactory.parseMap(configMap);
-        UnicomplexBoot boot = UnicomplexBoot.apply(testConfig).start();
-        testKit = new CustomTestKit(boot);
+    public TimedOutOrchestratorTest() {
+        super(ConfigFactory.parseString("squbs.external-config-dir = TimedOutOrchestratorTestConfig"));
     }
 
-    @AfterClass
-    public static void afterAll() {
-        testKit.shutdown();
+    @After
+    public void tearDown() {
+        shutdown();
     }
 
     @Test
     public void testResultAfterFinish() {
-        new DebugTimingTestKit(testKit.actorSystem()) {{
+        new DebugTimingTestKit(system()) {{
             ActorRef orchestrator = getSystem().actorOf(Props.create(AskOrchestrator.class,
-                    new FiniteDuration(500, TimeUnit.MILLISECONDS), new Timeout(10, TimeUnit.MILLISECONDS)));
+                    new FiniteDuration(500, TimeUnit.MILLISECONDS),
+                    new Timeout(10, TimeUnit.MILLISECONDS)));
             orchestrator.tell(new TestRequest("test"), getRef());
 
             // Check for the submitted message

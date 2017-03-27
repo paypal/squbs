@@ -64,7 +64,7 @@ object TestRoute {
     else { Route.seal(routeDef.route) }
   }
 
-  private class TestRouteActor extends Actor {
+  private[testkit] class TestRouteActor extends Actor {
     def receive = {
       case _ =>
     }

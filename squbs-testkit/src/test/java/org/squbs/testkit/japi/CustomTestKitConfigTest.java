@@ -19,12 +19,18 @@ package org.squbs.testkit.japi;
 import com.typesafe.config.ConfigFactory;
 import org.squbs.unicomplex.JMX;
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.Test;
 
-public class AbstractCustomTestKitConfigTest extends AbstractCustomTestKit {
+public class CustomTestKitConfigTest extends CustomTestKit {
 
-    AbstractCustomTestKitConfigTest() {
-        super(ConfigFactory.parseString("squbs.actorsystem-name = AbstractCustomTestKitConfigTestInConfig"));
+    CustomTestKitConfigTest() {
+        super(ConfigFactory.parseString("squbs.actorsystem-name = CustomTestKitConfigTestInConfig"));
+    }
+
+    @AfterClass
+    public void tearDown() {
+        shutdown();
     }
 
     @Test
@@ -34,12 +40,12 @@ public class AbstractCustomTestKitConfigTest extends AbstractCustomTestKit {
 
     @Test
     public void testActorSystemName() {
-        Assert.assertEquals(system().name(), "AbstractCustomTestKitConfigTestInConfig");
+        Assert.assertEquals(system().name(), "CustomTestKitConfigTestInConfig");
     }
 
     @Test
     public void testPriorityGivenToCustomConfig() {
-        Assert.assertEquals(system().settings().config().getString("squbs.actorsystem-name"), "AbstractCustomTestKitConfigTestInConfig");
+        Assert.assertEquals(system().settings().config().getString("squbs.actorsystem-name"), "CustomTestKitConfigTestInConfig");
     }
 
     @Test

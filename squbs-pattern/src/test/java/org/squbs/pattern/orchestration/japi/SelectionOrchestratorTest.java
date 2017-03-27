@@ -18,46 +18,30 @@ package org.squbs.pattern.orchestration.japi;
 
 import akka.actor.ActorRef;
 import akka.actor.Props;
-import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
 import org.junit.Test;
 import org.squbs.testkit.japi.CustomTestKit;
 import org.squbs.testkit.japi.DebugTimingTestKit;
-import org.squbs.unicomplex.UnicomplexBoot;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.squbs.pattern.orchestration.japi.Messages.*;
 
-public class SelectionOrchestratorTest {
+public class SelectionOrchestratorTest extends CustomTestKit {
 
-    private static CustomTestKit testKit;
-
-    @BeforeClass
-    public static void beforeAll() {
-        Map<String, Object> configMap = new HashMap<>();
-        configMap.put("squbs.actorsystem-name", "SelectionOrchestratorTest");
-        configMap.put("squbs.external-config-dir", "selectionOrchestratorTestConfig");
-        configMap.put("squbs.prefix-jmx-name", Boolean.TRUE);
-
-        Config testConfig = ConfigFactory.parseMap(configMap);
-        UnicomplexBoot boot = UnicomplexBoot.apply(testConfig).start();
-        testKit = new CustomTestKit(boot);
+    public SelectionOrchestratorTest() {
+        super(ConfigFactory.parseString("squbs.external-config-dir = selectionOrchestratorTestConfig"));
     }
 
-    @AfterClass
-    public static void afterAll() {
-        testKit.shutdown();
+    @After
+    public void tearDown() {
+        shutdown();
     }
 
     @Test
     public void testResultAfterFinish() {
-        new DebugTimingTestKit(testKit.actorSystem()) {{
+        new DebugTimingTestKit(system()) {{
             ActorRef orchestrator = getSystem().actorOf(Props.create(SelectionOrchestrator.class));
             orchestrator.tell(new TestRequest("test"), getRef());
 

@@ -3,11 +3,18 @@ name: Testkit
 tests:
   - name: AbstractCustomTestKit
     classes:
-      - org.squbs.testkit.japi.AbstractCustomTestKitConfigAndResourcesTest
-      - org.squbs.testkit.japi.AbstractCustomTestKitConfigTest
-      - org.squbs.testkit.japi.AbstractCustomTestKitDefaultWithActorSystemNameTest
-      - org.squbs.testkit.japi.AbstractCustomTestKitEmptyResourcesTest
-      - org.squbs.testkit.japi.AbstractCustomTestKitResourcesWithActorSystemNameTest
-      - org.squbs.testkit.japi.AbstractCustomTestKitTest
-      - org.squbs.testkit.japi.AbstractCustomTestKitWithClassPathTest
+      - org.squbs.testkit.japi.CustomTestKitConfigAndResourcesTest
+      - org.squbs.testkit.japi.CustomTestKitConfigTest
+      - org.squbs.testkit.japi.CustomTestKitDefaultWithActorSystemNameTest
+      - org.squbs.testkit.japi.CustomTestKitEmptyResourcesTest
+      - org.squbs.testkit.japi.CustomTestKitResourcesWithActorSystemNameTest
+      - org.squbs.testkit.japi.CustomTestKitTest
+      - org.squbs.testkit.japi.CustomTestKitWithClassPathTest
+  - name: CustomRouteTestKit
+    classes:
+      - org.squbs.testkit.japi.testng.RouteTestTest
+      - org.squbs.testkit.japi.testng.CustomRouteTestKitTest
+      - org.squbs.testkit.japi.testng.CustomRouteTestKitConfigTest
+      - org.squbs.testkit.japi.testng.CustomRouteTestKitResourcesTest
+      - org.squbs.testkit.japi.testng.CustomRouteTestKitConfigResourcesTest
 
