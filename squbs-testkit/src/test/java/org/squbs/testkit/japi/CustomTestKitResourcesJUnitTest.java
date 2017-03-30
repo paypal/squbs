@@ -16,26 +16,32 @@
 
 package org.squbs.testkit.japi;
 
-import org.testng.Assert;
-import org.testng.annotations.Test;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
 
-public class AbstractCustomTestKitResourcesWithActorSystemNameTest extends AbstractCustomTestKit {
+public class CustomTestKitResourcesJUnitTest extends CustomTestKit {
 
-    AbstractCustomTestKitResourcesWithActorSystemNameTest() {
-        super("AbstractCustomTestKitResourcesWithActorSystemNameTest", TestConfig.resources, false);
+    public CustomTestKitResourcesJUnitTest() {
+        super(TestConfig.resources, false);
+    }
+
+    @After
+    public void tearDown() {
+        shutdown();
     }
 
     @Test
     public void testDefaultListenerStarted() {
-         Assert.assertEquals(port(), port("default-listener"));
+         Assert.assertEquals(port("default-listener"), port());
     }
 
     @Test
     public void testActorSystemName() {
-        Assert.assertEquals(system().name(), "AbstractCustomTestKitResourcesWithActorSystemNameTest");
+        Assert.assertTrue(system().name().matches("org-squbs-testkit-japi-CustomTestKitResourcesJUnitTest-\\d+"));
     }
 
     private static class TestConfig {

@@ -16,19 +16,25 @@
 
 package org.squbs.testkit.japi;
 
-import org.testng.Assert;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
+import java.util.NoSuchElementException;
 
-public class AbstractCustomTestKitWithClassPathTest extends AbstractCustomTestKit {
+public class CustomTestKitEmptyResourcesTest extends CustomTestKit {
 
-    AbstractCustomTestKitWithClassPathTest() {
-        super(new ArrayList<>(), true);
+    CustomTestKitEmptyResourcesTest() {
+        super(new ArrayList<>(), false);
     }
 
-    @Test
-    public void testDefaultListenerStarted() {
-         Assert.assertEquals(port(), port("default-listener"));
+    @AfterClass
+    public void tearDown() {
+        shutdown();
+    }
+
+    @Test(expectedExceptions = NoSuchElementException.class)
+    public void testNotBindtoAnyPort() {
+         port();
     }
 }

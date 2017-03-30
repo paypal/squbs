@@ -122,7 +122,7 @@ private[unicomplex] class JavaRouteActor(webContext: String, clazz: Class[Abstra
     }
 }
 
-private[unicomplex] object BuildRoute extends PathDirectives {
+private[squbs] object BuildRoute extends PathDirectives {
 
   /**
     * Object used for building the final Java route.

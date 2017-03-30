@@ -1,5 +1,5 @@
 # Testing squbs Applications
-All tests on squbs have been written using ScalaTest 2.x. Specs2 has not yet been tested.
+squbs supports ScalaTest 3.X for Scala, and TestNG & JUnit for Java test frameworks.
 
 ## Dependencies
 
@@ -22,6 +22,8 @@ The `CustomTestKit` is used for starting a full blown squbs instance needed for 
 Here is an example usage of `CustomTestKit` in ScalaTest:
 
 ```scala
+import org.squbs.testkit.CustomTestKit
+
 class SampleSpec extends CustomTestKit with FlatSpecLike with Matchers {
    it should "start the system" in {
       system.startTime should be > 0L
@@ -32,7 +34,9 @@ class SampleSpec extends CustomTestKit with FlatSpecLike with Matchers {
 Both TestNG and JUnit are supported for Java users:
 
 ```java
-public class SampleTest extends AbstractCustomTestKit {
+import org.squbs.testkit.japi.CustomTestKit
+
+public class SampleTest extends CustomTestKit {
 
     @Test
     public void testSystemStartTime() {
@@ -67,7 +71,9 @@ class SampleSpec extends CustomTestKit(SampleSpec.config) with FlatSpecLike with
 Here is the TestNG/JUnit version of this test:
 
 ```java
-public class SampleTest extends AbstractCustomTestKit {
+import org.squbs.testkit.japi.CustomTestKit;
+
+public class SampleTest extends CustomTestKit {
 
     public SampleTest() {
         super(TestConfig.config);
@@ -90,7 +96,7 @@ Specifically for JUnit, avoid setting actor system name in your tests (letting `
 
 ### Starting well-known actors and services with `CustomTestKit`
 
-`CustomTestKit` will automatically start well-known actors and services in `src/test/resources/META-INF/squbs-meta.conf` (see [Bootstrapping squbs](bootstrap.md#well-known-actors)).  However, if you would like provide different resource paths, you can do so by passing a `Seq` of resources to the constructor.  `withClassPath` controls whether to scan entire test classpath for `META-INF/squbs-meta.conf` files or not.
+`CustomTestKit` will automatically start well-known actors and services in `src/test/resources/META-INF/squbs-meta.conf` (see [Bootstrapping squbs](bootstrap.md#well-known-actors)).  However, if you would like provide different resource paths, you can do so by passing a `Seq` *(Scala)* or `List` *(Java)* of resources to the constructor.  `withClassPath` controls whether to scan entire test classpath for `META-INF/squbs-meta.conf` files or not.
 
 ```scala
 object SampleSpec {
@@ -163,25 +169,53 @@ class SampleSpec extends CustomTestKit(SampleSpec.boot) with FunSpecLike with Ma
 }
 ```
 
-## Testing Spray/Akka Http Routes using Spray/Akka Http TestKit
+### Shutting Down
 
-The `spray-testkit` or `akka-http-testkit` needs to be added to the dependencies in order to test routes.  Please add the followings to your dependencies:
+For large tests with many instances of `CustomTestKit` running in parallel, it is important to shutdown properly after the test. The shutdown mechanism depends on the test framework and how `CustomTestKit` is constructed, as follows:
 
-For Spray:
+#### ScalaTest
+
+The `CustomTestKit` shuts down automatically, unless you override the `afterAll()` method. No further actions are needed.
+
+#### TestNG
+
+Use the `@AfterClass` annotation to annotate a method calling `shutdown()` as follows:
+
+```java
+    @AfterClass
+    public void tearDown() {
+        shutdown();
+    }
+```
+
+#### JUnit
+
+JUnit creates an instance of the class for every individual test in the class. This also means a new instance of the `Unicomplex` is created for each test method. This can be resource intensive. To ensure proper shutdown of the individual instances, use the `@After` JUnit annotation to annotate a method calling `shutdown()` as follows:
+
+```java
+    @After
+    public void tearDown() {
+        shutdown();
+    }
+```
+
+Note: If you construct the `CustomTestKit` passing a `UnicomplexBoot` object on the `super(boot)` call, use caution how and when to shutdown. If the `UnicomplexBoot` instance is created per-class, meaning one single instance is used for all test methods, the shutdown also needs to happen only once. Use JUnit's `@AfterClass` annotation to annotate a static shutdown method. But if the `UnicomplexBoot` instance is created per test method - the default behavior, the `@After` annotation should be used similar to default construction of `CustomTestKit`.
+
+## Testing Akka Http Routes using Akka Http TestKit
+
+The `akka-http-testkit` needs to be added to the dependencies in order to test routes.  Please add the followings to your dependencies:
 
 ```
-"io.spray" %% "spray-testkit" % sprayV % "test"
-```
-
-For Akka-Http:
-
-```
-"com.typesafe.akka" %% "akka-http-testkit" % akkaV % "test"
+"com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "test"
 ```
 
 ### Usage
-As you specify routes in squbs by extending the `RouteDefinition` trait which squbs will compose with actors behind
-the scenes, it can be difficult to construct routes for use with the Spray/Akka Http TestKit test DSL. `TestRoute` is provided
+
+The squbs testkit provides utilities to construct routes from the `RouteDefinition` trait *(Scala)* or the `AbstractRouteDefinition` class *(Java)* and has utilities for both standalone and full system mode  where the infrastructure and cubes can be brought up as part of the test.
+
+##### Scala
+
+`TestRoute` is provided
 for constructing and obtaining routes from the `RouteDefinition`. To use it, just pass the `RouteDefinition` as a type
 parameter to `TestRoute`. This will obtain you a fully configured and functional route for the test DSL as can be seen
 in the example below.
@@ -189,10 +223,7 @@ in the example below.
 Specifying the `RouteDefinition`
 
 ```scala
-package com.myorg.mypkg
-
 import org.squbs.unicomplex.RouteDefinition
-import spray.routing.Directives._
 
 class MyRoute extends RouteDefinition {
 
@@ -210,11 +241,9 @@ class MyRoute extends RouteDefinition {
 Implementing the test, obtaining route from `TestRoute[MyRoute]`:
 
 ```scala
-package com.myorg.mypkg
-
+import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalatest.{Matchers, FlatSpecLike}
 import org.squbs.testkit.TestRoute
-import spray.testkit.ScalatestRouteTest
 
 class MyRouteTest extends FlatSpecLike with Matchers with ScalatestRouteTest {
 
@@ -236,14 +265,72 @@ Alternatively, you may also want to pass a web context to your route. This can b
 
 or just pass `"mycontext"` without the parameter name. The `TestRoute` signature without parameters is equivalent to passing the root context `""`.
 
+##### Java
+
+In order to test the route, the test needs to extend the proper `RouteTest` abstract class for the test framework of your choice. Choose to extend `org.squbs.testkit.japi.TestNGRouteTest` if you are using TestNG, or `org.squbs.testkit.japi.JUnitRouteTest` if you're using JUnit. The usage for both are the same.
+
+Once the test extends one of the `RouteTest` classes you can construct and obtain a `TestRoute` from the `AbstractRouteDefinition` by passing the class to `testRoute(MyRoute.class)` call as follows:
+
+```java
+TestRoute myRoute = testRoute(MyRouteDefinition.class);
+```
+
+This will obtain you a fully configured and functional route for the test DSL as can be seen
+in the example below.
+
+Specifying the `RouteDefinition`
+
+```java
+import org.squbs.unicomplex.AbstractRouteDefinition;
+
+class MyRoute extends AbstractRouteDefinition {
+
+    @Override
+    public Route route() throws Exception {
+        return path("ping", () ->
+                get(() ->
+                        complete("pong")
+                )
+        );
+    }
+}
+```
+
+Implementing the test, obtaining route from `testRoute(MyRoute.class)`:
+
+```java
+import org.squbs.testkit.japi.JUnitRouteTest;
+
+public class MyRouteTest extends JUnitRouteTest {
+
+    @Test
+    public void testPingPongRoute() {
+        TestRoute myRoute = testRoute(MyRoute.class);
+        myRoute.run(HttpRequest.GET("/ping"))
+                .assertStatusCode(200)
+                .assertEntity("pong");
+    }
+}
+```
+
+Alternatively, you may also want to pass a web context to your route. This can be done by passing it to `TestRoute` as follows:
+
+```java
+TestRoute myRoute = testRoute("mycontext", MyRoute.class);
+```
+
+The `TestRoute` signature without parameters is equivalent to passing the root context `""`.
+
 ### Using TestRoute with CustomTestKit
 
 A need may arise to bootstrap `Unicomplex` while testing with `TestRoute`, such as when:
 
    * a squbs well-known actor is involved in request handling.
-   * [The Actor Registry](registry) is used during request handling.
+   * [The Actor Registry](registry.md) is used during request handling.
 
-Using Akka's `TestKit` together with `ScalatestRouteTest` can be tricky as they have conflicting initialization.  squbs provides a test utility named `CustomRouteTestKit` to solve this problem.  `CustomRouteTestKit` supports all the APIs provided by `CustomTestKit`.  Here is an example usage of `TestRoute` with `CustomRouteTestKit`:  
+Using Akka's `TestKit` together with `ScalatestRouteTest` can be tricky as they have conflicting initialization.  squbs provides test utilities named `CustomRouteTestKit` *(Scala)*, `TestNGCustomRouteTestKit`, and `JUnitCustomRouteTestKit` *(Java, for each test framework)* to solve this problem.  `CustomRouteTestKit` supports all the APIs provided by `CustomTestKit`.  Here are example usages of `TestRoute` with `CustomRouteTestKit`:  
+
+##### Scala
 
 ```scala
 class MyRouteTest extends CustomRouteTestKit with FlatSpecLike with Matchers {
@@ -273,4 +360,45 @@ class ReverserRoute extends RouteDefinition {
 }
 ```
 
-**Note:** To use `CustomRouteTestKit`, please ensure the Spray or Akka Http testkit is in your dependencies as described [above](#testing-sprayakka-http-routes-using-sprayakka-http-testkit).
+##### Java
+
+```java
+public class MyRouteTest extends TestNGCustomRouteTestKit {
+
+    @Test
+    public void testHelloReverse() {
+        TestRoute route = testRoute(ReverserRoute.class);
+        route.run(HttpRequest.GET("/msg/hello"))
+                .assertStatusCode(200)
+                .assertEntity("olleh");
+    }
+}
+```
+
+And the corresponding route to test would be as follows:
+
+```java
+import akka.http.javadsl.server.Route;
+import org.squbs.unicomplex.AbstractRouteDefinition;
+
+public class ReverserRoute extends AbstractRouteDefinition {
+
+    @Override
+    public Route route() throws Exception {
+        return path(segment("msg").slash(segment()), msg ->
+                onSuccess(() ->
+                        ask(context().actorSelection("/user/mycube/reverser"), msg, 5000L), response ->
+                                complete(response.toString())
+                        )
+                )
+        );
+    }
+}
+
+```
+
+**Note:** To use `CustomRouteTestKit`, please ensure Akka Http testkit is in your dependencies as described [above](#testing-akka-http-routes-using-akka-http-testkit).
+
+#### Shutting Down
+
+The `CustomRouteTestKit` abstract classes and traits are specific to the test framework and therefore they have been pre-instrumented with test framework hooks to start and to shutdown properly. Hence there is no need to take care of shutting down the `Unicomplex` in test cases using any flavor of `CustomRouteTestKit`.

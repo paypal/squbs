@@ -16,25 +16,35 @@
 
 package org.squbs.testkit.japi;
 
-import org.junit.Assert;
-import org.junit.Test;
 import org.squbs.unicomplex.JMX;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.Test;
 
-public class AbstractCustomTestKitDefaultJUnitTest extends AbstractCustomTestKit {
+public class CustomTestKitDefaultWithActorSystemNameTest extends CustomTestKit {
+
+    CustomTestKitDefaultWithActorSystemNameTest() {
+        super("CustomTestKitDefaultWithActorSystemNameTest");
+    }
+
+    @AfterClass
+    public void tearDown() {
+        shutdown();
+    }
 
     @Test
     public void testDefaultListenerStarted() {
-        Assert.assertEquals(port("default-listener"), port());
+        Assert.assertEquals(port(), port("default-listener"));
     }
 
     @Test
     public void testActorSystemName() {
-        Assert.assertTrue(system().name().matches("org-squbs-testkit-japi-AbstractCustomTestKitDefaultJUnitTest-\\d+"));
+        Assert.assertEquals(system().name(), "CustomTestKitDefaultWithActorSystemNameTest");
     }
 
     @Test
     public void testDefaultConfigurationInUse() {
-        Assert.assertEquals(0, system().settings().config().getInt("default-listener.bind-port"));
-        Assert.assertEquals(true, system().settings().config().getBoolean("squbs." + JMX.prefixConfig()));
+        Assert.assertEquals(system().settings().config().getInt("default-listener.bind-port"), 0);
+        Assert.assertEquals(system().settings().config().getBoolean("squbs." + JMX.prefixConfig()), true);
     }
 }

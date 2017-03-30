@@ -13,15 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package org.squbs.testkit.japi
 
-object Versions {
-  val akkaV = "2.4.16"
-  val akkaHttpV = "10.0.3"
-  val scalatestV = "3.0.0"
-  val jacksonV = "2.8.5"
-  val json4sV = "3.5.0"
-  val metricsV = "3.1.0"
-  val junitInterfaceV = "0.11"
-  val junitV = "4.12"
-  val testngV = "6.8.8"
-}
+abstract class JUnitRouteTest extends akka.http.javadsl.testkit.JUnitRouteTest with RouteDefinitionTest

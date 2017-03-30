@@ -2,12 +2,19 @@ package org.squbs.testkit.japi;
 
 
 import static org.junit.Assert.*;
+
+import org.junit.After;
 import org.junit.Test;
 
-public class AbstractCustomTestKitNoClassPathTest extends AbstractCustomTestKit {
+public class CustomTestKitNoClassPathTest extends CustomTestKit {
 
-    public AbstractCustomTestKitNoClassPathTest() {
+    public CustomTestKitNoClassPathTest() {
         super(false);
+    }
+
+    @After
+    public void tearDown() {
+        shutdown();
     }
 
     @Test
@@ -17,7 +24,7 @@ public class AbstractCustomTestKitNoClassPathTest extends AbstractCustomTestKit 
 
     @Test
     public void testActorSystemName() {
-        assertTrue(system().name().matches("org-squbs-testkit-japi-AbstractCustomTestKitNoClassPathTest-\\d+"));
+        assertTrue(system().name().matches("org-squbs-testkit-japi-CustomTestKitNoClassPathTest-\\d+"));
     }
 
     @Test

@@ -464,7 +464,7 @@ object UnicomplexBoot extends LazyLogging {
   def startServiceInfra(boot: UnicomplexBoot)(implicit actorSystem: ActorSystem) {
     import actorSystem.dispatcher
     val startTime = System.nanoTime
-    implicit val timeout = Timeout((boot.listeners.size * 5) seconds)
+    implicit val timeout = Timeout((boot.listeners.size * 10) seconds)
     val ackFutures =
       for ((listenerName, config) <- boot.listeners) yield {
         Unicomplex(actorSystem).uniActor ? StartListener(listenerName, config)
@@ -517,7 +517,10 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
     UnicomplexBoot.scanResources(resources map (new File(_).toURI.toURL), withClassPath)(this)
 
   def scanResources(resources: String*): UnicomplexBoot =
-    UnicomplexBoot.scanResources(resources map (new File(_).toURI.toURL), withClassPath = true)(this)
+    UnicomplexBoot.scanResources(resources map (new File(_).toURI.toURL))(this)
+
+  def scanResources(withClassPath: Boolean, resources: Array[String]): UnicomplexBoot =
+    scanResources(withClassPath, resources: _*)
 
   def initExtensions: UnicomplexBoot = {
 

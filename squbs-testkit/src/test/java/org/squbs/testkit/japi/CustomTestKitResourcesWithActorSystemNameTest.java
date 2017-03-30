@@ -16,18 +16,22 @@
 
 package org.squbs.testkit.japi;
 
-import com.typesafe.config.ConfigFactory;
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.List;
 
-public class AbstractCustomTestKitConfigAndResourcesTest extends AbstractCustomTestKit {
+public class CustomTestKitResourcesWithActorSystemNameTest extends CustomTestKit {
 
-    AbstractCustomTestKitConfigAndResourcesTest() {
-        super(ConfigFactory.parseString("squbs.actorsystem-name = AbstractCustomTestKitConfigAndResourcesTestInConfig"),
-                TestConfig.resources, false);
+    CustomTestKitResourcesWithActorSystemNameTest() {
+        super("CustomTestKitResourcesWithActorSystemNameTest", TestConfig.resources, false);
+    }
+
+    @AfterClass
+    public void tearDown() {
+        shutdown();
     }
 
     @Test
@@ -37,7 +41,7 @@ public class AbstractCustomTestKitConfigAndResourcesTest extends AbstractCustomT
 
     @Test
     public void testActorSystemName() {
-        Assert.assertEquals(system().name(), "AbstractCustomTestKitConfigAndResourcesTestInConfig");
+        Assert.assertEquals(system().name(), "CustomTestKitResourcesWithActorSystemNameTest");
     }
 
     private static class TestConfig {

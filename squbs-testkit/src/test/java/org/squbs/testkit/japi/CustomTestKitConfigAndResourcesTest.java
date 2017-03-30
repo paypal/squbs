@@ -16,26 +16,34 @@
 
 package org.squbs.testkit.japi;
 
-import org.junit.Assert;
-import org.junit.Test;
+import com.typesafe.config.ConfigFactory;
+import org.junit.After;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.List;
 
-public class AbstractCustomTestKitResourcesJUnitTest extends AbstractCustomTestKit {
+public class CustomTestKitConfigAndResourcesTest extends CustomTestKit {
 
-    public AbstractCustomTestKitResourcesJUnitTest() {
-        super(TestConfig.resources, false);
+    CustomTestKitConfigAndResourcesTest() {
+        super(ConfigFactory.parseString("squbs.actorsystem-name = CustomTestKitConfigAndResourcesTestInConfig"),
+                TestConfig.resources, false);
+    }
+
+    @After
+    public void tearDown() {
+        shutdown();
     }
 
     @Test
     public void testDefaultListenerStarted() {
-         Assert.assertEquals(port("default-listener"), port());
+         Assert.assertEquals(port(), port("default-listener"));
     }
 
     @Test
     public void testActorSystemName() {
-        Assert.assertTrue(system().name().matches("org-squbs-testkit-japi-AbstractCustomTestKitResourcesJUnitTest-\\d+"));
+        Assert.assertEquals(system().name(), "CustomTestKitConfigAndResourcesTestInConfig");
     }
 
     private static class TestConfig {

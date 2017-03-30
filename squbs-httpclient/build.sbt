@@ -12,6 +12,7 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules"    %% "scala-java8-compat"           % "0.7.0",
   "org.scalatest"             %% "scalatest"                    % scalatestV % "test->*",
   "com.typesafe.akka"         %% "akka-testkit"                 % akkaV % "test",
+  "junit" % "junit" % junitV % "test",
   "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 )

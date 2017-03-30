@@ -13,22 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.squbs.testkit.japi;
 
-import org.testng.annotations.Test;
+import akka.actor.AbstractActor;
+import akka.japi.pf.ReceiveBuilder;
 
-import java.util.ArrayList;
-import java.util.NoSuchElementException;
+public class DecrementActor extends AbstractActor {
 
-public class AbstractCustomTestKitEmptyResourcesTest extends AbstractCustomTestKit {
-
-    AbstractCustomTestKitEmptyResourcesTest() {
-        super(new ArrayList<>(), false);
-    }
-
-    @Test(expectedExceptions = NoSuchElementException.class)
-    public void testNotBindtoAnyPort() {
-         port();
+    public DecrementActor() {
+        receive(ReceiveBuilder
+                .match(Integer.class, i -> sender().tell(i - 1, self()))
+                .build()
+        );
     }
 }
