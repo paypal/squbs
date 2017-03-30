@@ -20,7 +20,7 @@ The design of the squbs platform centers around the following design principles:
    
 5. **Thin Platform**
 
-   We realize the emergence of the thin platform and try to keep squbs as lightweight and non-imposing as possible. As a result, we have squbs-unicomplex which is the core container in charge of bootstrapping and managing the state and lifecycle of the runtime. It pulls in virtually no dependency beyond Scala, Akka, and Spray and does not impose further requirements or frameworks on the developer. Any other framework can be included by the developer as needed.
+   We realize the emergence of the thin platform and try to keep squbs as lightweight and non-imposing as possible. As a result, we have squbs-unicomplex which is the core container in charge of bootstrapping and managing the state and lifecycle of the runtime. It pulls in virtually no dependency beyond Scala and Akka and does not impose further requirements or frameworks on the developer. Any other framework can be included by the developer as needed.
 
   
 ## Common Questions/Concerns from Akka Developers
