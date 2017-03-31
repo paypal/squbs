@@ -20,8 +20,7 @@ updateOptions in ThisBuild := updateOptions.value.withCachedResolution(true)
 
 val par = {
   val travis = sys.env.getOrElse("TRAVIS", default = "false") == "true"
-  val pr = sys.env.getOrElse("TRAVIS_PULL_REQUEST", default = "") != "false"
-  if (travis && pr) 1
+  if (travis) 1
   else sys.runtime.availableProcessors
 }
 
