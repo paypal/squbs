@@ -16,6 +16,9 @@
 
 package org.squbs.streams.circuitbreaker
 
+import java.lang.management.ManagementFactory
+import javax.management.{MXBean, ObjectName}
+
 import akka.actor.ActorRef
 import akka.event.{EventBus, SubchannelClassification}
 import akka.util.Subclassification
@@ -46,9 +49,14 @@ trait CircuitBreakerState {
 
   private val eventBus = new CircuitBreakerEventBusImpl
 
-  val callTimeout: FiniteDuration
   val metricRegistry: MetricRegistry
   val name: String
+  val maxFailures: Int
+  val callTimeout: FiniteDuration
+  val resetTimeout: FiniteDuration
+  val maxResetTimeout: FiniteDuration
+  val exponentialBackoffFactor: Double
+
   private val SuccessCount = s"$name.circuit-breaker.success-count"
   private val FailureCount = s"$name.circuit-breaker.failure-count"
   private val ShortCircuitCount = s"$name.circuit-breaker.short-circuit-count"
@@ -61,6 +69,21 @@ trait CircuitBreakerState {
   if(!metricRegistry.getGauges.containsKey(StateGauge.MetricName))
     metricRegistry.register(s"$name.circuit-breaker.state", StateGauge)
 
+  val mBeanServer = ManagementFactory.getPlatformMBeanServer
+  val beanName = new ObjectName(
+    s"org.squbs.configuration:type=squbs.circuitbreaker,name=${ObjectName.quote(name)}")
+  if(!mBeanServer.isRegistered(beanName))
+      mBeanServer.registerMBean(
+        CircuitBreakerStateMXBeanImpl(
+          name,
+          this.getClass.getName,
+          maxFailures,
+          callTimeout,
+          resetTimeout,
+          maxResetTimeout,
+          exponentialBackoffFactor),
+        beanName)
+
   /**
     * Subscribe an [[ActorRef]] to receive events that it's interested in.
     *
@@ -71,15 +94,6 @@ trait CircuitBreakerState {
   def subscribe(subscriber: ActorRef, to: EventType): Boolean = {
     eventBus.subscribe(subscriber, to)
   }
-
-  /**
-    * The `resetTimeout` will be increased exponentially for each failed attempt to close the circuit.
-    * The default exponential backoff factor is 2.
-    *
-    * @param exponentialBackoffFactor The exponential amount that the wait time will be increased
-    * @param maxResetTimeout the upper bound of resetTimeout
-    */
-  def withExponentialBackoff(exponentialBackoffFactor: Double, maxResetTimeout: FiniteDuration): CircuitBreakerState
 
   /**
     * The provided [[MetricRegistry]] will be used to register metrics
@@ -230,4 +244,40 @@ class CircuitBreakerEventBusImpl extends EventBus with SubchannelClassification 
   override protected def publish(event: Event, subscriber: Subscriber): Unit = {
     subscriber ! event.payload
   }
+}
+
+
+@MXBean
+trait CircuitBreakerStateMXBean {
+  def getName: String
+  def getImplementationClass: String
+  def getMaxFailures: Int
+  def getCallTimeout: String
+  def getResetTimeout: String
+  def getMaxResetTimeout: String
+  def getExponentialBackoffFactor: Double
+}
+
+case class CircuitBreakerStateMXBeanImpl(
+  name: String,
+  implementationClass: String,
+  maxFailures: Int,
+  callTimeout: FiniteDuration,
+  resetTimeout: FiniteDuration,
+  maxResetTimeout: FiniteDuration,
+  exponentialBackoffFactor: Double) extends CircuitBreakerStateMXBean {
+
+  override def getName: String = name
+
+  override def getImplementationClass: String = implementationClass
+
+  override def getMaxFailures: Int = maxFailures
+
+  override def getCallTimeout: String = callTimeout.toString
+
+  override def getResetTimeout: String = resetTimeout.toString
+
+  override def getMaxResetTimeout: String = maxResetTimeout.toString
+
+  override def getExponentialBackoffFactor: Double = exponentialBackoffFactor
 }

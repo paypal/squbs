@@ -25,7 +25,7 @@ import akka.stream.scaladsl.{BidiFlow, Flow, Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
-import com.typesafe.config.{ConfigException, ConfigFactory}
+import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -44,6 +44,7 @@ class CircuitBreakerBidiFlowSpec
 
   implicit val materializer = ActorMaterializer()
   import system.dispatcher
+  implicit val scheduler = system.scheduler
 
   val timeout = 300 milliseconds
   val timeoutFailure = Failure(FlowTimeoutException("Flow timed out!"))
@@ -61,13 +62,13 @@ class CircuitBreakerBidiFlowSpec
   def flowWithCircuitBreaker(circuitBreakerState: CircuitBreakerState) = {
     Flow[String]
       .map(s => (s, UUID.randomUUID()))
-      .via(CircuitBreakerBidiFlow[String, String, UUID](circuitBreakerState).join(delayFlow))
+      .via(CircuitBreakerBidiFlow[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow))
       .to(Sink.ignore)
       .runWith(Source.actorRef[String](25, OverflowStrategy.fail))
   }
 
   it should "increment failure count on call timeout" in {
-    val circuitBreakerState = AtomicCircuitBreakerState("IncFailCount", system.scheduler, 2, timeout, 10 milliseconds)
+    val circuitBreakerState = AtomicCircuitBreakerState("IncFailCount", 2, timeout, 10 milliseconds)
     circuitBreakerState.subscribe(self, Open)
     val ref = flowWithCircuitBreaker(circuitBreakerState)
     ref ! "a"
@@ -77,7 +78,7 @@ class CircuitBreakerBidiFlowSpec
   }
 
   it should "reset failure count after success" in {
-    val circuitBreakerState = AtomicCircuitBreakerState("ResetFailCount", system.scheduler, 2, timeout, 10 milliseconds)
+    val circuitBreakerState = AtomicCircuitBreakerState("ResetFailCount", 2, timeout, 10 milliseconds)
     circuitBreakerState.subscribe(self, TransitionEvents)
     val ref = flowWithCircuitBreaker(circuitBreakerState)
     ref ! "a"
@@ -90,20 +91,14 @@ class CircuitBreakerBidiFlowSpec
   }
 
   it should "decide on failures based on the provided function" in {
-    val circuitBreakerState = AtomicCircuitBreakerState("FailureDecider", system.scheduler, 2, timeout, 10 milliseconds)
+    val circuitBreakerState = AtomicCircuitBreakerState("FailureDecider", 2, timeout, 10 milliseconds)
     circuitBreakerState.subscribe(self, TransitionEvents)
-
-    def failureDecider(elem: (Try[String], UUID)): Boolean = elem match {
-      case (Success("b"), _) => true
-      case _ => false
-    }
 
     val circuitBreakerBidiFlow = BidiFlow
       .fromGraph {
         CircuitBreakerBidi[String, String, UUID](
-          circuitBreakerState,
-          fallback = None,
-          failureDecider = Some(failureDecider))
+          CircuitBreakerSettings(circuitBreakerState)
+            .withFailureDecider(out => out.isFailure || out.equals(Success("b"))))
       }
 
     val flow = Flow[(String, UUID)].map { case (s, uuid) => (Success(s), uuid) }
@@ -123,10 +118,10 @@ class CircuitBreakerBidiFlowSpec
   }
 
   it should "respond with fail-fast exception" in {
-    val circuitBreakerState = AtomicCircuitBreakerState("FailFast", system.scheduler, 2, timeout, 1 second)
+    val circuitBreakerState = AtomicCircuitBreakerState("FailFast", 2, timeout, 1 second)
     val circuitBreakerBidiFlow = BidiFlow
       .fromGraph {
-        CircuitBreakerBidi[String, String, Long](circuitBreakerState)
+        CircuitBreakerBidi[String, String, Long](CircuitBreakerSettings(circuitBreakerState))
       }
 
 
@@ -150,12 +145,11 @@ class CircuitBreakerBidiFlowSpec
   }
 
   it should "respond with fallback" in {
-    val circuitBreakerState = AtomicCircuitBreakerState("Fallback", system.scheduler, 2, timeout, 10 milliseconds)
+    val circuitBreakerState = AtomicCircuitBreakerState("Fallback", 2, timeout, 10 milliseconds)
 
     val circuitBreakerBidiFlow = BidiFlow.fromGraph {
       CircuitBreakerBidi[String, String, Long](
-        circuitBreakerState,
-        Some((elem: (String, Long)) => (Success("fb"), elem._2)), None)
+        CircuitBreakerSettings(circuitBreakerState).withFallback((elem: String) => Success("fb")))
     }
 
     val flowFailure = Failure(new RuntimeException("Some dummy exception!"))
@@ -183,7 +177,7 @@ class CircuitBreakerBidiFlowSpec
       Option(ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key))
     }
 
-    val circuitBreakerState = AtomicCircuitBreakerState("MetricsCB", system.scheduler, 2, timeout, 10 seconds)
+    val circuitBreakerState = AtomicCircuitBreakerState("MetricsCB", 2, timeout, 10 seconds)
       .withMetricRegistry(MetricsExtension(system).metrics)
 
     circuitBreakerState.subscribe(self, TransitionEvents)
@@ -211,11 +205,11 @@ class CircuitBreakerBidiFlowSpec
       (delayActor ? elem).mapTo[(String, MyContext)]
     }
 
-    val circuitBreakerBidiFlow = CircuitBreakerBidiFlow[String, String, MyContext](
-      AtomicCircuitBreakerState("UniqueId", system.scheduler, 2, timeout, 10 milliseconds),
-      None,
-      None,
-      (context: MyContext) => Some(context.id))
+    val circuitBreakerSettings =
+      CircuitBreakerSettings[String, String, MyContext](
+        AtomicCircuitBreakerState("UniqueId", 2, timeout, 10 milliseconds))
+        .withUniqueIdMapper((context: MyContext) => Some(context.id))
+    val circuitBreakerBidiFlow = CircuitBreakerBidiFlow(circuitBreakerSettings)
 
 
     var counter = 0L
@@ -236,25 +230,11 @@ class CircuitBreakerBidiFlowSpec
     }
   }
 
-  it should "create circuit breaker from configuration" in {
-    val circuitBreakerState = AtomicCircuitBreakerState("sample-circuit-breaker")
-    circuitBreakerState.subscribe(self, TransitionEvents)
-    val ref = flowWithCircuitBreaker(circuitBreakerState)
-    ref ! "a"
-    ref ! "b"
-    expectMsg(Open)
-    expectMsg(HalfOpen)
-    ref ! "a"
-    expectMsg(Closed)
-  }
-
-  a [ConfigException.Missing] should be thrownBy AtomicCircuitBreakerState("notype-circuitbreaker")
-  a [ConfigException.Missing] should be thrownBy AtomicCircuitBreakerState("missing-max-failures-circuit-breaker")
-  a [ConfigException.Missing] should be thrownBy AtomicCircuitBreakerState("missing-call-timeout-circuit-breaker")
-  a [ConfigException.Missing] should be thrownBy AtomicCircuitBreakerState("missing-reset-timeout-circuit-breaker")
-
   it should "increase the reset timeout exponentially after it transits to open again" in {
-    val circuitBreakerState = AtomicCircuitBreakerState("exponential-backoff-circuitbreaker")
+    val circuitBreakerState =
+      AtomicCircuitBreakerState(
+        "exponential-backoff-circuitbreaker",
+        system.settings.config.getConfig("exponential-backoff-circuitbreaker"))
     circuitBreakerState.subscribe(self, HalfOpen)
     circuitBreakerState.subscribe(self, Open)
     val ref = flowWithCircuitBreaker(circuitBreakerState)
@@ -286,7 +266,6 @@ class CircuitBreakerBidiFlowSpec
   it should "share the circuit breaker state across materializations" in {
     val circuitBreakerState = AtomicCircuitBreakerState(
       "MultipleMaterialization",
-      system.scheduler,
       2,
       timeout,
       10 seconds)
@@ -295,7 +274,7 @@ class CircuitBreakerBidiFlowSpec
 
     val flow = Source.actorRef[String](25, OverflowStrategy.fail)
       .map(s => (s, UUID.randomUUID()))
-      .via(CircuitBreakerBidiFlow[String, String, UUID](circuitBreakerState).join(delayFlow))
+      .via(CircuitBreakerBidiFlow[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow))
       .map(_._1)
       .toMat(Sink.seq)(Keep.both)
 
@@ -335,31 +314,6 @@ object CircuitBreakerBidiFlowSpec {
       |  exponential-backoff-factor = 10.0
       |  max-reset-timeout = 101 ms
       |}
-      |
-      |notype-circuitbreaker {
-      |  max-failures = 1
-      |  call-timeout = 50 ms
-      |  reset-timeout = 20 ms
-      |}
-      |
-      |missing-max-failures-circuit-breaker {
-      |  type = squbs.circuitbreaker
-      |  call-timeout = 50 ms
-      |  reset-timeout = 20 ms
-      |}
-      |
-      |missing-call-timeout-circuit-breaker {
-      |  type = squbs.circuitbreaker
-      |  max-failures = 1
-      |  reset-timeout = 20 ms
-      |}
-      |
-      |missing-reset-timeout-circuit-breaker {
-      |  type = squbs.circuitbreaker
-      |  max-failures = 1
-      |  call-timeout = 50 ms
-      |}
-      |
     """.stripMargin)
 }
 

@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong}
 import akka.actor.{ActorSystem, Scheduler}
 import akka.util.Unsafe
 import com.codahale.metrics.MetricRegistry
+import com.typesafe.config.Config
 import org.squbs.streams.circuitbreaker._
 import org.squbs.metrics.MetricsExtension
 
@@ -42,70 +43,90 @@ object AtomicCircuitBreakerState {
     * @param maxFailures Maximum number of failures before opening the circuit
     * @param callTimeout [[scala.concurrent.duration.FiniteDuration]] of time after which to consider a call a failure
     * @param resetTimeout [[scala.concurrent.duration.FiniteDuration]] of time after which to attempt to close the circuit
+    * @param maxResetTimeout the upper bound of resetTimeout
+    * @param exponentialBackoffFactor The exponential amount that the wait time will be increased
     */
   def apply(name: String,
-            scheduler: Scheduler,
             maxFailures: Int,
             callTimeout: FiniteDuration,
-            resetTimeout: FiniteDuration)
-           (implicit executor: ExecutionContext): CircuitBreakerState =
-    new AtomicCircuitBreakerState(name, scheduler, maxFailures, callTimeout, resetTimeout)
+            resetTimeout: FiniteDuration,
+            maxResetTimeout: FiniteDuration = 36500.days,
+            exponentialBackoffFactor: Double = 1.0)
+           (implicit executor: ExecutionContext, scheduler: Scheduler): CircuitBreakerState =
+    new AtomicCircuitBreakerState(name, scheduler, maxFailures, callTimeout, resetTimeout, maxResetTimeout, exponentialBackoffFactor)
 
   /**
-    * Create a new Circuit Breaker from configuration.
+    * Create a new [[AtomicCircuitBreakerState]] from configuration.
     *
     * @param name The unique name of this circuit breaker instance.
-    *             Used for finding the corresponding configuration and also differentiating the metrics.
+    * @param config Configuration to look for the settings
     * @param system ActorSystem
     */
-  def apply(name: String)(implicit system: ActorSystem): CircuitBreakerState = {
-    val circuitBreakerConfig = system.settings.config.getConfig(name)
-    require(circuitBreakerConfig.getString("type") == "squbs.circuitbreaker")
+  def apply(name: String, config: Config)(implicit system: ActorSystem): CircuitBreakerState = {
 
-    val circuitBreakerState =
-      apply(name,
-        system.scheduler,
-        circuitBreakerConfig.getInt("max-failures"),
-        Duration(circuitBreakerConfig.getString("call-timeout")).asInstanceOf[FiniteDuration],
-        Duration(circuitBreakerConfig.getString("reset-timeout")).asInstanceOf[FiniteDuration]
-      )(system.dispatcher)
-        .withMetricRegistry(MetricsExtension(system).metrics)
+    val configWithDefaults = config.withFallback(system.settings.config.getConfig("squbs.circuit-breaker"))
 
-    if(circuitBreakerConfig.hasPath("exponential-backoff-factor") && circuitBreakerConfig.hasPath("max-reset-timeout"))
-      circuitBreakerState.withExponentialBackoff(
-        circuitBreakerConfig.getDouble("exponential-backoff-factor"),
-        Duration(circuitBreakerConfig.getString("max-reset-timeout")).asInstanceOf[FiniteDuration])
-    else circuitBreakerState
+    apply(name,
+      configWithDefaults.getInt("max-failures"),
+      Duration(configWithDefaults.getString("call-timeout")).asInstanceOf[FiniteDuration],
+      Duration(configWithDefaults.getString("reset-timeout")).asInstanceOf[FiniteDuration],
+      Duration(configWithDefaults.getString("max-reset-timeout")).asInstanceOf[FiniteDuration],
+      configWithDefaults.getDouble("exponential-backoff-factor")
+    )(system.dispatcher, system.scheduler)
+      .withMetricRegistry(MetricsExtension(system).metrics)
   }
 
   /**
-    * Java API: Create a new CircuitBreaker.
+    * Java API
     *
-    * Callbacks run in caller's thread when using withSyncCircuitBreaker, and in same ExecutionContext as the passed
-    * in Future when using withCircuitBreaker. To use another ExecutionContext for the callbacks you can specify the
-    * executor in the constructor.
+    * Create a new [[AtomicCircuitBreakerState]].
     *
     * @param maxFailures Maximum number of failures before opening the circuit
     * @param callTimeout [[scala.concurrent.duration.FiniteDuration]] of time after which to consider a call a failure
     * @param resetTimeout [[scala.concurrent.duration.FiniteDuration]] of time after which to attempt to close the circuit
     */
   def create(name: String,
-             scheduler: Scheduler,
              maxFailures: Int,
              callTimeout: FiniteDuration,
              resetTimeout: FiniteDuration,
-             executor: ExecutionContext): CircuitBreakerState =
-    apply(name, scheduler, maxFailures, callTimeout, resetTimeout)(executor)
+             executor: ExecutionContext,
+             scheduler: Scheduler): CircuitBreakerState =
+    apply(name, maxFailures, callTimeout, resetTimeout)(executor, scheduler)
 
   /**
-    * Java API: Create a new Circuit Breaker from configuration.
+    * Java API
+    *
+    * Create a new [[AtomicCircuitBreakerState]] with exponential backoff strategy.
+    *
+    * The `resetTimeout` will be increased exponentially for each failed attempt to close the circuit.
+    *
+    * @param maxFailures Maximum number of failures before opening the circuit
+    * @param callTimeout [[scala.concurrent.duration.FiniteDuration]] of time after which to consider a call a failure
+    * @param resetTimeout [[scala.concurrent.duration.FiniteDuration]] of time after which to attempt to close the circuit
+    * @param maxResetTimeout the upper bound of resetTimeout
+    * @param exponentialBackoffFactor The exponential amount that the wait time will be increased
+    */
+  def create(name: String,
+             maxFailures: Int,
+             callTimeout: FiniteDuration,
+             resetTimeout: FiniteDuration,
+             maxResetTimeout: FiniteDuration,
+             exponentialBackoffFactor: Double,
+             executor: ExecutionContext,
+             scheduler: Scheduler): CircuitBreakerState =
+    apply(name, maxFailures, callTimeout, resetTimeout, maxResetTimeout, exponentialBackoffFactor)(executor, scheduler)
+
+  /**
+    * Java API
+    *
+    * Create a new Circuit Breaker from configuration.
     *
     * @param name The unique name of this circuit breaker instance.
-    *             Used for finding the corresponding configuration and also differentiating the metrics.
+    * @param config Configuration to look for the settings
     * @param system ActorSystem
     */
-  def create(name: String, system: ActorSystem): CircuitBreakerState =
-    apply(name)(system)
+  def create(name: String, config: Config, system: ActorSystem): CircuitBreakerState =
+    apply(name, config)(system)
 }
 
 /**
@@ -116,44 +137,22 @@ object AtomicCircuitBreakerState {
   * @param maxFailures maximum number of failures before opening the circuit
   * @param callTimeout [[scala.concurrent.duration.FiniteDuration]] of time after which to consider a call a failure
   * @param resetTimeout [[scala.concurrent.duration.FiniteDuration]] of time after which to attempt to close the circuit
+  * @param maxResetTimeout the upper bound of resetTimeout
+  * @param exponentialBackoffFactor The exponential amount that the wait time will be increased
   * @param executor [[scala.concurrent.ExecutionContext]] used for execution of the scheduler
   */
-class AtomicCircuitBreakerState(val name:                 String,
-                                scheduler:                Scheduler,
-                                maxFailures:              Int,
-                                val callTimeout:          FiniteDuration,
-                                resetTimeout:             FiniteDuration,
-                                maxResetTimeout:          FiniteDuration,
-                                exponentialBackoffFactor: Double,
-                                val metricRegistry:       MetricRegistry)
+class AtomicCircuitBreakerState(val name: String,
+                                scheduler: Scheduler,
+                                val maxFailures: Int,
+                                val callTimeout: FiniteDuration,
+                                val resetTimeout: FiniteDuration,
+                                val maxResetTimeout: FiniteDuration,
+                                val exponentialBackoffFactor: Double,
+                                val metricRegistry:       MetricRegistry = new MetricRegistry())
                                (implicit executor: ExecutionContext)
   extends AbstractAtomicCircuitBreakerLogic with CircuitBreakerState {
 
   require(exponentialBackoffFactor >= 1.0, "factor must be >= 1.0")
-
-  def this(name: String,
-           scheduler: Scheduler,
-           maxFailures: Int,
-           callTimeout: FiniteDuration,
-           resetTimeout: FiniteDuration)
-          (implicit executor: ExecutionContext)= {
-    this(name, scheduler, maxFailures, callTimeout, resetTimeout, 36500.days, 1.0, new MetricRegistry())
-  }
-
-  /**
-    * @inheritdoc
-    */
-  def withExponentialBackoff(exponentialBackoffFactor: Double, maxResetTimeout: FiniteDuration):
-  AtomicCircuitBreakerState =
-    new AtomicCircuitBreakerState(
-      name,
-      scheduler,
-      maxFailures,
-      callTimeout,
-      resetTimeout,
-      maxResetTimeout,
-      exponentialBackoffFactor,
-      metricRegistry)(executor)
 
   /**
     * @inheritdoc

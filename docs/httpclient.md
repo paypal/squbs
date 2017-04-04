@@ -9,7 +9,7 @@
 * [Pipeline](#pipeline): Allows a `Bidi`Akka Streams flow to be registered globally or individually for clients.
 * [Metrics](#metrics): Provides [Codahale Metrics](http://metrics.dropwizard.io/3.1.0/getting-started/) out-of-the-box for each client.    
 * [JMX Beans](#jmx-beans): Exposes the configuration of each client as JMX beans.
-* [Circuit Breaker](#circuit-breaker): // TODO In progress
+* [Circuit Breaker](#circuit-breaker): Provides resiliency with a stream based circuit breaker.
 
 ### Dependency
 
@@ -23,7 +23,9 @@ Add the following dependency to your `build.sbt` or scala build file:
 
 `squbs-httpclient` project sticks to the Akka HTTP API.  The only exception is during the creation of host connection pool.  Instead of `Http().cachedHostConnectionPool`, it defines `ClientFlow` with the same set of parameters (and few extra optional parameters).
 
-#### Scala
+Please note, [Circuit Breaker](#circuit-breaker) is enabled by default and it adds certain requirements to the `Context` passed along with request and response objects.  Please see [Circuit Breaker](#circuit-breaker) section for details, otherwise, you might see unexpected behavior.
+
+##### Scala
 
 Similar to the example at [Akka HTTP Host-Level Client-Side API](http://doc.akka.io/docs/akka-http/current/scala/http/client-side/host-level.html#example), the Scala use of `ClientFlow` is as follows:      
   
@@ -40,7 +42,13 @@ val responseFuture: Future[(Try[HttpResponse], Int)] =
     .runWith(Sink.head)
 ```
 
-#### Java
+You can pass optional settings, e.g., `HttpsConnectionContext` and `ConnectionPoolSettings`, to `ClientFlow`.
+
+```scala
+val clientFlow = ClientFlow("sample", Some(connectionContext), Some(connectionPoolSettings))
+```
+
+##### Java
 
 Also, similar to the example at [Akka HTTP Host-Level Client-Side API](http://doc.akka.io/docs/akka-http/current/java/http/client-side/host-level.html#example), the Java use of `ClientFlow` is as follows:
 
@@ -49,13 +57,23 @@ final ActorSystem system = ActorSystem.create();
 final ActorMaterializer mat = ActorMaterializer.create(system);
 
 final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool>
-    clientFlow = ClientFlow.create("sample", system, mat);
+    clientFlow = ClientFlow.create("sample", system, mat); // Only this line is specific to squbs
 
 CompletionStage<Pair<Try<HttpResponse>, Integer>> =
     Source
         .single(Pair.create(request, 42))
         .via(clientFlow)
         .runWith(Sink.head(), mat);
+```
+
+You can pass `Optional` settings, e.g., `HttpsConnectionContext` and `ConnectionPoolSettings`, to `ClientFlow.create`.  It also provides a fluent API:
+
+```java
+final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool> clientFlow =
+        ClientFlow.<Integer>builder()
+                .withSettings(connectionPoolSettings)
+                .withConnectionContext(connectionContext)
+                .create("sample", system, mat);
 ```
 
 #### HTTP Model
@@ -138,7 +156,7 @@ ResolverRegistry(system).register[HttpEndpoint](new SampleEndpointResolver)
 
 ##### Java
 
-Register `BiFunction<String, Env, Optional<HttpEndpoint>>`:
+Register `BiFunction<String, Environment, Optional<HttpEndpoint>>`:
 
 ```java
 ResolverRegistry.get(system).register(HttpEndpoint.class, "SampleEndpointResolver", (svcName, env) -> {
@@ -163,13 +181,14 @@ class SampleEndpointResolver extends AbstractResolver<HttpEndpoint> {
 
     Optional<HttpEndpoint> resolve(svcName: String, env: Environment) { 
         if ("sample".equals(svcName)) {
-        return Optional.of(Endpoint.create("http://akka.io:80"));
-    } else if ("google".equals(svcName))
-        return Optional.of(Endpoint.create("http://www.google.com:80"));
-    } else {
-        return Optional.empty();
+            return Optional.of(Endpoint.create("http://akka.io:80"));
+        } else if ("google".equals(svcName))
+            return Optional.of(Endpoint.create("http://www.google.com:80"));
+        } else {
+            return Optional.empty();
+        }
     }
-}
+}    
 
 // Register EndpointResolver
 ResolverRegistry.get(system).register(HttpEndpoint.class, new SampleEndpointResolver());
@@ -233,4 +252,71 @@ Visibility of the system configuration has utmost importance while trouble shoot
 
 ### Circuit Breaker
 
-// TODO In progress
+squbs provides `CircuitBreakerBidi` Akka Streams `GraphStage` to provide circuit breaker functionality for streams.  It is a generic circuit breaker implementation for streams.  Please see [Circuit Breaker](circuitbreaker.md) documentation for details.
+
+squbs http client comes pre-integrated with the circuit breaker.  By default, any `Failure` or a `Success` with http status code `400` or greater increments the failure count.  The default `CircuitBreakerState` implementation is `AtomicCircuitBreakerState`, which can be shared across materializations and across flows.  These can be customized by [Passing CircuitBreakerSettings Programmatically](#passing-circuitbreakersettings-programmatically).
+
+Circuit Breaker might potentially change the order of messages, so it requires a `Context` to be carried around, like `ClientFlow`.  But, in addition to that, it needs to be able to uniquely identify each element for its internal mechanics.  Accordingly, the `Context` passed to `ClientFlow` or a mapping from `Context` should be able to uniquely identify each element.  If circuit breaker is enabled, and the `Context` passed to `ClientFlow` does not uniquely identify each element, then you will experience unexpected behavior.  Please see [Context to Unique Id Mapping](circuitbreaker.md#context-to-unique-id-mapping) section of Circuit Breaker documentation for details on providing a unique id.
+
+##### Configuring in application.conf
+
+Inside the client specific configuration, you can add `circuit-breaker` and specify the configuration you would like to override.  For the rest, it will use the default settings.  Please see [here](../squbs-ext/src/main/resources/reference.conf) for the default circuit breaker configuration.
+
+```
+sample {
+  type = squbs.httpclient
+
+  circuit-breaker {
+    max-failures = 2
+    call-timeout = 10 milliseconds
+    reset-timeout = 100 seconds
+  }
+}
+```
+
+##### Passing CircuitBreakerSettings Programmatically
+
+You can pass a `CircuitBreakerSettings` instance with the programmatically.  The API lets you to pass a custom `CircuitBreakerState` and optional  fallback, failure decider and unique id mapper functions.  If a `CircuitBreakerSettings` instance is passed in programmatically, then the circuit breaker settings in `application.conf` are ignored.
+
+In below examples a fallback response is provided via `withFallback`.  The default failure decider is overriden via `withFailureDecider` to consider only status codes `>= 500` to increment failure count of circuit breaker:
+
+###### Scala
+
+```scala
+import org.squbs.streams.circuitbreaker.CircuitBreakerSettings
+
+val circuitBreakerSettings =
+  CircuitBreakerSettings[HttpRequest, HttpResponse, Int](circuitBreakerState)
+    .withFallback( _ => Try(HttpResponse(entity = "Fallback Response")))
+    .withFailureDecider(
+      response => response.isFailure || response.get.status.intValue() >= StatusCodes.InternalServerError.intValue)
+    
+val clientFlow = ClientFlow[Int]("sample", circuitBreakerSettings = Some(circuitBreakerSettings))    
+```
+
+###### Java
+
+```java
+import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
+
+final CircuitBreakerSettings circuitBreakerSettings =
+        CircuitBreakerSettings.<HttpRequest, HttpResponse, Integer>create(circuitBreakerState)
+                .withFallback(httpRequest -> Success.apply(HttpResponse.create().withEntity("Fallback Response")))
+                .withFailureDecider(response ->
+                        response.isFailure() || response.get().status().intValue() >= StatusCodes.INTERNAL_SERVER_ERROR.intValue());
+```
+
+##### Disabling Circuit Breaker
+
+Circuit Breaker can be disabled by setting `disable-circuit-breaker` to `true`:
+
+```
+sample {
+  type = squbs.httpclient
+  disable-circuit-breaker = true
+}
+```
+
+##### Calling another service as a fallback
+
+A common scenario in circuit breaker usage is to call another service as the fallback.  Calling another service would require a new stream materialization within the fallback function; so, we suggest users to get the fail fast message downstream instead and branch off accordingly.  This lets defining the fallback `ClientFlow` within the same stream.

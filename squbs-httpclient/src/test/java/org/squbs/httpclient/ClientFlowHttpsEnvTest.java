@@ -92,7 +92,9 @@ public class ClientFlowHttpsEnvTest {
         Optional<HttpsConnectionContext> connCtxOption = sslContext("exampletrust.jks", "changeit")
                 .map(s -> ConnectionContext.https(s, Optional.of(sslConfig), Optional.empty(), Optional.empty(),
                         Optional.empty(), Optional.empty()));
-        clientFlow = ClientFlow.create("helloHttps", connCtxOption, Optional.empty(), QA.value(), system, mat);
+        clientFlow = ClientFlow.<Integer>builder()
+                .withConnectionContext(connCtxOption.get())
+                .withEnvironment(QA.value()).create("helloHttps", system, mat);
     }
 
     static Optional<SSLContext> sslContext(String store, String pw) {
