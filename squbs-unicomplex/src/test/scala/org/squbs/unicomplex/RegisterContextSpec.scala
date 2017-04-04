@@ -16,10 +16,10 @@
 
 package org.squbs.unicomplex
 
+import akka.http.scaladsl.model.Uri
+import akka.http.scaladsl.model.Uri.Path
+import akka.http.scaladsl.model.Uri.Path.{Empty, Segment, Slash}
 import org.scalatest.{FlatSpecLike, Matchers}
-import spray.http.Uri
-import spray.http.Uri.Path
-import spray.http.Uri.Path.{Empty, Segment, Slash}
 
 class RegisterContextSpec extends FlatSpecLike with Matchers {
 
@@ -34,7 +34,6 @@ class RegisterContextSpec extends FlatSpecLike with Matchers {
     emptyPath should not be 'startsWithSegment
     emptyPath should not be 'startsWithSlash
     emptyPath.startsWith(Empty) should be (true)
-
 
     val root = Path("/")
     root should not be empty
