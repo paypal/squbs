@@ -167,14 +167,14 @@ object ClientFlow {
         Http().cachedHostConnectionPool[RequestContext](endpoint.uri.getHost, endpoint.uri.getPort, cps)
       }
 
-    val disableCircuitBreaker =
+    val enableCircuitBreaker =
       clientSpecificConfig
-        .flatMap(_.getOption[Boolean]("disable-circuit-breaker"))
-        .getOrElse(false)
+        .map(_.getOption[Config]("circuit-breaker").isDefined)
+        .getOrElse(circuitBreakerSettings.isDefined)
 
     val circuitBreakerStateName =
-      if(disableCircuitBreaker) "N/A"
-      else circuitBreakerSettings.map(_.circuitBreakerState.name).getOrElse(s"$name-httpclient")
+      if(enableCircuitBreaker) circuitBreakerSettings.map(_.circuitBreakerState.name).getOrElse(s"$name-httpclient")
+      else "N/A"
 
     val pipelineName = clientSpecificConfig.flatMap(_.getOption[String]("pipeline"))
     val defaultFlowsOn = clientSpecificConfig.flatMap(_.getOption[Boolean]("defaultPipeline"))
@@ -192,11 +192,11 @@ object ClientFlow {
       circuitBreakerStateName,
       cps), beanName)
 
-    if(disableCircuitBreaker)
-      withPipeline[T](name, pipelineSetting, clientConnectionFlow)
-    else
+    if(enableCircuitBreaker)
       withPipeline[T](name, pipelineSetting,
         withCircuitBreaker[T](name, clientSpecificConfig, circuitBreakerSettings, clientConnectionFlow))
+    else
+      withPipeline[T](name, pipelineSetting, clientConnectionFlow)
   }
 
   private[httpclient] def withCircuitBreaker[T](

@@ -65,7 +65,6 @@ object ClientFlowCircuitBreakerSpec {
       |
       |disableCircuitBreaker {
       |  type = squbs.httpclient
-      |  disable-circuit-breaker = true
       |}
       |
       |multipleMaterializations {
@@ -116,10 +115,16 @@ class ClientFlowCircuitBreakerSpec extends AsyncFlatSpec with Matchers with Befo
   }
 
   it should "fail fast using default failure decider" in {
+
+    val circuitBreakerState =
+      AtomicCircuitBreakerState("internalServerError", system.settings.config.getConfig("squbs.circuit-breaker"))
+
+    val circuitBreakerSettings = CircuitBreakerSettings[HttpRequest, HttpResponse, Int](circuitBreakerState)
+
     val responseSeq =
       Source(1 to numOfRequests)
         .map(HttpRequest(uri = "/internalServerError") -> _)
-        .via(ClientFlow[Int](s"http://localhost:$port/"))
+        .via(ClientFlow[Int](s"http://localhost:$port/", circuitBreakerSettings = Some(circuitBreakerSettings)))
         .map(_._1) // In case the ordering changes
         .runWith(Sink.seq)
 
