@@ -41,6 +41,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.squbs.resolver.ResolverRegistry;
 import org.squbs.streams.circuitbreaker.CircuitBreakerOpenException;
+import org.squbs.streams.circuitbreaker.CircuitBreakerState;
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState;
 import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
 import scala.util.Failure;
@@ -58,7 +59,6 @@ public class ClientFlowCircuitBreakerTest {
     private static final Config config = ConfigFactory.parseString(
             "disableCircuitBreaker { \n" +
                 "  type = squbs.httpclient\n" +
-                "  disable-circuit-breaker = true\n" +
                 "}");
 
     private static final ActorSystem system = ActorSystem.create("ClientFlowCircuitBreakerTest", config);
@@ -108,10 +108,21 @@ public class ClientFlowCircuitBreakerTest {
     @Test
     public void testFailFastUsingDefaultFailureDecider() throws ExecutionException, InterruptedException {
 
+        CircuitBreakerState circuitBreakerState = AtomicCircuitBreakerState
+                .create("internalServerError", system.settings().config().getConfig("squbs.circuit-breaker"), system);
+        CircuitBreakerSettings circuitBreakerSettings =
+                CircuitBreakerSettings.<HttpRequest, HttpResponse, Integer>create(circuitBreakerState);
+
+        final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool> clientFlow =
+                ClientFlow.builder()
+                        .withCircuitBreakerSettings(circuitBreakerSettings)
+                        .create("http://localhost:" + port, system, mat);
+
+
         CompletionStage<List<Try<HttpResponse>>> responseSeq =
                 Source.range(1, numOfRequests)
                         .map(i -> Pair.create(HttpRequest.create("/internalServerError"), i))
-                        .via(ClientFlow.create("http://localhost:" + port, system, mat))
+                        .via(clientFlow)
                         .map(pair -> pair.first())
                         .runWith(Sink.seq(), mat);
 

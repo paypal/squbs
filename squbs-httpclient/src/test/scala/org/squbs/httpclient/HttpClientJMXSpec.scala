@@ -114,14 +114,12 @@ object HttpClientJMXSpec {
       |
       |clientWithCircuitBreakerDisabled {
       |  type = squbs.httpclient
-      |
-      |  disable-circuit-breaker = yes
       |}
       |
       |clientWithCircuitBreakerEnabled {
       |  type = squbs.httpclient
       |
-      |  disable-circuit-breaker = no
+      |  circuit-breaker {}
       |}
     """.stripMargin).withFallback(ConfigFactory.load())
 
@@ -146,7 +144,7 @@ class HttpClientJMXSpec extends FlatSpecLike with Matchers {
     assertJmxValue("sampleClient", "Environment", "DEFAULT")
     assertJmxValue("sampleClient", "Pipeline", "N/A")
     assertJmxValue("sampleClient", "DefaultPipeline", "on")
-    assertJmxValue("sampleClient", "CircuitBreakerStateName", "sampleClient-httpclient")
+    assertJmxValue("sampleClient", "CircuitBreakerStateName", "N/A")
     assertJmxValue("sampleClient", "MaxConnections", config.getInt("akka.http.host-connection-pool.max-connections"))
     assertJmxValue("sampleClient", "MinConnections", config.getInt("akka.http.host-connection-pool.min-connections"))
     assertJmxValue("sampleClient", "MaxRetries", config.getInt("akka.http.host-connection-pool.max-retries"))

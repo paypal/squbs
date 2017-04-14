@@ -23,8 +23,6 @@ Add the following dependency to your `build.sbt` or scala build file:
 
 `squbs-httpclient` project sticks to the Akka HTTP API.  The only exception is during the creation of host connection pool.  Instead of `Http().cachedHostConnectionPool`, it defines `ClientFlow` with the same set of parameters (and few extra optional parameters).
 
-Please note, [Circuit Breaker](#circuit-breaker) is enabled by default and it adds certain requirements to the `Context` passed along with request and response objects.  Please see [Circuit Breaker](#circuit-breaker) section for details, otherwise, you might see unexpected behavior.
-
 ##### Scala
 
 Similar to the example at [Akka HTTP Host-Level Client-Side API](http://doc.akka.io/docs/akka-http/current/scala/http/client-side/host-level.html#example), the Scala use of `ClientFlow` is as follows:      
@@ -254,9 +252,11 @@ Visibility of the system configuration has utmost importance while trouble shoot
 
 squbs provides `CircuitBreakerBidi` Akka Streams `GraphStage` to provide circuit breaker functionality for streams.  It is a generic circuit breaker implementation for streams.  Please see [Circuit Breaker](circuitbreaker.md) documentation for details.
 
-squbs http client comes pre-integrated with the circuit breaker.  By default, any `Failure` or a `Success` with http status code `400` or greater increments the failure count.  The default `CircuitBreakerState` implementation is `AtomicCircuitBreakerState`, which can be shared across materializations and across flows.  These can be customized by [Passing CircuitBreakerSettings Programmatically](#passing-circuitbreakersettings-programmatically).
-
 Circuit Breaker might potentially change the order of messages, so it requires a `Context` to be carried around, like `ClientFlow`.  But, in addition to that, it needs to be able to uniquely identify each element for its internal mechanics.  Accordingly, the `Context` passed to `ClientFlow` or a mapping from `Context` should be able to uniquely identify each element.  If circuit breaker is enabled, and the `Context` passed to `ClientFlow` does not uniquely identify each element, then you will experience unexpected behavior.  Please see [Context to Unique Id Mapping](circuitbreaker.md#context-to-unique-id-mapping) section of Circuit Breaker documentation for details on providing a unique id.
+
+Circuit Breaker is disabled by default.  Please see [Configuring in application.conf](#configuring-in-applicationconf) and [Passing CircuitBreakerSettings Programmatically](#passing-circuitbreakersettings-programmatically) sections below for enabling.
+
+Once enabled, by default, any `Failure` or a `Success` with http status code `400` or greater increments the failure count.  The default `CircuitBreakerState` implementation is `AtomicCircuitBreakerState`, which can be shared across materializations and across flows.  These can be customized by [Passing CircuitBreakerSettings Programmatically](#passing-circuitbreakersettings-programmatically).
 
 ##### Configuring in application.conf
 
@@ -304,17 +304,6 @@ final CircuitBreakerSettings circuitBreakerSettings =
                 .withFallback(httpRequest -> Success.apply(HttpResponse.create().withEntity("Fallback Response")))
                 .withFailureDecider(response ->
                         response.isFailure() || response.get().status().intValue() >= StatusCodes.INTERNAL_SERVER_ERROR.intValue());
-```
-
-##### Disabling Circuit Breaker
-
-Circuit Breaker can be disabled by setting `disable-circuit-breaker` to `true`:
-
-```
-sample {
-  type = squbs.httpclient
-  disable-circuit-breaker = true
-}
 ```
 
 ##### Calling another service as a fallback
