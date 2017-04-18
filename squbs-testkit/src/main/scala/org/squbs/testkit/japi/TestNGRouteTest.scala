@@ -75,12 +75,12 @@ abstract class TestNGRouteTest extends TestNGRouteTestBase {
 
   protected def systemResource: SystemResource = _systemResource
 
-  @BeforeClass
+  @BeforeClass(alwaysRun=true)
   def setup(): Unit = {
     systemResource.before()
   }
 
-  @AfterClass
+  @AfterClass(alwaysRun=true)
   def teardown(): Unit = {
     systemResource.after()
   }

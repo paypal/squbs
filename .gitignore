@@ -9,6 +9,7 @@ var/
 # sbt specific
 dist/*
 target/
+test-output/
 lib_managed/
 src_managed/
 project/boot/
