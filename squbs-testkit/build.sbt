@@ -9,10 +9,11 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % scalatestV,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV,
-  "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "provided",
+  "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "optional",
   "org.scala-lang.modules"     %% "scala-java8-compat"  % "0.7.0",
-  "junit" % "junit" % junitV % "provided",
-  "org.testng" % "testng" % testngV % "provided",
+  "junit" % "junit" % junitV % "optional",
+  "org.testng" % "testng" % testngV % "optional",
+  "de.heikoseeberger" %% "akka-http-jackson" % "1.11.0" % "test",
   "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 

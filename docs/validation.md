@@ -4,10 +4,11 @@ squbs Validation provides a [Akka HTTP](http://doc.akka.io/) directive for data 
   
 ## Dependencies
 
-Add the following dependency to your build.sbt or scala build file:
+Add the following dependencies to your build.sbt or scala build file:
 
-```
-"org.squbs" %% "squbs-pattern" % squbsVersion
+```scala
+"org.squbs" %% "squbs-pattern" % squbsVersion,
+"com.wix" %% "accord-core" % "0.5"
 ```  
   
 ## Usage

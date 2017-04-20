@@ -6,7 +6,7 @@ Timeouts are a key part of every asynchronous system and every distributed syste
 
 Add the following dependency to your build.sbt or scala build file:
 
-```
+```scala
 "org.squbs" %% "squbs-pattern" % squbsVersion
 ```
 

@@ -3,10 +3,24 @@ squbs supports ScalaTest 3.X for Scala, and TestNG & JUnit for Java test framewo
 
 ## Dependencies
 
-To use test utilities mentioned in this documentation,, simply add the following dependencies in your `build.sbt` file or Scala build script:
+To use test utilities mentioned in this documentation, simply add the following dependencies in your `build.sbt` file or Scala build script:
 
-```
+```scala
 "org.squbs" %% "squbs-testkit" % squbsVersion
+```
+
+Optionally, you should also include the following dependencies based upon whether they are needed in your tests:
+
+```scala
+// Testing RouteDefinition...
+"com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % "test",
+
+// Using JUnit...
+"junit" % "junit" % junitV % "test",
+"com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
+
+// Using TestNG
+"org.testng" % "testng" % testngV % "test",
 ```
 
 ## CustomTestKit
