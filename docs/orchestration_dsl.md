@@ -2,6 +2,15 @@
 
 Orchestration is one of the major use cases for services, whether you try to orchestrate multiple service calls with as much concurrency, and therefore as good a response time, as possible, or you try to do multiple business operations, data writes, data reads, service calls, etc. dependent on each others, etc. The ability to concisely describe your business logic is essential to making the service easy to understand and maintain. The orchestration DSL - part of squbs-pattern - will make asynchronous code easy to write, read, and reason about.
 
+## Dependencies
+
+The Orchestration DSL is part of `squbs-pattern`. To use the Orchestration DSL, please add the following dependencies:
+
+```scala
+"org.squbs" %% "squbs-pattern" % squbsVersion,
+"com.typesafe.akka" %% "akka-contrib" % akkaVersion
+```
+
 ## Getting Started
 Lets get started with a simple, but complete example of orchestration. This orchestrator composes 3 interrelated asynchronous tasks:
 

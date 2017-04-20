@@ -17,11 +17,31 @@ This document discusses the marshallers and unmarshallers provided by squbs, and
 
 ### Dependency
 
-Add the following dependency to your `build.sbt` or scala build file:
+Add the following dependencies to your `build.sbt` or scala build file:
 
+```scala
+"org.squbs" %% "squbs-ext" % squbsVersion,
+"de.heikoseeberger" %% "akka-http-json4s" % "1.11.0",
+"de.heikoseeberger" %% "akka-http-jackson" % "1.11.0",
+"com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
+"com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
 ```
-"org.squbs" %% "squbs-ext" % squbsVersion
-```
+
+The followings are optional components depending on your marshalling formats and libraries you want to use. They may be combined to support multiple formats.
+
+```scala
+// To use json4s native...
+"org.json4s" %% "json4s-native" % "3.5.0",
+
+// To use json4s jackson...
+"org.json4s" %% "json4s-jackson" % "3.5.0",
+  
+// For Jackson marshalling of Scala case classes... 
+"com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.4",
+  
+// For Jackson marshalling of immutable Java classes...
+"com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonVersion,
+```  
 
 ### Usage
 
