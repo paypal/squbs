@@ -40,6 +40,10 @@ abstract class TestNGCustomRouteTestKit(val boot: UnicomplexBoot) extends {
     this(SCustomTestKit.boot(config = Option(config)))
   }
 
+  def this(withClassPath: Boolean) {
+    this(SCustomTestKit.boot(withClassPath = Option(withClassPath)))
+  }
+
   def this(resources: java.util.List[String], withClassPath: Boolean) {
     this(SCustomTestKit.boot(resources = Option(resources), withClassPath = Option(withClassPath)))
   }
