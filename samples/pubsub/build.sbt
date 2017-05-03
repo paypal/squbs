@@ -4,7 +4,7 @@ name := "pubsub"
 
 organization in ThisBuild := "org.squbs.samples"
 
-version in ThisBuild := "0.9.0-SNAPSHOT"
+version in ThisBuild := "0.9.0"
 
 publishArtifact := false
 
