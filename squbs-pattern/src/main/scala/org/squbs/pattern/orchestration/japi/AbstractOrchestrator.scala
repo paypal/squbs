@@ -17,17 +17,15 @@ package org.squbs.pattern.orchestration.japi
 
 import java.util.concurrent.CompletableFuture
 
-import akka.actor.{AbstractActor, ActorRef, ActorSelection}
+import akka.actor.{Actor, ActorRef, ActorSelection}
 import akka.pattern.{AskableActorRef, AskableActorSelection}
-
-//import akka.pattern.ask
 import akka.util.Timeout
 import org.squbs.pattern.orchestration.Orchestrator
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
-abstract class AbstractOrchestrator extends AbstractActor with Orchestrator {
+abstract class AbstractOrchestrator extends Actor with Orchestrator {
 
   override def receive = super.receive
 

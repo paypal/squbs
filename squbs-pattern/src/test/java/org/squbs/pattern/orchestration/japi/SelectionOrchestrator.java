@@ -30,10 +30,10 @@ import static org.squbs.pattern.orchestration.japi.Messages.*;
 public class SelectionOrchestrator extends AbstractOrchestrator {
 
     public SelectionOrchestrator() {
-        getContext().actorOf(Props.create(ServiceEmulator.class), "ServiceEmulator");
-        expectOnce(ReceiveBuilder.match(TestRequest.class,
+        context().actorOf(Props.create(ServiceEmulator.class), "ServiceEmulator");
+        expectOnce(ReceiveBuilder.create().match(TestRequest.class,
                 testRequest -> orchestrate(testRequest, sender())
-        ).build());
+        ).build().onMessage());
     }
 
     protected void orchestrate(TestRequest request, ActorRef requester) {

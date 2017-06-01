@@ -23,7 +23,7 @@ import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
-import akka.testkit.JavaTestKit;
+import akka.testkit.javadsl.TestKit;
 import com.typesafe.config.ConfigFactory;
 import org.squbs.testkit.TestActorJ;
 import org.squbs.testkit.Timeouts;
@@ -64,7 +64,7 @@ public class CustomTestKitTest extends CustomTestKit {
 
     @Test
     public void testPong() {
-        new JavaTestKit(system()) {{
+        new TestKit(system()) {{
             final Props props = Props.create(TestActorJ.class);
             final ActorRef subject = system().actorOf(props);
             subject.tell("Ping", getRef());
