@@ -1,5 +1,7 @@
 # Implementing HTTP(S) Services
 
+[TOC]
+
 ## Overview
 
 HTTP is the most pervasive integration protocol. It is the basis for web services, both client and server side. Akka HTTP provides great server and client side APIs. squbs has the intention to maintain these APIs without change. Instead, squbs provides the infrastructure allowing production-ready use of these APIs by providing standard configuration for HTTP listeners that services can use to accept and handle requests, and pipelines allowing logging, monitoring, authentication/authorization, before the request comes to the application and after the response leaves the application before it goes onto the wire.
@@ -251,3 +253,15 @@ There are a few rules you have to keep in mind when implementing a `FlowDefiniti
 4. **Access to actor context:** The `FlowDefinition`/`AbstractFlowDefinition` has access to the `ActorContext` with the `context` field (Scala) or `context()` method (Java) by default. This can be used to create new actors or access other actors.
 5. **Access to web context:** For the Scala `FlowDefinition`, if the `WebContext` trait is mixed in, it will have access to the field `webContext`. The Java `AbstractFlowDefinition` provides the `webContext()` method in all cases. This field/method is used to determine the web context or path from the root where this `FlowDefinition`/`AbstractFlowDefinition` is handling requests. 
 6. **Request path:** The `HttpRequest` object is handed to this flow unmodified. The `webContext` is in the `Path` of the request. It is the users job (as seen above) to handle the request with the knowledge of the `webContext`. In other words, the low-level API handles the `HttpRequest` directly and needs to manually take the web context into consideration for any path matching.
+
+## Metrics
+
+squbs comes with pre-built [pipeline](#pipeline) elements for metrics collection and squbs activator templates sets those as default.  Accordingly, each squbs http(s) service is enabled to collect [Codahale Metrics](http://metrics.dropwizard.io/3.1.0/getting-started/) out-of-the-box without any code change or configuration.  Please note, squbs metrics collection does NOT require AspectJ or any other runtime code weaving.  The following metrics are available on JMX by default:
+
+   * Request Timer
+   * Request Count Meter
+   * A meter for each http response status code category: 2xx, 3xx, 4xx, 5xx
+   * A meter for each exception type that was returned by the service.
+
+
+You can access the `MetricRegistry` by `MetricsExtension(system).metrics`.  This allows you to create further meters, timers, histograms, etc or to pass it to a different type metrics reporter.
