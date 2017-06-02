@@ -49,7 +49,7 @@ squbs-actors = [
 
   ```scala
   implicit val refFactory : ActorRefFactory = ...
-  ActorLookup ! TestRequest(...)  		
+  ActorLookup ! TestRequest(...)
   ```
 
 * Send message (!/?/tell/ask) to an actor which registered its request message class type as "TestRequest", and response message class type as "TestResponse"

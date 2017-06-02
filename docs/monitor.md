@@ -42,11 +42,11 @@ squbs-actormonitor = {
 A JMX Bean `org.squbs.unicomplex:type=ActorMonitor` exposes the configuration of Actor Monitor. The JMX Bean is read-only.
 
 ```
- trait ActorMonitorConfigMXBean {
+trait ActorMonitorConfigMXBean {
   def getCount : Int				//Count of JMX bean has been created 
   def getMaxCount: Int				//Maximum JMX bean can be created
   def getMaxChildrenDisplay: Int		//Per each actor, maximum children can be exposed 
- }
- ```
+}
+```
  
 

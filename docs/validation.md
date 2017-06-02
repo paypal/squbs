@@ -44,23 +44,23 @@ object SampleValidators {
 
 Now you can use the `validate` directive as follows: 
  
- ```scala
- def route =
-     path("person") {
-       post {
-         entity(as[Person]) { person =>
-           import ValidationDirectives._
-           // importing the person validator
-           import SampleValidators._
-           validate(person) {
-               complete {
-                 person
-               }
+```scala
+def route =
+ path("person") {
+   post {
+     entity(as[Person]) { person =>
+       import ValidationDirectives._
+       // importing the person validator
+       import SampleValidators._
+       validate(person) {
+           complete {
+             person
            }
-         }
        }
      }
- ```
+   }
+ }
+```
  
 If a validation rejection happens, a `400 Bad Request` is returned with the response body containing the comma separated list of field(s) causing validation rejection.  Using the above example, if the request body contains the following:
   

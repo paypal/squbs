@@ -1,0 +1,38 @@
+site_name: squbs
+theme: readthedocs
+repo_url: https://github.com/paypal/squbs
+edit_uri: blob/master/docs/
+pages:
+- Overview: 'index.md'
+- About:
+    - 'Contributing': 'CONTRIBUTING.md'
+    - 'License': 'LICENSE.txt'
+    - 'Presentations': 'presentations.md'
+- Documentation:
+    - 'Principles of squbs Design': 'principles_of_the_squbs_design.md'
+    - 'Unicomplex & Cube Bootstrapping': 'bootstrap.md'
+    - 'Unicomplex Actor Hierarchy': 'actor-hierarchy.md'
+    - 'Runtime Lifecycle & API': 'lifecycle.md'
+    - 'Implementing HTTP(S) Services': 'http-services.md'
+    - 'Akka HTTP Client on Steroids': 'httpclient.md'
+    - 'Request/Response Pipeline': 'pipeline.md'
+    - 'Marshalling and Unmarshalling': 'marshalling.md'
+    - 'Configuration': 'configuration.md'
+    - 'Testing squbs Applications': 'testing.md'
+    - 'Clustering squbs Services using ZooKeeper': 'zkcluster.md'
+    - 'Blocking Dispatcher': 'blocking-dispatcher.md'
+    - 'Message Guidelines': 'messages.md'
+    - 'Actor Monitor': 'monitor.md'
+    - 'Orchestration DSL': 'orchestration_dsl.md'
+    - 'Actor Registry': 'registry.md'
+    - 'Admin Console': 'console.md'
+    - 'Application Lifecycle Management': 'packaging.md'
+    - 'Resource Resolution': 'resolver.md'
+    - 'Akka Streams GraphStages':
+        - 'Persistent Buffer': 'persistent-buffer.md'
+        - 'Perpetual Stream': 'streams-lifecycle.md'
+        - 'Circuit Breaker': 'circuitbreaker.md'
+        - 'Timeout': 'flow-timeout.md'
+        - 'Deduplicate': 'deduplicate.md'
+    - 'Timeout Policy': 'timeoutpolicy.md'
+    - 'Validation': 'validation.md'
