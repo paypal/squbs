@@ -20,10 +20,10 @@ import akka.japi.pf.ReceiveBuilder;
 
 public class IncrementActor extends AbstractActor {
 
-    public IncrementActor() {
-        receive(ReceiveBuilder
+    @Override
+    public Receive createReceive() {
+        return receiveBuilder()
                 .match(Integer.class, i -> sender().tell(i + 1, self()))
-                .build()
-        );
+                .build();
     }
 }

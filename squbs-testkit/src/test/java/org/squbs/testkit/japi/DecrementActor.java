@@ -16,14 +16,13 @@
 package org.squbs.testkit.japi;
 
 import akka.actor.AbstractActor;
-import akka.japi.pf.ReceiveBuilder;
 
 public class DecrementActor extends AbstractActor {
 
-    public DecrementActor() {
-        receive(ReceiveBuilder
+    @Override
+    public Receive createReceive() {
+        return receiveBuilder()
                 .match(Integer.class, i -> sender().tell(i - 1, self()))
-                .build()
-        );
+                .build();
     }
 }

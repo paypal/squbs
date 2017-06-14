@@ -28,12 +28,12 @@ import static org.squbs.pattern.orchestration.japi.Messages.*;
 
 public class TestOrchestrator extends AbstractOrchestrator {
 
-    protected ActorRef service = getContext().actorOf(Props.create(ServiceEmulator.class));
+    protected ActorRef service = context().actorOf(Props.create(ServiceEmulator.class));
 
     public TestOrchestrator() {
-        expectOnce(ReceiveBuilder.match(TestRequest.class,
+        expectOnce(ReceiveBuilder.create().match(TestRequest.class,
                 testRequest -> orchestrate(testRequest, sender())
-        ).build());
+        ).build().onMessage());
     }
 
     protected void orchestrate(TestRequest request, ActorRef requester) {
@@ -71,9 +71,9 @@ public class TestOrchestrator extends AbstractOrchestrator {
         ServiceRequest request = new ServiceRequest(id, delay);
         service.tell(request, self());
 
-        expectOnce(ReceiveBuilder.matchEquals(new ServiceResponse(id),
+        expectOnce(ReceiveBuilder.create().matchEquals(new ServiceResponse(id),
                 response -> future.complete(response.id)
-        ).build());
+        ).build().onMessage());
         return future;
     }
 
