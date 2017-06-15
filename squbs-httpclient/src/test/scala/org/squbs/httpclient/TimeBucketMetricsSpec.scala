@@ -158,5 +158,5 @@ class TimeBucketMetricsSpec extends TestKit(ActorSystem("CircuitBreakerMetricsSp
     metrics.cancel()
   }
 
-  override protected def afterAll(): Unit = system.shutdown()
+  override protected def afterAll(): Unit = system.terminate()
 }

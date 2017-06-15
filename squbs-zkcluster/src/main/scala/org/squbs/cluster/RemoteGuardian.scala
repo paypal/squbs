@@ -39,7 +39,7 @@ class RemoteGuardian extends Actor with ActorLogging {
   override def receive: Receive = {
     case QuarantinedEvent(remote, uid) => // first QuarantinedEvent arrived
       log.error("[RemoteGuardian] get Quarantined event for remote {} uid {}. Performing a suicide ...", remote, uid)
-      zkCluster.addShutdownListener((_) => context.system.shutdown)
+      zkCluster.addShutdownListener((_) => context.system.terminate())
       zkCluster.addShutdownListener((_) => System.exit(EXIT_CODE))
       zkCluster.zkClusterActor ! PoisonPill
   }

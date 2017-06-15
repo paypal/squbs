@@ -57,14 +57,20 @@ object JavaConverters {
     javaToScalaAdapter.atop(bidiFlow).atop(scalaToJavaAdapter).asJava
   }
 
-  private def adaptTupleFlow[T, Mat](scalaFlow: Flow[(HttpRequest, T), (Try[HttpResponse], T), Mat]):
-  js.Flow[Pair[jm.HttpRequest, T], Pair[Try[jm.HttpResponse], T], Mat] = {
+  private def adaptTupleFlow[T](scalaFlow: Flow[(HttpRequest, T), (Try[HttpResponse], T), HostConnectionPool]):
+  js.Flow[Pair[jm.HttpRequest, T], Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] = {
     implicit val _ = JavaMapping.identity[T]
+    implicit object HostConnectionPoolMapping extends JavaMapping[jd.HostConnectionPool, HostConnectionPool] {
+      def toScala(javaObject: jd.HostConnectionPool): HostConnectionPool =
+        throw new UnsupportedOperationException("jd.HostConnectionPool cannot be converted to Scala")
+      def toJava(scalaObject: HostConnectionPool): jd.HostConnectionPool = scalaObject.toJava
+    }
     JavaMapping.toJava(scalaFlow)(JavaMapping.flowMapping[Pair[jm.HttpRequest, T], (HttpRequest, T),
-      Pair[Try[jm.HttpResponse], T], (Try[HttpResponse], T), Mat])
+      Pair[Try[jm.HttpResponse], T], (Try[HttpResponse], T), jd.HostConnectionPool, HostConnectionPool])
   }
 
   def toJava[T](flow: Flow[(HttpRequest, T), (Try[HttpResponse], T), HostConnectionPool]):
-  js.Flow[Pair[jm.HttpRequest, T], Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] =
-    adaptTupleFlow(flow.mapMaterializedValue(_.toJava))
+  js.Flow[Pair[jm.HttpRequest, T], Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] = {
+    adaptTupleFlow[T](flow)
+  }
 }

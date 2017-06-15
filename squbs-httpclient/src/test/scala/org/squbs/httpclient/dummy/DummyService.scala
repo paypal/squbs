@@ -165,7 +165,7 @@ trait DummyService {
       path("stop") {
         (post | parameter('method ! "post")) {
           complete {
-            system.scheduler.scheduleOnce(1.second)(system.shutdown())(system.dispatcher)
+            system.scheduler.scheduleOnce(1.second)(system.terminate())(system.dispatcher)
             "Shutting down in 1 second..."
           }
         }

@@ -17,13 +17,15 @@
 package org.squbs.testkit.stress;
 
 import akka.actor.*;
-import akka.testkit.JavaTestKit;
+import akka.testkit.javadsl.TestKit;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.squbs.testkit.TestActorJ;
 import scala.concurrent.duration.FiniteDuration;
+
+import java.util.List;
 
 public class LoadActorTest{
 
@@ -36,13 +38,13 @@ public class LoadActorTest{
 
     @AfterClass
     public static void afterAll() {
-        JavaTestKit.shutdownActorSystem(system);
+        TestKit.shutdownActorSystem(system);
         system = null;
     }
 
     @Test
     public void testIt() {
-        new JavaTestKit(system) {{
+        new TestKit(system) {{
             FiniteDuration warmUp = duration("20 seconds");
             FiniteDuration steady = duration("40 seconds");
             int ir = 500;
@@ -53,7 +55,7 @@ public class LoadActorTest{
             }), getRef());
 
             // just verify the LoadFn
-            Object[] response = receiveN(10);
+            List<Object> response = receiveN(10);
 
             for (Object r : response) {
                 System.out.println(r);

@@ -7,6 +7,7 @@ javaOptions in Test += "-Xmx512m"
 libraryDependencies ++= Seq(
   "com.typesafe.akka"         %% "akka-actor"                   % akkaV,
   "com.typesafe.akka"         %% "akka-slf4j"                   % akkaV,
+  "com.typesafe.akka"         %% "akka-stream"                  % akkaV,
   "com.typesafe.akka"         %% "akka-http-core"               % akkaHttpV ,
   "com.typesafe.scala-logging" %% "scala-logging" 			      	% "3.1.0",
   "org.scala-lang.modules"    %% "scala-java8-compat"           % "0.7.0",

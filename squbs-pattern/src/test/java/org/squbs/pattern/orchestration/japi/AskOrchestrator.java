@@ -28,7 +28,7 @@ import static org.squbs.pattern.orchestration.japi.Messages.*;
 
 public class AskOrchestrator extends AbstractOrchestrator {
 
-    protected ActorRef service = getContext().actorOf(Props.create(ServiceEmulator.class));
+    protected ActorRef service = context().actorOf(Props.create(ServiceEmulator.class));
 
     protected final Timeout askTimeout;
 
@@ -38,9 +38,9 @@ public class AskOrchestrator extends AbstractOrchestrator {
         this.orchDelay = orchDelay;
         this.askTimeout = askTimeout;
 
-        expectOnce(ReceiveBuilder.match(TestRequest.class,
-                testRequest -> orchestrate(testRequest, sender())
-        ).build());
+        expectOnce(ReceiveBuilder.create().match(TestRequest.class,
+                testRequest -> orchestrate(testRequest, sender())).build().onMessage());
+
     }
 
     protected void orchestrate(TestRequest request, ActorRef requester) {
@@ -91,6 +91,4 @@ public class AskOrchestrator extends AbstractOrchestrator {
     public CompletableFuture<Long> loadResponse2(FiniteDuration delay, long prevId, long prevId2) {
         return loadResponse(delay);
     }
-
-
 }

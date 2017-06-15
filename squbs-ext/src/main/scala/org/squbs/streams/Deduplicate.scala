@@ -16,10 +16,10 @@
 
 package org.squbs.streams
 
+import akka.event.Logging
 import akka.stream.ActorAttributes.SupervisionStrategy
-import akka.stream.{Supervision, Attributes}
-import akka.stream.impl.fusing.GraphStages.SimpleLinearGraphStage
-import akka.stream.stage.{InHandler, OutHandler, GraphStageLogic}
+import akka.stream._
+import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 
 import scala.util.control.NonFatal
 
@@ -49,9 +49,13 @@ object Deduplicate {
   */
 final class Deduplicate[T, U](key: T => U, duplicateCount: Long = Long.MaxValue,
                               registry: java.util.Map[U, MutableLong] = new java.util.HashMap[U, MutableLong]())
-  extends SimpleLinearGraphStage[T] {
+  extends GraphStage[FlowShape[T, T]] {
 
   require(duplicateCount >= 2)
+
+  val in = Inlet[T](Logging.simpleName(this) + ".in")
+  val out = Outlet[T](Logging.simpleName(this) + ".out")
+  override val shape = FlowShape(in, out)
 
   override def toString: String = "Deduplicate"
 

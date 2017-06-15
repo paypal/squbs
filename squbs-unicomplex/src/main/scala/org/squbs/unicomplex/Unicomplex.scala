@@ -274,12 +274,12 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       if (cubes.isEmpty && serviceRegistry.isShutdownComplete) {
         log.info("All CubeSupervisors and services were terminated. Shutting down the system")
         updateSystemState(Stopped)
-        context.system.shutdown()
+        context.system.terminate()
       }
 
     case ShutdownTimedOut => log.warning("Graceful shutdown timed out.")
       updateSystemState(Stopped)
-      context.system.shutdown()
+      context.system.terminate()
   }
 
   def shutdownBehavior: Receive = {

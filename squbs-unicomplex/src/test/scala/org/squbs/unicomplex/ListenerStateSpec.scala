@@ -115,7 +115,7 @@ class ListenerStateSpec extends TestKit(ListenerStateSpec.boot.actorSystem) with
 
     defaultListener.get("state") should be("Success")
     portConflictListener.get("state") should be("Failed")
-    portConflictListener.get("error").asInstanceOf[String] should startWith("akka.stream.BindFailedException$: bind failed")
+    portConflictListener.get("error").asInstanceOf[String] should endWith("Bind failed because of Address already in use")
     sslContextNotExistListener.get("state") should be("Failed")
     sslContextNotExistListener.get("error").asInstanceOf[String] should startWith("java.lang.ClassNotFoundException: org.squbs.unicomplex.IDoNotExist")
   }

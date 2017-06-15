@@ -15,13 +15,13 @@
  */
 
 object Versions {
-  val akkaV = "2.4.16"
-  val akkaHttpV = "10.0.3"
-  val scalatestV = "3.0.0"
+  val akkaV = "2.5.2"
+  val akkaHttpV = "10.0.7"
+  val scalatestV = "3.0.3"
   val jacksonV = "2.8.5"
-  val json4sV = "3.5.0"
-  val metricsV = "3.1.0"
+  val json4sV = "3.5.2"
+  val metricsV = "3.2.2"
   val junitInterfaceV = "0.11"
   val junitV = "4.12"
-  val testngV = "6.8.8"
+  val testngV = "6.11"
 }

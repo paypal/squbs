@@ -6,6 +6,7 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % scalatestV % "test->*",
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-agent" % akkaV,
+  "com.typesafe.akka" %% "akka-stream" % akkaV,
   "com.typesafe.akka" %% "akka-http-core" % akkaHttpV % "provided",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
