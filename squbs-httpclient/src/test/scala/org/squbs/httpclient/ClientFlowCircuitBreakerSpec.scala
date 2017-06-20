@@ -102,7 +102,7 @@ object ClientFlowCircuitBreakerSpec {
       complete(InternalServerErrorResponse)
     }
 
-  val serverBinding = Await.result(Http().bindAndHandle(route, "localhost", 0), awaitMax)
+  val serverBinding = Await.result(Http().bindAndHandle(route, "localhost", 0), awaitMax * 8)
   val port = serverBinding.localAddress.getPort
 }
 

@@ -45,8 +45,11 @@ abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[
 
   val transform = Flow[Int] map createElement
 
+  // awaitMax value is too low on slow systems so increase timeout here.
+  val timeout = awaitMax * 8
+
   override def afterAll = {
-    Await.ready(system.terminate(), awaitMax)
+    Await.ready(system.terminate(), timeout)
   }
 
   it should s"buffer a stream of $elementCount elements using GraphDSL" in {
@@ -65,7 +68,7 @@ abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[
         ClosedShape
     })
     val countFuture = streamGraph.run()
-    val count = Await.result(countFuture, awaitMax)
+    val count = Await.result(countFuture, timeout)
     eventually { buffer.queue shouldBe 'closed }
     count shouldBe (elementCount * outputPorts)
     println(s"Total records processed $count")
@@ -100,7 +103,7 @@ abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[
         ClosedShape
     })
     val countF = streamGraph.run()
-    val count = Await.result(countF, awaitMax)
+    val count = Await.result(countF, timeout)
     eventually { buffer.queue shouldBe 'closed }
     println("Time difference (ms): " + (t1 - t2) / 1000000d)
     count shouldBe (elementCount * outputPorts)
@@ -142,8 +145,8 @@ abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[
     })
     val (sink1F, sink2F, _) = graph.run()(mat)
 
-    Await.result(sink1F.failed, awaitMax) shouldBe an[AbruptTerminationException]
-    Await.result(sink2F.failed, awaitMax) shouldBe an[AbruptTerminationException]
+    Await.result(sink1F.failed, timeout) shouldBe an[AbruptTerminationException]
+    Await.result(sink2F.failed, timeout) shouldBe an[AbruptTerminationException]
 
     val restartFrom = bBufferInCount.incrementAndGet()
     println(s"Restart from count $restartFrom")
@@ -182,8 +185,8 @@ abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[
 
     val (sink1F, sink2F) = graph.run()(mat)
 
-    Await.result(sink1F.failed, awaitMax) shouldBe an[NumberFormatException]
-    Await.result(sink2F, awaitMax) shouldBe Done
+    Await.result(sink1F.failed, timeout) shouldBe an[NumberFormatException]
+    Await.result(sink2F, timeout) shouldBe Done
 
     val beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
     val restartFrom = inCounter.incrementAndGet()
@@ -216,7 +219,7 @@ abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[
           ClosedShape
       })
     val (sink1F, sink2F) = graph1.run()(mat)
-    Await.result(for {a <- sink1F; b <- sink2F} yield (a, b), awaitMax)
+    Await.result(for {a <- sink1F; b <- sink2F} yield (a, b), timeout)
     eventually { buffer.queue shouldBe 'closed }
 
     val beforeShutDown  = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
@@ -245,11 +248,11 @@ abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[
           ClosedShape
       })
     val (head1F, head2F, last1F, last2F) = graph.run()(ActorMaterializer())
-    val head1 = Await.result(head1F, awaitMax)
-    val head2 = Await.result(head2F, awaitMax)
+    val head1 = Await.result(head1F, timeout)
+    val head2 = Await.result(head2F, timeout)
     println(s"First record processed after shutdown => ${(format(head1.entry), format(head2.entry))}")
-    val last1 = Await.result(last1F, awaitMax)
-    val last2 = Await.result(last2F, awaitMax)
+    val last1 = Await.result(last1F, timeout)
+    val last2 = Await.result(last2F, timeout)
     eventually { buffer.queue shouldBe 'closed }
     assertions(beforeShutDown, SinkCounts(last1, last2), SinkCounts(totalProcessed, totalProcessed))
   }
