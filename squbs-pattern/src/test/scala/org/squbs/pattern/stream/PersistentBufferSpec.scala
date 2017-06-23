@@ -40,8 +40,11 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
 
   val transform = Flow[Int] map createElement
 
+  // awaitMax it too low on slow system so increase it here.
+  val timeout = awaitMax * 8
+
   override def afterAll = {
-    Await.ready(system.terminate(), awaitMax)
+    Await.ready(system.terminate(), timeout)
   }
 
   def createElement(n: Int): T
@@ -54,7 +57,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val buffer = PersistentBuffer[T](config)
     buffer.queue.serializer shouldBe a [Q]
     val countFuture = in.via(transform).via(buffer.async).runWith(flowCounter)
-    val count = Await.result(countFuture, awaitMax)
+    val count = Await.result(countFuture, timeout)
     count shouldBe elementCount
     eventually { buffer.queue shouldBe 'closed }
     clean()
@@ -71,7 +74,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
         ClosedShape
     })
     val countFuture = streamGraph.run()
-    val count = Await.result(countFuture, awaitMax)
+    val count = Await.result(countFuture, timeout)
     count shouldBe elementCount
     eventually { buffer.queue shouldBe 'closed }
     clean()
@@ -99,8 +102,8 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
         ClosedShape
     })
     val (countF, totalF) = streamGraph.run()
-    val count = Await.result(countF, awaitMax)
-    val totalProcessed = Await.result(totalF, awaitMax)
+    val count = Await.result(countF, timeout)
+    val totalProcessed = Await.result(totalF, timeout)
     eventually { buffer.queue shouldBe 'closed }
 
     println("Time difference (ms): " + (t1 - t2) / 1000000d)
@@ -141,8 +144,8 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
         ClosedShape
     })
     val sinkF = graph.run()(mat)
-    Await.result(shutdownF, awaitMax)
-    Await.result(sinkF.failed, awaitMax) shouldBe an[AbruptTerminationException]
+    Await.result(shutdownF, timeout)
+    Await.result(sinkF.failed, timeout) shouldBe an[AbruptTerminationException]
 
     val restartFrom = pBufferInCount.incrementAndGet()
     println(s"Restart from count $restartFrom")
@@ -174,7 +177,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
         ClosedShape
     })
     val sinkF = graph.run()(mat)
-    Await.result(sinkF.failed, awaitMax) shouldBe an[NumberFormatException]
+    Await.result(sinkF.failed, timeout) shouldBe an[NumberFormatException]
     val restartFrom = inCounter.incrementAndGet()
     println(s"Restart from count $restartFrom")
     resumeGraphAndDoAssertion(outCount.get, restartFrom)
@@ -202,7 +205,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
         ClosedShape
     })
     val countF = graph.run()(mat)
-    Await.result(countF, awaitMax)
+    Await.result(countF, timeout)
     eventually { buffer.queue shouldBe 'closed }
     resumeGraphAndDoAssertion(recordCount.get, failTestAt)
     clean()
@@ -221,8 +224,8 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
           ClosedShape
       })
     val (countF, firstF) = graph.run()(ActorMaterializer())
-    val afterRecovery = Await.result(countF, awaitMax)
-    val first = Await.result(firstF, awaitMax)
+    val afterRecovery = Await.result(countF, timeout)
+    val first = Await.result(firstF, timeout)
     eventually { buffer.queue shouldBe 'closed }
     println(s"First record processed after shutdown => ${format(first)}")
     assertions(beforeShutDown, afterRecovery, totalProcessed)
