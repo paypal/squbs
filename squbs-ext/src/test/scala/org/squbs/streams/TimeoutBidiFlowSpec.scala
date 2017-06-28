@@ -34,8 +34,9 @@ import scala.util.{Failure, Success}
 class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with AsyncFlatSpecLike with Matchers{
 
   implicit val materializer = ActorMaterializer()
+  implicit val askTimeout = Timeout(10 seconds)
 
-  val timeout = 300 milliseconds
+  val timeout = 1 second
   val timeoutFailure = Failure(FlowTimeoutException("Flow timed out!"))
 
   it should "timeout a message if the flow does not process it within provided timeout" in {
@@ -53,7 +54,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
       val merge = b.add(Merge[String](3))
 
       partition.out(0).delay(10 milliseconds)  ~> merge
-      partition.out(1).delay(500 milliseconds) ~> merge
+      partition.out(1).delay(3 seconds)        ~> merge
       partition.out(2).delay(10 milliseconds)  ~> merge
 
       FlowShape(partition.in, merge.out)
@@ -70,7 +71,6 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
   it should "timeout elements for flows that keep the order of messages" in {
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
-    implicit val askTimeout = Timeout(5.seconds)
     val flow = Flow[String].mapAsync(3)(elem => (delayActor ? elem).mapTo[String])
 
     val timeoutBidiFlow = TimeoutBidiFlowOrdered[String, String](timeout)
@@ -84,7 +84,6 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
   it should "let the wrapped ordered flow control the demand" in {
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
-    implicit val askTimeout = Timeout(5.seconds)
     val flow = Flow[String]
       .withAttributes(Attributes.inputBuffer(initial = 2, max = 2))
       .mapAsync(2)(elem => (delayActor ? elem).mapTo[String])
@@ -100,7 +99,6 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
   it should "let the wrapped unordered flow control the demand" in {
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
-    implicit val askTimeout = Timeout(5.seconds)
     val flow = Flow[(String, Long)]
       .withAttributes(Attributes.inputBuffer(initial = 1, max = 1))
       .mapAsyncUnordered(1) { elem =>
@@ -143,7 +141,6 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
   it should "timeout elements for flows that do not keep the order of messages" in {
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
-    implicit val askTimeout = Timeout(5.seconds)
     val flow = Flow[(String, UUID)].mapAsyncUnordered(3) { elem =>
       (delayActor ? elem).mapTo[(String, UUID)]
     }
@@ -168,7 +165,6 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
 
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
-    implicit val askTimeout = Timeout(5.seconds)
     val flow = Flow[(String, MyContext)].mapAsyncUnordered(3) { elem =>
       (delayActor ? elem).mapTo[(String, MyContext)]
     }
@@ -196,7 +192,6 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
 
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
-    implicit val askTimeout = Timeout(5.seconds)
     val flow = Flow[(String, MyContext)].mapAsyncUnordered(3) { elem =>
       (delayActor ? elem).mapTo[(String, MyContext)]
     }
@@ -216,7 +211,6 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
   it should "use the id that is passed with UniqueIdEnvelope" in {
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
-    implicit val askTimeout = Timeout(5.seconds)
     val flow = Flow[(String, Envelope)].mapAsyncUnordered(3) { elem =>
       (delayActor ? elem).mapTo[(String, Envelope)]
     }
@@ -248,7 +242,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
 
 class DelayActor extends Actor {
 
-  val delay = Map("a" -> 10.milliseconds, "b" -> 1000.milliseconds, "c" -> 10.milliseconds)
+  val delay = Map("a" -> 10.milliseconds, "b" -> 3.seconds, "c" -> 10.milliseconds)
   import context.dispatcher
 
   def receive = {
