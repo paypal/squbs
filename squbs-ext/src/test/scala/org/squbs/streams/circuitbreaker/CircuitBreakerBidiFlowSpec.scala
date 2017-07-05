@@ -27,33 +27,32 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{FlatSpecLike, Matchers}
 import org.squbs.metrics.MetricsExtension
 import org.squbs.streams.FlowTimeoutException
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 class CircuitBreakerBidiFlowSpec
   extends TestKit(ActorSystem("CircuitBreakerBidiFlowSpec", CircuitBreakerBidiFlowSpec.config))
-  with FlatSpecLike with Matchers with ImplicitSender with ScalaFutures {
+  with FlatSpecLike with Matchers with ImplicitSender {
 
   implicit val materializer = ActorMaterializer()
+  implicit val askTimeout = Timeout(10 seconds)
   import system.dispatcher
   implicit val scheduler = system.scheduler
 
-  val timeout = 300 milliseconds
+  val timeout = 1 second
   val timeoutFailure = Failure(FlowTimeoutException("Flow timed out!"))
   val circuitBreakerOpenFailure = Failure(CircuitBreakerOpenException("Circuit Breaker is open; calls are failing fast!"))
 
   def delayFlow = {
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
-    implicit val askTimeout = Timeout(5.seconds)
     Flow[(String, UUID)].mapAsyncUnordered(5) { elem =>
       (delayActor ? elem).mapTo[(String, UUID)]
     }
@@ -68,7 +67,7 @@ class CircuitBreakerBidiFlowSpec
   }
 
   it should "increment failure count on call timeout" in {
-    val circuitBreakerState = AtomicCircuitBreakerState("IncFailCount", 2, timeout, 10 milliseconds)
+    val circuitBreakerState = AtomicCircuitBreakerState("IncFailCount", 2, timeout, 10 minutes)
     circuitBreakerState.subscribe(self, Open)
     val ref = flowWithCircuitBreaker(circuitBreakerState)
     ref ! "a"
@@ -139,9 +138,7 @@ class CircuitBreakerBidiFlowSpec
 
     val failFastFailure = Failure(CircuitBreakerOpenException())
     val expected = (Success("a"), 1) :: (flowFailure, 2) :: (flowFailure, 3) :: (failFastFailure, 4) :: Nil
-    whenReady(result) { r =>
-      r should contain theSameElementsInOrderAs expected
-    }
+    assertFuture(result) { r => r should contain theSameElementsInOrderAs expected }
   }
 
   it should "respond with fallback" in {
@@ -165,9 +162,7 @@ class CircuitBreakerBidiFlowSpec
       .runWith(Sink.seq)
 
     val expected = (Success("a"), 1) :: (flowFailure, 2) :: (flowFailure, 3) :: (Success("fb"), 4) :: Nil
-    whenReady(result) { r =>
-      r should contain theSameElementsInOrderAs(expected)
-    }
+    assertFuture(result) { r => r should contain theSameElementsInOrderAs(expected) }
   }
 
   it should "collect metrics" in {
@@ -180,7 +175,7 @@ class CircuitBreakerBidiFlowSpec
     val circuitBreakerState = AtomicCircuitBreakerState("MetricsCB", 2, timeout, 10 seconds)
       .withMetricRegistry(MetricsExtension(system).metrics)
 
-    circuitBreakerState.subscribe(self, TransitionEvents)
+    circuitBreakerState.subscribe(self, Open)
     val ref = flowWithCircuitBreaker(circuitBreakerState)
     jmxValue("MetricsCB.circuit-breaker.state", "Value").value shouldBe Closed
     ref ! "a"
@@ -200,8 +195,7 @@ class CircuitBreakerBidiFlowSpec
 
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
-    implicit val askTimeout = Timeout(5.seconds)
-    val flow = Flow[(String, MyContext)].mapAsyncUnordered(10) { elem =>
+    val flow = Flow[(String, MyContext)].mapAsyncUnordered(5) { elem =>
       (delayActor ? elem).mapTo[(String, MyContext)]
     }
 
@@ -225,9 +219,7 @@ class CircuitBreakerBidiFlowSpec
       (timeoutFailure, MyContext("dummy", 2)) ::
       (timeoutFailure, MyContext("dummy", 3)) :: Nil
 
-    whenReady(result, timeout(Span(2, Seconds)), interval(Span(200, Millis))) { r =>
-      r should contain theSameElementsAs(expected)
-    }
+    assertFuture(result) { r => r should contain theSameElementsAs(expected) }
   }
 
   it should "increase the reset timeout exponentially after it transits to open again" in {
@@ -249,7 +241,7 @@ class CircuitBreakerBidiFlowSpec
     expectNoMsg(10 milliseconds)
     expectMsg(HalfOpen)
 
-    1 to 6 foreach { _ =>
+    1 to 6 foreach { i =>
       ref ! "b"
       expectMsg(Open)
       expectNoMsg(100 milliseconds)
@@ -268,7 +260,7 @@ class CircuitBreakerBidiFlowSpec
       "MultipleMaterialization",
       2,
       timeout,
-      10 seconds)
+      10 * timeout)
 
     circuitBreakerState.subscribe(self, Open)
 
@@ -289,16 +281,21 @@ class CircuitBreakerBidiFlowSpec
     ref2 ! "a"
     ref1 ! akka.actor.Status.Success("a")
     ref2 ! akka.actor.Status.Success("a")
-    whenReady(result2, timeout(Span(2, Seconds)), interval(Span(200, Millis))) { r2 =>
+
+    assertFuture(result2) { r2 =>
       val expected = circuitBreakerOpenFailure :: circuitBreakerOpenFailure :: Nil
       r2 should contain theSameElementsInOrderAs expected
     }
   }
+
+  private def assertFuture[T](future: Future[T])(assertion: T => Unit) = assertion(Await.result(future, 60 seconds))
 }
 
 object CircuitBreakerBidiFlowSpec {
   val config = ConfigFactory.parseString(
     """
+      |akka.test.single-expect-default = 30 seconds
+      |
       |sample-circuit-breaker {
       |  type = squbs.circuitbreaker
       |  max-failures = 1
@@ -310,16 +307,16 @@ object CircuitBreakerBidiFlowSpec {
       |  type = squbs.circuitbreaker
       |  max-failures = 2
       |  call-timeout = 100 ms
-      |  reset-timeout = 10 ms
+      |  reset-timeout = 100 ms
       |  exponential-backoff-factor = 10.0
-      |  max-reset-timeout = 101 ms
+      |  max-reset-timeout = 2 s
       |}
     """.stripMargin)
 }
 
 class DelayActor extends Actor {
 
-  val delay = Map("a" -> 10.milliseconds, "b" -> 1000.milliseconds, "c" -> 10.milliseconds)
+  val delay = Map("a" -> 10.milliseconds, "b" -> 3.seconds, "c" -> 10.milliseconds)
 
   import context.dispatcher
 

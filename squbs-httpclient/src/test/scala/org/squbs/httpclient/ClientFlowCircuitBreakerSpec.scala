@@ -210,16 +210,17 @@ class ClientFlowCircuitBreakerSpec extends AsyncFlatSpec with Matchers with Befo
         responseSeq2 <- responseSeqFuture2
       } yield responseSeq1 ++ responseSeq2
 
-    // Because default max-open-requests = 32 is so requests will wait in the queue of connection pool
-    // If max-open-requests were equal to max-connections, we would not multiply by 2.
-    val numOfPassThroughBeforeCircuitBreakerIsOpen = 2 * defaultMaxConnections + defaultMaxFailures - 1
-    val numOfFailFast = numOfRequests - numOfPassThroughBeforeCircuitBreakerIsOpen
-
-    val expected =
-      List.fill(numOfPassThroughBeforeCircuitBreakerIsOpen)(Success(InternalServerErrorResponse)) ++
-      List.fill(numOfFailFast)(Failure(CircuitBreakerOpenException()))
-
-    combinedResponses map { _ should contain theSameElementsAs expected }
+    combinedResponses map { responses =>
+      // Because default max-open-requests = 32 is so requests will wait in the queue of connection pool
+      // If max-open-requests were equal to max-connections, we would not multiply by 2.
+      val maxNumOfPassThroughBeforeCircuitBreakerIsOpen = 2 * defaultMaxConnections + defaultMaxFailures - 1
+      val actualNumPassThrough = responses.filter(_ == Success(InternalServerErrorResponse)).size
+      val actualNumFailFast = numOfRequests - actualNumPassThrough
+      actualNumPassThrough should be >= numOfPassThroughBeforeCircuitBreakerIsOpen
+      actualNumPassThrough should be <= maxNumOfPassThroughBeforeCircuitBreakerIsOpen
+      actualNumFailFast should be >= numOfRequests - maxNumOfPassThroughBeforeCircuitBreakerIsOpen
+      actualNumFailFast should be <= numOfRequests - numOfPassThroughBeforeCircuitBreakerIsOpen
+    }
   }
 
   it should "share the circuit breaker state across multiple flows" in {
@@ -247,16 +248,17 @@ class ClientFlowCircuitBreakerSpec extends AsyncFlatSpec with Matchers with Befo
         responseSeq2 <- responseSeqFuture2
       } yield responseSeq1 ++ responseSeq2
 
-    // Because default max-open-requests = 32 is so requests will wait in the queue of connection pool
-    // If max-open-requests were equal to max-connections, we would not multiply by 2.
-    val numOfPassThroughBeforeCircuitBreakerIsOpen = 2 * defaultMaxConnections + defaultMaxFailures - 1
-    val numOfFailFast = numOfRequests - numOfPassThroughBeforeCircuitBreakerIsOpen
-
-    val expected =
-      List.fill(numOfPassThroughBeforeCircuitBreakerIsOpen)(Success(InternalServerErrorResponse)) ++
-      List.fill(numOfFailFast)(Failure(CircuitBreakerOpenException()))
-
-    combinedResponses map { _ should contain theSameElementsAs expected }
+    combinedResponses map { responses =>
+      // Because default max-open-requests = 32 is so requests will wait in the queue of connection pool
+      // If max-open-requests were equal to max-connections, we would not multiply by 2.
+      val maxNumOfPassThroughBeforeCircuitBreakerIsOpen = 2 * defaultMaxConnections + defaultMaxFailures - 1
+      val actualNumPassThrough = responses.filter(_ == Success(InternalServerErrorResponse)).size
+      val actualNumFailFast = numOfRequests - actualNumPassThrough
+      actualNumPassThrough should be >= numOfPassThroughBeforeCircuitBreakerIsOpen
+      actualNumPassThrough should be <= maxNumOfPassThroughBeforeCircuitBreakerIsOpen
+      actualNumFailFast should be >= numOfRequests - maxNumOfPassThroughBeforeCircuitBreakerIsOpen
+      actualNumFailFast should be <= numOfRequests - numOfPassThroughBeforeCircuitBreakerIsOpen
+    }
   }
 
   it should "show circuit breaker configuration on JMX" in {
