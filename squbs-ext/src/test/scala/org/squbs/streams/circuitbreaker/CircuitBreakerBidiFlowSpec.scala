@@ -50,7 +50,7 @@ class CircuitBreakerBidiFlowSpec
   val timeoutFailure = Failure(FlowTimeoutException("Flow timed out!"))
   val circuitBreakerOpenFailure = Failure(CircuitBreakerOpenException("Circuit Breaker is open; calls are failing fast!"))
 
-  def delayFlow = {
+  def delayFlow() = {
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
     Flow[(String, UUID)].mapAsyncUnordered(5) { elem =>
@@ -90,7 +90,8 @@ class CircuitBreakerBidiFlowSpec
   }
 
   it should "decide on failures based on the provided function" in {
-    val circuitBreakerState = AtomicCircuitBreakerState("FailureDecider", 2, timeout, 10 milliseconds)
+    // Not testing call timeout here.  So, settng it to a high number just to remove any potential effect.
+    val circuitBreakerState = AtomicCircuitBreakerState("FailureDecider", 2, 1 hour, 10 milliseconds)
     circuitBreakerState.subscribe(self, TransitionEvents)
 
     val circuitBreakerBidiFlow = BidiFlow
@@ -182,7 +183,8 @@ class CircuitBreakerBidiFlowSpec
     ref ! "b"
     ref ! "b"
     expectMsg(Open)
-    jmxValue("MetricsCB.circuit-breaker.state", "Value").value shouldBe Open
+    // The state query is volatile underneath.
+    awaitAssert(jmxValue("MetricsCB.circuit-breaker.state", "Value").value shouldBe Open, 1 minute)
     ref ! "a"
     jmxValue("MetricsCB.circuit-breaker.success-count", "Count").value shouldBe 1
     jmxValue("MetricsCB.circuit-breaker.failure-count", "Count").value shouldBe 2
@@ -296,17 +298,10 @@ object CircuitBreakerBidiFlowSpec {
     """
       |akka.test.single-expect-default = 30 seconds
       |
-      |sample-circuit-breaker {
-      |  type = squbs.circuitbreaker
-      |  max-failures = 1
-      |  call-timeout = 50 ms
-      |  reset-timeout = 20 ms
-      |}
-      |
       |exponential-backoff-circuitbreaker {
       |  type = squbs.circuitbreaker
       |  max-failures = 2
-      |  call-timeout = 100 ms
+      |  call-timeout = 1 s
       |  reset-timeout = 100 ms
       |  exponential-backoff-factor = 10.0
       |  max-reset-timeout = 2 s
