@@ -35,6 +35,14 @@ class WellBehavedStream extends PerpetualStream[Future[Done]] {
 
 That's it. This stream is well behaved because it materializes to the sink's materialized value, which is a `Future[Done]`.
 
+### Override Lifecycle State to run the stream
+
+There may be scenarios where a stream need to be materialized at a different lifecycle than `active`.  In such scenarios, override `streamRunLifecycleState`, e.g.,:
+
+```scala
+override lazy val streamRunLifecycleState: LifecycleState = Initializing
+```
+
 ### Shutdown Overrides
 It is sometimes not possible to define a well behaved stream. For instance, the `Sink` may not materialize to a `Future` or you need to do further cleanup at shutdown. For this reason, it is possible to override `shutdown` as in the following code:
 
@@ -122,6 +130,59 @@ class MsgReceivingStream extends PerpetualStream[(ActorRef, Future[Done])] {
     // so super.shutdown() will give the right future
     super.shutdown()
   }
+}
+```
+
+## Connecting a Perpetual Stream with an HTTP Flow
+
+Akka HTTP allows defining a `Flow[HttpRequest, HttpResponse, NotUsed]`, which gets materialized for each http connection.  There are scenarios where an app needs to connect the http flow to a long running stream that needs to be materialized only once (e.g., publishing to Kafka).  Akka HTTP enables end-to-end streaming in such scenarios with [MergeHub](http://doc.akka.io/docs/akka/current/scala/stream/stream-dynamic.html#dynamic-fan-in-and-fan-out-with-mergehub-and-broadcasthub).  squbs provides utilities to easily connect an http flow with a `PerpetualStream` that uses `MergeHub`.  
+
+
+Below is a sample `PerpetualStream` that uses `MergeHub`.
+
+```scala
+class PerpetualStreamWithMergeHub extends PerpetualStream[Sink[MyMessage, NotUsed]] {
+
+  override lazy val streamRunLifecycleState: LifecycleState = Initializing
+
+  /**
+    * Describe your graph by implementing streamGraph
+    *
+    * @return The graph.
+    */
+  override def streamGraph= MergeHub.source[MyMessage].to(Sink.ignore)
+}
+```
+
+Let's add the above `PerpetualStream` in `squbs-meta.conf`.  Please see [Well Known Actors](bootstrap.md#well-known-actors) for more details.
+
+```
+cube-name = org.squbs.stream.mycube
+cube-version = "0.0.1"
+squbs-services = [
+  {
+    class-name = org.squbs.stream.HttpFlowWithMergeHub
+    web-context = mergehub
+  }
+]
+squbs-actors = [
+  {
+    class-name = org.squbs.stream.PerpetualStreamWithMergeHub
+    name = perpetualStreamWithMergeHub
+  }
+]
+```
+
+The HTTP `FlowDefinition` can be connected to the `PerpetualStream` as follows by extending `PerpetualStreamMatValue` and using `matValue` method:
+
+```scala
+class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[Sink[MyMessage, NotUsed]] {
+
+  override val flow: Flow[HttpRequest, HttpResponse, NotUsed] =
+    Flow[HttpRequest]
+      .mapAsync(1)(Unmarshal(_).to[MyMessage])
+      .alsoTo(matValue("/user/mycube/perpetualStreamWithMergeHub"))
+      .map { myMessage => HttpResponse(entity = s"Received Id: ${myMessage.id}") }
 }
 ```
 
