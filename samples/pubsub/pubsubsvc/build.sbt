@@ -3,7 +3,7 @@ findbugsSettings
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
 val akkaV = "2.4.16"
-val squbsV = "0.9.1"
+val squbsV = "0.9.2-SNAPSHOT"
 
 dependencyOverrides ++= Set(
   "org.slf4j" % "slf4j-api" % "1.7.5",
