@@ -209,7 +209,7 @@ object ClientFlow {
 
     val cbs =
       circuitBreakerSettings.collect {
-        case circuitBreakerSettings @ CircuitBreakerSettings(_, _, None, _) =>
+        case circuitBreakerSettings@CircuitBreakerSettings(_, _, _, None, _) =>
           circuitBreakerSettings.withFailureDecider(
             tryHttpResponse => tryHttpResponse.isFailure || tryHttpResponse.get.status.isFailure)
         case circuitBreakerSettings => circuitBreakerSettings

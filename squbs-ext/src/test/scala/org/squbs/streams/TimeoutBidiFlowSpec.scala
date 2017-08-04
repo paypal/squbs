@@ -28,19 +28,19 @@ import org.scalatest.{AsyncFlatSpecLike, Matchers}
 import org.squbs.streams.UniqueId.{Envelope, Provider}
 
 import scala.concurrent.duration._
+import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with AsyncFlatSpecLike with Matchers{
+  import Timing._
 
   implicit val materializer = ActorMaterializer()
   implicit val askTimeout = Timeout(10 seconds)
 
-  val timeout = 1 second
-  val timeoutFailure = Failure(FlowTimeoutException("Flow timed out!"))
+  val timeoutFailure = Failure(FlowTimeoutException())
 
   it should "timeout a message if the flow does not process it within provided timeout" in {
-    import scala.concurrent.duration._
 
     val flow = Flow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
@@ -53,9 +53,9 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
 
       val merge = b.add(Merge[String](3))
 
-      partition.out(0).delay(10 milliseconds)  ~> merge
-      partition.out(1).delay(3 seconds)        ~> merge
-      partition.out(2).delay(10 milliseconds)  ~> merge
+      partition.out(0).delay(shorterThenTimeout)  ~> merge
+      partition.out(1).delay(longerThenTimeout)   ~> merge
+      partition.out(2).delay(shorterThenTimeout)  ~> merge
 
       FlowShape(partition.in, merge.out)
     })
@@ -66,6 +66,53 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
     // "c" fails because of slowness of "b"
     val expected = Success("a") :: timeoutFailure :: Success("c") :: Nil
     result map { _ should contain theSameElementsAs expected }
+  }
+
+  it should "timeout a message and call clean up function" in {
+
+    val promiseMap = Map(
+      "a" -> Promise[Boolean](),
+      "b" -> Promise[Boolean](),
+      "c" -> Promise[Boolean]()
+    )
+
+    val isCleanedUp = Future.sequence(promiseMap.values.map(_.future))
+
+    val cleanUpFunction = (s: String) => promiseMap.get(s).foreach(_.success(true))
+    val notCleanedUpFunction = (s: String) => promiseMap.get(s).foreach(_.trySuccess(false))
+
+    val flow = Flow.fromGraph(GraphDSL.create() { implicit b =>
+      import GraphDSL.Implicits._
+
+      val partition = b.add(Partition(3, (s: String) => s match {
+        case "a" => 0
+        case "b" => 1
+        case "c" => 2
+      }))
+
+      val merge = b.add(Merge[String](3))
+
+      partition.out(0).delay(shorterThenTimeout)  ~> merge
+      partition.out(1).delay(longerThenTimeout)   ~> merge
+      partition.out(2).delay(shorterThenTimeout)  ~> merge
+
+      FlowShape(partition.in, merge.out)
+    })
+
+    val timeoutFlow = TimeoutBidiFlowOrdered[String, String](timeout, cleanUp = cleanUpFunction)
+
+    val result = Source("a" :: "b" :: "c" :: Nil)
+      .map{ s =>
+        system.scheduler.scheduleOnce(checkCleanedUpTime)(notCleanedUpFunction(s))
+        s
+      }
+      .via(timeoutFlow.join(flow))
+      .runWith(Sink.seq)
+    // "c" fails because of slowness of "b"
+    val expected = Success("a") :: timeoutFailure :: Success("c") :: Nil
+    result map { _ should contain theSameElementsAs expected } flatMap {_ =>
+      isCleanedUp.map{ _ should contain theSameElementsAs List(false, true, false)}
+    }
   }
 
   it should "timeout elements for flows that keep the order of messages" in {
@@ -156,6 +203,43 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
     result map { _ should contain theSameElementsAs expected }
   }
 
+  it should "clean up timed out elements for flows that do not keep the order of messages" in {
+    val delayActor = system.actorOf(Props[DelayActor])
+    val promiseMap = Map(
+      "a" -> Promise[Boolean](),
+      "b" -> Promise[Boolean](),
+      "c" -> Promise[Boolean]()
+    )
+
+    val isCleanedUp = Future.sequence(promiseMap.values.map(_.future))
+
+    val cleanUpFunction = (s: String) => promiseMap.get(s).foreach(_.success(true))
+    val notCleanedUpFunction = (s: String) => promiseMap.get(s).foreach(_.trySuccess(false))
+
+    import akka.pattern.ask
+    val flow = Flow[(String, UUID)].mapAsyncUnordered(3) { elem =>
+      (delayActor ? elem).mapTo[(String, UUID)]
+    }
+
+    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, UUID](timeout, cleanUp = cleanUpFunction)
+    val result = Source("a" :: "b" :: "c" :: Nil)
+      .map { s => (s, UUID.randomUUID()) }
+      .map { case (s, uuid) =>
+        system.scheduler.scheduleOnce(checkCleanedUpTime)(notCleanedUpFunction(s))
+        s -> uuid
+      }
+      .via(timeoutBidiFlow.join(flow))
+      .map { case(s, _) => s }
+      .runWith(Sink.seq)
+    // "c" does NOT fail because the original flow lets it go earlier than "b"
+    val expected = Success("a") :: timeoutFailure :: Success("c") :: Nil
+    result map { _ should contain theSameElementsAs expected } flatMap{ _ =>
+      isCleanedUp.map {
+        _ should contain theSameElementsAs List(false, true, false)
+      }
+    }
+  }
+
   it should "allow a custom uniqueId mapper to be passed in" in {
     val counter = new AtomicInteger(0)
 
@@ -240,9 +324,11 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
   }
 }
 
-class DelayActor extends Actor {
 
-  val delay = Map("a" -> 10.milliseconds, "b" -> 3.seconds, "c" -> 10.milliseconds)
+class DelayActor extends Actor {
+  import Timing._
+
+  val delay = Map("a" -> shorterThenTimeout, "b" -> longerThenTimeout, "c" -> shorterThenTimeout)
   import context.dispatcher
 
   def receive = {
@@ -253,4 +339,11 @@ class DelayActor extends Actor {
     case element @ akka.japi.Pair(s: String, _) =>
       context.system.scheduler.scheduleOnce(delay(s), sender(), element)
   }
+}
+
+object Timing {
+  val timeout = 1 second
+  val shorterThenTimeout = timeout / 100
+  val longerThenTimeout = timeout + (2 seconds)
+  val checkCleanedUpTime = longerThenTimeout + (500 millisecond)
 }
