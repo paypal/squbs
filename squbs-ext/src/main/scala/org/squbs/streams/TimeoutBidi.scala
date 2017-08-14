@@ -19,6 +19,7 @@ package org.squbs.streams
 import java.util.Optional
 import java.util.concurrent.TimeUnit.NANOSECONDS
 import java.util.concurrent.TimeoutException
+import java.util.function.Consumer
 
 import akka.NotUsed
 import akka.http.org.squbs.util.JavaConverters._
@@ -27,9 +28,11 @@ import akka.stream._
 import akka.stream.scaladsl.{BidiFlow, Flow}
 import akka.stream.stage.{GraphStage, _}
 import com.typesafe.scalalogging.LazyLogging
+import org.squbs.streams.TimeoutBidi._
 
 import scala.collection.mutable
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -158,20 +161,6 @@ abstract class TimeoutGraphStageLogic[In, FromWrapped, Out](shape: BidiShape[In,
 
 object TimeoutBidiFlowUnordered {
 
-  /**
-    * @see [[apply]] that takes a {{{uniqueIdMapper: Context => Option[Any]}}} parameter for details.
-    */
-  def apply[In, Out, Context](timeout: FiniteDuration):
-  BidiFlow[(In, Context), (In, Context), (Out, Context), (Try[Out], Context), NotUsed] =
-    BidiFlow.fromGraph(TimeoutBidiUnordered(timeout, (_: Any) => None))
-
-  /**
-    * Java API
-    */
-  def create[In, Out, Context](timeout: FiniteDuration):
-  akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
-    toJava[In, In, Out, Try[Out], Context](apply(timeout))
-  }
 
   /**
     * Creates a [[BidiFlow]] that can be joined with a [[Flow]] to add timeout functionality.
@@ -190,14 +179,27 @@ object TimeoutBidiFlowUnordered {
     *
     * @param timeout the duration after which the processing of an element would be considered timed out
     * @param uniqueIdMapper the function that maps [[Context]] to a unique id
+    * @param cleanUp an optional clean up function to be applied on timed out elements when pushed
     * @tparam In the type of the elements pulled from the upstream along with the [[Context]]
     * @tparam Out the type of the elements that are pushed to downstream along with the [[Context]]
     * @tparam Context the type of the context that is carried around along with the elements.
     * @return a [[BidiFlow]] with timeout functionality
     */
-  def apply[In, Out, Context](timeout: FiniteDuration, uniqueIdMapper: Context => Option[Any]):
+  def apply[In, Out, Context](timeout: FiniteDuration,
+                              uniqueIdMapper: Context => Option[Any] = (_: Any) => None,
+                              cleanUp: Out => Unit = (_: Out) => ()):
   BidiFlow[(In, Context), (In, Context), (Out, Context), (Try[Out], Context), NotUsed] =
-    BidiFlow.fromGraph(TimeoutBidiUnordered(timeout, uniqueIdMapper))
+    BidiFlow.fromGraph(TimeoutBidiUnordered(timeout, uniqueIdMapper, cleanUp))
+
+  /**
+    * Java API
+    */
+  def create[In, Out, Context](timeout: FiniteDuration,
+                               uniqueIdMapper: java.util.function.Function[Context, Optional[Any]],
+                               cleanUp: Consumer[Out]):
+  akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
+    toJava(apply(timeout, UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper), toScala(cleanUp)))
+  }
 
   /**
     * Java API
@@ -205,8 +207,24 @@ object TimeoutBidiFlowUnordered {
   def create[In, Out, Context](timeout: FiniteDuration,
                                uniqueIdMapper: java.util.function.Function[Context, Optional[Any]]):
   akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
+    toJava(apply[In, Out, Context](timeout, UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper)))
+  }
 
-    toJava(apply(timeout, UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper)))
+  /**
+    * Java API
+    */
+  def create[In, Out, Context](timeout: FiniteDuration,
+                               cleanUp: Consumer[Out]):
+  akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
+    toJava(apply(timeout = timeout, cleanUp = toScala(cleanUp)))
+  }
+
+  /**
+    * Java API
+    */
+  def create[In, Out, Context](timeout: FiniteDuration):
+  akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
+    toJava(apply[In, Out, Context](timeout))
   }
 }
 
@@ -218,6 +236,7 @@ object TimeoutBidiUnordered {
     *
     * @param timeout the duration after which the processing of an element would be considered timed out.
     * @param uniqueIdMapper the function that maps [[Context]] to a unique id
+    * @param cleanUp an optional clean up function to be applied on timed out elements when pushed
     * @tparam In the type of the elements pulled from the upstream along with the [[Context]]
     * @tparam Out the type of the elements that are pushed to downstream along with the [[Context]]
     * @tparam Context the type of the context that is carried around along with the elements.  The context may be of any
@@ -225,9 +244,11 @@ object TimeoutBidiUnordered {
     * @return a [[TimeoutBidiUnordered]] that can be joined with a [[Flow]] with corresponding types to add timeout
     *         functionality.
     */
-  def apply[In, Out, Context](timeout: FiniteDuration, uniqueIdMapper: Context => Option[Any] = (_: Any) => None):
+  def apply[In, Out, Context](timeout: FiniteDuration,
+                              uniqueIdMapper: Context => Option[Any] = (_: Any) => None,
+                              cleanUp: Out => Unit = (_: Out) => ()):
   TimeoutBidiUnordered[In, Out, Context] =
-    new TimeoutBidiUnordered(timeout, uniqueIdMapper)
+    new TimeoutBidiUnordered(timeout, uniqueIdMapper, cleanUp)
 }
 
 /**
@@ -255,12 +276,15 @@ object TimeoutBidiUnordered {
   *
   * @param timeout the duration after which the processing of an element would be considered timed out.
   * @param uniqueIdMapper the function that maps a [[Context]] to a unique id
+  * @param cleanUp an optional clean up function to be applied on timed out elements when pushed
   * @tparam In the type of the elements pulled from the upstream along with the [[Context]]
   * @tparam Out the type of the elements that are pushed by the joined [[Flow]] along with the [[Context]].
   *             This then gets wrapped with a [[Try]] and pushed downstream with a [[Context]]
   * @tparam Context the type of the context that is carried around along with the elements.
   */
-final class TimeoutBidiUnordered[In, Out, Context](timeout: FiniteDuration, uniqueIdMapper: Context => Option[Any])
+final class TimeoutBidiUnordered[In, Out, Context](timeout: FiniteDuration,
+                                                   uniqueIdMapper: Context => Option[Any],
+                                                   cleanUp: Out => Unit)
   extends GraphStage[BidiShape[(In, Context), (In, Context), (Out, Context), (Try[Out], Context)]] with LazyLogging {
 
   private val in = Inlet[(In, Context)]("TimeoutBidiUnordered.in")
@@ -291,7 +315,7 @@ final class TimeoutBidiUnordered[In, Out, Context](timeout: FiniteDuration, uniq
 
     override protected def onPushFromWrapped(fromWrapped: (Out, Context), isOutAvailable: Boolean): Option[(Try[Out], Context)] = {
       val (elem, context) = fromWrapped
-      timeouts.remove(uniqueId(context)) foreach { case(_, startTime) =>
+      timeouts.remove(uniqueId(context)).fold(tryCleanUp(elem, cleanUp)) { case (_, startTime) =>
         readyToPush.enqueue(((Success(elem), context), startTime))
       }
 
@@ -331,18 +355,28 @@ object TimeoutBidiFlowOrdered {
     * ordering, please use [[TimeoutBidiUnordered]].
     *
     * @param timeout the duration after which the processing of an element would be considered timed out
+    * @param cleanUp an optional clean up function to be applied on timed out elements when pushed
     * @tparam In the type of the elements pulled from the upstream
     * @tparam Out the type of the elements that are pushed to downstream
     * @return a [[BidiFlow]] with timeout functionality
     */
-  def apply[In, Out](timeout: FiniteDuration): BidiFlow[In, In, Out, Try[Out], NotUsed] =
-    BidiFlow.fromGraph(TimeoutBidiOrdered(timeout))
+  def apply[In, Out](timeout: FiniteDuration, cleanUp: Out => Unit = (_: Out) => ()):
+  BidiFlow[In, In, Out, Try[Out], NotUsed] =
+    BidiFlow.fromGraph(TimeoutBidiOrdered(timeout, cleanUp))
 
   /**
     * Java API
     */
-  def create[In, Out](timeout: FiniteDuration): akka.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] =
-    apply(timeout).asJava
+  def create[In, Out](timeout: FiniteDuration,
+                      cleanUp: Consumer[Out]):
+  akka.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] = {
+    apply(timeout, toScala(cleanUp)).asJava
+  }
+
+  def create[In, Out](timeout: FiniteDuration):
+  akka.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] = {
+    apply(timeout, (_: Out) => ()).asJava
+  }
 }
 
 object TimeoutBidiOrdered {
@@ -351,13 +385,14 @@ object TimeoutBidiOrdered {
     * functionality.
     *
     * @param timeout the duration after which the processing of an element would be considered timed out
+    * @param cleanUp an optional clean up function to be applied on timed out elements when pushed
     * @tparam In the type of the elements pulled from the upstream
     * @tparam Out the type of the elements that are pushed to downstream
     * @return a [[TimeoutBidiOrdered]] that can be joined with a [[Flow]] with corresponding types to add timeout
     *         functionality.
     */
-  def apply[In, Out](timeout: FiniteDuration): TimeoutBidiOrdered[In, Out] =
-    new TimeoutBidiOrdered(timeout)
+  def apply[In, Out](timeout: FiniteDuration, cleanUp: Out => Unit = (_: Out) => Unit): TimeoutBidiOrdered[In, Out] =
+    new TimeoutBidiOrdered(timeout, cleanUp)
 }
 
 /**
@@ -381,10 +416,11 @@ object TimeoutBidiOrdered {
   * }}}
   *
   * @param timeout the duration after which the processing of an element would be considered timed out.
+  * @param cleanUp an optional clean up function to be applied on timed out elements when pushed
   * @tparam In the type of the elements pulled from the upstream and pushed down to joined flow
   * @tparam Out the type of the elements that are pushed to downstream
   */
-final class TimeoutBidiOrdered[In, Out](timeout: FiniteDuration) extends GraphStage[BidiShape[In, In, Out, Try[Out]]] {
+final class TimeoutBidiOrdered[In, Out](timeout: FiniteDuration, cleanUp: Out => Unit) extends GraphStage[BidiShape[In, In, Out, Try[Out]]] {
 
   val in = Inlet[In]("TimeoutBidiOrdered.in")
   val fromWrapped = Inlet[Out]("TimeoutBidiOrdered.fromWrapped")
@@ -402,7 +438,10 @@ final class TimeoutBidiOrdered[In, Out](timeout: FiniteDuration) extends GraphSt
 
     override def onPushFromWrapped(elem: Out, isOutAvailable: Boolean): Option[Try[Out]] = {
       if (isOutAvailable) {
-        if (timeouts.dequeue().isTimedOut) None
+        if (timeouts.dequeue().isTimedOut) {
+          tryCleanUp(elem, cleanUp)
+          None
+        }
         else Some(Success(elem))
       } else None
     }
@@ -434,3 +473,14 @@ final class TimeoutBidiOrdered[In, Out](timeout: FiniteDuration) extends GraphSt
   * @param msg Defaults to "Flow timed out!"
   */
 case class FlowTimeoutException(msg: String = "Flow timed out!") extends TimeoutException(msg)
+
+object TimeoutBidi {
+  private[streams] def tryCleanUp[Out](elem: Out, cleanUp: Out => Unit): Unit = {
+    Try(cleanUp(elem)).recover {
+      case NonFatal(_) => ()
+      case ex => throw ex
+    }
+  }
+
+  private[streams] def toScala[T](consumer: Consumer[T]) = (t: T) => consumer.accept(t)
+}
