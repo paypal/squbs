@@ -32,23 +32,24 @@ import org.squbs.metrics.MetricsExtension
 import org.squbs.streams.FlowTimeoutException
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future, Promise}
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 class CircuitBreakerBidiFlowSpec
   extends TestKit(ActorSystem("CircuitBreakerBidiFlowSpec", CircuitBreakerBidiFlowSpec.config))
   with FlatSpecLike with Matchers with ImplicitSender {
+
+  import Timing._
 
   implicit val materializer = ActorMaterializer()
   implicit val askTimeout = Timeout(10 seconds)
   import system.dispatcher
   implicit val scheduler = system.scheduler
 
-  val timeout = 1 second
-  val timeoutFailure = Failure(FlowTimeoutException("Flow timed out!"))
-  val circuitBreakerOpenFailure = Failure(CircuitBreakerOpenException("Circuit Breaker is open; calls are failing fast!"))
+  val timeoutFailure = Failure(FlowTimeoutException())
+  val circuitBreakerOpenFailure = Failure(CircuitBreakerOpenException())
 
   def delayFlow() = {
     val delayActor = system.actorOf(Props[DelayActor])
@@ -61,7 +62,7 @@ class CircuitBreakerBidiFlowSpec
   def flowWithCircuitBreaker(circuitBreakerState: CircuitBreakerState) = {
     Flow[String]
       .map(s => (s, UUID.randomUUID()))
-      .via(CircuitBreakerBidiFlow[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow))
+      .via(CircuitBreakerBidiFlow[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow()))
       .to(Sink.ignore)
       .runWith(Source.actorRef[String](25, OverflowStrategy.fail))
   }
@@ -214,14 +215,65 @@ class CircuitBreakerBidiFlowSpec
       .via(circuitBreakerBidiFlow.join(flow))
       .runWith(Sink.seq)
 
-    val timeoutFailure = Failure(FlowTimeoutException("Flow timed out!"))
+    val timeoutFailure = Failure(FlowTimeoutException())
     val expected =
       (Success("a"), MyContext("dummy", 1)) ::
       (Success("a"), MyContext("dummy", 4)) ::
       (timeoutFailure, MyContext("dummy", 2)) ::
       (timeoutFailure, MyContext("dummy", 3)) :: Nil
 
-    assertFuture(result) { r => r should contain theSameElementsAs(expected) }
+    assertFuture(result) { r => r should contain theSameElementsAs expected }
+  }
+
+  it should "allow a clean up callback function to be passed in" in {
+    case class MyContext(s: String, id: Long)
+
+    val promiseMap = Map(
+      "a" -> Promise[Boolean](),
+      "b" -> Promise[Boolean](),
+      "c" -> Promise[Boolean]()
+    )
+
+    val isCleanedUp = Future.sequence(promiseMap.values.map(_.future))
+
+    val cleanUpFunction = (s: String) => promiseMap.get(s).foreach(_.success(true))
+    val notCleanedUpFunction = (s: String) => promiseMap.get(s).foreach(_.trySuccess(false))
+
+    val delayActor = system.actorOf(Props[DelayActor])
+    import akka.pattern.ask
+    val flow = Flow[(String, MyContext)].mapAsyncUnordered(5) { elem =>
+      (delayActor ? elem).mapTo[(String, MyContext)]
+    }
+
+    val circuitBreakerSettings =
+      CircuitBreakerSettings[String, String, MyContext](
+        AtomicCircuitBreakerState("UniqueId", 2, timeout, 10 milliseconds))
+        .withCleanUp(cleanUpFunction)
+    val circuitBreakerBidiFlow = CircuitBreakerBidiFlow(circuitBreakerSettings)
+
+
+    var counter = 0L
+    val result = Source("a" :: "b" :: "c" :: Nil)
+      .map { s => counter += 1; (s, MyContext("dummy", counter)) }
+      .map { case (s, uuid) =>
+        system.scheduler.scheduleOnce(checkCleanedUpTime)(notCleanedUpFunction(s))
+        s -> uuid
+      }
+      .via(circuitBreakerBidiFlow.join(flow))
+      .runWith(Sink.seq)
+
+    val timeoutFailure = Failure(FlowTimeoutException())
+    val expected =
+      (Success("a"), MyContext("dummy", 1)) ::
+        (Success("c"), MyContext("dummy", 3)) ::
+        (timeoutFailure, MyContext("dummy", 2)) :: Nil
+
+    assertFuture(result) {
+      _ should contain theSameElementsAs expected
+    }
+    assertFuture(isCleanedUp) {
+      _ should contain theSameElementsAs List(false, true, false)
+    }
   }
 
   it should "increase the reset timeout exponentially after it transits to open again" in {
@@ -311,7 +363,9 @@ object CircuitBreakerBidiFlowSpec {
 
 class DelayActor extends Actor {
 
-  val delay = Map("a" -> 10.milliseconds, "b" -> 3.seconds, "c" -> 10.milliseconds)
+  import Timing._
+
+  val delay = Map("a" -> shorterThenTimeout, "b" -> longerThenTimeout, "c" -> shorterThenTimeout)
 
   import context.dispatcher
 
@@ -319,4 +373,11 @@ class DelayActor extends Actor {
     case element: String => context.system.scheduler.scheduleOnce(delay(element), sender(), element)
     case element @ (s: String, _) => context.system.scheduler.scheduleOnce(delay(s), sender(), element)
   }
+}
+
+object Timing {
+  val timeout = 1 second
+  val shorterThenTimeout = timeout / 100
+  val longerThenTimeout = timeout + (2 seconds)
+  val checkCleanedUpTime = longerThenTimeout + (500 millisecond)
 }

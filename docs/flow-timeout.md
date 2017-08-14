@@ -195,3 +195,28 @@ Source.from(Arrays.asList("a", "b", "c"))
         .via(timeoutBidiFlow.join(flow))
         .runWith(Sink.seq(), mat);
 ```
+
+##### Clean up callback
+
+The `TimeoutBidi` also provides a clean up callback function to be passed in. This function will be called for emitted elements that were already considered timed out.
+
+An example use case for this functionality is when `TimeoutBidi` is used with Akka Http client. As described in [Implications of the streaming nature of Request/Response Entities](http://doc.akka.io/docs/akka-http/current/scala/http/implications-of-streaming-http-entity.html), all http responses must be consumed or discarded. By passing a clean up callback to discard the timed out requests when they complete we avoid clogging down the stream.
+
+###### Scala
+```scala
+val akkaHttpDiscard = (response: HttpResponse) => response.discardEntityBytes()
+
+TimeoutBidiFlowUnordered[HttpRequest, HttpResponse](20 milliseconds, cleanUp = akkaHttpDiscard)
+```
+
+###### Java
+```java
+final Consumer<HttpResponse> akkaHttpDiscard = httpResponse -> httpResponse.discardEntityBytes(materializer);
+final FiniteDuration timeout = FiniteDuration.create(20, TimeUnit.MILLISECONDS);
+final BidiFlow<Pair<HttpRequest, UUID>, 
+               Pair<HttpRequest, UUID>, 
+               Pair<HttpResponse, UUID>, 
+               Pair<Try<HttpResponse>, UUID>, 
+               NotUsed> 
+    timeoutBidiFlow = TimeoutBidiFlowUnordered.create(timeout, akkaHttpDiscard);
+```

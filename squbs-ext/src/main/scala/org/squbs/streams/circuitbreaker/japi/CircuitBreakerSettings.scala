@@ -16,7 +16,7 @@
 package org.squbs.streams.circuitbreaker.japi
 
 import java.util.Optional
-import java.util.function.Function
+import java.util.function.{Consumer, Function}
 
 import org.squbs.streams.UniqueId
 import org.squbs.streams.circuitbreaker.CircuitBreakerState
@@ -31,6 +31,9 @@ import scala.util.Try
 case class CircuitBreakerSettings[In, Out, Context] private[japi] (
   circuitBreakerState: CircuitBreakerState,
   fallback: Optional[Function[In, Try[Out]]] = Optional.empty[Function[In, Try[Out]]],
+  cleanUp: Consumer[Out] = new Consumer[Out] {
+    override def accept(t: Out): Unit = ()
+  },
   failureDecider: Optional[Function[Try[Out], Boolean]] = Optional.empty[Function[Try[Out], Boolean]],
   uniqueIdMapper: Function[Context, Optional[Any]] = new Function[Context, Optional[Any]] {
     override def apply(t: Context): Optional[Any] = Optional.empty()
@@ -38,6 +41,9 @@ case class CircuitBreakerSettings[In, Out, Context] private[japi] (
 
   def withFallback(fallback: Function[In, Try[Out]]): CircuitBreakerSettings[In, Out, Context] =
     copy(fallback = Optional.of(fallback))
+
+  def withCleanUp(cleanUp: Consumer[Out]): CircuitBreakerSettings[In, Out, Context] =
+    copy(cleanUp = cleanUp)
 
   def withFailureDecider(failureDecider: Function[Try[Out], Boolean]):
   CircuitBreakerSettings[In, Out, Context] = copy(failureDecider = Optional.of(failureDecider))
@@ -49,6 +55,7 @@ case class CircuitBreakerSettings[In, Out, Context] private[japi] (
     org.squbs.streams.circuitbreaker.CircuitBreakerSettings(
       circuitBreakerState,
       fallbackOptionAsScala(fallback),
+      cleanUpAsScala(cleanUp),
       failureDeciderOptionAsScala(failureDecider),
       UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper))
 
@@ -61,6 +68,9 @@ case class CircuitBreakerSettings[In, Out, Context] private[japi] (
 
   private[japi] def fallbackOptionAsScala(fallback: Optional[Function[In, Try[Out]]]) =
     fallback.asScala.map(fallbackAsScala)
+
+  private[japi] def cleanUpAsScala(cleanUp: Consumer[Out]) =
+    cleanUp.asScala
 
   private[japi] def failureDeciderAsScala(failureDecider: Function[Try[Out], Boolean]): Try[Out] => Boolean =
     (out: Try[Out]) => failureDecider.asScala.apply(out)

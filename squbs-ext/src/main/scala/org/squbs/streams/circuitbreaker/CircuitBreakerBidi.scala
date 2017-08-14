@@ -188,7 +188,8 @@ object CircuitBreakerBidiFlow {
       .fromGraph(CircuitBreakerBidi(circuitBreakerSettings))
       .atop(TimeoutBidiUnordered(
         circuitBreakerSettings.circuitBreakerState.callTimeout,
-        circuitBreakerSettings.uniqueIdMapper))
+        circuitBreakerSettings.uniqueIdMapper,
+        circuitBreakerSettings.cleanUp))
 
   /**
     * Java API
@@ -218,6 +219,7 @@ object CircuitBreakerBidiFlow {
   *
   * @param circuitBreakerState the [[CircuitBreakerState]] implementation that holds the state of the circuit breaker
   * @param fallback the function that gets called to provide an alternative response when the circuit is OPEN
+  * @param cleanUp an optional clean up function to be applied on timed out elements when pushed
   * @param failureDecider the function that gets called to determine if an element passed by the joined [[Flow]] is
   *                       actually a failure or not
   * @param uniqueIdMapper the function that maps [[Context]] to a unique id
@@ -230,11 +232,15 @@ object CircuitBreakerBidiFlow {
 case class CircuitBreakerSettings[In, Out, Context] private[circuitbreaker] (
   circuitBreakerState: CircuitBreakerState,
   fallback: Option[In => Try[Out]] = None,
+  cleanUp: Out => Unit = (_: Out) => (),
   failureDecider: Option[Try[Out] => Boolean] = None,
   uniqueIdMapper: Context => Option[Any] = (_: Any) => None) {
 
   def withFallback(fallback: In => Try[Out]): CircuitBreakerSettings[In, Out, Context] =
     copy(fallback = Some(fallback))
+
+  def withCleanUp(cleanUp: Out => Unit): CircuitBreakerSettings[In, Out, Context] =
+    copy(cleanUp = cleanUp)
 
   def withFailureDecider(failureDecider: Try[Out] => Boolean): CircuitBreakerSettings[In, Out, Context] =
     copy(failureDecider = Some(failureDecider))
@@ -255,5 +261,5 @@ object CircuitBreakerSettings {
     * @return a [[CircuitBreakerSettings]] with default values
     */
   def apply[In, Out, Context](circuitBreakerState: CircuitBreakerState): CircuitBreakerSettings[In, Out, Context] =
-    CircuitBreakerSettings(circuitBreakerState, None)
+    CircuitBreakerSettings[In, Out, Context](circuitBreakerState, None)
 }

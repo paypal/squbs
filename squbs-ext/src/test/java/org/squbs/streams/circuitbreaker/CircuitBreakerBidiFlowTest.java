@@ -34,6 +34,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.squbs.streams.DelayActor;
 import org.squbs.streams.FlowTimeoutException;
+import org.squbs.streams.Timing;
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState;
 import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
 import scala.concurrent.duration.FiniteDuration;
@@ -274,5 +275,83 @@ public class CircuitBreakerBidiFlowTest {
                         Pair.create(timeoutFailure, new MyContext("dummy", 3))
                 );
         Assert.assertTrue(result.toCompletableFuture().get().containsAll(expected));
+    }
+
+    @Test
+    public void testWithCleanUp() throws ExecutionException, InterruptedException {
+
+        final AtomicInteger counter = new AtomicInteger(0);
+
+        class MyContext {
+            private String s;
+            private long id;
+
+            public MyContext(String s, long id) {
+                this.s = s;
+                this.id = id;
+            }
+
+            public long id() {
+                return id;
+            }
+
+
+            @Override
+            public boolean equals(Object obj) {
+                if(obj instanceof MyContext) {
+                    MyContext mc = (MyContext)obj;
+                    return mc.s.equals(s) && mc.id == id;
+                } else return false;
+            }
+        }
+
+        class IdGen {
+            private long counter = 0;
+            public long next() {
+                return ++ counter;
+            }
+        }
+
+        final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
+        final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
+                Flow.<Pair<String, MyContext>>create()
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .map(elem -> (Pair<String, MyContext>)elem);
+
+        final CircuitBreakerState circuitBreakerState =
+                AtomicCircuitBreakerState.create(
+                        "JavaUniqueId",
+                        2,
+                        Timing.timeout(),
+                        FiniteDuration.create(10, TimeUnit.MILLISECONDS),
+                        system.dispatcher(),
+                        system.scheduler());
+
+        final CircuitBreakerSettings circuitBreakerSettings =
+                CircuitBreakerSettings.<String, String, MyContext>create(circuitBreakerState)
+                        .withCleanUp(s -> counter.incrementAndGet());
+
+        final BidiFlow<Pair<String, MyContext>,
+                Pair<String, MyContext>,
+                Pair<String, MyContext>,
+                Pair<Try<String>, MyContext>,
+                NotUsed>
+                circuitBreakerBidiFlow = CircuitBreakerBidiFlow.create(circuitBreakerSettings);
+
+        IdGen idGen = new IdGen();
+        final CompletionStage<List<Pair<Try<String>, MyContext>>> result =
+                Source.from(Arrays.asList("a", "b", "b", "a"))
+                        .map(s -> new Pair<>(s, new MyContext("dummy", idGen.next())))
+                        .via(circuitBreakerBidiFlow.join(flow))
+                        .runWith(Sink.seq(), mat);
+        final List<Pair<Try<String>, MyContext>> expected =
+                Arrays.asList(
+                        Pair.create(Success.apply("a"), new MyContext("dummy", 1)),
+                        Pair.create(Success.apply("a"), new MyContext("dummy", 4)),
+                        Pair.create(timeoutFailure, new MyContext("dummy", 2)),
+                        Pair.create(timeoutFailure, new MyContext("dummy", 3))
+                );
+        Assert.assertTrue(result.toCompletableFuture().get().containsAll(expected));
+        Assert.assertEquals(2, counter.get());
     }
 }
