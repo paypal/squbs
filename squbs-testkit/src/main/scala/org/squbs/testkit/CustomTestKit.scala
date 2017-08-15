@@ -47,7 +47,22 @@ object CustomTestKit {
   // JUnit creates a new object for each @Test method.  To prevent actor system name collisions, appending an integer
   // to the actor system name.
   val counter = new AtomicInteger(0)
-  val stackTraceDepth = 6 // CustomTestKit$ x 3 -> Option -> CustomTestKit$ -> CustomTestKit -> Spec
+  val stackTraceDepth = 5 // CustomTestKit$ x 2 -> Option -> CustomTestKit$ -> CustomTestKit -> Spec
+  /* Example stack trace:
+
+    java.lang.Exception
+      at org.squbs.testkit.CustomTestKit$.defaultActorSystemName(CustomTestKit.scala:52)
+      at org.squbs.testkit.CustomTestKit$.$anonfun$boot$1(CustomTestKit.scala:109)
+      at scala.Option.getOrElse(Option.scala:121)
+      at org.squbs.testkit.CustomTestKit$.boot(CustomTestKit.scala:109)
+      at org.squbs.testkit.CustomTestKit.<init>(CustomTestKit.scala:128)
+      at org.squbs.testkit.CustomTestKitDefaultSpec.<init>(CustomTestKitSpec.scala:60)
+      at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+      at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:62)
+      at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+      at java.lang.reflect.Constructor.newInstance(Constructor.java:423)
+      at java.lang.Class.newInstance(Class.java:442)
+ */
   def defaultActorSystemName =
     s"${actorSystemNameFrom((new Exception).getStackTrace.apply(stackTraceDepth).getClassName)}-${counter.getAndIncrement()}"
 

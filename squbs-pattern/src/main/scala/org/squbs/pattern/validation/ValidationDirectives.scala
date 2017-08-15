@@ -18,7 +18,7 @@ package org.squbs.pattern.validation
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, ValidationRejection}
-import com.wix.accord.Validator
+import com.wix.accord.{Descriptions, Validator}
 
 trait ValidationDirectives {
   def validate(magnet: ValidationMagnet) = magnet()
@@ -43,7 +43,7 @@ object ValidationMagnet {
         result match {
           case com.wix.accord.Success => pass
           case com.wix.accord.Failure(violations) => reject(
-            ValidationRejection(violations flatMap { _.description } mkString ", "))
+            ValidationRejection(violations map { v => Descriptions.render(v.path) } mkString ", "))
         }
       }
     }
