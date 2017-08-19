@@ -1,6 +1,6 @@
 
 
-scalaVersion in ThisBuild := "2.11.8"
+scalaVersion in ThisBuild := "2.12.3"
 
 organization in ThisBuild := "org.squbs"
 
@@ -30,7 +30,7 @@ lazy val `squbs-pipeline` = project
 
 lazy val `squbs-unicomplex` = project dependsOn (`squbs-pipeline`, `squbs-ext`)
 
-lazy val `squbs-testkit` = project dependsOn `squbs-unicomplex`
+lazy val `squbs-testkit` = (project dependsOn `squbs-unicomplex`).enablePlugins(de.johoop.testngplugin.TestNGPlugin)
 
 lazy val `squbs-zkcluster` = project dependsOn `squbs-testkit` % "test"
 

@@ -1,4 +1,3 @@
-
 import Versions._
 
 name := "squbs-testkit"
@@ -10,7 +9,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV,
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "optional",
-  "org.scala-lang.modules"     %% "scala-java8-compat"  % "0.7.0",
+  "org.scala-lang.modules"     %% "scala-java8-compat"  % scalaJava8CompatV,
   "junit" % "junit" % junitV % "optional",
   "org.testng" % "testng" % testngV % "optional",
   "de.heikoseeberger" %% "akka-http-jackson" % "1.11.0" % "test",
@@ -18,10 +17,6 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 
 )
-
-import de.johoop.testngplugin.TestNGPlugin._
-
-testNGSettings
 
 testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 

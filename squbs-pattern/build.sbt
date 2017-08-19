@@ -12,14 +12,14 @@ javaOptions in Test += "-Xmx512m"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+  "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "net.openhft" % "chronicle-queue" % "4.5.13" % "optional",
   "org.scalatest" %% "scalatest" % scalatestV % "test->*",
   "junit" % "junit" % junitV % "test",
   "org.apache.commons" % "commons-math3" % "3.3" % "test->*",
-  "org.scala-lang.modules" %% "scala-java8-compat" % "0.7.0" % "test",
+  "org.scala-lang.modules" %% "scala-java8-compat" % scalaJava8CompatV % "test",
   "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
-  "com.wix" %% "accord-core" % "0.5" % "optional",
+  "com.wix" %% "accord-core" % accordV % "optional",
   "org.json4s" %% "json4s-jackson" % json4sV % "optional",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.4" % "optional",
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonV % "optional",

@@ -13,10 +13,10 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-agent" % akkaV,
   "com.typesafe.akka" %% "akka-http" % akkaHttpV,
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "test",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+  "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
-  "org.json4s" %% "json4s-jackson" % "3.3.0"
+  "org.json4s" %% "json4s-jackson" % json4sV
 )
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")

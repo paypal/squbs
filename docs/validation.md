@@ -8,7 +8,7 @@ Add the following dependencies to your build.sbt or scala build file:
 
 ```scala
 "org.squbs" %% "squbs-pattern" % squbsVersion,
-"com.wix" %% "accord-core" % "0.5"
+"com.wix" %% "accord-core" % "0.7.1"
 ```  
   
 ## Usage
