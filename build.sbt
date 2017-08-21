@@ -6,7 +6,9 @@ organization in ThisBuild := "org.squbs"
 
 publishArtifact := false
 
-coverageEnabled in ThisBuild := true
+coverageEnabled in(Test, compile) := true
+
+coverageEnabled in(Compile, compile) := false
 
 coverageMinimum in ThisBuild := 70.0
 
