@@ -24,5 +24,5 @@ object Timeouts {
 
   implicit val askTimeout = Timeout(30 seconds)
 
-  val awaitMax = 60 seconds
+  val awaitMax = 240 seconds
 }
