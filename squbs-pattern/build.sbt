@@ -17,7 +17,6 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % scalatestV % "test->*",
   "junit" % "junit" % junitV % "test",
   "org.apache.commons" % "commons-math3" % "3.3" % "test->*",
-  "org.scala-lang.modules" %% "scala-java8-compat" % scalaJava8CompatV % "test",
   "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
   "com.wix" %% "accord-core" % accordV % "optional",
   "org.json4s" %% "json4s-jackson" % json4sV % "optional",

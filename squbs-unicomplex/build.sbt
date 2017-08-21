@@ -9,7 +9,6 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % scalatestV % "test->*",
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
-  "org.scala-lang.modules" %% "scala-java8-compat" % scalaJava8CompatV,
   "com.wix" %% "accord-core" % accordV % "test"
 ) ++ akka
 

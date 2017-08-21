@@ -10,7 +10,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"         %% "akka-stream"                  % akkaV,
   "com.typesafe.akka"         %% "akka-http-core"               % akkaHttpV ,
   "com.typesafe.scala-logging" %% "scala-logging" 			      	% scalaLoggingV,
-  "org.scala-lang.modules"    %% "scala-java8-compat"           % scalaJava8CompatV,
   "org.scalatest"             %% "scalatest"                    % scalatestV % "test->*",
   "com.typesafe.akka"         %% "akka-testkit"                 % akkaV % "test",
   "de.heikoseeberger" %% "akka-http-json4s" % "1.11.0" % "test",

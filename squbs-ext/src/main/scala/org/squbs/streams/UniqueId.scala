@@ -40,9 +40,8 @@ object UniqueId {
   private[squbs] def javaUniqueIdMapperAsScala[Context](uniqueIdMapper: JFunction[Context, Optional[Any]]):
   Context => Option[Any] = {
 
-    import scala.compat.java8.FunctionConverters._
     import scala.compat.java8.OptionConverters._
 
-    (context: Context) => toScala(uniqueIdMapper.asScala(context))
+    (context: Context) => toScala(uniqueIdMapper(context))
   }
 }

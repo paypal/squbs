@@ -22,13 +22,12 @@ import javax.management.{Attribute, ObjectName}
 import akka.actor.{Actor, ActorRef}
 
 import scala.annotation.tailrec
-import scala.compat.java8.JProcedure0
 import scala.concurrent.duration._
 import scala.math._
 
 case class StartLoad(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration)(submitFn: => Unit) {
-  def this(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration, submitFn: JProcedure0) =
-    this(startTimeNs, tps, warmUp, steady){ submitFn() }
+  def this(startTimeNs: Long, tps: Int, warmUp: FiniteDuration, steady: FiniteDuration, submitFn: Runnable) =
+    this(startTimeNs, tps, warmUp, steady){ submitFn.run() }
   private[stress] def invokeOnce() = submitFn
 }
 

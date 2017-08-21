@@ -11,7 +11,6 @@ testOptions in Test ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.scala-lang.modules" %% "scala-java8-compat" % scalaJava8CompatV,
   "io.dropwizard.metrics" % "metrics-core" % metricsV,
   "com.typesafe.akka" %% "akka-stream" % akkaV % "optional",
   "com.typesafe.akka" %% "akka-http-core" % akkaHttpV % "optional",
