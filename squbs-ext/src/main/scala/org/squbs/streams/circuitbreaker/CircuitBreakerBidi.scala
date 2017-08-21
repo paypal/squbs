@@ -220,7 +220,7 @@ object CircuitBreakerBidiFlow {
   * @param circuitBreakerState the [[CircuitBreakerState]] implementation that holds the state of the circuit breaker
   * @param fallback the function that gets called to provide an alternative response when the circuit is OPEN
   * @param cleanUp an optional clean up function to be applied on timed out elements when pushed
-  * @param failureDecider the function that gets called to determine if an element passed by the joined [[Flow]] is
+  * @param failureDecider the function that gets called to determine if an element pased by the joined [[Flow]] is
   *                       actually a failure or not
   * @param uniqueIdMapper the function that maps [[Context]] to a unique id
   * @tparam In the type of the elements pulled from the upstream along with the [[Context]] and pushed down to joined

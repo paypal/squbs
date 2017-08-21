@@ -34,5 +34,6 @@ pages:
         - 'Circuit Breaker': 'circuitbreaker.md'
         - 'Timeout': 'flow-timeout.md'
         - 'Deduplicate': 'deduplicate.md'
+        - 'Retry': 'flow-retry.md'
     - 'Timeout Policy': 'timeoutpolicy.md'
     - 'Validation': 'validation.md'

@@ -197,7 +197,7 @@ object TimeoutBidiFlowUnordered {
   def create[In, Out, Context](timeout: FiniteDuration,
                                uniqueIdMapper: java.util.function.Function[Context, Optional[Any]],
                                cleanUp: Consumer[Out]):
-  akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
+  javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
     toJava(apply(timeout, UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper), toScala(cleanUp)))
   }
 
@@ -206,7 +206,7 @@ object TimeoutBidiFlowUnordered {
     */
   def create[In, Out, Context](timeout: FiniteDuration,
                                uniqueIdMapper: java.util.function.Function[Context, Optional[Any]]):
-  akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
+  javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
     toJava(apply[In, Out, Context](timeout, UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper)))
   }
 
@@ -215,7 +215,7 @@ object TimeoutBidiFlowUnordered {
     */
   def create[In, Out, Context](timeout: FiniteDuration,
                                cleanUp: Consumer[Out]):
-  akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
+  javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
     toJava(apply(timeout = timeout, cleanUp = toScala(cleanUp)))
   }
 
@@ -223,7 +223,7 @@ object TimeoutBidiFlowUnordered {
     * Java API
     */
   def create[In, Out, Context](timeout: FiniteDuration):
-  akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
+  javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
     toJava(apply[In, Out, Context](timeout))
   }
 }
