@@ -1,4 +1,4 @@
-# Timeout Flow
+# Timeout stage
 
 ### Overview
 

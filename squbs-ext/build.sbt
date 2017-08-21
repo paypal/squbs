@@ -24,6 +24,7 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.4" % "optional",
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonV % "optional",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
+  "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % "test",
   "junit" % "junit" % junitV % "test",
   "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
   "org.scalatest" %% "scalatest" % scalatestV % "test->*"
