@@ -63,16 +63,13 @@ final class Deduplicate[T, U](key: T => U, duplicateCount: Long = Long.MaxValue,
     new GraphStageLogic(shape) with OutHandler with InHandler {
       def decider = inheritedAttributes.get[SupervisionStrategy].map(_.decider).getOrElse(Supervision.stoppingDecider)
 
-      import scala.compat.java8.FunctionConverters._
-      val incrementOrRemove: (MutableLong, MutableLong) => MutableLong = (old, default) => {
-        pull(in)
-        if(old.increment() == duplicateCount) null else old
-      }
-
       override def onPush(): Unit = {
         try {
           val elem = grab(in)
-          val counter = registry.merge(key(elem), MutableLong(1), incrementOrRemove.asJava)
+          val counter = registry.merge(key(elem), MutableLong(1), (old, _) => {
+            pull(in)
+            if(old.increment() == duplicateCount) null else old
+          })
           if(counter != null && counter.value == 1) {
             push(out, elem)
           }

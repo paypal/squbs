@@ -51,32 +51,15 @@ case class CircuitBreakerSettings[In, Out, Context] private[japi] (
   def withUniqueIdMapper(uniqueIdMapper: Function[Context, Optional[Any]]):
   CircuitBreakerSettings[In, Out, Context] = copy(uniqueIdMapper = uniqueIdMapper)
 
+  import scala.compat.java8.OptionConverters._
+
   def toScala =
     org.squbs.streams.circuitbreaker.CircuitBreakerSettings(
       circuitBreakerState,
-      fallbackOptionAsScala(fallback),
-      cleanUpAsScala(cleanUp),
-      failureDeciderOptionAsScala(failureDecider),
+      fallback.asScala.map(f => (in: In) => f(in)),
+      (out: Out) => cleanUp.accept(out),
+      failureDecider.asScala.map(f => (out: Try[Out]) => f(out)),
       UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper))
-
-
-  import scala.compat.java8.FunctionConverters._
-  import scala.compat.java8.OptionConverters._
-
-  private[japi] def fallbackAsScala(fallback: Function[In, Try[Out]]): In => Try[Out] =
-    (in: In) => fallback.asScala.apply(in)
-
-  private[japi] def fallbackOptionAsScala(fallback: Optional[Function[In, Try[Out]]]) =
-    fallback.asScala.map(fallbackAsScala)
-
-  private[japi] def cleanUpAsScala(cleanUp: Consumer[Out]) =
-    cleanUp.asScala
-
-  private[japi] def failureDeciderAsScala(failureDecider: Function[Try[Out], Boolean]): Try[Out] => Boolean =
-    (out: Try[Out]) => failureDecider.asScala.apply(out)
-
-  private[japi] def failureDeciderOptionAsScala(failureDecider: Optional[Function[Try[Out], Boolean]]) =
-    failureDecider.asScala.map(failureDeciderAsScala)
 }
 
 object CircuitBreakerSettings {

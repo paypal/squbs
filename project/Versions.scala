@@ -19,7 +19,6 @@ object Versions {
   val akkaHttpV = "10.0.7"
   val scalatestV = "3.0.3"
   val scalaLoggingV = "3.7.2"
-  val scalaJava8CompatV = "0.8.0"
   val jacksonV = "2.8.5"
   val json4sV = "3.5.3"
   val metricsV = "3.2.2"

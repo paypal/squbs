@@ -9,7 +9,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV,
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "optional",
-  "org.scala-lang.modules"     %% "scala-java8-compat"  % scalaJava8CompatV,
   "junit" % "junit" % junitV % "optional",
   "org.testng" % "testng" % testngV % "optional",
   "de.heikoseeberger" %% "akka-http-jackson" % "1.11.0" % "test",
