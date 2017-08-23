@@ -135,15 +135,18 @@ class MsgReceivingStream extends PerpetualStream[(ActorRef, Future[Done])] {
 
 ## Connecting a Perpetual Stream with an HTTP Flow
 
-Akka HTTP allows defining a `Flow[HttpRequest, HttpResponse, NotUsed]`, which gets materialized for each http connection.  There are scenarios where an app needs to connect the http flow to a long running stream that needs to be materialized only once (e.g., publishing to Kafka).  Akka HTTP enables end-to-end streaming in such scenarios with [MergeHub](http://doc.akka.io/docs/akka/current/scala/stream/stream-dynamic.html#dynamic-fan-in-and-fan-out-with-mergehub-and-broadcasthub).  squbs provides utilities to easily connect an http flow with a `PerpetualStream` that uses `MergeHub`.  
+Akka HTTP allows defining a `Flow[HttpRequest, HttpResponse, NotUsed]`, which gets materialized for each http connection.  There are scenarios where an app needs to connect the http flow to a long running stream that needs to be materialized only once (e.g., publishing to Kafka).  Akka HTTP enables end-to-end streaming in such scenarios with [`MergeHub`](http://doc.akka.io/docs/akka/current/scala/stream/stream-dynamic.html#dynamic-fan-in-and-fan-out-with-mergehub-broadcasthub-and-partitionhub).  squbs provides utilities to connect an http flow with a `PerpetualStream` that uses `MergeHub`.  
 
 
-Below is a sample `PerpetualStream` that uses `MergeHub`.
+Below are two sample `PerpetualStream` implementations, both use `MergeHub`.
+Type parameter `Sink[MyMessage, NotUsed]` describes the inlet of the `RunnableGraph` instance that will be used as a destination (`Sink`) by the http flow part in `HttpFlowWithMergeHub` further down.
+First a simplest outline of the logic:
 
 ```scala
 class PerpetualStreamWithMergeHub extends PerpetualStream[Sink[MyMessage, NotUsed]] {
 
   override lazy val streamRunLifecycleState: LifecycleState = Initializing
+  
 
   /**
     * Describe your graph by implementing streamGraph
@@ -153,7 +156,73 @@ class PerpetualStreamWithMergeHub extends PerpetualStream[Sink[MyMessage, NotUse
   override def streamGraph= MergeHub.source[MyMessage].to(Sink.ignore)
 }
 ```
+From outside prospective (by http flow) this class is seen as terminal `Sink[MyMessage, NotUsed]`, which means that
+`PerpetualStreamWithMergeHub` expects to receive `MyMessage` on its inlet and will not emit anything out, i.e. its outlet is plugged. 
+From the inside prospective `MergeHub` is the source of `MyMessage`s. Those messages are passed to `Sink.ignore`, which is nothing.
+`MergeHub.source[MyMessage]` produces runtime instance, with inlet of type `Sink[MyMessage, NotUsed]`, which conforms to `PerpetualStream[Sink[MyMessage, NotUsed]]` type parameter.
+The `.to(Sink.ignore)` completes or "closes" this `Shape` with a plugged outlet. End result is an instance of `RunnableGraph[Sink[MyMessage, NotUsed]]` 
 
+
+A bit more involved example using GraphDSL:
+
+```scala
+final case class MyMessage(ip:String, ts:Long)
+final case class MyMessageEnrich(ip:String, ts:Long, enrichTs:List[Long])
+
+class PerpetualStreamWithMergeHub extends PerpetualStream[Sink[MyMessage, NotUsed]]  {
+
+  override lazy val streamRunLifecycleState: LifecycleState = Initializing
+  
+  // inlet - destination for MyMessage messages
+  val source = MergeHub.source[MyMessage]
+ 
+  //outlet - discard messages
+  val sink = Sink.ignore
+  
+  //flow component, which supposedly does something to MyMessage
+  val preprocess = Flow[MyMessage].map{inMsg =>
+      val outMsg = MyMessageEnrich(ip=inMsg.ip, ts = inMsg.ts, enrichTs = List.empty[Long])
+      println(s"Message inside stream=$inMsg")
+      outMsg
+  }
+  
+    // building a flow based on another flow, to do some dummy enrichment
+  val enrichment = Flow[MyMessageEnrich].map{inMsg=>
+      val outMsg = MyMessageEnrich(ip=inMsg.ip.replaceAll("\\.","-"), ts = inMsg.ts, enrichTs = System.currentTimeMillis()::inMsg.enrichTs)
+      println(s"Enriched Message inside enrich step=$outMsg")
+      outMsg
+  }
+    
+
+  /**
+    * Describe your graph by implementing streamGraph
+    *
+    * @return The graph.
+    */
+  override def streamGraph: RunnableGraph[Sink[MyMessage, NotUsed]] = RunnableGraph.fromGraph(
+    GraphDSL.create(source) { implicit builder=>
+        input =>
+  
+          import GraphDSL.Implicits._
+  
+          input ~> killSwitch.flow[MyMessage] ~> preprocess ~> enrichment ~> sink
+  
+          ClosedShape
+      })
+}
+```
+Let's see how all parts are falling into a place:
+`streamGraph` is expected to return `RunnableGraph` with the same type parameter as described in `PerpetualStream[Sink[MyMessage, NotUsed]]`.
+Our `source` is a `MergeHub`, it is expected to receive a `MyMessage`, which makes its materialized (runtime) type a `Sink[MyMessage,NotUsed]`.
+Our graph is built starting with our `source`, by passing it as a parameter to `GraphDSL.create(s:Shape)` constructor. 
+The result is an instance of `RunnableGraph[Sink[MyMessage, NotUsed]]`, which is a `ClosedShape` with `Sink` inlet and plugged outlet.
+
+Potentially confusing part when looking at this example is mixing `Sink` and `source` names to refer to the same. It looks a bit strange in English.
+Let's use outside vs. inside prospective explanation again:
+From the outside prospective our component is seen as a `Sink[MyMessage, NotUsed]`. This is achieved by using `MergeHub`, which from the inside prospective is a source of the messages hence `val` name `source`.
+Correspondingly, in the event we need to emit something out, our `val sink` will be actually some shape with outlet of type `Source[MyMessage, NotUsed]`.
+ 
+ 
 Let's add the above `PerpetualStream` in `squbs-meta.conf`.  Please see [Well Known Actors](bootstrap.md#well-known-actors) for more details.
 
 ```
@@ -173,7 +242,9 @@ squbs-actors = [
 ]
 ```
 
-The HTTP `FlowDefinition` can be connected to the `PerpetualStream` as follows by extending `PerpetualStreamMatValue` and using `matValue` method:
+The HTTP `FlowDefinition` can be connected to the `PerpetualStream` as follows by extending `PerpetualStreamMatValue` and using `matValue` method.
+Type parameter for the `PerpetualStreamMatValue` describes the materialized value of the expected receiving flow, which is our `PerpetualStreamWithMergeHub`.
+(both versions of `PerpetualStreamWithMergeHub` above expect to receive `MyMessage`, i.e. both have inlet of a type `Sink[MyMessage, NotUsed]`).
 
 ```scala
 class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[Sink[MyMessage, NotUsed]] {
@@ -185,6 +256,12 @@ class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[S
       .map { myMessage => HttpResponse(entity = s"Received Id: ${myMessage.id}") }
 }
 ```
+Let's see what's happening here:
+`matValue` method finds the `RunnableGraph` component registered under the `/user/mycube/perpetualStreamWithMergeHub`.
+This happens to be the bootstrapped instance of our `PerpetualStreamWithMergeHub`.
+`alsoTo` expects result of `matValue` to be a `Sink` for `MyMessage`.
+I.e. `Sink[MyMessage, NotUsed]`. And as we've seen above this is exactly what `PerpetualStreamWithMergeHub.streamGraph` will produce. 
+(Remembering our two prospectives: here `alsoTo` looks at `PerpetualStreamWithMergeHub` from the outside prospective and sees a `Sink[MyMessage, NotUsed]`.)
 
 ## Making A Lifecycle-Sensitive Source
 If you wish to have a source that is fully connected to the lifecycle events of squbs, you can wrap any source with `LifecycleManaged`.
