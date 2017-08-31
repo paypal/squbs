@@ -21,6 +21,7 @@ object Versions {
   val scalaLoggingV = "3.7.2"
   val jacksonV = "2.8.5"
   val json4sV = "3.5.3"
+  val heikoseebergerAkkaHttpJsonV = "1.18.0"
   val metricsV = "3.2.2"
   val junitInterfaceV = "0.11"
   val junitV = "4.12"
