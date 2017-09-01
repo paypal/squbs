@@ -21,8 +21,8 @@ Add the following dependencies to your `build.sbt` or scala build file:
 
 ```scala
 "org.squbs" %% "squbs-ext" % squbsVersion,
-"de.heikoseeberger" %% "akka-http-json4s" % "1.11.0",
-"de.heikoseeberger" %% "akka-http-jackson" % "1.11.0",
+"de.heikoseeberger" %% "akka-http-json4s" % heikoseebergerAkkaHttpJsonVersion,
+"de.heikoseeberger" %% "akka-http-jackson" % heikoseebergerAkkaHttpJsonVersion,
 "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
 "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
 ```

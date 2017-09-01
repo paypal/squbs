@@ -68,7 +68,7 @@ object JacksonMapperSupport {
     * @return A Jackson marshaller configured for the specific type
     */
   implicit def jacksonMarshaller[T](implicit ct: ClassTag[T]): ToEntityMarshaller[T] =
-    JacksonSupport.jacksonToEntityMarshaller[T](mapper[T])
+    JacksonSupport.marshaller[T](mapper[T])
 
   /**
     * Scala API. Just import JacksonMapperSupport._ and life is good.
@@ -77,7 +77,7 @@ object JacksonMapperSupport {
     * @return A Jackson unmarshaller configured for the specific type
     */
   implicit def jacksonUnmarshaller[T](implicit ct: ClassTag[T]): FromEntityUnmarshaller[T] =
-    JacksonSupport.jacksonUnmarshaller[T](ct, mapper[T])
+    JacksonSupport.unmarshaller[T](ct, mapper[T])
 
   /**
     * Java API to generate a Jackson marshaller.

@@ -11,7 +11,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "optional",
   "junit" % "junit" % junitV % "optional",
   "org.testng" % "testng" % testngV % "optional",
-  "de.heikoseeberger" %% "akka-http-jackson" % "1.11.0" % "test",
+  "de.heikoseeberger" %% "akka-http-jackson" % heikoseebergerAkkaHttpJsonV % "test",
   "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 

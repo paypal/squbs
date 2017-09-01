@@ -163,7 +163,7 @@ object XLangJsonSupport {
     } else {
       implicit val mySerialization = serialization[T]
       implicit val myFormats = formats[T]
-      Json4sSupport.json4sMarshaller[T]
+      Json4sSupport.marshaller[T]
     }
   }
 
@@ -180,7 +180,7 @@ object XLangJsonSupport {
       implicit val manifest = toManifest[R]
       implicit val mySerialization = serialization[R]
       implicit val myFormats = formats[R]
-      Json4sSupport.json4sUnmarshaller[R]
+      Json4sSupport.unmarshaller[R]
     }
   }
 
@@ -198,7 +198,7 @@ object XLangJsonSupport {
         implicit val manifest = ManifestFactory.classType[T](clazz)
         implicit val serialization = serializations.getOrElse(clazz, defaultSerialization)
         implicit val formats = classFormats.getOrElse(clazz, globalDefaultFormats)
-        Json4sSupport.json4sMarshaller[T]
+        Json4sSupport.marshaller[T]
       }
     Marshaller.fromScala(scalaMarshaller)
   }
@@ -217,7 +217,7 @@ object XLangJsonSupport {
         implicit val manifest = ManifestFactory.classType[R](clazz)
         implicit val serialization = serializations.getOrElse(clazz, defaultSerialization)
         implicit val formats = classFormats.getOrElse(clazz, globalDefaultFormats)
-        Json4sSupport.json4sUnmarshaller[R]
+        Json4sSupport.unmarshaller[R]
       }
     Unmarshaller.fromScala(scalaUnmarshaller).asInstanceOf[Unmarshaller[HttpEntity, R]]
   }
