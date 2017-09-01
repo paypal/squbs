@@ -23,6 +23,8 @@ import java.util.Date
 import javax.management.{MXBean, ObjectName}
 
 import akka.actor._
+import akka.stream.StreamSubscriptionTimeoutTerminationMode.{CancelTermination, NoopTermination, WarnTermination}
+import akka.stream.ActorMaterializer
 import com.typesafe.config.Config
 
 import scala.beans.BeanProperty
@@ -42,6 +44,7 @@ object JMX {
   val serverStats = "org.squbs.unicomplex:type=ServerStats,listener="
   val systemSettingName   = "org.squbs.unicomplex:type=SystemSetting"
   val forkJoinStatsName = "org.squbs.unicomplex:type=ForkJoinPool,name="
+  val materializerName = "org.squbs.unicomplex:type=Materializer,name="
 
 
   implicit def string2objectName(name:String):ObjectName = new ObjectName(name)
@@ -232,4 +235,75 @@ class SystemSettingBean(config: Config) extends SystemSettingMXBean {
     }}
   }
   override def getSystemSetting: util.List[SystemSetting] = settings
+}
+
+@MXBean
+trait ActorMaterializerMXBean {
+  def getName: String
+  def getFactoryClass: String
+  def getActorSystemName: String
+  def getShutdown: String
+  def getInitialInputBufferSize: Int
+  def getMaxInputBufferSize: Int
+  def getDispatcher: String
+  def getStreamSubscriptionTimeoutTerminationMode: String
+  def getSubscriptionTimeout: String
+  def getDebugLogging: String
+  def getOutputBurstLimit: Int
+  def getFuzzingMode: String
+  def getAutoFusing: String
+  def getMaxFixedBufferSize: Int
+  def getSyncProcessingLimit: Int
+}
+
+class ActorMaterializerBean(name: String, className: String, materializer: ActorMaterializer)
+  extends ActorMaterializerMXBean {
+
+  val settings = materializer.settings
+
+  override def getName: String = name
+
+  override def getFactoryClass: String = className
+
+  override def getActorSystemName: String = materializer.system.name
+
+  override def getShutdown: String = materializer.isShutdown match {
+    case true => "yes"
+    case false => "no"
+  }
+
+  override def getInitialInputBufferSize: Int = settings.initialInputBufferSize
+
+  override def getMaxInputBufferSize: Int = settings.maxInputBufferSize
+
+  override def getDispatcher: String = settings.dispatcher
+
+  override def getStreamSubscriptionTimeoutTerminationMode: String = settings.subscriptionTimeoutSettings.mode match {
+    case NoopTermination => "noop"
+    case WarnTermination => "warn"
+    case CancelTermination => "cancel"
+  }
+
+  override def getSubscriptionTimeout: String = settings.subscriptionTimeoutSettings.timeout.toString
+
+  override def getDebugLogging: String = settings.debugLogging match {
+    case true => "on"
+    case false => "off"
+  }
+
+  override def getOutputBurstLimit: Int = settings.outputBurstLimit
+
+  override def getFuzzingMode: String = settings.fuzzingMode match {
+    case true => "on"
+    case false => "off"
+  }
+
+  override def getAutoFusing: String = settings.autoFusing match {
+    case true => "on"
+    case false => "off"
+  }
+
+  override def getMaxFixedBufferSize: Int = settings.maxFixedBufferSize
+
+  override def getSyncProcessingLimit: Int = settings.syncProcessingLimit
 }

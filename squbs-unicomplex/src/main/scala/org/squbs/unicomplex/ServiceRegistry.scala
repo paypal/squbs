@@ -69,7 +69,9 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
         throw ex
     }
 
-    implicit val am = ActorMaterializer()
+    import org.squbs.util.ConfigUtil._
+    val materializerName = config.get[String]("materializer", "default-materializer")
+    implicit val am = Unicomplex(context.system).materializer(materializerName)
     import context.system
 
     val handler = try { FlowHandler(listenerRoutes(name), localPort) } catch { case NonFatal(e) =>
@@ -202,7 +204,7 @@ private[unicomplex] trait FlowSupplier { this: Actor with ActorLogging =>
         Escalate
     }
 
-  val flowTry: Try[Flow[RequestContext, RequestContext, NotUsed]]
+  val flowTry: Try[ActorMaterializer => Flow[RequestContext, RequestContext, NotUsed]]
 
   final def receive: Receive = {
     case FlowRequest =>
@@ -222,9 +224,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
     }
   }
 
-  implicit val am = ActorMaterializer()
-
-  val flowTry: Try[Flow[RequestContext, RequestContext, NotUsed]] = routeDefTry match {
+  val flowTry: Try[ActorMaterializer => Flow[RequestContext, RequestContext, NotUsed]] = routeDefTry match {
 
     case Success(routeDef) =>
       context.parent ! Initialized(Success(None))
@@ -234,10 +234,16 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 
       if (webContext.nonEmpty) {
         val finalRoute = PathDirectives.pathPrefix(PathMatchers.separateOnSlashes(webContext)) {routeDef.route}
-        Success(RequestContextFlow(finalRoute))
+        Success((materializer: ActorMaterializer) => {
+          implicit val mat = materializer
+          RequestContextFlow(finalRoute)
+        })
       } else {
         // don't append pathPrefix if webContext is empty, won't be null due to the top check
-        Success(RequestContextFlow(routeDef.route))
+        Success((materializer: ActorMaterializer) => {
+          implicit val mat = materializer
+          RequestContextFlow(routeDef.route)
+        })
       }
 
     case Failure(e) =>
@@ -293,11 +299,11 @@ private[unicomplex] class FlowActor(webContext: String, clazz: Class[FlowDefinit
     }
   }
 
-  val flowTry: Try[Flow[RequestContext, RequestContext, NotUsed]] = flowDefTry match {
+  val flowTry: Try[ActorMaterializer => Flow[RequestContext, RequestContext, NotUsed]] = flowDefTry match {
 
     case Success(flowDef) =>
       context.parent ! Initialized(Success(None))
-      Success(RequestContextFlow(flowDef.flow))
+      Success((materializer: ActorMaterializer) => RequestContextFlow(flowDef.flow))
 
     case Failure(e) =>
       log.error(e, s"Error instantiating flow from {}: {}", clazz.getName, e)

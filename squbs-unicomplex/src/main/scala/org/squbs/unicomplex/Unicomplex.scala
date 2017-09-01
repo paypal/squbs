@@ -21,13 +21,16 @@ import java.io.{PrintWriter, StringWriter}
 import java.util
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
+import javax.management.ObjectName
 
 import akka.NotUsed
 import akka.actor.SupervisorStrategy._
 import akka.actor.{Extension => AkkaExtension, _}
 import akka.agent.Agent
+import akka.event.Logging
 import akka.http.scaladsl.model.HttpResponse
 import akka.pattern._
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Materializer, Supervision}
 import akka.stream.scaladsl.Flow
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
@@ -43,6 +46,7 @@ import scala.util.{Failure, Success, Try}
 
 class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
 
+  val log = Logging.getLogger(system, this)
   val uniActor = system.actorOf(Props[Unicomplex], "unicomplex")
 
   private var _scannedComponents: Seq[String] = null
@@ -62,6 +66,33 @@ class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
   lazy val externalConfigDir = config.getString("external-config-dir")
 
   val boot = Agent[UnicomplexBoot](null)(system.dispatcher)
+
+  private[unicomplex] val materializers = new ConcurrentHashMap[String, Materializer]
+
+  def materializer(name: String) = Option(materializers.get(name)).getOrElse {
+
+    val materializerConfig = system.settings.config.getConfig(name)
+    require(materializerConfig.getString("type") == "squbs.materializer", s"No materializer with name $name specified in configuration")
+
+    val materializerFactoryClass = materializerConfig.getString("class")
+
+    try {
+      val clazz = Class.forName(materializerFactoryClass)
+      val materializer = clazz.getMethod("createMaterializer", classOf[ActorSystem]).invoke(clazz.newInstance(), system).asInstanceOf[Materializer]
+      if(materializer.isInstanceOf[ActorMaterializer]) {
+        val actorMaterializer = materializer.asInstanceOf[ActorMaterializer]
+        import org.squbs.unicomplex.JMX._
+        val actorMaterializerBean = new ActorMaterializerBean(name, clazz.getName, actorMaterializer)
+        register(actorMaterializerBean, prefix(system) + materializerName + ObjectName.quote(name))
+      }
+      materializers.putIfAbsent(name, materializer)
+      materializers.get(name)
+    } catch {
+      case NonFatal(e) =>
+        log.error(e, s"Failure creating a materializer from $materializerFactoryClass.")
+        throw e
+    }
+  }
 }
 
 object Unicomplex extends ExtensionId[UnicomplexExtension] with ExtensionIdProvider {
@@ -149,7 +180,7 @@ private[unicomplex] case object HttpBindFailed
 
 case object PortBindings
 
-case class FlowWrapper(flow: Flow[RequestContext, RequestContext, NotUsed], actor: ActorRef)
+case class FlowWrapper(flow: Materializer => Flow[RequestContext, RequestContext, NotUsed], actor: ActorRef)
 
 /**
  * The Unicomplex actor is the supervisor of the Unicomplex.
@@ -635,7 +666,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       val hostActor = context.actorOf(props, name)
       initMap += hostActor -> None
       pendingContexts += 1
-      (hostActor ? FlowRequest).mapTo[Try[Flow[RequestContext, RequestContext, NotUsed]]] onSuccess {
+      (hostActor ? FlowRequest).mapTo[Try[Materializer => Flow[RequestContext, RequestContext, NotUsed]]] onSuccess {
         case Success(flow) =>
           val reg = RegisterContext(listeners, webContext, FlowWrapper(flow, hostActor), ps)
           (Unicomplex() ? reg).mapTo[Try[_]].map {
@@ -650,7 +681,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       val hostActor = context.actorOf(props, name)
       import org.squbs.util.ConfigUtil._
       val concurrency = context.system.settings.config.get[Int]("akka.http.server.pipelining-limit")
-      val flow = Flow[RequestContext].mapAsync(concurrency) { requestContext =>
+      val flow = (materializer: Materializer) => Flow[RequestContext].mapAsync(concurrency) { requestContext =>
         (hostActor ? requestContext.request)
           .collect { case response: HttpResponse => requestContext.copy(response = Some(Success(response))) }
           .recover { case e => requestContext.copy(response = Some(Failure(e))) }
@@ -753,4 +784,22 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   */
 private[unicomplex] class NoopActor extends Actor {
   def receive = PartialFunction.empty
+}
+
+class DefaultMaterializer {
+
+  def createMaterializer(implicit system: ActorSystem): ActorMaterializer = {
+    // Needs ActorSystem, that's why defining inside the function.  Given that it should be not be called more than
+    // a few times, it should be ok.
+    val log = Logging.getLogger(system, this)
+
+    val decider: Supervision.Decider = {
+      case ex =>
+        log.error(ex, "An error occurred in the stream.  Calling Supervision.Stop inside the decider!")
+        Supervision.Stop
+    }
+
+    val settings = ActorMaterializerSettings(system).withSupervisionStrategy(decider)
+    ActorMaterializer(settings)
+  }
 }
