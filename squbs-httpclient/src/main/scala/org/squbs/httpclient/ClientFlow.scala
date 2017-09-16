@@ -168,9 +168,8 @@ object ClientFlow {
       }
 
     val enableCircuitBreaker =
-      clientSpecificConfig
-        .map(_.getOption[Config]("circuit-breaker").isDefined)
-        .getOrElse(circuitBreakerSettings.isDefined)
+      circuitBreakerSettings.isDefined ||
+      clientSpecificConfig.map(_.hasPath(("circuit-breaker"))).getOrElse(false)
 
     val circuitBreakerStateName =
       if(enableCircuitBreaker) circuitBreakerSettings.map(_.circuitBreakerState.name).getOrElse(s"$name-httpclient")
@@ -204,7 +203,7 @@ object ClientFlow {
     clientSpecificConfig: Option[Config],
     circuitBreakerSettings: Option[CircuitBreakerSettings[HttpRequest, HttpResponse, T]],
     clientConnectionFlow: ClientConnectionFlow[RequestContext])
-    (implicit system: ActorSystem):
+    (implicit system: ActorSystem, fm: Materializer):
   ClientConnectionFlow[RequestContext] = {
 
     val cbs =
@@ -221,8 +220,10 @@ object ClientFlow {
         CircuitBreakerSettings[HttpRequest, HttpResponse, T](
           AtomicCircuitBreakerState(s"$name-httpclient", clientSpecificCircuitBreakerConfig))
           .withFailureDecider(tryHttpResponse => tryHttpResponse.isFailure || tryHttpResponse.get.status.isFailure)
-    }
+          .withCleanUp(response => response.discardEntityBytes())
+      }
 
+    // Map CircuitBreakerSettings[HttpRequest, HttpResponse, T] to CircuitBreakerSettings[HttpRequest, Try[HttpResponse], RequestContext]
     val clientFlowCircuitBreakerSettings =
       CircuitBreakerSettings[HttpRequest, Try[HttpResponse], RequestContext](cbs.circuitBreakerState)
         .copy(fallback = cbs.fallback.map(f => (httpRequest: HttpRequest) => Try(f(httpRequest))))
@@ -232,8 +233,8 @@ object ClientFlow {
               case Success(tryHttpResponse) => f(tryHttpResponse)
               case _ => true
             }))
-        .withUniqueIdMapper(
-          (rc: RequestContext) => rc.attribute[T](AkkaHttpClientCustomContext).flatMap(cbs.uniqueIdMapper(_)))
+        .withUniqueIdMapper(rc => rc.attribute[T](AkkaHttpClientCustomContext).flatMap(cbs.uniqueIdMapper(_)))
+        .withCleanUp(tryHttpResponse => tryHttpResponse.foreach(cbs.cleanUp))
 
     val circuitBreakerBidiFlow = CircuitBreakerBidiFlow(clientFlowCircuitBreakerSettings)
 
