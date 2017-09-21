@@ -55,12 +55,15 @@ private[unicomplex] class JavaFlowActor(webContext: String, clazz: Class[Abstrac
     }
   }
 
-  val flowTry: Try[sd.Flow[RequestContext, RequestContext, NotUsed]] = flowDefTry match {
+  val flowTry: Try[ActorMaterializer => sd.Flow[RequestContext, RequestContext, NotUsed]] = flowDefTry match {
 
     case Success(flowDef) =>
       context.parent ! Initialized(Success(None))
       val reqFlow = flowDef.flow.asScala.asInstanceOf[sd.Flow[sm.HttpRequest, sm.HttpResponse, NotUsed]]
-      Success(RequestContextFlow(reqFlow))
+      Success((materializer: ActorMaterializer) => {
+        implicit val mat = materializer
+        RequestContextFlow(reqFlow)
+      })
 
     case Failure(e) =>
       log.error(e, s"Error instantiating flow from {}: {}", clazz.getName, e)
@@ -96,8 +99,6 @@ private[unicomplex] class JavaRouteActor(webContext: String, clazz: Class[Abstra
     }
   }
 
-  implicit val am = ActorMaterializer()
-
   val routeTry: Try[Route] = routeDefTry match {
 
     case Success(routeDef) =>
@@ -110,14 +111,19 @@ private[unicomplex] class JavaRouteActor(webContext: String, clazz: Class[Abstra
       Failure(e)
   }
 
-  val flowTry: Try[sd.Flow[RequestContext, RequestContext, NotUsed]] =
+  val flowTry: Try[ActorMaterializer => sd.Flow[RequestContext, RequestContext, NotUsed]] =
     routeTry.map {
-      case r: RouteAdapter => RequestContextFlow(r.delegate)
+      case r: RouteAdapter =>
+        materializer: ActorMaterializer =>
+          implicit val mat = materializer
+          RequestContextFlow(r.delegate)
       case r => // There should be NO java Route that is not a RouteAdapter. This code is to catch such cases.
         // $COVERAGE-OFF$
-        val requestFlow = r.flow(context.system, am).asScala
-          .asInstanceOf[sd.Flow[sm.HttpRequest, sm.HttpResponse, NotUsed]]
-        RequestContextFlow(requestFlow)
+        materializer: ActorMaterializer =>
+          implicit val mat = materializer
+          val requestFlow = r.flow(context.system, materializer).asScala
+            .asInstanceOf[sd.Flow[sm.HttpRequest, sm.HttpResponse, NotUsed]]
+          RequestContextFlow(requestFlow)
         // $COVERAGE-ON$
     }
 }
