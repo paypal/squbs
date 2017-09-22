@@ -20,7 +20,7 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
-import akka.stream.FlowShape
+import akka.stream.{FlowShape, Materializer}
 import akka.stream.scaladsl._
 import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, RequestContext, ServerPipeline}
 
@@ -31,7 +31,7 @@ import scala.util.{Success, Try}
 object FlowHandler {
 
   def apply(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: Option[Int])
-           (implicit system: ActorSystem): FlowHandler = {
+           (implicit system: ActorSystem, materializer: Materializer): FlowHandler = {
     new FlowHandler(routes, localPort)
   }
 
@@ -50,7 +50,7 @@ object FlowHandler {
 }
 
 class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: Option[Int])
-                 (implicit system: ActorSystem) {
+                 (implicit system: ActorSystem, materializer: Materializer) {
 
   import FlowHandler._
 
@@ -84,8 +84,8 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
         val pathString = paths(i).toString
         val wc = if(pathString.isEmpty) "/" else pathString
         pipelineExtension.getFlow(pipelineSettings(i), Context(wc, ServerPipeline)) match {
-          case Some(pipeline) => partition.out(i) ~> pipeline.join(fw.flow) ~> routesMerge
-          case None => partition.out(i) ~> fw.flow ~> routesMerge
+          case Some(pipeline) => partition.out(i) ~> pipeline.join(fw.flow(materializer)) ~> routesMerge
+          case None => partition.out(i) ~> fw.flow(materializer) ~> routesMerge
         }
       }
 
