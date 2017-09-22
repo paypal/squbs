@@ -16,14 +16,17 @@
 package org.squbs.httpclient
 
 import java.lang.management.ManagementFactory
+import java.util.concurrent.{TimeUnit, TimeoutException}
 import javax.management.ObjectName
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.HttpEntity.Chunked
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{Date, Server}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
 import org.squbs.resolver.ResolverRegistry
@@ -31,7 +34,8 @@ import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 import org.squbs.streams.circuitbreaker.{CircuitBreakerOpenException, CircuitBreakerSettings}
 import org.squbs.testkit.Timeouts.awaitMax
 
-import scala.concurrent.Await
+import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.{Await, Future, Promise}
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
@@ -74,6 +78,24 @@ object ClientFlowCircuitBreakerSpec {
       |    reset-timeout = 2 minutes
       |  }
       |}
+      |
+      |drain {
+      |  type = squbs.httpclient
+      |
+      |  akka.http.host-connection-pool.max-connections = 10
+      |  circuit-breaker {
+      |    max-failures = 10000
+      |    call-timeout = 10 milliseconds
+      |  }
+      |}
+      |
+      |do-not-drain {
+      |  type = squbs.httpclient
+      |  akka.http {
+      |    host-connection-pool.max-connections = 10
+      |    client.idle-timeout = 10 seconds
+      |  }
+      |}
     """.stripMargin)
 
   implicit val system = ActorSystem("ClientFlowCircuitBreakerSpec", config)
@@ -100,6 +122,20 @@ object ClientFlowCircuitBreakerSpec {
   val route =
     path("internalServerError") {
       complete(InternalServerErrorResponse)
+    } ~
+    path("delay") {
+      val promise = Promise[String]()
+      import scala.concurrent.duration._
+      val delay = 500.milliseconds
+      scheduler.scheduleOnce(delay)(promise.success("delayed"))
+      onComplete(promise.future) {
+        case _ =>
+          complete {
+            HttpResponse(entity =
+              Chunked(ContentTypes.`text/plain(UTF-8)`,Source.single(ByteString("Response after delay!")))
+            )
+          }
+      }
     }
 
   val serverBinding = Await.result(Http().bindAndHandle(route, "localhost", 0), awaitMax)
@@ -298,6 +334,73 @@ class ClientFlowCircuitBreakerSpec extends AsyncFlatSpec with Matchers with Befo
     assertJmxValue("clientWithConfigWithParam-httpclient", "ResetTimeout", "13 minutes")
     assertJmxValue("clientWithConfigWithParam-httpclient", "MaxResetTimeout", "14 days")
     assertJmxValue("clientWithConfigWithParam-httpclient", "ExponentialBackoffFactor", 16.0)
+  }
+
+  it should "drain the http responses that arrive after the timeout" in {
+    val start = System.nanoTime()
+    val responseSeqFuture =
+      Source(1 to 100)
+        .map(HttpRequest(uri = "/delay") -> _)
+        .via(ClientFlow[Int]("drain"))
+        .map(_._1)
+        .runWith(Sink.seq)
+
+    val idleTimeoutConfig = system.settings.config.getString("do-not-drain.akka.http.client.idle-timeout")
+    val idleTimeout = Duration(idleTimeoutConfig).asInstanceOf[FiniteDuration]
+    val promise = Promise[Seq[Try[HttpResponse]]]()
+    import system.dispatcher
+    system.scheduler.scheduleOnce(idleTimeout) {
+      // Adding a timeout to make it easier to troubleshoot if draining functionality is somehow broken.  Without this
+      // promise failure, the test case would just hang here when the connection pool is starved.  Failing the
+      // test after a timeout and providing a helpful message should make it easier to debug the problem if that
+      // ever happens.
+      promise.failure(
+        new TimeoutException("Test case timed out!  This happens when late arrived http responses are not drained!"))
+    }
+
+    Future.firstCompletedOf(promise.future :: responseSeqFuture :: Nil) map { seq =>
+      val elapsedTime = FiniteDuration(System.nanoTime - start, TimeUnit.NANOSECONDS)
+      val idleTimeout = Duration(system.settings.config.getString("akka.http.client.idle-timeout"))
+      // With a connection pool of size 10, 100 requests each taking 500 ms should be done in about 5+ seconds
+      // If draining was not happening, it would keep each connection busy till idle-timeout.
+      elapsedTime should be < idleTimeout
+      seq.size shouldBe 100
+      seq.collect {
+        case Failure(ex) if ex.isInstanceOf[TimeoutException] => ex
+      }.size shouldBe 100
+    }
+  }
+
+  it should "saturate the connection pool when no drainer is specified" in {
+    import scala.concurrent.duration._
+    val circuitBreakerSettingsa =
+      CircuitBreakerSettings[HttpRequest, HttpResponse, Int](
+        AtomicCircuitBreakerState(
+          "do-not-drain",
+          maxFailures = 1000,
+          callTimeout = 10 milliseconds,
+          resetTimeout = 100 seconds))
+
+    val responseSeqFuture =
+      Source(1 to 20)
+        .map(HttpRequest(uri = "/delay") -> _)
+        .via(ClientFlow[Int]("do-not-drain", circuitBreakerSettings = Some(circuitBreakerSettingsa)))
+        .map(_._1)
+        .runWith(Sink.seq)
+
+    val idleTimeoutConfig = system.settings.config.getString("do-not-drain.akka.http.client.idle-timeout")
+    val idleTimeout = Duration(idleTimeoutConfig).asInstanceOf[FiniteDuration]
+
+    val promise = Promise[String]()
+    import system.dispatcher
+    system.scheduler.scheduleOnce(idleTimeout)(promise.success("idle-timeout reached!"))
+
+    promise.future map { _ =>
+      // With a connection pool of size 10, 20 requests each taking 500 ms should be done in about 1+ seconds, if late
+      // arriving responses are drained (as each request times out in 100 ms).  If draining is not happening, it would
+      // keep each connection busy till idle-timeout.  So, the stream would take at least 2 x idle-timeout to finish.
+      responseSeqFuture.isCompleted shouldBe false
+    }
   }
 
   def assertJmxValue(name: String, key: String, expectedValue: Any) = {
