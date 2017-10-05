@@ -334,8 +334,12 @@ final class TimeoutBidiUnordered[In, Out, Context](timeout: FiniteDuration,
       } map { case(id, (context, _)) =>
         timeouts.remove(id)
         (Failure(FlowTimeoutException()), context)
-      } orElse Try(readyToPush.dequeue()).toOption.map { case(elem, _) => elem }
+      } orElse dequeueOption().map { case(elem, _) => elem }
     }
+
+    private def dequeueOption(): Option[((Try[Out], Context), Long)] =
+      if (readyToPush.nonEmpty) Some(readyToPush.dequeue())
+      else None
 
     override protected def onPullOut() = pickNextElemToPush()
 
