@@ -89,7 +89,13 @@ abstract class TimeoutGraphStageLogic[In, FromWrapped, Out](shape: BidiShape[In,
   protected def isBuffersEmpty: Boolean
 
   protected def timeLeftForNextElemToTimeout: Long = {
-    timeoutAsMillis - NANOSECONDS.toMillis(System.nanoTime() - firstElemStartTime)
+    val firstElemTime = firstElemStartTime
+    if (firstElemTime == 0) timeoutAsMillis
+    else {
+      val timeLeftInmillis = timeoutAsMillis - NANOSECONDS.toMillis(System.nanoTime() - firstElemTime)
+      if (MILLISECONDS.toNanos(timeLeftInmillis) < precision) NANOSECONDS.toMillis(precision)
+      else timeLeftInmillis
+    }
   }
 
   protected def expirationTime(): Long = System.nanoTime() - timeoutAsNanos - precision
@@ -334,8 +340,12 @@ final class TimeoutBidiUnordered[In, Out, Context](timeout: FiniteDuration,
       } map { case(id, (context, _)) =>
         timeouts.remove(id)
         (Failure(FlowTimeoutException()), context)
-      } orElse Try(readyToPush.dequeue()).toOption.map { case(elem, _) => elem }
+      } orElse dequeueOption().map { case(elem, _) => elem }
     }
+
+    private def dequeueOption(): Option[((Try[Out], Context), Long)] =
+      if (readyToPush.nonEmpty) Some(readyToPush.dequeue())
+      else None
 
     override protected def onPullOut() = pickNextElemToPush()
 
@@ -437,12 +447,11 @@ final class TimeoutBidiOrdered[In, Out](timeout: FiniteDuration, cleanUp: Out =>
     override def enqueueInTimeoutQueue(elem: In): Unit = timeouts.enqueue(TimeoutTracker(System.nanoTime(), false))
 
     override def onPushFromWrapped(elem: Out, isOutAvailable: Boolean): Option[Try[Out]] = {
-      if (isOutAvailable) {
+      if (isOutAvailable && timeouts.nonEmpty) {
         if (timeouts.dequeue().isTimedOut) {
           tryCleanUp(elem, cleanUp)
           None
-        }
-        else Some(Success(elem))
+        } else Some(Success(elem))
       } else None
     }
 
