@@ -24,7 +24,7 @@ import akka.stream.Attributes.inputBuffer
 import akka.stream.{ActorMaterializer, BufferOverflowException, OverflowStrategy}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import akka.testkit.TestKit
+import akka.testkit.{TestKit, TestProbe}
 import org.scalatest.{AsyncFlatSpecLike, Matchers}
 
 import scala.concurrent.duration._
@@ -39,6 +39,19 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
   it should "require failure retryCount > 0" in {
     an[IllegalArgumentException] should be thrownBy
       RetryBidi[String, String, NotUsed](-1)
+  }
+
+  it should "require expbackoff >= 0" in {
+    an[IllegalArgumentException] should be thrownBy
+      RetryBidi[String, String, NotUsed](1, exponentialBackoffFactor = -0.5)
+  }
+
+  it should "retry settings use backpressure overflow strategy by default" in {
+    assert(RetrySettings(1).overflowStrategy.equals(OverflowStrategy.backpressure))
+  }
+
+  it should "retry settings failure decider should default to None" in {
+    assert(RetrySettings(1).failureDecider.equals(None))
   }
 
   it should "return all expected elements if no failures" in {
@@ -70,7 +83,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       .via(RetryBidi[String, String, Long](3).join(flow))
       .runWith(Sink.seq)
 
-    val expected = (Success("b"), 2) :: (Success("c"), 3) :: (failure, 1) :: Nil
+    val expected =  (failure, 1) :: (Success("b"), 2) :: (Success("c"), 3) :: Nil
     result map {
       _ should contain theSameElementsAs expected
     }
@@ -182,7 +195,6 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
   }
 
   it should "allow a uniqueid mapper via UniqueId.Provider" in {
-
     case class MyContext(id: Long) extends UniqueId.Provider {
       override def uniqueId: Any = id
     }
@@ -254,8 +266,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       .toMat(TestSink.probe)(Keep.both).run()
 
     source.sendNext("a").sendNext("b")
-    val nextA = sink.request(1).requestNext()
-    assert((Success("a"), 1) == nextA)
+    assert((Success("a"), 1) == sink.request(1).requestNext())
   }
 
   it should "drain all elements when upstream finishes" in {
@@ -282,7 +293,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val retry = RetryBidi[String, String, Long](10, overflowStrategy = OverflowStrategy.dropHead)
       .withAttributes(inputBuffer(initial = 1, max = 3))
 
-    val sink = Source (1 to 5)
+    val sink = Source(1 to 5)
       .map(x => (x.toString, x.toLong))
       .via(retry.join(bottom))
       .runWith(TestSink.probe)
@@ -331,7 +342,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       .runWith(TestSink.probe)
 
     sink.request(5)
-      .expectNext((failure, 1L), (failure, 2L),(failure, 3L))
+      .expectNext((failure, 1L), (failure, 2L), (failure, 3L))
       .expectComplete() // element 4 and 5 are dropped on buffer full
     succeed
   }
@@ -386,7 +397,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       .via(retry.join(bottom))
       .runWith(TestSink.probe)
 
-    sink.request(3).expectError(new BufferOverflowException("Retry buffer overflow for retry stage (max capacity was: 1)!"))
+    sink.request(3).expectError(BufferOverflowException("Buffer overflow for Retry stage (max capacity was: 1)!"))
     succeed
   }
 
@@ -406,4 +417,84 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       _ should contain theSameElementsAs expected
     }
   }
+
+  it should "delay each retried element by 1s when delay is duration is 1s" in {
+    val bottom = Flow[(String, Long)].map {
+      case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx) // fail even elements
+    }
+    val retry = RetryBidi[String, String, Long](2, delay = 1 second)
+    val testSink = Source(1L to 5L)
+      .map(x => (x.toString, x))
+      .via(retry.join(bottom))
+      .runWith(TestSink.probe)
+
+    testSink.request(6)
+      .expectNextN((Success("1"), 1L) :: (Success("3"), 3L) :: (Success("5"), 5L) :: Nil)
+      .expectNoMsg(2 second) // 2 x (1s delay)
+      .expectNext((failure, 2L))
+      .expectNext((failure, 4L))
+      .expectComplete()
+    succeed
+  }
+
+  it should "retry with delay and backoff should increase retry delay" in {
+    val bottom = Flow[(String, Long)].map {
+      case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx)
+    }
+    val retry = RetryBidi[String, String, Long](maxRetries = 3, delay = 1 second, exponentialBackoffFactor = 2)
+    val sink = Source(1L to 5L)
+      .map(x => (x.toString, x))
+      .via(retry.join(bottom))
+      .runWith(TestSink.probe)
+
+    sink.request(6)
+      .expectNextN((Success("1"), 1L) :: (Success("3"), 3L) :: (Success("5"), 5L) :: Nil)
+      .expectNoMsg(14 seconds) // (1s delay + 4s delay + 9s)
+      .expectNext((failure, 2L))
+      .expectNext((failure, 4L))
+      .expectComplete()
+    succeed
+  }
+
+  it should "retry with maxDelay should backoff until maxDelay" in {
+    val bottom = Flow[(String, Long)].map {
+      case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx)
+    }
+    val retry = RetryBidi[String, String, Long](maxRetries = 3, delay = 1 second, exponentialBackoffFactor = 2,
+      maxDelay = 4 seconds)
+    val sink = Source(1L to 5L)
+      .map(x => (x.toString, x))
+      .via(retry.join(bottom))
+      .runWith(TestSink.probe)
+
+    sink.request(6)
+      .expectNextN((Success("1"), 1L) :: (Success("3"), 3L) :: (Success("5"), 5L) :: Nil)
+      .expectNoMsg(9 seconds) // (1s + 4s + 4s maxDelay)
+      .expectNext((failure, 2L))
+      .expectNext((failure, 4L))
+      .expectComplete()
+    succeed
+  }
+
+  it should "retry with backoff and a delay using settings" in {
+    val bottom = Flow[(String, Long)].map {
+      case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx)
+    }
+    val retrySettings = RetrySettings[String, String, Long](2).withDelay(1 second).withExponentialBackoff(2)
+    val retry = RetryBidi[String, String, Long](retrySettings)
+
+    val sink = Source(1L to 5L)
+      .map(x => (x.toString, x))
+      .via(retry.join(bottom))
+      .runWith(TestSink.probe)
+
+    sink.request(6)
+      .expectNextN((Success("1"), 1L) :: (Success("3"), 3L) :: (Success("5"), 5L) :: Nil)
+      .expectNoMsg(5 seconds)
+      .expectNext((failure, 2L))
+      .expectNext((failure, 4L))
+      .expectComplete()
+    succeed
+  }
+
 }
