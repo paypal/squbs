@@ -154,16 +154,57 @@ val retryBidi = RetryBidi[Request, Response, MyContext](maxRetries = 3, (context
 
 ##### Java
 
-A `Function<Try<Out>, Boolean>` can be provided via Retry Optional `failureDecider` parameter to create method.  Below is an example where,
+A `Function<Try<Out>, Boolean>` can be provided via Retry Optional `failureDecider` parameter to `create` method.  Below is an example where,
 along with any `Failure` message, a `Success` of `HttpResponse` with status code `400` and above is also considered a failure:
 
 ```java
 
-final Function<Try<HttpResponse>, Optional<Object>> failureDecider =
-tryResponse -> tryResponse.isFailure() || tryHttpResponse.get().status().isFailure());
+final Function<Try<HttpResponse>, Boolean> failureDecider =
+tryResponse -> tryResponse.isFailure() || tryResponse.get().status().isFailure());
 
 final BidiFlow<Pair<HttpResponse, MyContext>, Pair<HttpResponse, MyContext>, Pair<Try<HttpResponse>, MyContext>,
     Pair<Try<HttpResponse>, MyContext>, NotUsed> retryFlow =
     RetryBidi.create(3L, Optional.of(failureDecider), OverflowStrategy.backpressure());
+
+```
+
+#### Retries with a delay
+
+By default, any failures from the joined `Flow` are immediately retried if we can push to joined Flow.  However, the `Retry` stage also accepts an optional
+ `Duration` delay parameter to introduce a timed delay between each subsequent retry attempt.
+
+For example to create a Retry stage that delays 200 milliseconds during retries:
+##### Scala
+
+```scala
+val retryBidi = RetryBidi[String, Long](maxRetries = 3, delay = 200 millis)
+```
+
+##### Java
+
+```java
+final BidiFlow<Pair[String, Context], Pair[String, Context],
+    Pair[Try[String], Context], Pair[Try[String], Context], NotUsed> retryBidi =
+    RetryBidi.create(3, Duration.create("200 millis"));
+
+```
+
+A optional binary exponential backoff factor can also be specified to increase the delay duration on each subsequent
+retry attempt (upto a maximum factor of 100 retry duration)
+
+For example to add a backoff factor of 1 for above example:
+
+##### Scala
+
+```scala
+val retryBidi = RetryBidi[String, Long](maxRetries = 3, delay = 200 millis, expBackoff = 1.0)
+```
+
+##### Java
+
+```java
+final BidiFlow<Pair[String, Context], Pair[String, Context],
+    Pair[Try[String], Context], Pair[Try[String], Context], NotUsed> retryBidi =
+    RetryBidi.create(2, Duration.create("200 millis"), 1.0);
 
 ```

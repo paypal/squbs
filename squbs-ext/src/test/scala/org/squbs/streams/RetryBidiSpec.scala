@@ -19,7 +19,7 @@ package org.squbs.streams
 import java.util.concurrent.atomic.AtomicLong
 
 import akka.NotUsed
-import akka.actor.ActorSystem
+import akka.actor.{Actor, ActorSystem}
 import akka.stream.Attributes.inputBuffer
 import akka.stream.{ActorMaterializer, BufferOverflowException, OverflowStrategy}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
@@ -35,6 +35,9 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
 
   implicit val materializer = ActorMaterializer()
   val failure = Failure(new Exception("failed"))
+  val failingBottom = Flow[(String, Long)].map {
+    case (_, ctx) => (failure, ctx)
+  }
 
   it should "require failure retryCount > 0" in {
     an[IllegalArgumentException] should be thrownBy
@@ -282,7 +285,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val retry = RetryBidi[String, String, Long](10, overflowStrategy = OverflowStrategy.dropHead)
       .withAttributes(inputBuffer(initial = 1, max = 3))
 
-    val sink = Source (1 to 5)
+    val sink = Source(1 to 5)
       .map(x => (x.toString, x.toLong))
       .via(retry.join(bottom))
       .runWith(TestSink.probe)
@@ -331,7 +334,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       .runWith(TestSink.probe)
 
     sink.request(5)
-      .expectNext((failure, 1L), (failure, 2L),(failure, 3L))
+      .expectNext((failure, 1L), (failure, 2L), (failure, 3L))
       .expectComplete() // element 4 and 5 are dropped on buffer full
     succeed
   }
@@ -406,4 +409,40 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       _ should contain theSameElementsAs expected
     }
   }
+
+  it should "retry with a 1s delay should delay each retried element by 1s" in {
+    val retry = RetryBidi[String, Long, Long](2, delay = 1 second)
+
+    val testSink = Source(1 to 3)
+      .map(x => (x.toString, x.toLong))
+      .via(retry.join(failingBottom))
+      .runWith(TestSink.probe)
+
+    testSink.request(3)
+      .expectNoMsg(2 second)
+      .expectNext((failure, 1L))
+      .expectNoMsg(2 second)
+      .expectNext((failure, 2L))
+    //.expectComplete()
+    succeed
+  }
+
+  it should "retry with delay and backoff should increase retry delay" in {
+    val retry = RetryBidi[String, Long, Long](2, delay = 1 second, expBackoffFactor = 1)
+
+    val sink = Source(1 to 3)
+      .map(x => (x.toString, x.toLong))
+      .via(retry.join(failingBottom))
+      .runWith(TestSink.probe)
+
+    sink.request(3)
+      .expectNoMsg(3 seconds)
+      .expectNext(5 seconds, (failure, 1L))
+      .expectNoMsg(3 seconds)
+      .expectNext(5 seconds, (failure, 2L))
+      .expectNoMsg(3 seconds)
+      .expectNext(5 seconds, (failure, 3L))
+    succeed
+  }
+
 }
