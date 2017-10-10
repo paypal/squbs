@@ -16,7 +16,7 @@
 
 object Versions {
   val akkaV = "2.4.20"
-  val akkaHttpV = "10.0.9"
+  val akkaHttpV = "10.0.10"
   val scalatestV = "3.0.0"
   val jacksonV = "2.8.5"
   val json4sV = "3.5.0"
