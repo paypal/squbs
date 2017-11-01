@@ -19,8 +19,8 @@ squbs (pronounced "skewbs") is a software container and a suite of components en
 
 The easiest way to getting started is to create a project from one of the squbs templates. The followings are currently available Activator templates:
 
-* [squbs-scala-sample](https://www.lightbend.com/activator/template/squbs-scala-sample): Scala sample application
-* [squbs-java-sample](https://www.lightbend.com/activator/template/squbs-java-sample): Java sample application
+* [squbs-scala-seed](https://github.com/paypal/squbs-scala-seed.g8): Scala sample application
+* [squbs-java-seed](https://github.com/paypal/squbs-java-seed.g8): Java sample application
 
 Also check out these [slightly more advanced samples](https://github.com/paypal/squbs/tree/master/samples).
 
