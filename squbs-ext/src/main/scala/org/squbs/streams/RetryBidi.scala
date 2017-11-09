@@ -17,6 +17,8 @@
 package org.squbs.streams
 
 import java.util.Optional
+import java.util.function.{Function => JFunction}
+import java.lang.{Boolean => JBoolean}
 
 import akka.NotUsed
 import akka.http.org.squbs.util.JavaConverters
@@ -75,8 +77,8 @@ object RetryBidi {
     * Creates a [[akka.stream.javadsl.BidiFlow]] that can be joined with a [[akka.stream.javadsl.Flow]] to add
     * Retry functionality with uniqueIdMapper, custom failure decider and OverflowStrategy.
     */
-  def create[In, Out, Context](maxRetries: Long, uniqueIdMapper: java.util.function.Function[Context, Optional[Any]],
-                               failureDecider: Optional[java.util.function.Function[Try[Out], Boolean]],
+  def create[In, Out, Context](maxRetries: Long, uniqueIdMapper: JFunction[Context, Optional[Any]],
+                               failureDecider: Optional[JFunction[Try[Out], JBoolean]],
                                overflowStrategy: OverflowStrategy):
   javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Try[Out], Context], Pair[Try[Out], Context], NotUsed] =
     JavaConverters.toJava(apply[In, Out, Context](maxRetries,
@@ -89,7 +91,7 @@ object RetryBidi {
     * @see above for details about each parameter
     */
   def create[In, Out, Context](maxRetries: Long,
-                               failureDecider: Optional[java.util.function.Function[Try[Out], Boolean]],
+                               failureDecider: Optional[JFunction[Try[Out], JBoolean]],
                                overflowStrategy: OverflowStrategy):
   javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Try[Out], Context], Pair[Try[Out], Context], NotUsed] =
     JavaConverters.toJava(apply[In, Out, Context](maxRetries,
@@ -100,7 +102,7 @@ object RetryBidi {
     * Java API
     * @see above for details about each parameter.
     */
-  def create[In, Out, Context](maxRetries: Long, uniqueIdMapper: java.util.function.Function[Context, Optional[Any]],
+  def create[In, Out, Context](maxRetries: Long, uniqueIdMapper: JFunction[Context, Optional[Any]],
                                overflowStrategy: OverflowStrategy):
   javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Try[Out], Context], Pair[Try[Out], Context], NotUsed] =
     JavaConverters.toJava(apply[In, Out, Context](maxRetries,

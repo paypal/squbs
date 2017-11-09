@@ -26,6 +26,7 @@ import akka.stream.javadsl.BidiFlow;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
+import akka.stream.testkit.javadsl.TestSink;
 import org.testng.annotations.Test;
 import scala.util.Failure;
 import scala.util.Success;
@@ -157,5 +158,28 @@ public class RetryBidiTest {
         assertTrue(result.toCompletableFuture().get().containsAll(expected),
                 "Did not get the expected elements from retry stage");
     }
+
+    @Test
+    public void testRetryBidiWithFailureDecider() throws Exception {
+        final Flow<Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> bottom =
+                Flow.<Pair<String, UUID>>create()
+                        .map(elem -> new Pair<Try<String>, UUID>(Success.apply(elem.first()), elem.second()));
+
+        final Function<Try<String>, Boolean> failureDecider =
+                out -> out.isFailure() || out.equals(Success.apply("a")); // treat "a" as a failure for retry
+
+        final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
+                Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(1L,
+                Optional.of(failureDecider), OverflowStrategy.backpressure());
+
+        Source.from(Arrays.asList("a", "b"))
+                .map(s -> new Pair<>(s, UUID.randomUUID()))
+                .via(retry.join(bottom))
+                .map(t -> t.first())
+                .runWith(TestSink.probe(system), mat)
+                .request(2)
+                .expectNext(Success.apply("a"), Success.apply("b"));
+    }
+
 
 }
