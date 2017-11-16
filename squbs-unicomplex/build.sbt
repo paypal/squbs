@@ -9,7 +9,10 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % scalatestV % "test->*",
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
-  "com.wix" %% "accord-core" % accordV % "test"
+  "com.wix" %% "accord-core" % accordV % "test",
+  "junit" % "junit" % junitV % "test",
+  "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
+  "org.scalatest" %% "scalatest" % scalatestV % "test->*"
 ) ++ akka
 
 def akka = Seq(
@@ -20,6 +23,10 @@ def akka = Seq(
   "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % "test"
 )
 
-(testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")
+testOptions in Test ++= Seq(
+  Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex"),
+  Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
+)
+
 
 updateOptions := updateOptions.value.withCachedResolution(true)

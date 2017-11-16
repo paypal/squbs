@@ -26,7 +26,9 @@ import akka.stream.scaladsl._
 import scala.concurrent.Future
 import scala.language.postfixOps
 
-case object NotifyWhenDone
+case object NotifyWhenDone {
+  def getInstance: NotifyWhenDone.type = this
+}
 
 object ThrowExceptionStream {
 
