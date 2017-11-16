@@ -154,6 +154,33 @@ case object Stopping extends LifecycleState
 case object Stopped extends LifecycleState
 
 case class Initialized(report: InitReport)
+
+object Initialized {
+
+  /**
+   * Java API for creating a successful InitReport without a description.
+   *
+   * @return The Initialized object with an empty Success InitReport.
+   */
+  def success(): Initialized = new Initialized(Success(None))
+
+  /**
+   * Java API for creating a successful InitReport with a description.
+   *
+   * @param desc The description to be reported.
+   * @return The Initialized object with the correct InitReport.
+   */
+  def success(desc: String): Initialized = new Initialized(Success(Option(desc)))
+
+  /**
+   * Java API for creating a failed InitReport.
+   *
+   * @param e The exception causing the failure.
+   * @return The Initialized object indicating the failure.
+   */
+  def failed(e: Throwable): Initialized = new Initialized(Failure(e))
+}
+
 case object Ack
 case object ReportStatus
 case class StatusReport(state: LifecycleState, cubes: Map[ActorRef, (CubeRegistration, Option[InitReports])],

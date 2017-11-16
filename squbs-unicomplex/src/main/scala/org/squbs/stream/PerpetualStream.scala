@@ -15,104 +15,48 @@
  */
 package org.squbs.stream
 
-import akka.Done
-import akka.actor.{Actor, ActorContext, ActorIdentity, ActorLogging, ActorRef, Identify, Props, Stash, Terminated}
+import akka.actor.ActorContext
 import akka.stream.Supervision._
-import akka.stream.scaladsl.RunnableGraph
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, KillSwitches, Supervision}
+import akka.stream._
+import akka.stream.scaladsl.{RunnableGraph, Sink}
 import akka.util.Timeout
-import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
-import org.squbs.unicomplex._
+import akka.{Done, NotUsed}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 /**
-  * Traits for perpetual streams that start and stop with the server. The simplest conforming implementation
-  * follows these requirements:<ol>
-  *   <li>The stream materializes to a Future or a Product (Tuple, List, etc.)
-  *       for which the last element is a Future</li>
-  *   <li>This Future represents the state whether the stream is done</li>
-  *   <li>The stream has the killSwitch as the first processing stage right behind the source</li>
-  * </ol>Non-conforming implementations need to implement one or more of the provided hooks while
-  * conforming implementations can well be supported by the default implementations.
-  * @tparam T The type of the materialized value of the stream.
-  */
-trait PerpetualStream[T] extends Actor with ActorLogging with Stash with GracefulStopHelper {
+ * Scala API for perpetual stream that starts and stops with the server.
+ * @tparam T The type of the materialized value of the stream.
+ */
+trait PerpetualStream[T] extends PerpetualStreamBase[T] {
 
   /**
-    * Describe your graph by implementing streamGraph
- *
-    * @return The graph.
-    */
+   * Describe your graph by implementing streamGraph
+   *
+   * @return The graph.
+   */
   def streamGraph: RunnableGraph[T]
 
-  private[this] var matValueOption: Option[T] = None
-
-  final def matValue = matValueOption match {
-    case Some(v) => v
-    case None => throw new IllegalStateException("Materialized value not available before streamGraph is started!")
-  }
-
   /**
-    * The decider to use. Override if not resumingDecider.
-    */
+   * The decider to use. Override if not resumingDecider.
+   */
   def decider: Supervision.Decider = { t =>
     log.error("Uncaught error {} from stream", t)
     t.printStackTrace()
     Resume
   }
 
-  /**
-    * The kill switch to integrate into the stream. Override this if you want a different switch
-    * or one that is shared between perpetual streams.
-    *
-    * @return The kill switch.
-    */
-  lazy val killSwitch = KillSwitches.shared(getClass.getName)
-
-  /**
-    * By default the stream is run when system state is Active.  Override this if you want it to run in a different
-    * lifecycle phase.
-    */
-  lazy val streamRunLifecycleState: LifecycleState = Active
-
-  implicit val materializer =
+  implicit val materializer: ActorMaterializer =
     ActorMaterializer(ActorMaterializerSettings(context.system).withSupervisionStrategy(decider))
 
-  Unicomplex() ! SystemState
-  Unicomplex() ! ObtainLifecycleEvents(streamRunLifecycleState, Stopping)
+  override private[stream] final def runGraph(): T = streamGraph.run()
 
-  context.become(starting)
-
-  final def starting: Receive = {
-    case `streamRunLifecycleState` =>
-      context.become(running orElse flowMatValue orElse receive)
-      matValueOption = Option(streamGraph.run())
-      unstashAll()
-    case _ => stash()
-  }
-
-  final def running: Receive = {
-    case Stopping | GracefulStop =>
-      import context.dispatcher
-      val children = context.children
-      children foreach context.watch
-      shutdown() onComplete { _ => self ! Done }
-      context.become(stopped(children))
-  }
-
-  final def stopped(children: Iterable[ActorRef]): Receive = {
-    case Done => materializer.shutdown()
-
-    case Terminated(ref) =>
-      val remaining = children filterNot ( _ == ref )
-      if (remaining.nonEmpty) context become stopped(remaining) else context stop self
-  }
-
-  final def flowMatValue: Receive = {
-    case MatValueRequest => sender() ! matValue
+  override private[stream] final def shutdownAndNotify(): Unit = {
+    import context.dispatcher
+    shutdown() onComplete { _ => self ! Done }
   }
 
   def receive: Receive = PartialFunction.empty
@@ -144,42 +88,17 @@ trait PerpetualStream[T] extends Actor with ActorLogging with Stash with Gracefu
   }
 }
 
-case object MatValueRequest
-
 trait PerpetualStreamMatValue[T] {
   protected val context: ActorContext
 
-  def matValue(perpetualStreamName: String)(implicit classTag: ClassTag[T]): T = {
-    implicit val timeout = Timeout(10 seconds)
+  def matValue(perpetualStreamName: String)(implicit classTag: ClassTag[T]): Sink[T, NotUsed] = {
+    implicit val _ = context.system
+    implicit val timeout: Timeout = Timeout(10 seconds)
     import akka.pattern.ask
 
-    val responseF =
-      (context.actorOf(Props(classOf[MatValueRetrieverActor[T]], perpetualStreamName)) ? MatValueRequest).mapTo[T]
+    val responseF = (SafeSelect(perpetualStreamName) ? MatValueRequest).mapTo[Sink[T, NotUsed]]
 
     // Exception! This code is executed only at startup. We really need a better API, though.
     Await.result(responseF, timeout.duration)
-  }
-}
-
-class MatValueRetrieverActor[T](wellKnownActorName: String) extends Actor {
-  val identifyId = 1
-  var flowActor: ActorRef = _
-
-  case object RetryMatValueRequest
-
-  override def receive: Receive = {
-    case MatValueRequest =>
-      self ! RetryMatValueRequest
-      flowActor = sender()
-    case RetryMatValueRequest =>
-      context.actorSelection(wellKnownActorName) ! Identify(identifyId)
-    case ActorIdentity(`identifyId`, Some(ref)) =>
-      ref ! MatValueRequest
-    case ActorIdentity(`identifyId`, None) =>
-      import context.dispatcher
-      context.system.scheduler.scheduleOnce(1 second, self, RetryMatValueRequest)
-    case matValue: T =>
-      flowActor ! matValue
-      context.stop(self)
   }
 }

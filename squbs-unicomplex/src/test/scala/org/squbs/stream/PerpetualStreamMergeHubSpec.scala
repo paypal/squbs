@@ -42,6 +42,7 @@ object PerpetualStreamMergeHubSpec {
        |  actorsystem-name = PerpetualStreamMergeHubSpec
        |  ${JMX.prefixConfig} = true
        |}
+       |default-listener.bind-port = 0
       """.stripMargin
   )
 
@@ -79,7 +80,7 @@ class PerpetualStreamMergeHubSpec extends TestKit(PerpetualStreamMergeHubSpec.bo
 
 case class MyMessage(id: Int)
 
-class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[Sink[MyMessage, NotUsed]] {
+class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[MyMessage] {
 
   import context.dispatcher
 
@@ -117,7 +118,9 @@ class PerpetualStreamWithMergeHub extends PerpetualStream[Sink[MyMessage, NotUse
 }
 
 object RetrieveMyMessages
-object RetrieveMyMessageStorageActorRef
+object RetrieveMyMessageStorageActorRef {
+  val instance: RetrieveMyMessageStorageActorRef.type = this
+}
 
 class MyMessageStorageActor extends Actor {
 
