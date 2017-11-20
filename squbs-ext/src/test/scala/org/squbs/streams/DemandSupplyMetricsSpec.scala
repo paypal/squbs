@@ -29,7 +29,8 @@ import org.squbs.metrics.MetricsExtension
 
 import scala.concurrent.duration._
 
-class DemandSupplyMetricsSpec extends TestKit(ActorSystem("DemandSupplyMetricsSpec")) with AsyncFlatSpecLike with Matchers {
+class DemandSupplyMetricsSpec extends TestKit(ActorSystem("DemandSupplyMetricsSpec")) with AsyncFlatSpecLike
+  with Matchers {
 
   implicit val materializer = ActorMaterializer()
 
@@ -103,15 +104,9 @@ class DemandSupplyMetricsSpec extends TestKit(ActorSystem("DemandSupplyMetricsSp
     val name = "test5"
 
     val dsMetric = DemandSupplyMetrics[Int](s"$name")(system)
-    val flow = Source(1 to 10)
-      .via(dsMetric)
-      .buffer(2, OverflowStrategy.backpressure)
+    val flow = Source(1 to 10).via(dsMetric)
 
-    flow.runWith(Sink.ignore) map { _ =>
-      assert(jmxValue[Long](s"$name-upstream-counter", "Count").get == 10)
-      assert(jmxValue[Long](s"$name-downstream-counter", "Count").get == 10)
-    }
-
+    flow.runWith(Sink.ignore)
     flow.runWith(Sink.ignore) map { _ =>
       assert(jmxValue[Long](s"$name-upstream-counter", "Count").get >= 20)
       assert(jmxValue[Long](s"$name-downstream-counter", "Count").get >= 20)

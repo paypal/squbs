@@ -36,14 +36,14 @@ with ImplicitSender with FunSpecLike with Matchers {
       system.actorOf(Props[TestOrchestrator]) ! OrchestrationRequest("test")
 
       // Check for the submitted message
-      val submitted = expectMsgType[SubmittedOrchestration]
+      val submitted = expectMsgType[SubmittedOrchestration](awaitMax)
       val submitTime = submitted.timeNs / 1000l
       println(s"Submission took $submitTime microseconds.")
       (submitTime / 1000l) should be < 230000l
       submitted.request should be ("test")
 
       // Check for the finished message
-      val finished = expectMsgType[FinishedOrchestration]
+      val finished = expectMsgType[FinishedOrchestration](awaitMax)
       val finishTime = finished.timeNs / 1000l
       println(s"Orchestration took $finishTime microseconds.")
       finishTime should be > 230000l // 23 orchestrations with 10 millisecond delay each
@@ -55,14 +55,14 @@ with ImplicitSender with FunSpecLike with Matchers {
       system.actorOf(Props[TestAskOrchestrator]) ! OrchestrationRequest("test")
 
       // Check for the submitted message
-      val submitted = expectMsgType[SubmittedOrchestration]
+      val submitted = expectMsgType[SubmittedOrchestration](awaitMax)
       val submitTime = submitted.timeNs / 1000l
       println(s"Submission took $submitTime microseconds.")
       (submitTime / 1000l) should be < 230000l
       submitted.request should be ("test")
 
       // Check for the future of finish message
-      val finishedF = expectMsgType[Future[FinishedOrchestration]]
+      val finishedF = expectMsgType[Future[FinishedOrchestration]](awaitMax)
       val finished = Await.result(finishedF, awaitMax)
       val finishTime = finished.timeNs / 1000l
       println(s"Orchestration took $finishTime microseconds.")
@@ -76,14 +76,14 @@ with ImplicitSender with FunSpecLike with Matchers {
         system.actorOf(Props[TestOrchestrator]) ! OrchestrationRequest("test")
 
         // Check for the submitted message
-        val submitted = expectMsgType[SubmittedOrchestration]
+        val submitted = expectMsgType[SubmittedOrchestration](awaitMax)
         val submitTime = submitted.timeNs / 1000l
         println(s"Submission took $submitTime microseconds.")
         (submitTime / 1000000l) should be < 20000l
         submitted.request should be("test")
 
         // Check for the finished message
-        val finished = expectMsgType[FinishedOrchestration]
+        val finished = expectMsgType[FinishedOrchestration](awaitMax)
         val finishTime = finished.timeNs / 1000l
         println(s"Orchestration took $finishTime microseconds.")
         finishTime should be > 230000l // 23 orchestrations with 10 millisecond delay each
