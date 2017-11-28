@@ -76,7 +76,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
     val handler = try { FlowHandler(listenerRoutes(name), localPort) } catch { case NonFatal(e) =>
       serverBindings = serverBindings + (name -> ServerBindingInfo(None, Some(e)))
-      log.error(s"Failed to build streaming flow handler.  System may not function properly.")
+      log.error(e, s"Failed to build streaming flow handler.  System may not function properly.")
       notifySender ! Failure(e)
       throw e
     }
