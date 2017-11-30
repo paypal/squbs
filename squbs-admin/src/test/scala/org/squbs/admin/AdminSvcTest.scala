@@ -64,6 +64,14 @@ class AdminSvcTest extends FunSpecLike with Matchers with ScalatestRouteTest {
         response.status shouldBe StatusCodes.NotFound
       }
     }
+
+    it ("should encode the JMX bean name") {
+      Get("/") ~> route ~> check {
+        val name = "org.squbs.admin.test:type=SlashTestBean/FooBean"
+        val value = "http://example.com/bean/org.squbs.admin.test:type~SlashTestBean%2FFooBean"
+        responseAs[String] should include (s""""$name" : "$value"""")
+      }
+    }
   }
 
   describe ("The AdminSvc route with adm web context") {

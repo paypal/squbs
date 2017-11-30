@@ -15,6 +15,8 @@
  */
 package org.squbs.admin
 
+import java.net.URLEncoder
+
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
 import org.json4s.JsonAST.{JObject, JString}
@@ -42,7 +44,7 @@ class AdminSvc extends RouteDefinition with WebContext {
           complete {
             val kv = MBeanUtil.allObjectNames collect {
               case name if !(exBeans contains name) =>
-                val resource = Path(s"$prefix/${name.replace('=', '~')}")
+                val resource = Path(s"$prefix/${URLEncoder.encode(name.replace('=', '~'), "UTF-8")}")
                 name -> JString(uri.withPath(resource).toString())
             }
             HttpResponse(entity = HttpEntity(ContentTypes.`application/json`, pretty(render(JObject(kv)))))
