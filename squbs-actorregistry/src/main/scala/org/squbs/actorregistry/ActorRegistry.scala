@@ -75,11 +75,16 @@ private[actorregistry] class ActorRegistry extends Actor with Stash {
       register(new ActorRegistryConfigBean(timeout, context), prefix + configBean )
 
       cubeCount = cubeActorInfoList.size
-      cubeActorInfoList.foreach { cubeActorInfo=>
-        context.actorSelection(cubeActorInfo.actorPath) ! Identify(cubeActorInfo)
-      }
 
-      context.become(startupReceive)
+      if(cubeCount == 0) // No well-known actors to register
+        context.parent ! Initialized(Success(None))
+      else {
+        cubeActorInfoList.foreach { cubeActorInfo =>
+          context.actorSelection(cubeActorInfo.actorPath) ! Identify(cubeActorInfo)
+        }
+
+        context.become(startupReceive)
+      }
 
     case ActorLookupMessage(lookupObj, Identify("ActorLookup"))  =>
       val result = processActorLookup(lookupObj).keys.headOption
