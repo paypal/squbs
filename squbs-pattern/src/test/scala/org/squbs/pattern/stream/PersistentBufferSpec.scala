@@ -23,6 +23,7 @@ import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sin
 import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape}
 import akka.util.ByteString
 import org.scalatest.concurrent.Eventually
+import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.testkit.Timeouts._
 
@@ -35,6 +36,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
   implicit val system = ActorSystem(s"Persistent${typeName}BufferSpec")
   implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[T]()
+  implicit override val patienceConfig = PatienceConfig(timeout = Span(3, Seconds)) // extend eventually timeout for CI
   import StreamSpecUtil._
   import system.dispatcher
 
@@ -116,7 +118,6 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     import util._
 
     val mat = ActorMaterializer()
-    var t = Long.MinValue
     val pBufferInCount = new AtomicInteger(0)
     val commitCount = new AtomicInteger(0)
     val finishedGenerating = Promise[Done]
@@ -144,10 +145,10 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     Await.result(shutdownF, awaitMax)
     Await.result(sinkF.failed, awaitMax) shouldBe an[AbruptTerminationException]
 
-    val restartFrom = pBufferInCount.incrementAndGet()
+    val restartFrom = commitCount.get()
     println(s"Restart from count $restartFrom")
 
-    resumeGraphAndDoAssertion(commitCount.get, restartFrom)
+    resumeGraphAndDoAssertion(pBufferInCount.get, restartFrom)
     clean()
   }
 
@@ -175,7 +176,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     })
     val sinkF = graph.run()(mat)
     Await.result(sinkF.failed, awaitMax) shouldBe an[NumberFormatException]
-    val restartFrom = inCounter.incrementAndGet()
+    val restartFrom = inCounter.get()
     println(s"Restart from count $restartFrom")
     resumeGraphAndDoAssertion(outCount.get, restartFrom)
     clean()

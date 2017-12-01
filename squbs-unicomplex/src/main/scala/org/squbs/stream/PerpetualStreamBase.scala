@@ -61,8 +61,8 @@ trait PerpetualStreamBase[T] extends Actor with ActorLogging with Stash with Gra
 
   context.become(starting)
 
-  Unicomplex() ! SystemState
   Unicomplex() ! ObtainLifecycleEvents(streamRunLifecycleState, Stopping)
+  Unicomplex() ! SystemState
 
   implicit val materializer: ActorMaterializer
 

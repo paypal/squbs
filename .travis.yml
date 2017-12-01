@@ -14,6 +14,11 @@ cache:
   - $HOME/.sbt
   - $HOME/.ivy2
 
+before_cache:
+  # Cleanup the cached directories to avoid unnecessary cache updates
+  - find $HOME/.ivy2/cache -name "ivydata-*.properties" -print -delete
+  - find $HOME/.sbt        -name "*.lock"               -print -delete
+
 env:
  global:
   - TRAVIS_JDK_VERSION=oraclejdk8
@@ -35,6 +40,11 @@ script:
   - sbt coverageReport
   - sbt coverageAggregate
   - sbt codacyCoverage
+
+# Undo _JAVA_OPTIONS environment variable
+before_script:
+  - _JAVA_OPTIONS=
+
 after_success:
  - >
   test "${TRAVIS_PULL_REQUEST}" = 'false' &&
