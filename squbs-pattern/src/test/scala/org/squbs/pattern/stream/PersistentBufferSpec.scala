@@ -176,9 +176,9 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     })
     val sinkF = graph.run()(mat)
     Await.result(sinkF.failed, awaitMax) shouldBe an[NumberFormatException]
-    val restartFrom = inCounter.get()
+    val restartFrom = outCount.get()
     println(s"Restart from count $restartFrom")
-    resumeGraphAndDoAssertion(outCount.get, restartFrom)
+    resumeGraphAndDoAssertion(inCounter.get, restartFrom)
     clean()
   }
 
