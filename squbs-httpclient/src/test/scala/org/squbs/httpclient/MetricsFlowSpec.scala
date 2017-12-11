@@ -58,6 +58,11 @@ object MetricsFlowSpec {
        |  pipeline = failure
        |}
        |
+       |sampleClient8 {
+       |  type = squbs.httpclient
+       |  pipeline = failure
+       |}
+       |
        |failure {
        |  type = squbs.pipelineflow
        |  factory = org.squbs.httpclient.FailureFlow
@@ -165,6 +170,26 @@ class MetricsFlowSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
     }
   }
 
+  it should "collect response count metrics" in {
+    val f = for(i <- 0 until 5) yield callService("sampleClient7", "/hello")
+
+    callServiceTwice("sampleClient7", "/hello") flatMap { _ => Future.sequence(f) } map { _ =>
+      jmxValue("sampleClient7-response-count", "Count").value shouldBe 7
+    }
+  }
+
+  it should "collect response count metrics is equal to request count minus dropped" in {
+    val f = for {
+      hello <- callServiceTwice("sampleClient8", "/hello")
+      dropped <- callServiceTwice("sampleClient8", "/dropped")
+    } yield List(hello, dropped)
+
+    f map { _ =>
+      jmxValue("sampleClient8-request-count", "Count").value shouldBe 4
+      jmxValue("sampleClient8-response-count", "Count").value shouldBe 2
+    }
+  }
+
   def jmxValue(beanName: String, key: String) = {
     val oName = ObjectName.getInstance(s"${MetricsExtension(system).Domain}:name=${MetricsExtension(system).Domain}.$beanName")
     Option(ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key))
@@ -207,6 +232,7 @@ class FailureFlow extends PipelineFlowFactory {
         case "/connectionException" => rc.copy(response = Some(Failure(new  PeerClosedConnectionException(0, ""))))
         case "/timeoutException" =>
           rc.copy(response = Some(Failure(new  RuntimeException(RequestTimeoutException(rc.request, "")))))
+        case "/dropped" => rc.copy(response = None)
         case _ => rc
       }
     }

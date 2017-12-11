@@ -34,6 +34,7 @@ object MetricsFlow {
 
     val requestCount = MetricRegistry.name(domain, s"$name-request-count")
     val requestTime = MetricRegistry.name(domain, s"$name-request-time")
+    val responseCount = MetricRegistry.name(domain, s"$name-response-count")
     val count2XX = MetricRegistry.name(domain, s"$name-2XX-count")
     val count3XX = MetricRegistry.name(domain, s"$name-3XX-count")
     val count4XX = MetricRegistry.name(domain, s"$name-4XX-count")
@@ -49,13 +50,15 @@ object MetricsFlow {
 
       rc.response map {
         case Success(response) =>
+          metrics.meter(responseCount).mark()
           val statusCode = response.status.intValue()
 
-          if(statusCode >= 500) metrics.meter(count5XX).mark()
-          else if(statusCode >= 400) metrics.meter(count4XX).mark()
-          else if(statusCode >= 300) metrics.meter(count3XX).mark()
-          else if(statusCode >= 200) metrics.meter(count2XX).mark()
+          if (statusCode >= 500) metrics.meter(count5XX).mark()
+          else if (statusCode >= 400) metrics.meter(count4XX).mark()
+          else if (statusCode >= 300) metrics.meter(count3XX).mark()
+          else if (statusCode >= 200) metrics.meter(count2XX).mark()
         case Failure(ex) =>
+          metrics.meter(responseCount).mark()
           val causeExceptionClass = Try(ex.getCause.getClass.getSimpleName) getOrElse ex.getClass.getSimpleName
           metrics.meter(MetricRegistry.name(domain, s"$name-$causeExceptionClass-count")).mark()
       }

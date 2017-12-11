@@ -163,6 +163,19 @@ class MetricsFlowSpec extends TestKit(MetricsFlowSpec.boot.actorSystem) with Asy
     }
   }
 
+  it should "aggregate 5XX and 2XX counts in response-count metric" in {
+
+    val f = Source(hello("/sample7") :: internalServerError("/sample7") :: internalServerError("/sample7") :: Nil).
+      via(poolClientFlow).
+      runWith(Sink.ignore)
+
+    f map { _ =>
+      jmxValue("sample7-response-count", "Count").value shouldBe 3
+      jmxValue("sample7-5XX-count", "Count").value shouldBe 2
+      jmxValue("sample7-2XX-count", "Count").value shouldBe 1
+    }
+  }
+
   def jmxValue(beanName: String, key: String) = {
     val oName =
       ObjectName.getInstance(s"${MetricsExtension(system).Domain}:name=${MetricsExtension(system).Domain}.$beanName")
