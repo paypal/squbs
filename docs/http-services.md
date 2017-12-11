@@ -258,10 +258,15 @@ There are a few rules you have to keep in mind when implementing a `FlowDefiniti
 
 squbs comes with pre-built [pipeline](#pipeline) elements for metrics collection and squbs activator templates sets those as default.  Accordingly, each squbs http(s) service is enabled to collect [Codahale Metrics](http://metrics.dropwizard.io/3.1.0/getting-started/) out-of-the-box without any code change or configuration.  Please note, squbs metrics collection does NOT require AspectJ or any other runtime code weaving.  The following metrics are available on JMX by default:
 
-   * Request Timer
-   * Request Count Meter
-   * A meter for each http response status code category: 2xx, 3xx, 4xx, 5xx
-   * A meter for each exception type that was returned by the service.
+   * Request Level Metrics:
+      * Request Timer
+      * Request Count Meter
+      * A meter for each http response status code category: 2xx, 3xx, 4xx, 5xx
+      * A meter for each exception type that was returned by the service.
+  * Connection Level Metrics:
+     * Active Connections Counter
+     * Connection Creation Meter
+     * Connection Termination Meter
 
 
 You can access the `MetricRegistry` by `MetricsExtension(system).metrics`.  This allows you to create further meters, timers, histograms, etc or to pass it to a different type metrics reporter.
