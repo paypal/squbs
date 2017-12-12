@@ -8,7 +8,7 @@ The following dependencies are required for Persistent Buffer to work:
 
 ```scala
 "org.squbs" %% "squbs-pattern" % squbsVersion,
-"net.openhft" % "chronicle-queue" % "4.5.13"
+"net.openhft" % "chronicle-queue" % "4.5.27"
 ```
 
 ## Examples

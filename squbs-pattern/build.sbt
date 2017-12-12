@@ -13,7 +13,7 @@ javaOptions in Test += "-Xmx512m"
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
-  "net.openhft" % "chronicle-queue" % "4.5.13" % "optional",
+  "net.openhft" % "chronicle-queue" % chronicleQueueV % "optional",
   "org.scalatest" %% "scalatest" % scalatestV % "test->*",
   "junit" % "junit" % junitV % "test",
   "org.apache.commons" % "commons-math3" % "3.3" % "test->*",
