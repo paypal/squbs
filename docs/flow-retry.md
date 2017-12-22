@@ -36,9 +36,10 @@ Source("a" :: "b" :: "c" :: Nil)
 ##### Java
 
 ```java
-final BidiFlow<Pair[String, Context], Pair[String, Context],
-    Pair[Try[String], Context], Pair[Try[String], Context], NotUsed> retryBidi =
-    RetryBidi.create(2);
+final BidiFlow<Pair<String, Long>,
+               Pair<String, Long>,
+               Pair<Try<String>, Long>,
+               Pair<Try<String>, Long>, NotUsed> retryBidi = RetryBidi.create(2L);
 
 final Flow<String, String, NotUsed> flow =
     Flow.<String>create().map(s -> findAnEnglishWordThatStartWith(s));
@@ -72,17 +73,13 @@ RetryBidi[In, Out, Context](maxRetries: Int, uniqueIdMapper: Context => Option[A
 This `BidiFlow` can be joined with any flow that takes in a `(In, Context)` and outputs a `(Out, Context)`.
 
 ```scala
-case class MyContext(s: String, uuid: UUID)
+import org.squbs.streams.RetrySettings
 
-val retryBidi = RetryBidi[String, String, MyContext](maxRetries = 2, (context: MyContext) => Some(context.uuid))
-val flow = Flow[(String, MyContext)].mapAsyncUnordered(10) { elem =>
-  (ref ? elem).mapTo[(String, MyContext)]
-}
+case class MyContext(s: String, id: Long)
 
-Source("a" :: "b" :: "c" :: Nil)
-  .map( _ -> MyContext("dummy", UUID.randomUUID))
-  .via(retryBidi.join(flow))
-  .runWith(Sink.seq)
+val retrySettings =
+  RetrySettings[String, String, MyContext](maxRetries = 3)
+    .withUniqueIdMapper((context: MyContext) => Some(context.id))
 ```
 
 ###### Java
@@ -90,36 +87,37 @@ Source("a" :: "b" :: "c" :: Nil)
 The following API is used to pass a uniqueId mapper:
 
 ```java
-public class RetryBidi {
-    public static <In, Out, Context> BidiFlow<Pair<In, Context>,
-                                              Pair<In, Context>,
-                                              Pair<Try<Out>, Context>,
-                                              Pair<Try<Out>, Context>,
-                                              NotUsed>
-    create(Long maxRetries, Function<Context, Optional<Object>> uniqueIdMapper);
-}
-```
+import org.squbs.streams.RetrySettings;
 
+class MyContext {
+    private String s;
+    private long id;
+
+    public MyContext(String s, long id) {
+        this.s = s;
+        this.id = id;
+    }
+
+    public long id() {
+        return id;
+    }
+}
+
+RetrySettings<String, String, MyContext> retrySettings =
+        RetrySettings.<String, String, MyContext>create(3)
+                .withUniqueIdMapper(context -> Optional.of(context.id));
+```
 This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair<In, Context>` and outputs a `akka.japi.Pair<Try<Out>, Context>`.
 
 ```java
-class MyContext {
-    private String s;
-    private UUID uuid;
-
-    public MyContext(String s, UUID uuid) {
-        this.s = s;
-        this.uuid = uuid;
-    }
-
-    public UUID uuid() {
-        return uuid;
-    }
-};
+final Function<MyContext, Optional<Object>> uniqueIdMapper = context -> Optional.of(context.id);
+RetrySettings<String, String, MyContext> retrySettings =
+        RetrySettings.<String, String, MyContext>create(maxRetries)
+                .withUniqueIdMapper(uniqueIdMapper);
 
 final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>,
                Pair<Try<String>, MyContext>, Pair<Try<String>, MyContext>, NotUsed>
-                retryBidi = RetryBidi.create(maxRetries, context -> Optional.of(context.uuid));
+                retryBidi = RetryBidi.create(retrySettings);
 
 final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
         Flow.<Pair<String, MyContext>>create()
@@ -183,9 +181,9 @@ val retryBidi = RetryBidi[String, Long](maxRetries = 3, delay = 200 millis)
 ##### Java
 
 ```java
-final BidiFlow<Pair[String, Context], Pair[String, Context],
-    Pair[Try[String], Context], Pair[Try[String], Context], NotUsed> retryBidi =
-    RetryBidi.create(3, Duration.create("200 millis"));
+final BidiFlow<Pair<String, Context>, Pair<String, Context>,
+    Pair<Try<String>, Context>, Pair<Try<String>, Context>, NotUsed> retryBidi =
+    RetryBidi.create(3L, Duration.create("200 millis"));
 
 ```
 ##### Exponential backoff
@@ -201,14 +199,14 @@ val retryBidi = RetryBidi[String, Long](maxRetries = 4, delay = 200 millis, expo
 ###### Java
 
 ```java
-final BidiFlow<Pair[String, Context], Pair[String, Context],
-    Pair[Try[String], Context], Pair[Try[String], Context], NotUsed> retryBidi =
-    RetryBidi.create(4, Duration.create("200 millis"), 2.0);
+final BidiFlow<Pair<String, Context>, Pair<String, Context>,
+    Pair<Try<String>, Context>, Pair<Try<String>, Context>, NotUsed> retryBidi =
+    RetryBidi.create(4L, Duration.create(200, TimeUnit.MILLISECONDS), 2.0);
 
 ```
 
-The first failure of any element will be retried after 200ms, and then any second attempt will be retried after 800ms.
-  In general the retry delay duration will continue to increase using the formula { delay duration } * N ^ exponentialBackOff.
+The first failure of any element will be retried after a delay of 200ms, and then any second attempt will be retried after 800ms.
+  In general the retry delay duration will continue to increase using the formula { delay duration } * N ^ exponentialBackOff (where N is the retry number).
 
 ##### Maximum delay
 An optional maximum delay duration (`maxDelay`) can also be specified to provide an upper bound on the exponential back delay
@@ -223,8 +221,8 @@ val retryBidi = RetryBidi[String, Long](maxRetries = 4, delay = 200 millis, expo
 ###### Java
 
 ```java
-final BidiFlow<Pair[String, Context], Pair[String, Context],
-    Pair[Try[String], Context], Pair[Try[String], Context], NotUsed> retryBidi =
-    RetryBidi.create(4, Duration.create("200 millis"), 2.0, Duration.create("400 millis"));
+final BidiFlow<Pair<String, Context>, Pair<String, Context>,
+    Pair<Try<String>, Context>, Pair<Try<String>, Context>, NotUsed> retryBidi =
+    RetryBidi.create(4L, Duration.create(200, TimeUnit.MILLISECONDS), 2.0, Duration.create("400 millis"));
 
 ```

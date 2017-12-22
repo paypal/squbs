@@ -51,6 +51,16 @@ public class RetryBidiTest {
     final private Materializer mat = ActorMaterializer.create(system);
     final private Try<String> failure = Failure.apply(new Exception("failed"));
 
+    final class MyContext {
+        private String s;
+        private UUID uuid;
+
+        public MyContext(String s, UUID uuid) {
+            this.s = s;
+            this.uuid = uuid;
+        }
+    }
+
     @Test
     public void testRetryBidi() throws ExecutionException, InterruptedException {
 
@@ -59,7 +69,7 @@ public class RetryBidiTest {
                         .map(elem -> new Pair<Try<String>, UUID>(Success.apply(elem.first()), elem.second()));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, Pair<Try<String>, UUID>,
-                NotUsed> retry = RetryBidi.create(2L);
+                NotUsed> retry = RetryBidi.create(2);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -86,7 +96,7 @@ public class RetryBidiTest {
                                 return new Pair<>(Success.apply(elem.first()), elem.second());
                             });
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
-                Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(2L);
+                Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(2);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -109,7 +119,7 @@ public class RetryBidiTest {
                         .map(elem -> new Pair<Try<String>, UUID>(Success.apply(elem.first()), elem.second()));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, Pair<Try<String>, UUID>,
-                NotUsed> retry = RetryBidi.create(3L);
+                NotUsed> retry = RetryBidi.create(3);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -126,16 +136,6 @@ public class RetryBidiTest {
 
     @Test
     public void testRetryBidiWithUniqueIdMapper() throws ExecutionException, InterruptedException {
-
-        class MyContext {
-            private String s;
-            private UUID uuid;
-
-            public MyContext(String s, UUID uuid) {
-                this.s = s;
-                this.uuid = uuid;
-            }
-        }
         final Flow<Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> bottom =
                 Flow.<Pair<String, MyContext>>create()
             .map(elem -> {
@@ -148,13 +148,13 @@ public class RetryBidiTest {
         Function<MyContext, Optional<Object>> uniqueIdMapper = context -> Optional.of(context.uuid);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =
-                RetryBidi.create(3L, uniqueIdMapper, OverflowStrategy.backpressure());
+                RetryBidi.create(3, uniqueIdMapper, OverflowStrategy.backpressure());
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
                         .map(s -> new Pair<>(s, new MyContext("dummy", UUID.randomUUID())))
                         .via(retryFlow.join(bottom))
-                        .map(t -> t.first())
+                        .map(Pair::first)
                         .runWith(Sink.seq(), mat);
 
         final List<Try<String>> expected = Arrays.asList(Success.apply("a"), Success.apply("c"), failure);
@@ -163,7 +163,7 @@ public class RetryBidiTest {
     }
 
     @Test
-    public void testRetryBidiWithFailureDecider() throws Exception {
+    public void testRetryBidiWithFailureDecider() {
         final Flow<Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> bottom =
                 Flow.<Pair<String, UUID>>create()
                         .map(elem -> new Pair<Try<String>, UUID>(Success.apply(elem.first()), elem.second()));
@@ -172,13 +172,13 @@ public class RetryBidiTest {
                 out -> out.isFailure() || out.equals(Success.apply("a")); // treat "a" as a failure for retry
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
-                Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(1L,
+                Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(1,
                 Optional.of(failureDecider), OverflowStrategy.backpressure());
 
         Source.from(Arrays.asList("a", "b"))
                 .map(s -> new Pair<>(s, UUID.randomUUID()))
                 .via(retry.join(bottom))
-                .map(t -> t.first())
+                .map(Pair::first)
                 .runWith(TestSink.probe(system), mat)
                 .request(2)
                 .expectNext(Success.apply("a"), Success.apply("b"));
@@ -195,8 +195,8 @@ public class RetryBidiTest {
                 });
 
         final RetrySettings retrySettings =
-                RetrySettings.<String, Try<String>, UUID>create(3L)
-                        .withDelay(Duration.create(1, "seconds"));
+                RetrySettings.<String, Try<String>, UUID>create(3)
+                        .withDelay(Duration.create(1, TimeUnit.SECONDS));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
                 Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(retrySettings);
@@ -204,7 +204,7 @@ public class RetryBidiTest {
         Source.from(Arrays.asList("a", "b", "c"))
                 .map(s -> new Pair<>(s, UUID.randomUUID()))
                 .via(retry.join(bottom))
-                .map(t -> t.first())
+                .map(Pair::first)
                 .runWith(TestSink.probe(system), mat)
                 .request(3)
                 .expectNext(Success.apply("a"), Success.apply("c"))
@@ -222,10 +222,10 @@ public class RetryBidiTest {
                         return new Pair<>(Success.apply(elem.first()), elem.second());
                 });
 
-        final RetrySettings retrySettings = RetrySettings.<String, Try<String>, UUID>create(3L)
-                .withDelay(Duration.create(1, "second"))
+        final RetrySettings retrySettings = RetrySettings.<String, Try<String>, UUID>create(3)
+                .withDelay(Duration.create(1, TimeUnit.SECONDS))
                 .withExponentialBackoff(2.0)
-                .withMaxDelay(Duration.create(2, "seconds"));
+                .withMaxDelay(Duration.create(2, TimeUnit.SECONDS));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
                 Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(retrySettings);
@@ -244,15 +244,6 @@ public class RetryBidiTest {
     @Test
     public void testRetryBidiWithMapperDecider() throws ExecutionException, InterruptedException {
 
-        class MyContext {
-            private String s;
-            private UUID uuid;
-
-            public MyContext(String s, UUID uuid) {
-                this.s = s;
-                this.uuid = uuid;
-            }
-        }
         final Flow<Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> bottom =
                 Flow.<Pair<String, MyContext>>create()
                         .map(elem -> {
@@ -268,7 +259,7 @@ public class RetryBidiTest {
         final Function<MyContext, Optional<Object>> uniqueIdMapper = context -> Optional.of(context.uuid);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =
-                RetryBidi.create(3L, uniqueIdMapper, Optional.of(failureDecider),
+                RetryBidi.create(3, uniqueIdMapper, Optional.of(failureDecider),
                         OverflowStrategy.backpressure());
 
         final CompletionStage<List<Try<String>>> result =
@@ -276,6 +267,43 @@ public class RetryBidiTest {
                         .map(s -> new Pair<>(s, new MyContext("dummy", UUID.randomUUID())))
                         .via(retryFlow.join(bottom))
                         .map(t -> t.first())
+                        .runWith(Sink.seq(), mat);
+
+        final List<Try<String>> expected = Arrays.asList(Success.apply("a"), Success.apply("c"), failure);
+        assertTrue(result.toCompletableFuture().get().containsAll(expected),
+                "Did not get the expected elements from retry stage");
+    }
+
+    @Test
+    public void testRetryBidiWithSettingsMapperDecider() throws Exception {
+        final Flow<Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> bottom =
+                Flow.<Pair<String, MyContext>>create()
+                        .map(elem -> {
+                            if (elem.first().equals("b"))
+                                return new Pair<>(failure, elem.second());
+                            else
+                                return new Pair<>(Success.apply(elem.first()), elem.second());
+                        });
+
+        final Function<MyContext, Optional<Object>> uniqueIdMapper = context -> Optional.of(context.uuid);
+        final Function<Try<String>, Boolean> failureDecider =
+                out -> out.isFailure() || out.equals(Success.apply("a")); // treat "a" as failure
+
+        final RetrySettings<String, String, MyContext> retrySettings =
+                RetrySettings.<String, String, MyContext>create(3)
+                    .withFailureDecider(failureDecider)
+                    .withUniqueIdMapper(uniqueIdMapper)
+                    .withOverflowStrategy(OverflowStrategy.backpressure());
+
+        final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
+                Pair<Try<String>, MyContext>, NotUsed> retryFlow =
+                RetryBidi.create(retrySettings);
+
+        final CompletionStage<List<Try<String>>> result =
+                Source.from(Arrays.asList("a", "b", "c"))
+                        .map(s -> new Pair<>(s, new MyContext("dummy", UUID.randomUUID())))
+                        .via(retryFlow.join(bottom))
+                        .map(Pair::first)
                         .runWith(Sink.seq(), mat);
 
         final List<Try<String>> expected = Arrays.asList(Success.apply("a"), Success.apply("c"), failure);
