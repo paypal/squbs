@@ -50,6 +50,7 @@ lazy val `squbs-pattern` = (project dependsOn (`squbs-ext`, `squbs-testkit` % "t
   .configs(SlowTest)
   .settings(inConfig(SlowTest)(Defaults.testTasks): _*)
   .settings(testOptions in SlowTest := Seq.empty)
+  .enablePlugins(spray.boilerplate.BoilerplatePlugin)
 
 // Information for debugging tests and test launchers inside sbt.
 // val DebugTest = config("dtest") extend Test
