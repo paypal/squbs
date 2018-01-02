@@ -29,8 +29,8 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{AsyncFlatSpecLike, Matchers}
 import org.scalatest.OptionValues._
+import org.scalatest.{AsyncFlatSpecLike, Matchers}
 import org.squbs.metrics.{MetricsExtension, MetricsFlow}
 import org.squbs.pipeline.{Context, PipelineFlow, PipelineFlowFactory}
 import org.squbs.unicomplex.Timeouts._

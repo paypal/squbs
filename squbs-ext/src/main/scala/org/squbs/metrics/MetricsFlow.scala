@@ -18,14 +18,16 @@ package org.squbs.metrics
 
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{BidiFlow, Flow}
+import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import com.codahale.metrics.{MetricRegistry, Timer}
-import org.squbs.pipeline.RequestContext
+import org.squbs.pipeline.{PipelineFlow, RequestContext}
 
 import scala.util.{Failure, Success, Try}
 
 object MetricsFlow {
 
-  def apply(name: String)(implicit system: ActorSystem) = {
+  def apply(name: String)(implicit system: ActorSystem): PipelineFlow = {
 
     val domain = MetricsExtension(system).Domain
     val metrics = MetricsExtension(system).metrics
@@ -62,5 +64,62 @@ object MetricsFlow {
     }
 
     BidiFlow.fromFlows(inbound, outbound)
+  }
+}
+
+object MaterializationMetricsCollector {
+
+  def apply[T](name: String)(implicit system: ActorSystem) = new MaterializationMetricsCollector[T](name)
+
+  /**
+    * Java API
+    */
+  def create[T](name: String, system: ActorSystem) = apply[T](name)(system)
+}
+
+class MaterializationMetricsCollector[T] private[metrics] (name: String)(implicit system: ActorSystem) extends GraphStage[FlowShape[T, T]] {
+
+  val domain = MetricsExtension(system).Domain
+  val metrics = MetricsExtension(system).metrics
+
+  private val in = Inlet[T]("ActiveMaterializationCounter.in")
+  private val out = Outlet[T]("ActiveMaterializationCounter.out")
+
+  val activeMaterializationCount = metrics.counter(MetricRegistry.name(domain, s"$name-active-count"))
+  val newMaterializationCount = metrics.meter(MetricRegistry.name(domain, s"$name-creation-count"))
+  val materializationTerminationCount = metrics.meter(MetricRegistry.name(domain, s"$name-termination-count"))
+
+  override def shape: FlowShape[T, T] = FlowShape.of(in, out)
+
+  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
+
+    activeMaterializationCount.inc()
+    newMaterializationCount.mark()
+
+    setHandler(in, new InHandler {
+      override def onPush(): Unit = push(out, grab(in))
+
+      override def onUpstreamFailure(ex: Throwable): Unit = {
+        activeMaterializationCount.dec()
+        materializationTerminationCount.mark()
+        super.onUpstreamFailure(ex)
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        activeMaterializationCount.dec()
+        materializationTerminationCount.mark()
+        super.onUpstreamFinish()
+      }
+    })
+
+    setHandler(out, new OutHandler {
+      override def onPull(): Unit = pull(in)
+
+      override def onDownstreamFinish(): Unit = {
+        activeMaterializationCount.dec()
+        materializationTerminationCount.mark()
+        super.onDownstreamFinish()
+      }
+    })
   }
 }

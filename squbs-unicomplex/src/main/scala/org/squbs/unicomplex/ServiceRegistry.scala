@@ -34,8 +34,8 @@ import akka.stream.TLSClientAuth.{Need, Want}
 import akka.stream.scaladsl.{Flow, GraphDSL, UnzipWith, ZipWith}
 import akka.stream.{ActorMaterializer, BindFailedException, FlowShape, Materializer}
 import com.typesafe.config.Config
+import org.squbs.metrics.MaterializationMetricsCollector
 import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, RequestContext, ServerPipeline}
-import org.squbs.unicomplex.StatsSupport.StatsHolder
 
 import scala.concurrent.Future
 import scala.language.postfixOps
@@ -84,11 +84,9 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     val uniSelf = context.self
     import context.dispatcher
 
-    val statsHolder = new StatsHolder
     val requestFlow = Flow[HttpRequest]
-      .via(statsHolder.watchRequests())
+      .via(MaterializationMetricsCollector[HttpRequest](s"$name-connections"))
       .via(handler.flow)
-      .via(statsHolder.watchResponses())
 
     val bindingF = sslContext match {
       case Some(sslCtx) =>
@@ -101,8 +99,6 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
     {
       case sb: ServerBinding =>
-        import org.squbs.unicomplex.JMX._
-        JMX.register(new ServerStats(name, statsHolder), prefix + serverStats + name)
         serverBindings = serverBindings + (name -> ServerBindingInfo(Some(sb)))
         notifySender ! Ack
         uniSelf ! HttpBindSuccess
