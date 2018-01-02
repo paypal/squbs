@@ -1,5 +1,4 @@
 import Versions._
-import spray.boilerplate.BoilerplatePlugin.Boilerplate
 
 name := "squbs-pattern"
 
@@ -36,9 +35,6 @@ def akkaDependencies = Seq(
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "test"
 )
 
-// : Seq[sbt.Def.Setting[_]] in the line below is not required for a successful build
-// however, it is added due to an intelliJ warning
-Boilerplate.settings : Seq[sbt.Def.Setting[_]]
 
 // (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pattern")
 
