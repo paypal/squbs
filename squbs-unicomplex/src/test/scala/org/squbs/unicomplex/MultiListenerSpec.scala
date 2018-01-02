@@ -28,6 +28,7 @@ import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
+import org.squbs.metrics.MetricsExtension
 import org.squbs.unicomplex.Timeouts._
 
 import scala.concurrent.Await
@@ -108,28 +109,13 @@ class MultiListenerSpec extends TestKit(MultiListenerSpecActorSystem.boot.actorS
 
   it should "register the JMXBean for Akka Http status" in {
     import org.squbs.unicomplex.JMX._
-    val statsBase = prefix(system) + serverStats
-    get(statsBase + "default-listener", "ListenerName").asInstanceOf[String] should be ("default-listener")
-    get(statsBase + "default-listener", "TotalConnections").asInstanceOf[Long] should be >= 0L
-//    get(statsBase + "default-listener", "RequestsTimedOut").asInstanceOf[Long] should be >= 0L // TODO Missing feature
-    get(statsBase + "default-listener", "OpenRequests").asInstanceOf[Long] should be >= 0L
-    get(statsBase + "default-listener", "Uptime").asInstanceOf[String] should fullyMatch regex """\d{2}:\d{2}:\d{2}\.\d{3}"""
-    get(statsBase + "default-listener", "MaxOpenRequests").asInstanceOf[Long] should be >= 0L
-    get(statsBase + "default-listener", "OpenConnections").asInstanceOf[Long] should be >= 0L
-    get(statsBase + "default-listener", "MaxOpenConnections").asInstanceOf[Long] should be >= 0L
-    get(statsBase + "default-listener", "TotalRequests").asInstanceOf[Long] should be >= 0L
+    val statsBase = s"${MetricsExtension(system).Domain}:name=${MetricsExtension(system).Domain}."
+    get(statsBase + "default-listener-connections-creation-count", "Count").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "default-listener-connections-active-count", "Count").asInstanceOf[Long] should be >= 0L
 
 
-    get(statsBase + "second-listener", "ListenerName").asInstanceOf[String] should be ("second-listener")
-    get(statsBase + "second-listener", "TotalConnections").asInstanceOf[Long] should be >= 0L
-//    get(statsBase + "second-listener", "RequestsTimedOut").asInstanceOf[Long] should be >= 0L // TODO Missing feature
-    get(statsBase + "second-listener", "OpenRequests").asInstanceOf[Long] should be >= 0L
-    get(statsBase + "second-listener", "Uptime").asInstanceOf[String] should fullyMatch regex """\d{2}:\d{2}:\d{2}\.\d{3}"""
-    get(statsBase + "second-listener", "MaxOpenRequests").asInstanceOf[Long] should be >= 0L
-    get(statsBase + "second-listener", "OpenConnections").asInstanceOf[Long] should be >= 0L
-    get(statsBase + "second-listener", "MaxOpenConnections").asInstanceOf[Long] should be >= 0L
-    get(statsBase + "second-listener", "TotalRequests").asInstanceOf[Long] should  be >= 0L
-
+    get(statsBase + "second-listener-connections-creation-count", "Count").asInstanceOf[Long] should be >= 0L
+    get(statsBase + "second-listener-connections-active-count", "Count").asInstanceOf[Long] should be >= 0L
   }
 
   override protected def afterAll(): Unit = {
