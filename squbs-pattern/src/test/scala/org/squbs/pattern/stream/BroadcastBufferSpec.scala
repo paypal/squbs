@@ -141,7 +141,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     Await.result(sink1F.failed, awaitMax) shouldBe an[AbruptTerminationException]
     Await.result(sink2F.failed, awaitMax) shouldBe an[AbruptTerminationException]
 
-    val restartFrom = bBufferInCount.incrementAndGet()
+    val restartFrom = bBufferInCount.get()
     println(s"Restart from count $restartFrom")
 
     val beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
