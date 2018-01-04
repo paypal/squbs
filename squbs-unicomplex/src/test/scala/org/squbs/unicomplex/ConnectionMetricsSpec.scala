@@ -171,10 +171,12 @@ class ConnectionMetricsSpec extends TestKit(ConnectionMetricsSpec.boot.actorSyst
     urlConnection1.disconnect()
     urlConnection2.disconnect()
 
-    Future {
+    awaitAssert {
       jmxValue("third-listener-connections-termination-count", "Count").value shouldBe 2
       jmxValue("third-listener-connections-active-count", "Count").value shouldBe 1
     }
+
+    assert(true)
   }
 
   def jmxValue(beanName: String, key: String) = {
