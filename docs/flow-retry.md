@@ -65,7 +65,6 @@ For the last option, `RetryBidi` allows a function to be passed in as a paramete
 ###### Scala
 
 The following API can be used to pass a uniqueId mapper:
-
 ```scala
 RetryBidi[In, Out, Context](maxRetries: Int, uniqueIdMapper: Context => Option[Any])
 ```
@@ -154,16 +153,78 @@ val retryBidi = RetryBidi[Request, Response, MyContext](maxRetries = 3, (context
 
 ##### Java
 
-A `Function<Try<Out>, Boolean>` can be provided via Retry Optional `failureDecider` parameter to create method.  Below is an example where,
+A `Function<Try<Out>, Boolean>` can be provided via Retry Optional `failureDecider` parameter to `create` method.  Below is an example where,
 along with any `Failure` message, a `Success` of `HttpResponse` with status code `400` and above is also considered a failure:
 
 ```java
 
-final Function<Try<HttpResponse>, Optional<Object>> failureDecider =
-tryResponse -> tryResponse.isFailure() || tryHttpResponse.get().status().isFailure());
+final Function<Try<HttpResponse>, Boolean> failureDecider =
+tryResponse -> tryResponse.isFailure() || tryResponse.get().status().isFailure());
 
 final BidiFlow<Pair<HttpResponse, MyContext>, Pair<HttpResponse, MyContext>, Pair<Try<HttpResponse>, MyContext>,
     Pair<Try<HttpResponse>, MyContext>, NotUsed> retryFlow =
     RetryBidi.create(3L, Optional.of(failureDecider), OverflowStrategy.backpressure());
+
+```
+
+#### Retries with a delay duration
+
+By default, any failures pulled from the joined `Flow` are immediately attempted to be retried.  However, the `Retry` stage also accepts an optional
+ delay `Duration` parameter to add a timed delay between each subsequent retry attempt.  This duration is the minimum delay
+ duration from when a failure is pulled from the joined flow to when it is re-attempted (pushed) again to the joined flow.
+For example to create a Retry stage that delays 200 milliseconds during retries:
+
+##### Scala
+
+```scala
+val retryBidi = RetryBidi[String, Long](maxRetries = 3, delay = 200 millis)
+```
+
+##### Java
+
+```java
+final BidiFlow<Pair[String, Context], Pair[String, Context],
+    Pair[Try[String], Context], Pair[Try[String], Context], NotUsed> retryBidi =
+    RetryBidi.create(3, Duration.create("200 millis"));
+
+```
+##### Exponential backoff
+An optional exponential backoff factor can also be specified to increase the delay duration on each subsequent retry attempt (upto a maximum delay duration)
+For example to add an exponentialBackoffFactor off of 2.0 for the above example:
+
+###### Scala
+
+```scala
+val retryBidi = RetryBidi[String, Long](maxRetries = 4, delay = 200 millis, exponentialBackoffFactor = 2.0)
+```
+
+###### Java
+
+```java
+final BidiFlow<Pair[String, Context], Pair[String, Context],
+    Pair[Try[String], Context], Pair[Try[String], Context], NotUsed> retryBidi =
+    RetryBidi.create(4, Duration.create("200 millis"), 2.0);
+
+```
+
+The first failure of any element will be retried after 200ms, and then any second attempt will be retried after 800ms.
+  In general the retry delay duration will continue to increase using the formula { delay duration } * N ^ exponentialBackOff.
+
+##### Maximum delay
+An optional maximum delay duration (`maxDelay`) can also be specified to provide an upper bound on the exponential back delay
+duration.  If no maximum delay is specified the exponential backoff will continue to increase the retry delay duration until the number of maxRetries.
+
+###### Scala
+
+```scala
+val retryBidi = RetryBidi[String, Long](maxRetries = 4, delay = 200 millis, exponentialBackoffFactor = 2.0, maxDelay = 400 millis)
+```
+
+###### Java
+
+```java
+final BidiFlow<Pair[String, Context], Pair[String, Context],
+    Pair[Try[String], Context], Pair[Try[String], Context], NotUsed> retryBidi =
+    RetryBidi.create(4, Duration.create("200 millis"), 2.0, Duration.create("400 millis"));
 
 ```
