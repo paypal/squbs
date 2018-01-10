@@ -26,7 +26,7 @@ import org.scalatest.testng.TestNGSuiteLike
 import org.testng.Assert
 import org.testng.annotations.{AfterClass, BeforeClass}
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
@@ -39,7 +39,7 @@ trait TestNGRouteTestBase extends RouteTest with RouteDefinitionTest with TestNG
   implicit def system: ActorSystem = systemResource.system
   implicit def materializer: Materializer = systemResource.materializer
 
-  protected def createTestRouteResult(request: HttpRequest, result: RouteResult): TestRouteResult =
+  override protected def createTestRouteResultAsync(request: HttpRequest, result: Future[RouteResult]): TestRouteResult =
     new TestRouteResult(result, awaitDuration)(system.dispatcher, materializer) {
       protected def assertEquals(expected: AnyRef, actual: AnyRef, message: String): Unit =
         reportDetails {
