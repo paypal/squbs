@@ -256,23 +256,23 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Long, uniqu
     private val noDelay = delay == Duration.Zero
     private var upstreamFinished = false
 
-    private def emitOrQueueFailure(context: Context): Boolean =
+    private def queueFailure(context: Context): Boolean =
       retryRegistry.get(uniqueId(context)) match {
         case None =>
           log.debug("Element for context [{}] dropped", context)
-          true
+          false
         case Some((_, ctx, retryTracker)) if retryTracker.count >= maxRetries =>
           log.debug("Retries exhausted for context [{}]", context)
           retryRegistry.get(uniqueId(ctx)) foreach(entry => {
             retryDelayQ.remove(entry._3)
             retryRegistry -= uniqueId(entry._2)
           })
-          true
+          false
         case Some((_, ctx, retryTracker)) =>
           log.debug("Queueing retry {} for context [{}]", retryTracker.count + 1, context)
           updateTracker(ctx).foreach(tracker => retryDelayQ.add(tracker))
           if (!isTimerActive(timerName) && !noDelay) scheduleOnce(timerName, sleepTimeLeft)
-          false
+          true
       }
 
     // Some useful hidden types for pattern match
@@ -378,18 +378,21 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Long, uniqu
       override def onPush(): Unit = {
         val (elem, context) = grab(in2)
         if (isFailure(elem)) {
-          if (emitOrQueueFailure(context))
-            push(out2, (elem, context))
-          else if (isAvailable(out1)) pushIfReady()
-
-          if (retryRegistry.nonEmpty && !hasBeenPulled(in2))
+          if (queueFailure(context)) {
+            if (isAvailable(out1)) pushIfReady()
+            // continue propagating demand on in2 if grabbed element is queued for retry
             pull(in2)
+          } else {
+            if (isAvailable(out2)) push(out2, (elem, context))
+            else log.error("out2 is not available for push.  Dropping exhausted element")
+          }
         } else {
           retryRegistry.get(uniqueId(context)) foreach(entry => {
             retryDelayQ.remove(entry._3)
             retryRegistry.remove(uniqueId(entry._2))
           })
-          push(out2, (elem, context))
+          if (isAvailable(out2)) push(out2, (elem, context))
+          else log.error("out2 is not available for push.  Dropping successful element")
         }
       }
 
