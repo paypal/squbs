@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.Attributes.inputBuffer
-import akka.stream.{ActorMaterializer, BufferOverflowException, OverflowStrategy}
+import akka.stream.{ActorMaterializer, BufferOverflowException, OverflowStrategy, ThrottleMode}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestKit
@@ -55,7 +55,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
 
     val expected = (Success("a"), 1) :: (Success("b"), 2) :: (Success("c"), 3) :: Nil
     result map {
-      _ should contain theSameElementsAs expected
+      _ should contain theSameElementsInOrderAs expected
     }
   }
 
@@ -70,9 +70,9 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       .via(RetryBidi[String, String, Long](3).join(flow))
       .runWith(Sink.seq)
 
-    val expected = (Success("b"), 2) :: (Success("c"), 3) :: (failure, 1) :: Nil
+    val expected = (failure, 1) :: (Success("b"), 2) :: (Success("c"), 3) :: Nil
     result map {
-      _ should contain theSameElementsAs expected
+      _ should contain theSameElementsInOrderAs expected
     }
   }
 
@@ -92,7 +92,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
 
     val expected = (Success("d"), 1) :: (failure, 2) :: (Success("f"), 3) :: Nil
     result map {
-      _ should contain theSameElementsAs expected
+      _ should contain theSameElementsInOrderAs expected
     }
   }
 
@@ -112,7 +112,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
 
     val expected = (Success("d"), 1) :: (Success("e"), 2) :: (failure, 3) :: Nil
     result map {
-      _ should contain theSameElementsAs expected
+      _ should contain theSameElementsInOrderAs expected
     }
   }
 

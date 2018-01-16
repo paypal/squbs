@@ -185,20 +185,20 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Long, uniqu
     private val readyToRetry = mutable.Queue.empty[(In, Context)] // Queue of elements ready to be emitted on out1
     private var upstreamFinished = false
 
-    private def incrementOrRemoveFailure(context: Context): Boolean =
+    private def queueFailure(context: Context): Boolean =
       retryRegistry.get(uniqueId(context)) match {
         case None =>
           log.debug("Entry for context [{}] dropped", context)
-          true
+          false
         case Some((_, ctx, retry)) if retry >= maxRetries =>
           retryRegistry -= uniqueId(ctx)
           log.debug("All retries exhausted for context [{}]", context)
-          true
+          false
         case Some((in, ctx, retry)) =>
           retryRegistry += ((uniqueId(context), (in, ctx, retry + 1)))
           readyToRetry.enqueue((in, context))
           log.debug("Queueing retry {} for context [{}]", retry + 1, context)
-          false
+          true
       }
 
     // Some useful hidden types for pattern match
@@ -278,12 +278,18 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Long, uniqu
       override def onPush(): Unit = {
         val (elem, context) = grab(in2)
         if (isFailure(elem)) {
-          if (incrementOrRemoveFailure(context)) push(out2, (elem, context))
-          else if (isAvailable(out1)) push(out1, readyToRetry.dequeue())
-          if (retryRegistry.nonEmpty) pull(in2)
+          if (queueFailure(context)) {
+            if (isAvailable(out1)) push(out1, readyToRetry.dequeue())
+            // continue propagating demand on in2 if grabbed element is queued for retry
+            pull(in2)
+          } else {
+            if (isAvailable(out2)) push(out2, (elem, context))
+            else log.error("out2 is not available for push.  Dropping exhausted element")
+          }
         } else {
           retryRegistry.remove(uniqueId(context))
-          push(out2, (elem, context))
+          if (isAvailable(out2)) push(out2, (elem, context))
+          else log.error("out2 is not available for push.  Dropping successful element")
         }
       }
 
