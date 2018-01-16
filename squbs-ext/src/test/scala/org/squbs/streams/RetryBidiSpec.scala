@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.Attributes.inputBuffer
-import akka.stream.{ActorMaterializer, BufferOverflowException, OverflowStrategy}
+import akka.stream.{ActorMaterializer, BufferOverflowException, OverflowStrategy, ThrottleMode}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.{TestKit, TestProbe}
@@ -68,7 +68,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
 
     val expected = (Success("a"), 1) :: (Success("b"), 2) :: (Success("c"), 3) :: Nil
     result map {
-      _ should contain theSameElementsAs expected
+      _ should contain theSameElementsInOrderAs expected
     }
   }
 
@@ -83,9 +83,9 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       .via(RetryBidi[String, String, Long](3).join(flow))
       .runWith(Sink.seq)
 
-    val expected =  (failure, 1) :: (Success("b"), 2) :: (Success("c"), 3) :: Nil
+    val expected = (failure, 1) :: (Success("b"), 2) :: (Success("c"), 3) :: Nil
     result map {
-      _ should contain theSameElementsAs expected
+      _ should contain theSameElementsInOrderAs expected
     }
   }
 
@@ -105,7 +105,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
 
     val expected = (Success("d"), 1) :: (failure, 2) :: (Success("f"), 3) :: Nil
     result map {
-      _ should contain theSameElementsAs expected
+      _ should contain theSameElementsInOrderAs expected
     }
   }
 
@@ -125,7 +125,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
 
     val expected = (Success("d"), 1) :: (Success("e"), 2) :: (failure, 3) :: Nil
     result map {
-      _ should contain theSameElementsAs expected
+      _ should contain theSameElementsInOrderAs expected
     }
   }
 
@@ -495,6 +495,41 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       .expectNext((failure, 4L))
       .expectComplete()
     succeed
+  }
+
+  it should "retry when the joined flow buffers" in {
+    val bottom = Flow[(Long, Long)].map {
+      case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx) // fail every even element
+    } buffer(5, OverflowStrategy.backpressure)
+
+    val retry = RetryBidi[Long, Long, Long](2)
+    val result = Source(1L to 100)
+      .map(x => (x, x))
+      .via(retry.join(bottom))
+      .runWith(Sink.seq)
+
+    val expected = 1 to 100 map (x => if (x % 2 == 0) (failure, x) else (Success(x), x))
+    result map {
+      _ should contain theSameElementsInOrderAs expected
+    }
+  }
+
+  it should "retry when the downstream flow throttle" in {
+    val bottom = Flow[(Long, Long)].map {
+      case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx) // fail every even element
+    }
+    val retry = RetryBidi[Long, Long, Long](2)
+    val result = Source(1L to 100)
+      .map(x => (x, x))
+      .throttle(10, 10.millis, 10, ThrottleMode.shaping)
+      .via(retry.join(bottom))
+      .throttle(1, 10.millis, 10, ThrottleMode.shaping)
+      .runWith(Sink.seq)
+
+    val expected = 1 to 100 map (x => if (x % 2 == 0) (failure, x) else (Success(x), x))
+    result map {
+      _ should contain theSameElementsInOrderAs expected
+    }
   }
 
 }

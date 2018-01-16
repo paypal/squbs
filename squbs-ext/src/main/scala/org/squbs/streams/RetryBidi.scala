@@ -378,19 +378,21 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Long, uniqu
       override def onPush(): Unit = {
         val (elem, context) = grab(in2)
         if (isFailure(elem)) {
-          if (emitOrQueueFailure(context))
-            push(out2, (elem, context))
-          else if (isAvailable(out1)) pushIfReady()
-
-          if (retryRegistry.nonEmpty && !hasBeenPulled(in2))
-            pull(in2)
+          if (emitOrQueueFailure(context)) {
+            if (isAvailable(out2)) push(out2, (elem, context))
+            else log.error("out2 is not available for push.  Dropping exhausted element")
+          } else if (isAvailable(out1)) pushIfReady()
         } else {
-          retryRegistry.get(uniqueId(context)) foreach(entry => {
-            retryDelayQ.remove(entry._3)
-            retryRegistry.remove(uniqueId(entry._2))
-          })
-          push(out2, (elem, context))
+          if (isAvailable(out2)) {
+            retryRegistry.get(uniqueId(context)) foreach(entry => {
+              retryDelayQ.remove(entry._3)
+              retryRegistry.remove(uniqueId(entry._2))
+            })
+            push(out2, (elem, context))
+          } else log.error("out2 is not available for push.  Dropping successful element")
         }
+        // continue propagating demand on in2 if we still have retries queue'd.
+        if (retryRegistry.nonEmpty && !hasBeenPulled(in2)) pull(in2)
       }
 
       override def onUpstreamFailure(ex: Throwable): Unit = if (retryDelayQ.isEmpty) fail(out2, ex)
