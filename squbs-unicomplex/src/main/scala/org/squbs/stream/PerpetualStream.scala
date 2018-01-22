@@ -75,15 +75,24 @@ trait PerpetualStream[T] extends PerpetualStreamBase[T] {
     * @return A Future[Done] that gets completed when the whole stream is done.
     */
   def shutdown(): Future[Done] = {
-    killSwitch.shutdown()
     import context.dispatcher
     matValue match {
-      case f: Future[_] => f.map(_ => Done)
-      case p: Product if p.productArity > 0 => p.productElement(p.productArity - 1) match {
+      case f: Future[_] =>
+        killSwitch.shutdown()
+        f.map(_ => Done)
+      case p: Product if p.productArity > 0 =>
+        p.productElement(0) match {
+          case k: KillSwitch => k.shutdown()
+          case _ =>
+        }
+        killSwitch.shutdown()
+        p.productElement(p.productArity - 1) match {
           case f: Future[_] => f.map(_ => Done)
           case _ => Future.successful { Done }
         }
-      case _ => Future.successful { Done }
+      case _ =>
+        killSwitch.shutdown()
+        Future.successful { Done }
     }
   }
 }
