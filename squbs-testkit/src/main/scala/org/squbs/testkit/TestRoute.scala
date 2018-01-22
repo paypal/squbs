@@ -58,7 +58,7 @@ object TestRoute {
 
     implicit val routingSettings = RoutingSettings(system.settings.config)
     implicit val rejectionHandler:RejectionHandler = routeDef.rejectionHandler.getOrElse(RejectionHandler.default)
-    implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.getOrElse(PartialFunction.empty)
+    implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.orNull
 
     if (webContext.length > 0) pathPrefix(separateOnSlashes(webContext)) { Route.seal(routeDef.route) }
     else { Route.seal(routeDef.route) }

@@ -16,16 +16,19 @@
 package org.squbs.unicomplex
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.{ErrorInfo, IllegalRequestException, StatusCodes}
 import akka.http.scaladsl.server.Route
 import akka.pattern._
 import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 
 import scala.concurrent.Await
+import scala.concurrent.duration._
 
 object RouteDefinitionSpec {
 
@@ -72,13 +75,22 @@ class TestRouteDefinition extends RouteDefinition {
           count.toString
         }
       }
+    } ~ path("illegalrequest") {
+      get {
+        throw new IllegalRequestException(ErrorInfo("Test illegal request", "This is a test"), StatusCodes.Locked)
+      }
+    } ~ path("exception") {
+      get {
+        throw new IllegalStateException("Default ExceptionHandler Test")
+      }
     }
-
 }
 
 class RouteDefinitionSpec extends TestKit(
-  RouteDefinitionSpec.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
+  RouteDefinitionSpec.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll
+  with ScalaFutures {
 
+  implicit val _ = PatienceConfig(1.minute)
   implicit val am = ActorMaterializer()
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
@@ -88,12 +100,24 @@ class RouteDefinitionSpec extends TestKit(
     Unicomplex(system).uniActor ! GracefulStop
   }
 
-  "The test actor" should "return correct count value" in {
+  "The test route" should "return correct count value" in {
     // The behaviour is different than Spray.  Not caching anymore.
-    Await.result(entityAsString(s"http://127.0.0.1:$port/routedef/first"), awaitMax) should be ("1")
-    Await.result(entityAsString(s"http://127.0.0.1:$port/routedef/first"), awaitMax) should be ("2")
-    Await.result(entityAsString(s"http://127.0.0.1:$port/routedef/second"), awaitMax) should be ("3")
-    Await.result(entityAsString(s"http://127.0.0.1:$port/routedef/third"), awaitMax) should be ("4")
-    Await.result(entityAsString(s"http://127.0.0.1:$port/routedef/third"), awaitMax) should be ("5")
+    entityAsString(s"http://127.0.0.1:$port/routedef/first").futureValue shouldBe "1"
+    entityAsString(s"http://127.0.0.1:$port/routedef/first").futureValue shouldBe "2"
+    entityAsString(s"http://127.0.0.1:$port/routedef/second").futureValue shouldBe "3"
+    entityAsString(s"http://127.0.0.1:$port/routedef/third").futureValue shouldBe "4"
+    entityAsString(s"http://127.0.0.1:$port/routedef/third").futureValue shouldBe "5"
+  }
+
+  "The test route" should "return specified exception and error message" in {
+    val response = get(s"http://127.0.0.1:$port/routedef/illegalrequest").futureValue
+    response.status shouldBe StatusCodes.Locked
+    extractEntityAsString(response).futureValue shouldBe "Test illegal request"
+  }
+
+  "The test route" should "return InternalServerError and messages on server exception" in {
+    val response = get(s"http://127.0.0.1:$port/routedef/exception").futureValue
+    response.status shouldBe StatusCodes.InternalServerError
+    extractEntityAsString(response).futureValue shouldBe StatusCodes.InternalServerError.defaultMessage
   }
 }

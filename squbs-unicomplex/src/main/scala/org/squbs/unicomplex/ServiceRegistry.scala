@@ -226,7 +226,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
       context.parent ! Initialized(Success(None))
 
       implicit val rejectionHandler:RejectionHandler = routeDef.rejectionHandler.getOrElse(RejectionHandler.default)
-      implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.getOrElse(PartialFunction.empty[Throwable, Route])
+      implicit val exceptionHandler:ExceptionHandler = routeDef.exceptionHandler.orNull
 
       if (webContext.nonEmpty) {
         val finalRoute = PathDirectives.pathPrefix(PathMatchers.separateOnSlashes(webContext)) {routeDef.route}
@@ -334,7 +334,7 @@ object RequestContextFlow {
                           materializer:     Materializer,
                           routingLog:       RoutingLog,
                           rejectionHandler: RejectionHandler = RejectionHandler.default,
-                          exceptionHandler: ExceptionHandler = PartialFunction.empty[Throwable, Route]
+                          exceptionHandler: ExceptionHandler = null
   ): Flow[RequestContext, RequestContext, NotUsed] =
     Flow[RequestContext].mapAsync(1) { asyncCall(_, materializer, Route.asyncHandler(route)) }
 
