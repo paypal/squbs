@@ -90,17 +90,32 @@ abstract class AbstractPerpetualStream[T] extends AbstractActor with PerpetualSt
    * @return A CompletionStage[Done] that gets completed when the whole stream is done.
    */
   def shutdown(): CompletionStage[Done] = {
-    killSwitch.shutdown()
     matValue match {
-      case f: CompletionStage[_] => stageToDone(f)
-      case akka.japi.Pair(_, last) => last match {
-        case f: CompletionStage[_] => stageToDone(f)
-      }
-      case l: java.util.List[_] if l.size > 0 => l.get(l.size() - 1) match {
-        case f: CompletionStage[_] => stageToDone(f)
-        case _ => CompletableFuture.completedFuture(Done)
-      }
-      case _ => CompletableFuture.completedFuture(Done)
+      case f: CompletionStage[_] =>
+        killSwitch.shutdown()
+        stageToDone(f)
+      case akka.japi.Pair(first, last) =>
+        first match {
+          case k: KillSwitch => k.shutdown()
+          case _ =>
+        }
+        killSwitch.shutdown()
+        last match {
+          case f: CompletionStage[_] => stageToDone(f)
+        }
+      case l: java.util.List[_] if l.size > 0 =>
+        l.get(0) match {
+          case k: KillSwitch => k.shutdown()
+          case _ =>
+        }
+        killSwitch.shutdown()
+        l.get(l.size() - 1) match {
+          case f: CompletionStage[_] => stageToDone(f)
+          case _ => CompletableFuture.completedFuture(Done)
+        }
+      case _ =>
+        killSwitch.shutdown()
+        CompletableFuture.completedFuture(Done)
     }
   }
 

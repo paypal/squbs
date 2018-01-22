@@ -30,6 +30,9 @@ import scala.beans.BeanProperty
 import scala.compat.java8.OptionConverters._
 import scala.reflect._
 
+case class EndpointNotExistsException(name: String, env: Environment) extends Exception {
+  override def getMessage: String = s"Endpoint $name for environment $env not found."
+}
 
 /**
   * Scala API for implementing an EndpointResolver.

@@ -1,18 +1,44 @@
-# Streams Lifecycle
-Akka Streams/Reactive stream needs to be integrated with the [Runtime Lifecycle](lifecycle.md) of the server. For this, an automated or semi-automated integration is provided through `PerpetualStream` Scala trait and `AbstractPerpetualStream` abstract class for Java. For fine-grained control over stream sources directly, `LifecycleManaged` provides a wrapping that can control any source component for proper stopping and shutdown so the flow can start/stop gracefully.
+# Perpetual Stream
 
-## PerpetualStream
-The `PerpetualStream` allows declaration of a stream that would start when the server starts and stop gracefully without dropping messages when the server stops. It gets exposed as the `PerpetualStream` trait for Scala and `AbstractPerpertualStream` abstract class for Java. For brevity, we'll refer to both as `PerpetualStream`.
+### Overview
+
+The `PerpetualStream` allows declaration of a stream that would start when the server starts and stop gracefully without dropping messages when the server stops. It is commonly used for message consumers from Kafka or JMS, but also used as a consolidation point for data from multiple streams received through HTTP requests.
+
+`PerpetualStream` can be customized in various ways to fit your streams' needs. Those are discussed in the sections listed below:
+
+* [Basic Use](#basic-use)
+* [Override Lifecycle State to run the stream](#override-lifecycle-state-to-run-the-stream)
+* [Shutdown Overrides](#shutdown-overrides)
+* [Kill Switch Overrides](#kill-switch-overrides)
+* [Receiving and forwarding a message to the stream](#receiving-and-forwarding-a-message-to-the-stream)
+* [Handling Stream Errors](#handling-stream-errors)
+* [Connecting a Perpetual Stream with an HTTP Flow](#connecting-a-perpetual-stream-with-an-http-flow)
+
+### Dependency
+
+`PerpetualStream` is part of core squbs. In general, you do not need to add an extra dependency. The classes are part of the following dependency:
+
+```scala
+"org.squbs" %% "squbs-unicomplex" % squbsVersion
+```
+
+### Usage
+
+The `PerpetualStream` gets exposed as the `PerpetualStream` trait for Scala and `AbstractPerpertualStream` abstract class for Java. For brevity, we'll refer to both as `PerpetualStream`.
+
+#### Basic Use
 
 ##### Scala
 
-Streams making use of `PerpetualStream` will want to conform to the following requirements, which will allow the hooks in `PerpetualStream` to work seamlessly with minimal amount of custom overrides:
+Streams making use of `PerpetualStream` will want to materialize to certain known types, allowing the hooks in `PerpetualStream` to work seamlessly with minimal amount of custom overrides. The options are:
 
-1. Have `killSwitch.flow` as the first stream processing stage after the source(s). `killSwitch` is a standard Akka `SharedKillSwitch` that is provided by the `PerpetualStream` trait.
-2. The stream materializes to a `Future` or a `Product` with a `Future` as its last element. A `Product` is the super class for `Tuple`, `List`, and much more. It is natural for `Sink`s to materialize to a `Future`. If more materialized values are asked for, it usually comes in some form of a `Product`. The `Sink` being the last element in the stream is also commonly materialized to the last element of the `Product`.
-3. This `Future` (materialized value or last element of the materialized value) represents the completion of the stream. In other words, this future is completed when the stream completes.
+* Materialize to a `Future[_]`, meaning a future of any type. In this case the shared `killSwitch` from `PerpetualStream` should be embedded or `shutdown()` would need to be overridden.
+* Materialize to a `(KillSwitch, Future[_])` tuple. The `KillSwitch` will be used for initiating the shutdown of the stream.
+* Materialize to a `List` or any `Product` (`List`s, `Tuple`s are all subtypes of `Product`) where the first element is a `KillSwitch` and the last element is a `Future`.
 
-If all the requirements above are met, no other custom overrides are needed for `PerpetualStream` to function. The following code shows a fully conformant `PerpetualStream`:
+Streams with different materialized values can still be used but `shutdown()` needs to be overridden.
+
+Common examples for well behaved streams can be seen below:
 
 ```scala
 class WellBehavedStream extends PerpetualStream[Future[Done]] {
@@ -35,17 +61,42 @@ class WellBehavedStream extends PerpetualStream[Future[Done]] {
 }
 ```
 
-That's it. This stream is well behaved because it materializes to the sink's materialized value, which is a `Future[Done]`.
+Alternatively, the following code shows another conformant `PerpetualStream` materializing its first element as `KillSwitch`:
+
+```scala
+class WellBehavedStream2 extends PerpetualStream[(KillSwitch, Future[Done])] {
+
+  def generator = Iterator.iterate(0) { p => 
+    if (p == Int.MaxValue) 0 else p + 1 
+  }
+
+  val source = Source.fromIterator(generator _)
+
+  val ignoreSink = Sink.ignore
+  
+  override def streamGraph = RunnableGraph.fromGraph(
+    GraphDSL.create(KillSwitch.single[Int], ignoreSink)((_,_)) { implicit builder =>
+      (kill, sink) =>
+        import GraphDSL.Implicits._
+        source ~> kill ~> sink
+        ClosedShape
+  })
+}
+```
+
+That's it. These streams are well behaved because they materialize to the sink's materialized value, which is a `Future[Done]` in the first example, or a `(KillSwitch, Future[Done])` in the second one.
 
 ##### Java
 
-Streams making use of `AbstractPerpetualStream` will want to conform to the following requirements, which will allow the hooks in `AbstractPerpetualStream` to work seamlessly with minimal amount of custom overrides:
+Streams making use of `AbstractPerpetualStream` will want to materialize to certain known types, allowing the hooks in `AbstractPerpetualStream` to work seamlessly with minimal amount of custom overrides. The options are:
 
-1. Have `killSwitch().flow()` as the first stream processing stage after the source(s). `killSwitch` is a standard Akka `SharedKillSwitch` that is provided by `AbstractPerpetualStream`.
-2. The stream materializes to a `CompletionStage` or a `Pair` or `List` with a `CompletionStage` as its last element. It is natural for `Sink`s to materialize to a `CompletionStage`. If more materialized values are asked for, it usually comes in some form of a `Pair` (for two), or a `List` (for multiple materialized values). The `Sink` being the last element in the stream is also commonly materialized to the last element of the `Pair` or `List`.
-3. This `CompletionStage` (materialized value or last element of the materialized value) represents the completion of the stream. In other words, this `CompletionStage` is completed when the stream completes.
+* Materialize to a `CompletionStage<?>`, meaning a Java `CompletionStage` of any type. In this case the shared `killSwitch` from `AbstractPerpetualStream` should be embedded or `shutdown()` would need to be overridden.
+* Materialize to a `Pair<KillSwitch, CompletionStage<?>>`. The `KillSwitch` will be used for initiating the shutdown of the stream.
+* Materialize to a `java.util.List` where the first element is a `KillSwitch` and the last element is a `CompletionStage`.
 
-If all the requirements above are met, no other custom overrides are needed for `PerpetualStream` to function. The following code shows a fully conformant `PerpetualStream`:
+Streams with different materialized values can still be used but `shutdown()` needs to be overridden.
+
+Common examples for well behaved streams can be seen below:
 
 ```java
 public class WellBehavedStream extends AbstractPerpetualStream<CompletionStage<Done>> {
@@ -74,11 +125,40 @@ public class WellBehavedStream extends AbstractPerpetualStream<CompletionStage<D
     }
 ```
 
-That's it. This stream is well behaved because it materializes to the sink's materialized value, which is a `CompletionStage<Done>`.
+Alternatively, the following code shows another conformant `PerpetualStream` materializing its first element as `KillSwitch`:
 
-### Override Lifecycle State to run the stream
+```java
+public class WellBehavedStream2 extends
+        AbstractPerpetualStream<Pair<KillSwitch, CompletionStage<Done>>> {
 
-There may be scenarios where a stream need to be materialized at a different lifecycle than `active`.  In such scenarios, override `streamRunLifecycleState`, e.g.,:
+    Sink<Integer, CompletionStage<Done>> ignoreSink = Sink.ignore();
+  
+    @Override
+    public RunnableGraph<Pair<KillSwitch, CompletionStage<Done>>>> streamGraph() {
+        return RunnableGraph.fromGraph(GraphDSL.create(KillSwitches.<Integer>single(),
+            ignoreSink, Pair::create, (builder, kill, sink) -> {
+                SourceShape<Integer> source = builder.add(
+                        Source.unfold(0, i -> {
+                            if (i == Integer.MAX_VALUE) {
+                                return Optional.of(Pair.create(0, i));
+                            } else {
+                                return Optional.of(Pair.create(i + 1, i));
+                            }
+                        })
+                );
+
+                builder.from(source).via(kill).to(sink);
+            
+                return ClosedShape.getInstance();
+            }));
+    }
+```
+
+That's it. These streams are well behaved because they materialize to the sink's materialized value, which is a `CompletionStage<Done>` in the first example, or a `Pair<KillSwitch, CompletionStage<Done>>` in the second one.
+
+#### Override Lifecycle State to run the stream
+
+There may be scenarios where a stream need to be materialized at a different lifecycle than `active`. In such scenarios, override `streamRunLifecycleState`, e.g.,:
 
 ##### Scala
 
@@ -95,7 +175,7 @@ public LifecycleState streamRunLifecycleState() {
 }
 ```
 
-### Shutdown Overrides
+#### Shutdown Overrides
 It is sometimes not possible to define a well behaved stream. For instance, the `Sink` may not materialize to a `Future` or `CompletionStage` or you need to do further cleanup at shutdown. For this reason, it is possible to override `shutdown` as in the following code:
 
 ##### Scala
@@ -133,10 +213,10 @@ public CompletionStage<Done> shutdown() {
 
 Note: It is always advisable to call `super.shutdown`. There is no harm or other side-effect in making this call.
 
-### Alternate Shutdown Mechanisms
-The `source` may provide a better way to do a proper shutdown than using the `killSwitch`. Just use the shutdown mechanism of the `source` in such cases and override `shutdown` to initiate the shutdown of the source. The `killSwitch` remains unused.
+##### Alternate Shutdown Mechanisms
+The `source` may not materialize to `KillSwitch` and provide a better way to do a proper shutdown than using the `killSwitch`. Just use the shutdown mechanism of the `source` in such cases and override `shutdown` to initiate the shutdown of the source. The `killSwitch` remains unused.
 
-### Kill Switch Overrides
+#### Kill Switch Overrides
 If the `killSwitch` needs to be shared across multiple streams, you can override `killSwitch` to reflect the shared instance.
 
 ##### Scala
@@ -154,7 +234,7 @@ public SharedKillSwitch killSwitch() {
 }
 ```
 
-### Receiving and forwarding a message to the stream
+#### Receiving and forwarding a message to the stream
 Some streams take input from actor messages. While it is possible for some stream configurations to materialize to the `ActorRef` of the source, it is difficult to address this actor. Since `PerpetualStream` itself is an actor, it can have a well known address/path and forward to message to the stream source. To do so, we need to override the `receive` or `createReceive()` as follows:
 
 ##### Scala
@@ -181,7 +261,7 @@ public Receive createReceive() {
 }
 ```
 
-### Handling Stream Errors
+#### Handling Stream Errors
 The `PerpetualStream` default behavior resumes on errors uncaught by the stream stages. The message causing the error is ignored. Override `decider` if a different behavior is desired.
 
 ##### Scala
@@ -209,84 +289,7 @@ public akka.japi.function.Function<Throwable, Supervision.Directive> decider() {
 
 `Restart` will restart the stage that has an error without shutting down the stream. Please see [Supervision Strategies](http://doc.akka.io/docs/akka/current/scala/stream/stream-error.html#Supervision_Strategies) for possible strategies.
 
-### Putting It Together
-The following examples makes many of the possible overrides discussed above.
-
-##### Scala
-
-```scala
-class MsgReceivingStream extends PerpetualStream[(ActorRef, Future[Done])] {
-
-  val actorSource = Source.actorPublisher[MyStreamMsg](Props[MyPublisher])
-  val ignoreSink = Sink.ignore[MyStreamMsg]
-  
-  override def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(actorSource, ignoreSink)((_, _)) {
-    implicit builder =>
-      (source, sink) =>
-        import GraphDSL.Implicits._
-        source ~> sink
-        ClosedShape
-  })
-  
-  // Just forward the message to the stream source
-  override def receive = {
-    case msg: MyStreamMsg =>
-      val (sourceActorRef, _) = matValue
-      sourceActorRef forward msg
-  }
-  
-  override def shutdown() = {
-    val (sourceActorRef, _) = matValue
-    sourceActorRef ! cancelStream
-    // Sink materialization conforms
-    // so super.shutdown() will give the right future
-    super.shutdown()
-  }
-}
-```
-
-##### Java
-
-```java
-public class MsgReceivingStream extends AbstractPerpetualStream<Pair<ActorRef, CompletionStage<Done>>> {
-
-    Source<MyStreamMsg, ActorRef> actorSource = Source.actorPublisher(Props.create(MyPublisher.class));
-    Sink<MyStreamMsg, CompletionStage<Done>> ignoreSink = Sink.ignore();
-
-    @Override
-    public RunnableGraph<Pair<ActorRef, CompletionStage<Done>>> streamGraph() {
-        return RunnableGraph.fromGraph(GraphDSL.create(actorSource, ignoreSink, Pair::create,
-                (builder, source, sink) -> {
-
-                    builder.from(source).to(sink);
-
-                    return ClosedShape.getInstance();
-                }));
-    }
-
-    // Just forward the message to the stream source
-    @Override
-    public AbstractActor.Receive createReceive() {
-        return receiveBuilder()
-                .match(MyStreamMsg.class, msg -> {
-                    ActorRef sourceActorRef = matValue().first();
-                    sourceActorRef.forward(msg, getContext());
-                })
-                .build();
-    }
-
-    @Override
-    public CompletionStage<Done> shutdown() {
-        ActorRef sourceActorRef = matValue().first();
-        sourceActorRef.tell(cancelStream() ,getSelf());
-        // Sink materialization conforms
-        // so super.shutdown() will give the right future
-        return super.shutdown();
-    }
-}
-```
-
-## Connecting a Perpetual Stream with an HTTP Flow
+#### Connecting a Perpetual Stream with an HTTP Flow
 
 Akka HTTP allows defining a `Flow[HttpRequest, HttpResponse, NotUsed]`, which gets materialized for each http connection.  There are scenarios where an app needs to connect the http flow to a long running stream that needs to be materialized only once (e.g., publishing to Kafka).  Akka HTTP enables end-to-end streaming in such scenarios with [`MergeHub`](http://doc.akka.io/docs/akka/current/scala/stream/stream-dynamic.html#dynamic-fan-in-and-fan-out-with-mergehub-broadcasthub-and-partitionhub).  squbs provides utilities to connect an http flow with a `PerpetualStream` that uses `MergeHub`.  
 
@@ -517,97 +520,3 @@ This happens to be the bootstrapped instance of our `PerpetualStreamWithMergeHub
 `alsoTo` expects result of `matValue` to be a `Sink` for `MyMessage`.
 I.e. `Sink[MyMessage, NotUsed]`. And as we've seen above this is exactly what `PerpetualStreamWithMergeHub.streamGraph` will produce. 
 (Remembering our two prospectives: here `alsoTo` looks at `PerpetualStreamWithMergeHub` from the outside prospective and sees a `Sink[MyMessage, NotUsed]`.)
-
-## Making A Lifecycle-Sensitive Source
-If you wish to have a source that is fully connected to the lifecycle events of squbs, you can wrap any source with `LifecycleManaged`.
-
-**Scala**
-
-```scala
-val inSource = <your-original-source>
-val aggregatedSource = LifecycleManaged().source(inSource)
-```
-
-**Java**
-
-```java
-final Source inSource = <your-original-source>
-final Source aggregatedSource = new LifecycleManaged(system).source(inSource);
-```
-
-The resulting source will be an aggregated source materialize to a `(T, ActorRef)` where `T` is the materialized type of `inSource` and `ActorRef` is the materialized type of the trigger actor which receives events from the Unicomplex, the squbs container.
-
-The aggregated source does not emit from original source until lifecycle becomes `Active`, and stop emitting element and shuts down the stream after lifecycle state becomes `Stopping`.
-
-## Custom Aggregated Triggered Source
-If you want your flow to enable/disable to custom events, you can integrate with a custom trigger source,
-element `true` will enable, `false` will disable.
-
-Note that `Trigger` takes an argument `eagerComplete` which defaults to `false` in Scala but has to be
-passed in Java. If `eagerComplete` is set to `false`, completion and/or termination of the trigger source actor
-will detach the trigger. If set to `true`, such termination will complete the stream.
-
-##### Scala
-
-```scala
-import org.squbs.stream.TriggerEvent._
-
-val inSource = <your-original-source>
-val trigger = <your-custom-trigger-source>.collect {
-  case 0 => DISABLE
-  case 1 => ENABLE
-}
-
-val aggregatedSource = new Trigger().source(inSource, trigger)
-```
-
-##### Java
-
-```java
-import static org.squbs.stream.TriggerEvent.DISABLE;
-import static org.squbs.stream.TriggerEvent.ENABLE;
-
-final Source<?, ?> inSource = <your-original-source>;
-final Source<?, ?> trigger = <your-custom-trigger-source>.collect(new PFBuilder<Integer, TriggerEvent>()
-    .match(Integer.class, p -> p == 1, p -> ENABLE)
-    .match(Integer.class, p -> p == 0, p -> DISABLE)
-    .build());
-
-final Source aggregatedSource = new Trigger(false).source(inSource, trigger);
-```
-
-## Custom Lifecycle Event(s) for Trigger
-If you want to respond to more lifecycle events beyond `Active` and `Stopping`, for example you want `Failed` to also stop the flow, you can modify the lifecylce event mapping.
-
-##### Scala
-
-```scala
-import org.squbs.stream.TriggerEvent._
-
-val inSource = <your-original-source>
-val trigger = Source.actorPublisher[LifecycleState](Props.create(classOf[UnicomplexActorPublisher]))
-  .collect {
-    case Active => ENABLE
-    case Stopping | Failed => DISABLE
-  }
-
-val aggregatedSource = new Trigger().source(inSource, trigger)
-```
-
-##### Java
-
-```java
-import static org.squbs.stream.TriggerEvent.DISABLE;
-import static org.squbs.stream.TriggerEvent.ENABLE;
-
-final Source<?, ?> inSource = <your-original-source>;
-final Source<?, ActorRef> trigger = Source.<LifecycleState>actorPublisher(Props.create(UnicomplexActorPublisher.class))
-    .collect(new PFBuilder<Integer, TriggerEvent>()
-        .matchEquals(Active.instance(), p -> ENABLE)
-        .matchEquals(Stopping.instance(), p -> DISABLE)
-        .matchEquals(Failed.instance(), p -> DISABLE)
-        .build()
-    );
-
-final Source aggregatedSource = new Trigger(false).source(inSource, trigger);
-```

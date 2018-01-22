@@ -28,9 +28,10 @@ pages:
     - 'Admin Console': 'console.md'
     - 'Application Lifecycle Management': 'packaging.md'
     - 'Resource Resolution': 'resolver.md'
+    - 'Perpetual Stream': 'perpetualstream.md'
+    - 'Customizing Stream Control': 'customizing-stream-control.md'
     - 'Akka Streams GraphStages':
         - 'Persistent Buffer': 'persistent-buffer.md'
-        - 'Perpetual Stream': 'streams-lifecycle.md'
         - 'Circuit Breaker': 'circuitbreaker.md'
         - 'Timeout': 'flow-timeout.md'
         - 'Deduplicate': 'deduplicate.md'
