@@ -21,11 +21,13 @@ import javax.management.ObjectName
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.ws.PeerClosedConnectionException
 import akka.http.scaladsl.server._
 import akka.pattern._
 import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.Flow
 import akka.stream.scaladsl.{Sink, Source}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
@@ -56,6 +58,18 @@ object MetricsFlowSpec {
        |squbs.pipeline.server.default {
        |  pre-flow =  preFlow
        |}
+       |
+       |second-listener {
+       |  type = squbs.listener
+       |  aliases = []
+       |  bind-address = "0.0.0.0"
+       |  full-address = false
+       |  bind-port = 0
+       |  secure = false
+       |  need-client-auth = false
+       |  ssl-context = default
+       |}
+       |
     """.stripMargin
   )
 
@@ -176,6 +190,25 @@ class MetricsFlowSpec extends TestKit(MetricsFlowSpec.boot.actorSystem) with Asy
     }
   }
 
+  it should "collect metric counts with Flow based server" in {
+
+    val flowPort = portBindings("second-listener")
+    val clientFlow = Http().cachedHostConnectionPool[Int]("localhost", flowPort)
+
+    val result =
+      Source(hello("/sample8") :: connectionException("/sample8") :: connectionException("/sample8")
+        :: hello("/sample8") :: notFound("/sample8") :: internalServerError("/sample8") :: Nil).
+        via(clientFlow).
+        runWith(Sink.seq)
+
+    result map { _ =>
+      jmxValue("sample8-2XX-count", "Count").value shouldBe 2
+      jmxValue("sample8-4XX-count", "Count").value shouldBe 1
+      //jmxValue("sample8-5XX-count", "Count").value shouldBe 1
+      jmxValue("sample8-response-count", "Count").value shouldBe 3
+    }
+  }
+
   def jmxValue(beanName: String, key: String) = {
     val oName =
       ObjectName.getInstance(s"${MetricsExtension(system).Domain}:name=${MetricsExtension(system).Domain}.$beanName")
@@ -206,5 +239,24 @@ class DefaultFlow extends PipelineFlowFactory {
 
   override def create(context: Context)(implicit system: ActorSystem): PipelineFlow = {
     MetricsFlow(context.name)
+  }
+}
+
+class MetricsDummyFlow extends FlowDefinition with WebContext {
+
+  val hello = Path(s"/${webContext}/hello")
+  val connectionException = Path(s"/$webContext/connectionException")
+  val internalServerError = Path(s"/$webContext/internalServerError")
+  val notFound = Path(s"/$webContext/notfound")
+
+  override def flow = Flow[HttpRequest].map {
+    case HttpRequest(_, Uri(_, _, `hello`, _, _), _, _, _) =>
+      HttpResponse(StatusCodes.OK, entity = "Hello World!")
+    case HttpRequest(_, Uri(_, _, `connectionException`, _, _), _, _, _) =>
+      throw new PeerClosedConnectionException(0, "Dummy Exception")
+    case HttpRequest(_, Uri(_, _, `internalServerError`, _, _), _, _, _) =>
+      HttpResponse(StatusCodes.InternalServerError)
+    case HttpRequest(_, Uri(_, _, `notFound`, _, _), _, _, _) =>
+      HttpResponse(StatusCodes.NotFound, entity = "Path not found!")
   }
 }
