@@ -234,7 +234,7 @@ Please see [squbs pipeline](pipeline.md) to find out how to create a pipeline an
 
 ### Metrics
 
-squbs comes with pre-built [pipeline](#pipeline) elements for metrics collection and squbs activator templates sets those as default.  Accordingly, each squbs http client is enabled to collect [Codahale Metrics](http://metrics.dropwizard.io/3.1.0/getting-started/) out-of-the-box without any code change or configuration.  The following metrics are available on JMX by default:
+squbs comes with pre-built [pipeline](#pipeline) elements for metrics collection and squbs giter8 templates sets those as default.  Accordingly, each squbs http client is enabled to collect [Codahale Metrics](http://metrics.dropwizard.io/3.1.0/getting-started/) out-of-the-box without any code change or configuration.  The following metrics are available on JMX by default:
 
    * Request Timer
    * Request Count Meter
