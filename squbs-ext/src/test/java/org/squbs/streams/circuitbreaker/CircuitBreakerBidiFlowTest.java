@@ -28,7 +28,7 @@ import akka.stream.javadsl.BidiFlow;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
-import akka.testkit.JavaTestKit;
+import akka.testkit.javadsl.TestKit;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
@@ -50,6 +50,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import static akka.pattern.PatternsCS.ask;
 
@@ -92,7 +93,7 @@ public class CircuitBreakerBidiFlowTest {
                 .runWith(Source.actorRef(25, OverflowStrategy.fail()), mat);
 
 
-        new JavaTestKit(system) {{
+        new TestKit(system) {{
             circuitBreakerState.subscribe(getRef(), Open.instance());
             ref.tell("a", ActorRef.noSender());
             ref.tell("b", ActorRef.noSender());
@@ -133,7 +134,7 @@ public class CircuitBreakerBidiFlowTest {
                 .runWith(Source.actorRef(25, OverflowStrategy.fail()), mat);
 
 
-        new JavaTestKit(system) {{
+        new TestKit(system) {{
             circuitBreakerState.subscribe(getRef(), TransitionEvents.instance());
             ref.tell("c", ActorRef.noSender());
             ref.tell("c", ActorRef.noSender());
@@ -354,4 +355,44 @@ public class CircuitBreakerBidiFlowTest {
         Assert.assertTrue(result.toCompletableFuture().get().containsAll(expected));
         Assert.assertEquals(2, counter.get());
     }
+
+    @Test
+    public void testWithFailureDecider() throws Exception {
+        final CircuitBreakerState circuitBreakerState =
+                AtomicCircuitBreakerState.create(
+                        "JavaFailureDecider",
+                        2,
+                        timeout,
+                        FiniteDuration.create(10, TimeUnit.MILLISECONDS),
+                        system.dispatcher(),
+                        system.scheduler());
+
+        final Function<Try<String>, Boolean> failureDecider =
+                out -> out.isFailure() || out.equals(Success.apply("b")); // treat "b" as a failure for retry
+
+        final CircuitBreakerSettings<String, String, UUID> circuitBreakerSettings =
+                CircuitBreakerSettings.<String, String, UUID>create(circuitBreakerState).withFailureDecider(failureDecider);
+
+        final Flow<Pair<String, UUID>, Pair<String, UUID>, NotUsed> flow =
+        Flow.<Pair<String, UUID>>create()
+                .map(elem -> (Pair<String, UUID>)elem);
+
+        final ActorRef ref = Flow.<String>create()
+                .map(s -> Pair.create(s, UUID.randomUUID()))
+                .via(CircuitBreakerBidiFlow.create(circuitBreakerSettings).join(flow))
+                .to(Sink.ignore())
+                .runWith(Source.actorRef(25, OverflowStrategy.fail()), mat);
+
+        new TestKit(system) {{
+            circuitBreakerState.subscribe(getRef(), TransitionEvents.instance());
+            ref.tell("a", ActorRef.noSender());
+            ref.tell("b", ActorRef.noSender());
+            ref.tell("b", ActorRef.noSender());
+            expectMsgEquals(Open.instance());
+            expectMsgEquals(HalfOpen.instance());
+            ref.tell("a", ActorRef.noSender());
+            expectMsgEquals(Closed.instance());
+        }};
+    }
+
 }

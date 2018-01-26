@@ -17,6 +17,7 @@ package org.squbs.streams.circuitbreaker.japi
 
 import java.util.Optional
 import java.util.function.{Consumer, Function}
+import java.lang.{Boolean => JBoolean}
 
 import org.squbs.streams.UniqueId
 import org.squbs.streams.circuitbreaker.CircuitBreakerState
@@ -34,7 +35,7 @@ case class CircuitBreakerSettings[In, Out, Context] private[japi] (
   cleanUp: Consumer[Out] = new Consumer[Out] {
     override def accept(t: Out): Unit = ()
   },
-  failureDecider: Optional[Function[Try[Out], Boolean]] = Optional.empty[Function[Try[Out], Boolean]],
+  failureDecider: Optional[Function[Try[Out], JBoolean]] = Optional.empty[Function[Try[Out], JBoolean]],
   uniqueIdMapper: Function[Context, Optional[Any]] = new Function[Context, Optional[Any]] {
     override def apply(t: Context): Optional[Any] = Optional.empty()
   }) {
@@ -45,7 +46,7 @@ case class CircuitBreakerSettings[In, Out, Context] private[japi] (
   def withCleanUp(cleanUp: Consumer[Out]): CircuitBreakerSettings[In, Out, Context] =
     copy(cleanUp = cleanUp)
 
-  def withFailureDecider(failureDecider: Function[Try[Out], Boolean]):
+  def withFailureDecider(failureDecider: Function[Try[Out], JBoolean]):
   CircuitBreakerSettings[In, Out, Context] = copy(failureDecider = Optional.of(failureDecider))
 
   def withUniqueIdMapper(uniqueIdMapper: Function[Context, Optional[Any]]):
@@ -58,7 +59,7 @@ case class CircuitBreakerSettings[In, Out, Context] private[japi] (
       circuitBreakerState,
       fallback.asScala.map(f => (in: In) => f(in)),
       (out: Out) => cleanUp.accept(out),
-      failureDecider.asScala.map(f => (out: Try[Out]) => f(out)),
+      failureDecider.asScala.map(f => (out: Try[Out]) => f(out).asInstanceOf[Boolean]),
       UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper))
 }
 
