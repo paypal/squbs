@@ -36,5 +36,6 @@ pages:
         - 'Deduplicate': 'deduplicate.md'
         - 'Retry': 'flow-retry.md'
         - 'Materialization Metrics Collector': 'materialization-metrics-collector.md'
+        - 'Bounded Ordering': 'flow-ordering.md'
     - 'Timeout Policy': 'timeoutpolicy.md'
     - 'Validation': 'validation.md'
