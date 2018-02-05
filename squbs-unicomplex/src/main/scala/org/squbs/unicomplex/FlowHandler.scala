@@ -23,6 +23,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import akka.stream.{FlowShape, Materializer}
 import akka.stream.scaladsl._
 import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, RequestContext, ServerPipeline}
+import org.squbs.streams.BoundedOrdering
 
 import scala.annotation.tailrec
 import scala.language.postfixOps
@@ -53,6 +54,8 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
                  (implicit system: ActorSystem, materializer: Materializer) {
 
   import FlowHandler._
+
+  val pipelineLimit: Int = system.settings.config.getInt("akka.http.server.pipelining-limit")
 
   def flow: Flow[HttpRequest, HttpResponse, Any] = dispatchFlow
 
@@ -103,12 +106,8 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
     Flow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
 
-      object RequestContextOrdering extends Ordering[RequestContext] {
-        def compare(x: RequestContext, y: RequestContext): Int = x.httpPipeliningOrder compare y.httpPipeliningOrder
-      }
-
-      val httpPipeliningOrder = b.add(
-        new OrderingStage[RequestContext, Long](0L, _ + 1L, _.httpPipeliningOrder)(RequestContextOrdering))
+      val httpPipeliningOrder =
+        b.add(BoundedOrdering[RequestContext, Long](pipelineLimit, 0L, _ + 1L, _.httpPipeliningOrder))
 
       val responseFlow = b.add(Flow[RequestContext].map { rc =>
         rc.response map {
@@ -129,7 +128,7 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
 
       val zip = b.add(ZipWith[HttpRequest, Long, RequestContext](zipF))
 
-      // Generate id for each request to order requests for  Http Pipelining
+      // Generate id for each request to order requests for Http Pipelining
       Source.fromIterator(() => Iterator.iterate(0L)(_ + 1L)) ~> zip.in1
       zip.out ~> routeFlow ~> httpPipeliningOrder ~> responseFlow
 
