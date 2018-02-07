@@ -22,8 +22,6 @@ The easiest way to getting started is to create a project from one of the squbs 
 * [squbs-scala-seed](https://github.com/paypal/squbs-scala-seed.g8): Template for creating sample squbs scala application
 * [squbs-java-seed](https://github.com/paypal/squbs-java-seed.g8): Template for creating sample squbs java application
 
-Also check out these [slightly more advanced samples](https://github.com/paypal/squbs/tree/master/samples).
-
 ## Contributing to squbs
 
 Thank you very much for contributing to squbs. Please read the [contribution guidelines](CONTRIBUTING.md) for the process.
