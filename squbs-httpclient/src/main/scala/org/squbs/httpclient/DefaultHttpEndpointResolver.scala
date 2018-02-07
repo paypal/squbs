@@ -16,8 +16,7 @@
 
 package org.squbs.httpclient
 
-import java.net.URI
-
+import akka.http.scaladsl.model.Uri
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.env.Environment
 import org.squbs.resolver.Resolver
@@ -25,15 +24,15 @@ import org.squbs.resolver.Resolver
 import scala.util.Try
 
 /**
-  * A [[Resolver]] that resolves a valid HTTP [[URI]] [[String]] to an [[HttpEndpoint]].
+  * A [[Resolver]] that resolves a valid HTTP [[Uri]] [[String]] to an [[HttpEndpoint]].
   */
 class DefaultHttpEndpointResolver extends Resolver[HttpEndpoint] with LazyLogging {
 
   override def name: String = getClass.getName
 
   override def resolve(name: String, env: Environment): Option[HttpEndpoint] = {
-    Try(URI.create(name)).toOption match {
-      case Some(uri) if uri.getScheme == "http" || uri.getScheme == "https" => Some(HttpEndpoint(uri))
+    Try(Uri(name)).toOption match {
+      case Some(uri) if uri.scheme == "http" || uri.scheme == "https" => Some(HttpEndpoint(uri))
       case _ =>
         logger.debug(s"Could not resolve to an HttpEndpoint.  Invalid http URI: $name")
         None

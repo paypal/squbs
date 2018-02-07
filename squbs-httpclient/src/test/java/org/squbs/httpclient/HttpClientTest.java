@@ -61,17 +61,29 @@ public class HttpClientTest {
         port = myPort;
         baseUrl = "http://localhost:" + port;
         ResolverRegistry.get(system).register(HttpEndpoint.class, new JavaEndpointResolver(baseUrl));
+        ResolverRegistry.get(system).register(HttpEndpoint.class, new JavaEndpointResolver2(baseUrl));
     }
+
+    private static final MarshalUnmarshal um = new MarshalUnmarshal(system.dispatcher(), mat);
 
     private static final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool>
             clientFlow = ClientFlow.create("DummyService", system, mat);
-    private static final MarshalUnmarshal um = new MarshalUnmarshal(system.dispatcher(), mat);
-
 
     private CompletionStage<Try<HttpResponse>> doRequest(HttpRequest request) {
         return Source
                 .single(Pair.create(request, 42))
                 .via(clientFlow)
+                .runWith(Sink.head(), mat)
+                .thenApply(Pair::first);
+    }
+
+    private static final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool>
+            clientFlow2 = ClientFlow.create("DummyService2", system, mat);
+
+    private CompletionStage<Try<HttpResponse>> doRequest2(HttpRequest request) {
+        return Source
+                .single(Pair.create(request, 42))
+                .via(clientFlow2)
                 .runWith(Sink.head(), mat)
                 .thenApply(Pair::first);
     }
@@ -97,7 +109,7 @@ public class HttpClientTest {
         HttpRequest request = POST("/view")
                 .addHeader(RawHeader.create("req1-name", "test123456"))
                 .addHeader(RawHeader.create("req2-name", "test34567"));
-        CompletionStage<Try<HttpResponse>> tryResponse = doRequest(request);
+        CompletionStage<Try<HttpResponse>> tryResponse = doRequest2(request);
         CompletionStage<HttpEntity.Strict> entity =
                 tryResponse.thenCompose(t -> t.get().entity().toStrict(30000L, mat));
         HttpResponse response = tryResponse.toCompletableFuture().get().get();
@@ -123,7 +135,7 @@ public class HttpClientTest {
 
     @Test
     public void clientUnmarshalJavaBean() throws Exception {
-        CompletionStage<Try<HttpResponse>> tryResponseF = doRequest(GET("/viewj"));
+        CompletionStage<Try<HttpResponse>> tryResponseF = doRequest2(GET("/viewj"));
         CompletionStage<TeamWithPrivateMembers> teamF = tryResponseF.thenCompose(t ->
                 um.apply(unmarshaller(TeamWithPrivateMembers.class), t.get().entity()));
         HttpResponse response = tryResponseF.toCompletableFuture().get().get();
@@ -147,7 +159,7 @@ public class HttpClientTest {
 
     @Test
     public void clientUnmarshalJavaBeanWithSimpleScalaClass() throws Exception {
-        CompletionStage<Try<HttpResponse>> tryResponseF = doRequest(GET("/view1"));
+        CompletionStage<Try<HttpResponse>> tryResponseF = doRequest2(GET("/view1"));
         CompletionStage<TeamNonCaseClass> teamF = tryResponseF.thenCompose(t ->
                 um.apply(unmarshaller(TeamNonCaseClass.class), t.get().entity()));
         HttpResponse response = tryResponseF.toCompletableFuture().get().get();
@@ -165,7 +177,7 @@ public class HttpClientTest {
 
     @Test
     public void head() throws Exception {
-        CompletionStage<Try<HttpResponse>> tryResponse = doRequest(HEAD("/view"));
+        CompletionStage<Try<HttpResponse>> tryResponse = doRequest2(HEAD("/view"));
         CompletionStage<HttpEntity.Strict> entity =
                 tryResponse.thenCompose(t -> t.get().entity().toStrict(30000L, mat));
         HttpResponse response = tryResponse.toCompletableFuture().get().get();
@@ -187,7 +199,7 @@ public class HttpClientTest {
 
     @Test
     public void optionsUnmarshal() throws Exception {
-        CompletionStage<Try<HttpResponse>> tryResponseF = doRequest(OPTIONS("/view"));
+        CompletionStage<Try<HttpResponse>> tryResponseF = doRequest2(OPTIONS("/view"));
         CompletionStage<Team> teamF = tryResponseF.thenCompose(t ->
                 um.apply(unmarshaller(Team.class), t.get().entity()));
         HttpResponse response = tryResponseF.toCompletableFuture().get().get();
@@ -212,7 +224,7 @@ public class HttpClientTest {
         CompletionStage<Try<HttpResponse>> tryResponse =
                 um.apply(marshaller(Employee.class), TestData.newTeamMember())
                         .thenApply(entity -> POST("/add").withEntity(entity))
-                        .thenCompose(this::doRequest);
+                        .thenCompose(this::doRequest2);
 
         CompletionStage<HttpEntity.Strict> entity =
                 tryResponse.thenCompose(t -> t.get().entity().toStrict(30000L, mat));
@@ -244,7 +256,7 @@ public class HttpClientTest {
         CompletionStage<Try<HttpResponse>> tryResponseF =
                 um.apply(marshaller(Employee.class), TestData.newTeamMember())
                         .thenApply(entity -> PUT("/add").withEntity(entity))
-                        .thenCompose(this::doRequest);
+                        .thenCompose(this::doRequest2);
 
         CompletionStage<Team> teamF = tryResponseF.thenCompose(t ->
                 um.apply(unmarshaller(Team.class), t.get().entity()));

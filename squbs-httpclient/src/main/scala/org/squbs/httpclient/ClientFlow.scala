@@ -151,7 +151,7 @@ object ClientFlow {
     val cps = settings.getOrElse(ConnectionPoolSettings(clientConfigWithDefaults))
 
     val clientConnectionFlow =
-      if (endpoint.uri.getScheme == "https") {
+      if (endpoint.uri.scheme == "https") {
 
         val akkaOverrides = clientConfigWithDefaults.getConfig("akka.ssl-config")
         val defaults = clientConfigWithDefaults.getConfig("ssl-config")
@@ -161,15 +161,15 @@ object ClientFlow {
           endpoint.sslContext map { sc => ConnectionContext.https(sc, Some(sslConfig)) }
         } getOrElse Http().defaultClientHttpsContext
 
-        Http().cachedHostConnectionPoolHttps[RequestContext](endpoint.uri.getHost, endpoint.uri.getPort,
-          httpsConnectionContext, cps)
+        Http().cachedHostConnectionPoolHttps[RequestContext](endpoint.uri.authority.host.address,
+          endpoint.uri.authority.port, httpsConnectionContext, cps)
       } else {
-        Http().cachedHostConnectionPool[RequestContext](endpoint.uri.getHost, endpoint.uri.getPort, cps)
+        Http().cachedHostConnectionPool[RequestContext](endpoint.uri.authority.host.address,
+          endpoint.uri.authority.port, cps)
       }
 
     val enableCircuitBreaker =
-      circuitBreakerSettings.isDefined ||
-      clientSpecificConfig.map(_.hasPath(("circuit-breaker"))).getOrElse(false)
+      circuitBreakerSettings.isDefined || clientSpecificConfig.exists(_.hasPath("circuit-breaker"))
 
     val circuitBreakerStateName =
       if(enableCircuitBreaker) circuitBreakerSettings.map(_.circuitBreakerState.name).getOrElse(s"$name-httpclient")

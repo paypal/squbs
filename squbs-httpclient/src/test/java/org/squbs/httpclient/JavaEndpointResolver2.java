@@ -15,28 +15,30 @@
  */
 package org.squbs.httpclient;
 
-import org.squbs.resolver.AbstractResolver;
+import akka.http.javadsl.model.Uri;
 import org.squbs.env.Environment;
+import org.squbs.resolver.AbstractResolver;
 
 import java.util.Optional;
 
-public class JavaEndpointResolver extends AbstractResolver<HttpEndpoint> {
+public class JavaEndpointResolver2 extends AbstractResolver<HttpEndpoint> {
 
     private final String dummyServiceEndpoint;
 
-    public JavaEndpointResolver(String dummyServiceEndpoint) {
+    public JavaEndpointResolver2(String dummyServiceEndpoint) {
         this.dummyServiceEndpoint = dummyServiceEndpoint;
     }
 
     @Override
     public String name() {
-        return "DummyService";
+        return "DummyService2";
     }
 
     @Override
     public Optional<HttpEndpoint> resolve(String svcName, Environment env) {
         if (name().equals(svcName)) {
-            return Optional.of(HttpEndpoint.create(dummyServiceEndpoint));
+            return Optional.of(
+                    HttpEndpoint.create(Uri.create(dummyServiceEndpoint),Optional.empty(), Optional.empty()));
         } else {
             return Optional.empty();
         }
