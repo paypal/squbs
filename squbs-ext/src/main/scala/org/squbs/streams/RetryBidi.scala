@@ -236,12 +236,11 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
         case Some(InputBuffer(_, max)) => max
       }
 
-    case class RetryTracker(ctx: Context, count: Long, lastFailureTime: Long)
+    case class RetryTracker(ctx: Context, count: Long, nextRetryTime: Long)
     class RetryComparator() extends Comparator[RetryTracker] {
       // Note: this comparator imposes orderings that is inconsistent with equals.
       override def compare(r1: RetryTracker, r2: RetryTracker): Int =
-        if (noDelay) 0
-        else if (sleepTime(r1.count) < sleepTime(r2.count)) -1 else +1
+        (r1.nextRetryTime - r2.nextRetryTime).toInt
     }
     // Ordered from shorter retry sleep time to long retry sleep time
     private val retryQ = new PriorityQueue[RetryTracker](new RetryComparator())
@@ -310,15 +309,10 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
       push(out1, (elem, ctx))
     }
 
-    def expired(retryTracker: RetryTracker): Boolean = {
-      val elapsedTime = System.nanoTime() - retryTracker.lastFailureTime
-      (sleepTime(retryTracker.count) - elapsedTime) <= 0
-    }
-
     def readyOption(): Option[(In, Context)] =
-      // peek if it has "expired" and remove if it has
+      // peek if it has "expired" and remove from PQ if it has
       Option(retryQ.peek()) flatMap { retryTracker =>
-        if (noDelay || expired(retryTracker)) {
+        if (noDelay || retryTracker.nextRetryTime <= System.nanoTime()) {
           retryQ.poll()
           retryRegistry.get(uniqueId(retryTracker.ctx))
         } // refactor
@@ -411,22 +405,31 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
       if (!retryQ.isEmpty) scheduleOnce(timerName, sleepTimeLeft)
     }
 
+    // update tracker in retryRegistry and add to retryQ
     private def updateTracker(context: Context) =
       retryRegistry.get(uniqueId(context)) match {
         case Some((elem, ctx, retryTracker)) =>
-          val newTracker = RetryTracker(ctx, retryTracker.count + 1, System.nanoTime())
+          val retry = retryTracker.count + 1
+          val newTracker =
+            if (noDelay) RetryTracker(ctx, retry, 0)
+            else RetryTracker(ctx, retry, System.nanoTime + sleepTime(retry))
+
           retryRegistry += ((uniqueId(ctx), (elem, ctx, newTracker)))
+          val prevHead = Option(retryQ.peek())
           retryQ.add(newTracker)
+          if (retryQ.peek().equals(newTracker) && prevHead.nonEmpty)
+            if (newTracker.nextRetryTime - prevHead.get.nextRetryTime >= precisionAsNanos)
+              scheduleOnce(timerName, sleepTimeLeft)
         case None =>
       }
 
     private def sleepTimeLeft: FiniteDuration =
       Option(retryQ.peek()) match {
         case Some(retryTracker) =>
-          val elapsedTime = System.nanoTime() - retryTracker.lastFailureTime
-          val sleepLeft = sleepTime(retryTracker.count) - elapsedTime
-          FiniteDuration(math.min(sleepLeft, delayAsNanos), NANOSECONDS)
-        case None => FiniteDuration(delayAsNanos, NANOSECONDS)
+          val sleepLeft = math.max(retryTracker.nextRetryTime - System.nanoTime(), precisionAsNanos)
+          FiniteDuration(sleepLeft, NANOSECONDS)
+        case None =>
+          FiniteDuration(delayAsNanos, NANOSECONDS)
       }
 
     private def sleepTime(retry: Long): Long = {
