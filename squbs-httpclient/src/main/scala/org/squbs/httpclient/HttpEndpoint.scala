@@ -14,11 +14,12 @@
  *  limitations under the License.
  */
 package org.squbs.httpclient
-
-import java.net.URI
 import java.util.Optional
 import javax.net.ssl.SSLContext
 
+import akka.http.impl.model.JavaUri
+import akka.http.javadsl
+import akka.http.scaladsl.model.Uri
 import com.typesafe.config.Config
 
 import scala.compat.java8.OptionConverters._
@@ -28,25 +29,35 @@ import scala.compat.java8.OptionConverters._
   * @param uri The HTTP request URI.
   * @param sslContext The SSL context, if any.
   */
-case class HttpEndpoint(uri: URI, sslContext: Option[SSLContext] = None, config: Option[Config] = None)
+case class HttpEndpoint(uri: Uri, sslContext: Option[SSLContext] = None, config: Option[Config] = None)
 
 /**
   * Creators for HttpEndpoint.
   */
 object HttpEndpoint {
-  def apply(s: String): HttpEndpoint = HttpEndpoint(new URI(s))
+  def apply(s: String): HttpEndpoint = HttpEndpoint(Uri(s))
 
   def apply(s: String, sslContext: Option[SSLContext], config: Option[Config]): HttpEndpoint =
-    HttpEndpoint(new URI(s), sslContext, config)
+    HttpEndpoint(Uri(s), sslContext, config)
 
   /**
     * Java API
     */
-  def create(s: String): HttpEndpoint = HttpEndpoint(new URI(s))
+  def create(s: String): HttpEndpoint = HttpEndpoint(Uri(s))
 
   /**
     * Java API
     */
   def create(s: String, sslContext: Optional[SSLContext], config: Optional[Config]): HttpEndpoint =
-    HttpEndpoint(new URI(s), sslContext.asScala, config.asScala)
+    HttpEndpoint(Uri(s), sslContext.asScala, config.asScala)
+
+  /**
+   * Java API
+   */
+  def create(uri: javadsl.model.Uri, sslContext: Optional[SSLContext], config: Optional[Config]): HttpEndpoint = {
+    uri match {
+      case JavaUri(sUri) => HttpEndpoint(sUri, sslContext.asScala, config.asScala)
+      case _ => throw new IllegalArgumentException("Illegitimately created uri.")
+    }
+  }
 }

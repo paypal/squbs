@@ -16,12 +16,11 @@
 
 package org.squbs.httpclient
 
-import java.net.URI
-
+import akka.http.scaladsl.model.Uri
+import org.scalatest.OptionValues._
 import org.scalatest.{FlatSpecLike, Matchers}
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.testkit.CustomTestKit
-import org.scalatest.OptionValues._
 
 class DefaultHttpEndpointResolverSpec extends CustomTestKit with FlatSpecLike with Matchers {
 
@@ -30,13 +29,13 @@ class DefaultHttpEndpointResolverSpec extends CustomTestKit with FlatSpecLike wi
   private def resolve(uri: String) = ResolverRegistry(system).resolve[HttpEndpoint](uri).value
 
   it should "resolve valid http uri string to an HttpEndpoint" in {
-    resolve("http://akka.io:80") shouldBe HttpEndpoint(URI.create("http://akka.io:80"))
-    resolve("http://akka.io") shouldBe HttpEndpoint(URI.create("http://akka.io"))
+    resolve("http://akka.io:80") shouldBe HttpEndpoint(Uri("http://akka.io:80"))
+    resolve("http://akka.io") shouldBe HttpEndpoint(Uri("http://akka.io"))
   }
 
   it should "resolve valid https uri string to an HttpEndpoint" in {
-    resolve("https://akka.io:443") shouldBe HttpEndpoint(URI.create("https://akka.io:443"))
-    resolve("https://akka.io") shouldBe HttpEndpoint(URI.create("https://akka.io"))
+    resolve("https://akka.io:443") shouldBe HttpEndpoint(Uri("https://akka.io:443"))
+    resolve("https://akka.io") shouldBe HttpEndpoint(Uri("https://akka.io"))
   }
 
   it should "not resolve invalid http uri string to an HttpEndpoint" in {
