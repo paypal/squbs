@@ -115,4 +115,9 @@ pomExtra in ThisBuild :=
         <name>Anil Gursel</name>
         <url>https://github.com/anilgursel</url>
       </developer>
+      <developer>
+        <id>sebady</id>
+        <name>Sherif Ebady</name>
+        <url>https://github.com/sebady</url>
+      </developer>
     </developers>
