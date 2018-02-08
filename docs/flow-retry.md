@@ -145,7 +145,7 @@ Any response with failing http status code is also considered a failure:
 
 val failureDecider = (tryResponse: Try[HttpResponse]) => tryResponse.isFailure || tryResponse.get().status().isFailure()
 
-val retryBidi = RetryBidi[Request, Response, MyContext](maxRetries = 3, (context: MyContext) => Some(context.uuid), failureDecider = Option(failureDecider), OverflowStrategy.backpressure())
+val retryBidi = RetryBidi[Request, Response, MyContext](maxRetries = 3, (context: MyContext) => Some(context.uuid), failureDecider = Option(failureDecider))
 
 ```
 
@@ -161,7 +161,7 @@ tryResponse -> tryResponse.isFailure() || tryResponse.get().status().isFailure()
 
 final BidiFlow<Pair<HttpResponse, MyContext>, Pair<HttpResponse, MyContext>, Pair<Try<HttpResponse>, MyContext>,
     Pair<Try<HttpResponse>, MyContext>, NotUsed> retryFlow =
-    RetryBidi.create(3L, Optional.of(failureDecider), OverflowStrategy.backpressure());
+    RetryBidi.create(3L, Optional.of(failureDecider));
 
 ```
 
