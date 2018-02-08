@@ -29,10 +29,9 @@ Similar to the example at [Akka HTTP Host-Level Client-Side API](http://doc.akka
   
 
 ```scala
-implicit val system = ActorSystem()
 implicit val materializer = ActorMaterializer()
 // construct a pool client flow with context type `Int`
-val poolClientFlow = ClientFlow[Int]("sample") // Only this line is specific to squbs
+val poolClientFlow = ClientFlow[Int]("sample") // Only this line is specific to squbs.  Takes implicit ActorSystem.
 
 val responseFuture: Future[(Try[HttpResponse], Int)] =
   Source.single(HttpRequest(uri = "/") -> 42)

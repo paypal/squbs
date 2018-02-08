@@ -260,3 +260,37 @@ final BidiFlow<Pair<String, Context>,
                Pair<Try<String>, Context>,
                Pair<Try<String>, Context>, NotUsed> retry = Retry.create(settings);
 ```
+
+#### Metrics
+
+`Retry` supports Codahale counters for state and failure/success rate of elements passing through it.  Metrics can be enabled by calling `withMetrics` with a name and an actor system.
+
+The following counters are provided:
+
+  * Count of all retry elements ("<name>.retry-count")
+  * Count of all failed elements ("<name>.failed-count")
+  * Count of all successful elements ("<name>.success-count")
+  * Current size of the retry registry
+  * Current size of the retry queue
+
+##### Scala
+
+```scala
+val settings = RetrySettings[String, String, Context](max = 3)
+  .withMetrics("myRetry") // Takes implicit ActorSystem
+
+val retry = Retry(settings)
+```
+
+##### Java
+
+```java
+final RetrySettings settings =
+        RetrySettings.<String, String, Context>create(3)
+                .withMetrics("myRetry", system)
+
+final BidiFlow<Pair<String, Context>,
+               Pair<String, Context>,
+               Pair<Try<String>, Context>,
+               Pair<Try<String>, Context>, NotUsed> retry = Retry.create(settings);
+```

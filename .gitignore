@@ -1,6 +1,7 @@
 *.class
 *.log
 .cache
+.DS_Store
 bin
 report/
 squbsconfig/
