@@ -264,7 +264,7 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
           else {
             if (pullIn1Condition) pull(in1)
             // If the head is not ready yet, while there is a demand, we should schedule a timer.
-            if (!retryQ.isEmpty && !isTimerActive(timerName)) scheduleOnce(timerName, remainingDelay)
+            if (!noDelay && !retryQ.isEmpty && !isTimerActive(timerName)) scheduleOnce(timerName, remainingDelay)
           }
         }
       }
