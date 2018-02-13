@@ -228,11 +228,11 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
     private val retryQ: mutable.PriorityQueue[(Long, Any)] = mutable.PriorityQueue.empty
 
     // A registry of all in-flight elements (including failed ones) with retry counts
-    private val retryRegistry = mutable.HashMap.empty[Any, (In, Context, Long)]
+    private val retryRegistry = mutable.HashMap.empty[Any, (In, Context, Int)]
     private val noDelay = delay == Duration.Zero
     private def upstreamFinished = isClosed(in1)
 
-    private def pullIn1Condition = !hasBeenPulled(in1) && retryRegistry.size < internalBufferSize && !upstreamFinished
+    private def shouldPullIn1 = !hasBeenPulled(in1) && retryRegistry.size < internalBufferSize && !upstreamFinished
     private def completeStageIfFinished() = if (retryRegistry.isEmpty && upstreamFinished) completeStage()
 
     private def isHeadReady: Boolean = noDelay || retryQ.head._1 <= System.nanoTime()
@@ -251,20 +251,20 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
       override def onUpstreamFailure(ex: Throwable): Unit = if (retryRegistry.isEmpty) fail(out1, ex) else failStage(ex)
     })
 
-    setHandler(out1, new OutHandler {
+    setHandler(out1, handler = new OutHandler {
       override def onPull(): Unit = {
-        if(!retryQ.isEmpty && isHeadReady) {
+        if (retryQ.nonEmpty && isHeadReady) {
           val (elem, ctx, _) = retryRegistry(retryQ.dequeue()._2)
           push(out1, (elem, ctx))
           // If a timer is active, that would be for the element we just pushed down.  So, not valid anymore.
           // Also, if the onTimer is called, cannot push down until a demand is created with onPull.
           cancelTimer(timerName)
         } else {
-          if(isAvailable(in1)) grabAndPush
+          if (isAvailable(in1)) grabAndPush()
           else {
-            if (pullIn1Condition) pull(in1)
+            if (shouldPullIn1) pull(in1)
             // If the head is not ready yet, while there is a demand, we should schedule a timer.
-            if (!noDelay && !retryQ.isEmpty && !isTimerActive(timerName)) scheduleOnce(timerName, remainingDelay)
+            if (!noDelay && retryQ.nonEmpty && !isTimerActive(timerName)) scheduleOnce(timerName, remainingDelay)
           }
         }
       }
@@ -276,7 +276,7 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
         } else cancel(in1)
     })
 
-    setHandler(in2, new InHandler {
+    setHandler(in2, handler = new InHandler {
       override def onPush(): Unit = {
         val (elem, context) = grab(in2)
         val key = uniqueId(context)
@@ -294,9 +294,8 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
             }
           } else {
             val retryTime = System.nanoTime + delayTime(incrementAndGetRetryCount(key))
-            val shouldRetryBeforeTheHeadOfQueue =
-              retryQ.headOption.map(_._1 - retryTime >= precisionAsNanos).getOrElse(false)
-            if(shouldRetryBeforeTheHeadOfQueue) cancelTimer(timerName)
+            val shouldRetryBeforeTheHeadOfQueue = retryQ.headOption.exists(_._1 - retryTime >= precisionAsNanos)
+            if (shouldRetryBeforeTheHeadOfQueue) cancelTimer(timerName)
             // TODO Can we optimize without inserting to the queue?
             retryQ.enqueue((retryTime, key))
 
@@ -307,7 +306,7 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
               // Also, we do not need a timer until a demand from out1 comes with onPull.
               cancelTimer(timerName)
             } else if (!noDelay && !isTimerActive(timerName)) scheduleOnce(timerName, remainingDelay)
-            // continue propagating demand on in2 if grabbed element is queued for retry
+
             pull(in2)
           }
         } else {
@@ -329,12 +328,6 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
       override def onPull(): Unit =
         if (retryRegistry.isEmpty && upstreamFinished) completeStage()
         else pull(in2)
-
-      override def onDownstreamFinish(): Unit =
-        if (retryRegistry.isEmpty) {
-          completeStage()
-          log.debug("completed Out2")
-        } else cancel(in2)
     })
 
     final override def onTimer(key: Any): Unit = {
@@ -342,6 +335,7 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
         val (elem, ctx, _) = retryRegistry(retryQ.dequeue()._2)
         push(out1, (elem, ctx))
       }
+      // else element will be pushed when the demand arrives with the next onPull
     }
 
     private def incrementAndGetRetryCount(key: Any) = {
