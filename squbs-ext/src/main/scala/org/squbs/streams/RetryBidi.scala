@@ -214,6 +214,23 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
 
   private[streams] val isFailure = failureDecider.getOrElse((e: Try[Out]) => e.isFailure)
 
+  /*
+     It keeps two internal structures:
+       - Registry: Keeps track of every element passing through, along with the current retry count for each element.
+       - Retry Queue: A queue of elements that needs to be retried.  Prioritized by soonest retry time.
+
+     If there is demand on out1 and retry queue is not empty, but head of the queue is not ready to be pushed down yet
+     (because of the delay):
+       - a timer is scheduled.
+       - if the current registry size is less than internal buffer size:
+         - grab and push the element at in1 to downstream if available.
+         - otherwise, demand element from upstream if not done so yet.
+
+     Whenever the element at the head of the retry queue is pushed to downstream, the timer, if active,
+     is canceled.  Because, the active timer is for the element which is just pushed down.  Once the timer is canceled,
+     there is no need to schedule one for the new head of the retry queue until a demand is received on out1 (because
+     the head cannot be pushed down when the timer fires off until there is demand).
+   */
   // scalastyle:off method.length
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new TimerGraphStageLogic(shape)
     with StageLogging {
@@ -241,6 +258,9 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
       val (elem, ctx) = grab(in1)
       retryRegistry.put(uniqueId(ctx), (elem, ctx, 0))
       push(out1, (elem, ctx))
+      // If a timer is active, do not cancel it here.  When the next demand comes with onPull(out1), the head of the
+      // retry queue will be checked to see if it is ok to be pushed downstream.  If it is not, then a timer would
+      // need to be scheduled anyway.  So, by not canceling here, we prevent a possible "cancel & schedule".
     }
 
     setHandler(in1, new InHandler {
@@ -295,17 +315,22 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int, unique
           } else {
             val retryTime = System.nanoTime + delayTime(incrementAndGetRetryCount(key))
             val shouldRetryBeforeTheHeadOfQueue = retryQ.headOption.exists(_._1 - retryTime >= precisionAsNanos)
-            if (shouldRetryBeforeTheHeadOfQueue) cancelTimer(timerName)
-            // TODO Can we optimize without inserting to the queue?
+            if (shouldRetryBeforeTheHeadOfQueue) cancelTimer(timerName) // Because, the next retry time just changed
+
             retryQ.enqueue((retryTime, key))
 
-            if (isAvailable(out1) && isHeadReady) {
-              val (elem, ctx, _) = retryRegistry(retryQ.dequeue()._2)
-              push(out1, (elem, ctx))
-              // If a timer is active, it is for the element which we just pushed, so not valid anymore.
-              // Also, we do not need a timer until a demand from out1 comes with onPull.
-              cancelTimer(timerName)
-            } else if (!noDelay && !isTimerActive(timerName)) scheduleOnce(timerName, remainingDelay)
+            if(isAvailable(out1)) {
+              if (isHeadReady) {
+                val (elem, ctx, _) = retryRegistry(retryQ.dequeue()._2)
+                push(out1, (elem, ctx))
+                // If a timer is active, it is for the element which we just pushed, so not valid anymore.
+                // Also, we do not need a timer until a demand from out1 comes with onPull.
+                cancelTimer(timerName)
+              } else if (!noDelay && !isTimerActive(timerName)) {
+                // If the head of the queue has just changed but not pushed down, we need to schedule a new timer.
+                scheduleOnce(timerName, remainingDelay)
+              }
+            }
 
             pull(in2)
           }
