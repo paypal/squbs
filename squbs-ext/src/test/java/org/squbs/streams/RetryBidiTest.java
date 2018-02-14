@@ -21,7 +21,6 @@ import akka.actor.ActorSystem;
 import akka.japi.Pair;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
-import akka.stream.OverflowStrategy;
 import akka.stream.javadsl.BidiFlow;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Sink;
@@ -94,7 +93,7 @@ public class RetryBidiTest {
                                 return new Pair<>(failure, elem.second());
                             else
                                 return new Pair<>(Success.apply(elem.first()), elem.second());
-                            });
+                        });
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
                 Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(2);
 
@@ -148,7 +147,7 @@ public class RetryBidiTest {
         Function<MyContext, Optional<Object>> uniqueIdMapper = context -> Optional.of(context.uuid);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =
-                RetryBidi.create(3, uniqueIdMapper, OverflowStrategy.backpressure());
+                RetryBidi.create(3, uniqueIdMapper);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -172,8 +171,7 @@ public class RetryBidiTest {
                 out -> out.isFailure() || out.equals(Success.apply("a")); // treat "a" as a failure for retry
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
-                Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(1,
-                Optional.of(failureDecider), OverflowStrategy.backpressure());
+                Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(1, Optional.of(failureDecider));
 
         Source.from(Arrays.asList("a", "b"))
                 .map(s -> new Pair<>(s, UUID.randomUUID()))
@@ -259,8 +257,7 @@ public class RetryBidiTest {
         final Function<MyContext, Optional<Object>> uniqueIdMapper = context -> Optional.of(context.uuid);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =
-                RetryBidi.create(3, uniqueIdMapper, Optional.of(failureDecider),
-                        OverflowStrategy.backpressure());
+                RetryBidi.create(3, uniqueIdMapper, Optional.of(failureDecider));
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -292,8 +289,7 @@ public class RetryBidiTest {
         final RetrySettings<String, String, MyContext> retrySettings =
                 RetrySettings.<String, String, MyContext>create(3)
                     .withFailureDecider(failureDecider)
-                    .withUniqueIdMapper(uniqueIdMapper)
-                    .withOverflowStrategy(OverflowStrategy.backpressure());
+                    .withUniqueIdMapper(uniqueIdMapper);
 
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =
