@@ -37,7 +37,7 @@ The followings are optional components depending on your marshalling formats and
 "org.json4s" %% "json4s-jackson" % "3.5.0",
   
 // For Jackson marshalling of Scala case classes... 
-"com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.4",
+"com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion,
   
 // For Jackson marshalling of immutable Java classes...
 "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonVersion,

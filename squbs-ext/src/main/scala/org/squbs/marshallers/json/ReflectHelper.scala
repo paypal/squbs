@@ -15,7 +15,7 @@
  */
 package org.squbs.marshallers.json
 
-import scala.reflect.{ClassTag, ManifestFactory}
+import scala.reflect.{ClassTag, ManifestFactory, api}
 import scala.reflect.runtime.universe._
 
 object ReflectHelper {
@@ -63,5 +63,15 @@ object ReflectHelper {
     val t = typeTag[T]
     val mirror = t.mirror
     ClassTag[T](mirror.runtimeClass(t.tpe))
+  }
+
+  private[marshallers] def toTypeTag[T](clazz: Class[T]): TypeTag[T] = {
+    val mirror = runtimeMirror(clazz.getClass.getClassLoader)
+    val tpe = mirror.classSymbol(clazz).toType
+    TypeTag(mirror, new api.TypeCreator {
+      def apply[U <: api.Universe with Singleton](m: api.Mirror[U]) =
+        if (m eq mirror) tpe.asInstanceOf[U#Type]
+        else throw new IllegalArgumentException(s"Type tag defined in $mirror cannot be migrated to other mirrors.")
+    })
   }
 }

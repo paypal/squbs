@@ -17,3 +17,5 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 addSbtPlugin("de.johoop" % "sbt-testng-plugin" % "3.1.1")
 
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.0")
+
+addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.3.4")

@@ -15,13 +15,13 @@ libraryDependencies ++= Seq(
   "net.openhft" % "chronicle-queue" % chronicleQueueV % "optional",
   "org.scalatest" %% "scalatest" % scalatestV % "test->*",
   "junit" % "junit" % junitV % "test",
-  "org.apache.commons" % "commons-math3" % "3.3" % "test->*",
+  "org.apache.commons" % "commons-math3" % "3.6.1" % "test->*",
   "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
   "com.wix" %% "accord-core" % accordV % "optional",
   "org.json4s" %% "json4s-jackson" % json4sV % "optional",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.4" % "optional",
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonV % "optional",
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonV % "optional",
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
+  "ch.qos.logback" % "logback-classic" % logbackInTestV % "test"
 ) ++ akkaDependencies
 
 def akkaDependencies = Seq(

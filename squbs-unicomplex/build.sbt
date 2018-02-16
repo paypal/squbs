@@ -8,7 +8,7 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "org.scalatest" %% "scalatest" % scalatestV % "test->*",
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
+  "ch.qos.logback" % "logback-classic" % logbackInTestV % "test",
   "com.wix" %% "accord-core" % accordV % "test",
   "junit" % "junit" % junitV % "test",
   "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",

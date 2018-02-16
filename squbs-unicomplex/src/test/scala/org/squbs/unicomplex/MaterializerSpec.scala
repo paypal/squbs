@@ -103,6 +103,9 @@ object MaterializerSpec {
       |debug {
       |  fuzzing-mode = on
       |}
+      |io.tcp {
+      |  write-buffer-size = 16 KiB
+      |}
     """.stripMargin)
 
   val boot = UnicomplexBoot(config)

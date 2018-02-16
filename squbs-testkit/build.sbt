@@ -2,8 +2,6 @@ import Versions._
 
 name := "squbs-testkit"
 
-resolvers += Resolver.sbtPluginRepo("releases")
-
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % scalatestV,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
@@ -13,7 +11,7 @@ libraryDependencies ++= Seq(
   "org.testng" % "testng" % testngV % "optional",
   "de.heikoseeberger" %% "akka-http-jackson" % heikoseebergerAkkaHttpJsonV % "test",
   "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
+  "ch.qos.logback" % "logback-classic" % logbackInTestV % "test"
 
 )
 

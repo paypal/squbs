@@ -17,7 +17,8 @@
 package org.squbs.metrics
 
 import akka.actor._
-import com.codahale.metrics.{JmxReporter, MetricRegistry}
+import com.codahale.metrics.MetricRegistry
+import com.codahale.metrics.jmx.JmxReporter
 
 object MetricsExtension extends ExtensionId[MetricsExtensionImpl] with ExtensionIdProvider {
 
