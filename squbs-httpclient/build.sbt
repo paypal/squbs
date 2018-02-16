@@ -15,10 +15,10 @@ libraryDependencies ++= Seq(
   "de.heikoseeberger" %% "akka-http-json4s" % heikoseebergerAkkaHttpJsonV % "test",
   "de.heikoseeberger" %% "akka-http-jackson" % heikoseebergerAkkaHttpJsonV % "test",
   "org.json4s" %% "json4s-jackson" % json4sV % "test",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.4" % "test",
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonV % "test",
   "junit" % "junit" % junitV % "test",
   "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
+  "ch.qos.logback" % "logback-classic" % logbackInTestV % "test"
 )
 
 javacOptions += "-parameters"

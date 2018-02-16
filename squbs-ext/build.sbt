@@ -12,6 +12,7 @@ testOptions in Test ++= Seq(
 
 libraryDependencies ++= Seq(
   "io.dropwizard.metrics" % "metrics-core" % metricsV,
+  "io.dropwizard.metrics" % "metrics-jmx" % metricsV,
   "com.typesafe.akka" %% "akka-stream" % akkaV % "optional",
   "com.typesafe.akka" %% "akka-http-core" % akkaHttpV % "optional",
   "de.heikoseeberger" %% "akka-http-json4s" % heikoseebergerAkkaHttpJsonV % "optional",
@@ -20,7 +21,7 @@ libraryDependencies ++= Seq(
   "org.json4s" %% "json4s-jackson" % json4sV % "optional",
   "com.fasterxml.jackson.core" % "jackson-core" % jacksonV % "optional",
   "com.fasterxml.jackson.core" % "jackson-databind" % jacksonV % "optional",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.8.4" % "optional",
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonV % "optional",
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonV % "optional",
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % "test",

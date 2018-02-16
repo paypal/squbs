@@ -15,7 +15,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "test",
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
+  "ch.qos.logback" % "logback-classic" % logbackInTestV % "test",
   "org.json4s" %% "json4s-jackson" % json4sV
 )
 

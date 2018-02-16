@@ -211,7 +211,7 @@ object XLangJsonSupport {
   def unmarshaller[R](clazz: Class[R]): Unmarshaller[HttpEntity, R] = {
     val scalaUnmarshaller =
       if (isJavaClass(clazz)) {
-        implicit val classTag = ClassTag[R](clazz)
+        implicit val tt = ReflectHelper.toTypeTag[R](clazz)
         JacksonMapperSupport.jacksonUnmarshaller[R]
       } else {
         implicit val manifest = ManifestFactory.classType[R](clazz)
