@@ -234,7 +234,7 @@ case class CircuitBreakerSettings[In, Out, Context] private[circuitbreaker] (
   fallback: Option[In => Try[Out]] = None,
   cleanUp: Out => Unit = (_: Out) => (),
   failureDecider: Option[Try[Out] => Boolean] = None,
-  uniqueIdMapper: Context => Option[Any] = (_: Any) => None) {
+  uniqueIdMapper: Option[Context => Any] = None) {
 
   def withFallback(fallback: In => Try[Out]): CircuitBreakerSettings[In, Out, Context] =
     copy(fallback = Some(fallback))
@@ -245,8 +245,8 @@ case class CircuitBreakerSettings[In, Out, Context] private[circuitbreaker] (
   def withFailureDecider(failureDecider: Try[Out] => Boolean): CircuitBreakerSettings[In, Out, Context] =
     copy(failureDecider = Some(failureDecider))
 
-  def withUniqueIdMapper(uniqueIdMapper: Context => Option[Any]): CircuitBreakerSettings[In, Out, Context] =
-    copy(uniqueIdMapper = uniqueIdMapper)
+  def withUniqueIdMapper(uniqueIdMapper: Context => Any): CircuitBreakerSettings[In, Out, Context] =
+    copy(uniqueIdMapper = Some(uniqueIdMapper))
 }
 
 object CircuitBreakerSettings {

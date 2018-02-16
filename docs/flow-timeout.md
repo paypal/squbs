@@ -126,7 +126,7 @@ The following API is used to pass a uniqueId mapper:
 
 ```scala
 TimeoutBidiFlowUnordered[In, Out, Context](timeout: FiniteDuration,
-                                           uniqueIdMapper: Context => Option[Any])
+                                           uniqueIdMapper: Option[Context => Any])
 ```
   
   This `BidiFlow` can be joined with any flow that takes in a `(In, Context)` and outputs a `(Out, Context)`.
@@ -135,7 +135,7 @@ TimeoutBidiFlowUnordered[In, Out, Context](timeout: FiniteDuration,
 case class MyContext(s: String, uuid: UUID)
 
 val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, MyContext](timeout,
-                                                                         (context: MyContext) => Some(context.uuid))
+                                                                         Some((context: MyContext) => context.uuid))
 val flow = Flow[(String, MyContext)].mapAsyncUnordered(10) { elem =>
   (ref ? elem).mapTo[(String, MyContext)]
 }
@@ -157,7 +157,7 @@ public class TimeoutBidiFlowUnordered {
 	                                          Pair<Out, Context>,
 	                                          Pair<Try<Out>, Context>,
 	                                          NotUsed>
-	create(FiniteDuration timeout, Function<Context, Optional<Object>> uniqueIdMapper);
+	create(FiniteDuration timeout, Function<Context, Object> uniqueIdMapper);
 }
 ```
 
@@ -183,7 +183,7 @@ final BidiFlow<Pair<String, MyContext>,
                Pair<String, MyContext>,
                Pair<Try<String>, MyContext>,
                NotUsed>
-    timeoutBidiFlow = TimeoutBidiFlowUnordered.create(timeout, context -> Optional.of(context.uuid));
+    timeoutBidiFlow = TimeoutBidiFlowUnordered.create(timeout, context -> context.uuid);
 
 final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
         Flow.<Pair<String, MyContext>>create()

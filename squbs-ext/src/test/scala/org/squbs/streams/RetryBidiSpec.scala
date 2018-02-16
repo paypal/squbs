@@ -43,7 +43,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
 
   it should "require expbackoff >= 0" in {
     an[IllegalArgumentException] should be thrownBy
-      RetryBidi[String, String, NotUsed](1, exponentialBackoffFactor = -0.5)
+      RetryBidi(RetrySettings[String, String, NotUsed](1, exponentialBackoffFactor = -0.5))
   }
 
   it should "retry settings failure decider should default to None" in {
@@ -198,7 +198,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val flow = Flow[(String, MyContext)].map {
       case (elem, ctx) => (Success(elem), ctx)
     }
-    val retry = RetryBidi[String, String, MyContext](2, uniqueIdMapper = (context: MyContext) => Some(context.uniqueId))
+    val retry = RetryBidi(RetrySettings[String, String, MyContext](2).withUniqueIdMapper((context: MyContext) => context.uniqueId))
 
     var counter = 0L
     val result = Source("a" :: "b" :: "c" :: Nil)
@@ -218,7 +218,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
 
     val retrySettings =
       RetrySettings[String, String, MyContext](2)
-        .withUniqueIdMapper((context: MyContext) => Some(context.id))
+        .withUniqueIdMapper(context => context.id)
 
     val flow = Flow[(String, MyContext)].map {
       case (elem, ctx) => (Success(elem), ctx)
@@ -242,7 +242,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val bottom = Flow[(String, Long)].map {
       case (_, ctx) => (failure, ctx)
     }
-    val retry = RetryBidi[String, String, Long](5)
+    val retry = RetryBidi(RetrySettings[String, String, Long](maxRetries = 5))
     var context = 0L
     val (source, sink) = TestSource.probe[String]
       .map { s => context += 1; (s, context) }
@@ -278,7 +278,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       case (elem, ctx) => (Success(elem), ctx)
     }
     val failureDecider = (out: Try[String]) => out.isFailure || out.equals(Success("a")) // treat "a" as a failure for retry
-    val retry = RetryBidi[String, String, Long](2, failureDecider = Option(failureDecider))
+    val retry = RetryBidi(RetrySettings[String, String, Long](2, failureDecider = Option(failureDecider)))
 
     var context = 0L
     val (source, sink) = TestSource.probe[String]
@@ -363,7 +363,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val bottom = Flow[(String, Long)].map {
       case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx) // fail even elements
     }
-    val retry = RetryBidi[String, String, Long](2, delay = 1 second)
+    val retry = RetryBidi(RetrySettings[String, String, Long](2, delay = 1 second))
     val testSink = Source(1L to 5L)
       .map(x => (x.toString, x))
       .via(retry.join(bottom))
@@ -382,7 +382,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val bottom = Flow[(String, Long)].map {
       case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx)
     }
-    val retry = RetryBidi[String, String, Long](maxRetries = 3, delay = 1 second, exponentialBackoffFactor = 2)
+    val retry = RetryBidi(RetrySettings[String, String, Long](maxRetries = 3, delay = 1 second, exponentialBackoffFactor = 2))
     val sink = Source(1L to 5L)
       .map(x => (x.toString, x))
       .via(retry.join(bottom))
@@ -401,8 +401,8 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val bottom = Flow[(String, Long)].map {
       case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx)
     }
-    val retry = RetryBidi[String, String, Long](maxRetries = 3, delay = 1 second, exponentialBackoffFactor = 2,
-      maxDelay = 4 seconds)
+    val retry = RetryBidi(RetrySettings[String, String, Long](maxRetries = 3, delay = 1 second, exponentialBackoffFactor = 2,
+      maxDelay = 4 seconds))
     val sink = Source(1L to 5L)
       .map(x => (x.toString, x))
       .via(retry.join(bottom))

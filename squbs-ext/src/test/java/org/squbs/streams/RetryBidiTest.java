@@ -144,10 +144,9 @@ public class RetryBidiTest {
                     return new Pair<>(Success.apply(elem.first()), elem.second());
             });
 
-        Function<MyContext, Optional<Object>> uniqueIdMapper = context -> Optional.of(context.uuid);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =
-                RetryBidi.create(3, uniqueIdMapper);
+                RetryBidi.create(3, context -> context.uuid);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -254,10 +253,9 @@ public class RetryBidiTest {
         final Function<Try<String>, Boolean> failureDecider =
                 out -> out.isFailure() || out.equals(Success.apply("a")); // treat "a" as a failure for retry
 
-        final Function<MyContext, Optional<Object>> uniqueIdMapper = context -> Optional.of(context.uuid);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =
-                RetryBidi.create(3, uniqueIdMapper, Optional.of(failureDecider));
+                RetryBidi.create(3, context -> context.uuid, Optional.of(failureDecider));
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -282,14 +280,13 @@ public class RetryBidiTest {
                                 return new Pair<>(Success.apply(elem.first()), elem.second());
                         });
 
-        final Function<MyContext, Optional<Object>> uniqueIdMapper = context -> Optional.of(context.uuid);
         final Function<Try<String>, Boolean> failureDecider =
                 out -> out.isFailure() || out.equals(Success.apply("a")); // treat "a" as failure
 
         final RetrySettings<String, String, MyContext> retrySettings =
                 RetrySettings.<String, String, MyContext>create(3)
                     .withFailureDecider(failureDecider)
-                    .withUniqueIdMapper(uniqueIdMapper);
+                    .withUniqueIdMapper(context -> context.uuid);
 
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =

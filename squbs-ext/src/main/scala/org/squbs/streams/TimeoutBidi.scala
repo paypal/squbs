@@ -16,7 +16,6 @@
 
 package org.squbs.streams
 
-import java.util.Optional
 import java.util.concurrent.TimeUnit.NANOSECONDS
 import java.util.concurrent.TimeoutException
 import java.util.function.Consumer
@@ -192,7 +191,7 @@ object TimeoutBidiFlowUnordered {
     * @return a [[BidiFlow]] with timeout functionality
     */
   def apply[In, Out, Context](timeout: FiniteDuration,
-                              uniqueIdMapper: Context => Option[Any] = (_: Any) => None,
+                              uniqueIdMapper: Option[Context => Any] = None,
                               cleanUp: Out => Unit = (_: Out) => ()):
   BidiFlow[(In, Context), (In, Context), (Out, Context), (Try[Out], Context), NotUsed] =
     BidiFlow.fromGraph(TimeoutBidiUnordered(timeout, uniqueIdMapper, cleanUp))
@@ -201,19 +200,19 @@ object TimeoutBidiFlowUnordered {
     * Java API
     */
   def create[In, Out, Context](timeout: FiniteDuration,
-                               uniqueIdMapper: java.util.function.Function[Context, Optional[Any]],
+                               uniqueIdMapper: java.util.function.Function[Context, Any],
                                cleanUp: Consumer[Out]):
   javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
-    toJava(apply(timeout, UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper), toScala(cleanUp)))
+    toJava(apply(timeout, Some(uniqueIdMapper.apply _), toScala(cleanUp)))
   }
 
   /**
     * Java API
     */
   def create[In, Out, Context](timeout: FiniteDuration,
-                               uniqueIdMapper: java.util.function.Function[Context, Optional[Any]]):
+                               uniqueIdMapper: java.util.function.Function[Context, Any]):
   javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] = {
-    toJava(apply[In, Out, Context](timeout, UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper)))
+    toJava(apply[In, Out, Context](timeout, Some(uniqueIdMapper.apply _)))
   }
 
   /**
@@ -251,7 +250,7 @@ object TimeoutBidiUnordered {
     *         functionality.
     */
   def apply[In, Out, Context](timeout: FiniteDuration,
-                              uniqueIdMapper: Context => Option[Any] = (_: Any) => None,
+                              uniqueIdMapper: Option[Context => Any] = None,
                               cleanUp: Out => Unit = (_: Out) => ()):
   TimeoutBidiUnordered[In, Out, Context] =
     new TimeoutBidiUnordered(timeout, uniqueIdMapper, cleanUp)
@@ -289,7 +288,7 @@ object TimeoutBidiUnordered {
   * @tparam Context the type of the context that is carried around along with the elements.
   */
 final class TimeoutBidiUnordered[In, Out, Context](timeout: FiniteDuration,
-                                                   uniqueIdMapper: Context => Option[Any],
+                                                   uniqueIdMapper: Option[Context => Any],
                                                    cleanUp: Out => Unit)
   extends GraphStage[BidiShape[(In, Context), (In, Context), (Out, Context), (Try[Out], Context)]] with LazyLogging {
 
@@ -299,13 +298,12 @@ final class TimeoutBidiUnordered[In, Out, Context](timeout: FiniteDuration,
   private val out = Outlet[(Try[Out], Context)]("TimeoutBidiUnordered.out")
   val shape = BidiShape(in, toWrapped, fromWrapped, out)
 
-  private[streams] def uniqueId(context: Context) =
-    uniqueIdMapper(context).getOrElse {
-      context match {
-        case uniqueIdProvider: UniqueId.Provider ⇒ uniqueIdProvider.uniqueId
-        case context ⇒ context
-      }
+  val uniqueId: Context => Any = uniqueIdMapper.getOrElse{
+    context => context match {
+      case uniqueIdProvider: UniqueId.Provider ⇒ uniqueIdProvider.uniqueId
+      case uniqueId ⇒ uniqueId
     }
+  }
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new TimeoutGraphStageLogic(shape) {
 
