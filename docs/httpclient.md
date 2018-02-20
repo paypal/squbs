@@ -238,6 +238,7 @@ squbs comes with pre-built [pipeline](#pipeline) elements for metrics collection
 
    * Request Timer
    * Request Count Meter
+   * Response Count Meter
    * A meter for each http response status code category: 2xx, 3xx, 4xx, 5xx
    * A meter for each exception type that was returned by `ClientFlow`.
 
