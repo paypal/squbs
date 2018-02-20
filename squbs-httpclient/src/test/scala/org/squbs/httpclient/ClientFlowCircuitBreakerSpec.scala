@@ -92,8 +92,11 @@ object ClientFlowCircuitBreakerSpec {
       |do-not-drain {
       |  type = squbs.httpclient
       |  akka.http {
-      |    host-connection-pool.max-connections = 10
       |    client.idle-timeout = 10 seconds
+      |    host-connection-pool {
+      |      max-connections = 10
+      |      response-entity-subscription-timeout = 1 minute
+      |    }
       |  }
       |}
     """.stripMargin)

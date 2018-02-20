@@ -16,7 +16,9 @@
 package org.squbs.testkit.japi.junit;
 
 import akka.http.javadsl.marshallers.jackson.Jackson;
+import akka.http.javadsl.model.HttpMethods;
 import akka.http.javadsl.model.HttpRequest;
+import akka.http.javadsl.server.Rejections;
 import akka.http.javadsl.testkit.TestRoute;
 import org.junit.Test;
 import org.squbs.testkit.japi.InfoRoute;
@@ -48,6 +50,20 @@ public class RouteTestTest extends JUnitRouteTest {
         assertEquals("my-context", routeInfo.getWebContext());
         assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with akka://",
                 routeInfo.getActorPath().startsWith("akka://"));
+    }
+
+    @Test
+    public void testSimpleRouteWithRejections() {
+        TestRoute simpleRoute = testRoute(InfoRoute.class);
+        simpleRoute.runWithRejections(HttpRequest.POST("context-info"))
+                .assertRejections(Rejections.method(HttpMethods.GET));
+    }
+
+    @Test
+    public void testSimpleRouteWithContextWithRejections() {
+        TestRoute simpleRoute = testRoute("my-context", InfoRoute.class);
+        simpleRoute.runWithRejections(HttpRequest.POST("/my-context/context-info"))
+                .assertRejections(Rejections.method(HttpMethods.GET));
     }
 }
 

@@ -16,7 +16,9 @@
 package org.squbs.testkit.japi.testng;
 
 import akka.http.javadsl.marshallers.jackson.Jackson;
+import akka.http.javadsl.model.HttpMethods;
 import akka.http.javadsl.model.HttpRequest;
+import akka.http.javadsl.server.Rejections;
 import akka.http.javadsl.testkit.TestRoute;
 import org.squbs.testkit.japi.InfoRoute;
 import org.squbs.testkit.japi.RouteInfo;
@@ -50,4 +52,17 @@ public class RouteTestTest extends TestNGRouteTest {
                 "ActorPath: " + routeInfo.getActorPath() + " does not start with akka://");
     }
 
+    @Test
+    public void testSimpleRouteWithRejections() {
+        TestRoute simpleRoute = testRoute(InfoRoute.class);
+        simpleRoute.runWithRejections(HttpRequest.POST("context-info"))
+                .assertRejections(Rejections.method(HttpMethods.GET));
+    }
+
+    @Test
+    public void testSimpleRouteWithContextWithRejections() {
+        TestRoute simpleRoute = testRoute("my-context", InfoRoute.class);
+        simpleRoute.runWithRejections(HttpRequest.POST("/my-context/context-info"))
+                .assertRejections(Rejections.method(HttpMethods.GET));
+    }
 }

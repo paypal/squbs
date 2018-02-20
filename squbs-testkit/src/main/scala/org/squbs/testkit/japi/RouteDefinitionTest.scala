@@ -38,6 +38,8 @@ trait RouteDefinitionTest { this: RouteTest =>
       val underlying: Route = BuildRoute(routeDef, webContext)
 
       def run(request: HttpRequest): TestRouteResult = runRoute(underlying, request)
+
+      def runWithRejections(request: HttpRequest): TestRouteResult = runRouteUnSealed(underlying, request)
     }
   }
 }
