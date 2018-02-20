@@ -253,7 +253,7 @@ public class CircuitBreakerBidiFlowTest {
 
         final CircuitBreakerSettings circuitBreakerSettings =
                 CircuitBreakerSettings.<String, String, MyContext>create(circuitBreakerState)
-                        .withUniqueIdMapper(context -> Optional.of(context.id));
+                        .withUniqueIdMapper(context -> context.id());
 
         final BidiFlow<Pair<String, MyContext>,
                        Pair<String, MyContext>,

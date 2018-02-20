@@ -233,7 +233,8 @@ object ClientFlow {
               case Success(tryHttpResponse) => f(tryHttpResponse)
               case _ => true
             }))
-        .withUniqueIdMapper(rc => rc.attribute[T](AkkaHttpClientCustomContext).flatMap(cbs.uniqueIdMapper(_)))
+          .copy(uniqueIdMapper =
+            cbs.uniqueIdMapper.map(f => (rc: RequestContext) => f(rc.attribute[T](AkkaHttpClientCustomContext).get)))
         .withCleanUp(tryHttpResponse => tryHttpResponse.foreach(cbs.cleanUp))
 
     val circuitBreakerBidiFlow = CircuitBreakerBidiFlow(clientFlowCircuitBreakerSettings)

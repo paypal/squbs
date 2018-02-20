@@ -205,7 +205,7 @@ class CircuitBreakerBidiFlowSpec
     val circuitBreakerSettings =
       CircuitBreakerSettings[String, String, MyContext](
         AtomicCircuitBreakerState("UniqueId", 2, timeout, 10 milliseconds))
-        .withUniqueIdMapper((context: MyContext) => Some(context.id))
+        .withUniqueIdMapper(context => context.id)
     val circuitBreakerBidiFlow = CircuitBreakerBidiFlow(circuitBreakerSettings)
 
 

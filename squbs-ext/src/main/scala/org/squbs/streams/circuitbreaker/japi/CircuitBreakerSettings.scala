@@ -15,11 +15,10 @@
  */
 package org.squbs.streams.circuitbreaker.japi
 
+import java.lang.{Boolean => JBoolean}
 import java.util.Optional
 import java.util.function.{Consumer, Function}
-import java.lang.{Boolean => JBoolean}
 
-import org.squbs.streams.UniqueId
 import org.squbs.streams.circuitbreaker.CircuitBreakerState
 
 import scala.util.Try
@@ -36,8 +35,8 @@ case class CircuitBreakerSettings[In, Out, Context] private[japi] (
     override def accept(t: Out): Unit = ()
   },
   failureDecider: Optional[Function[Try[Out], JBoolean]] = Optional.empty[Function[Try[Out], JBoolean]],
-  uniqueIdMapper: Function[Context, Optional[Any]] = new Function[Context, Optional[Any]] {
-    override def apply(t: Context): Optional[Any] = Optional.empty()
+  uniqueIdMapper: Function[Context, Any] = new Function[Context, Any] {
+    override def apply(context: Context): Any = context
   }) {
 
   def withFallback(fallback: Function[In, Try[Out]]): CircuitBreakerSettings[In, Out, Context] =
@@ -49,7 +48,7 @@ case class CircuitBreakerSettings[In, Out, Context] private[japi] (
   def withFailureDecider(failureDecider: Function[Try[Out], JBoolean]):
   CircuitBreakerSettings[In, Out, Context] = copy(failureDecider = Optional.of(failureDecider))
 
-  def withUniqueIdMapper(uniqueIdMapper: Function[Context, Optional[Any]]):
+  def withUniqueIdMapper(uniqueIdMapper: Function[Context, Any]):
   CircuitBreakerSettings[In, Out, Context] = copy(uniqueIdMapper = uniqueIdMapper)
 
   import scala.compat.java8.OptionConverters._
@@ -60,7 +59,7 @@ case class CircuitBreakerSettings[In, Out, Context] private[japi] (
       fallback.asScala.map(f => (in: In) => f(in)),
       (out: Out) => cleanUp.accept(out),
       failureDecider.asScala.map(f => (out: Try[Out]) => f(out).asInstanceOf[Boolean]),
-      UniqueId.javaUniqueIdMapperAsScala(uniqueIdMapper))
+      Some(uniqueIdMapper.apply _))
 }
 
 object CircuitBreakerSettings {

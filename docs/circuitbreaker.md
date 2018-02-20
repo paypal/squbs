@@ -197,7 +197,7 @@ With the first three options, a unique id can be retrieved directly through the 
 
 ##### Scala
 
-A function of type `Context => Option[Any]` can be provided via `withUniqueIdMapper` function:
+A function of type `Context => Any` can be provided via `withUniqueIdMapper` function:
 
 ```scala
 import org.squbs.streams.circuitbreaker.CircuitBreakerSettings
@@ -206,12 +206,12 @@ case class MyContext(s: String, id: Long)
 
 val circuitBreakerSettings =
   CircuitBreakerSettings[String, String, MyContext](circuitBreakerState)
-    .withUniqueIdMapper((context: MyContext) => Some(context.id))
+    .withUniqueIdMapper(context => context.id)
 ```
 
 ##### Java
 
-A `Function<Context, Optional<Any>>` can be provided via `withUniqueIdMapper` function:
+A `Function<Context, Any>` can be provided via `withUniqueIdMapper` function:
 
 ```java
 import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
@@ -232,7 +232,7 @@ class MyContext {
 
 CircuitBreakerSettings circuitBreakerSettings =
         CircuitBreakerSettings.<String, String, MyContext>create(circuitBreakerState)
-                .withUniqueIdMapper(context -> Optional.of(context.id));
+                .withUniqueIdMapper(context -> context.id());
 ```
 
 #### Notifications

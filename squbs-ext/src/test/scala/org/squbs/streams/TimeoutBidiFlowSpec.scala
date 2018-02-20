@@ -254,7 +254,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
     }
 
     val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, MyContext](timeout,
-                                                                             (context: MyContext) => Some(context.uuid))
+                                                                             Some((context: MyContext) => context.uuid))
 
     val result = Source("a" :: "b" :: "c" :: Nil)
       .map { s => (s, MyContext("dummy", UUID.randomUUID())) }
@@ -319,8 +319,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
     TimeoutBidiUnordered[String, String, Int](timeout).uniqueId(1) should be(1)
     TimeoutBidiUnordered[String, String, MyContext](timeout).uniqueId(MyContext(2)) should be(2)
     TimeoutBidiUnordered[String, String, Envelope](timeout).uniqueId(Envelope("dummy", 3)) should be(3)
-    TimeoutBidiUnordered[String, String, MyContext](timeout,
-                                                    context => Some(context.id + 1)).uniqueId(MyContext(4)) should be(5)
+    TimeoutBidiUnordered[String, String, MyContext](timeout, Some(context => context.id + 1)).uniqueId(MyContext(4)) should be(5)
   }
 }
 

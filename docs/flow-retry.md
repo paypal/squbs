@@ -67,7 +67,7 @@ For the last option, `RetryBidi` allows a function to be passed in as a paramete
 
 The following API can be used to pass a uniqueId mapper:
 ```scala
-RetryBidi[In, Out, Context](maxRetries: Int, uniqueIdMapper: Context => Option[Any])
+RetryBidi[In, Out, Context](maxRetries: Int, uniqueIdMapper: Context => Any)
 ```
 
 This `BidiFlow` can be joined with any flow that takes in a `(In, Context)` and outputs a `(Out, Context)`.
@@ -79,7 +79,7 @@ case class MyContext(s: String, id: Long)
 
 val retrySettings =
   RetrySettings[String, String, MyContext](maxRetries = 3)
-    .withUniqueIdMapper((context: MyContext) => Some(context.id))
+    .withUniqueIdMapper(context => context.id)
 ```
 
 ###### Java
@@ -105,15 +105,14 @@ class MyContext {
 
 RetrySettings<String, String, MyContext> retrySettings =
         RetrySettings.<String, String, MyContext>create(3)
-                .withUniqueIdMapper(context -> Optional.of(context.id));
+                .withUniqueIdMapper(context -> context.id());
 ```
 This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair<In, Context>` and outputs a `akka.japi.Pair<Try<Out>, Context>`.
 
 ```java
-final Function<MyContext, Optional<Object>> uniqueIdMapper = context -> Optional.of(context.id);
 RetrySettings<String, String, MyContext> retrySettings =
         RetrySettings.<String, String, MyContext>create(maxRetries)
-                .withUniqueIdMapper(uniqueIdMapper);
+                .withUniqueIdMapper(context -> context.id());
 
 final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>,
                Pair<Try<String>, MyContext>, Pair<Try<String>, MyContext>, NotUsed>
@@ -145,7 +144,7 @@ Any response with failing http status code is also considered a failure:
 
 val failureDecider = (tryResponse: Try[HttpResponse]) => tryResponse.isFailure || tryResponse.get().status().isFailure()
 
-val retryBidi = RetryBidi[Request, Response, MyContext](maxRetries = 3, (context: MyContext) => Some(context.uuid), failureDecider = Option(failureDecider))
+val retryBidi = RetryBidi[Request, Response, MyContext](maxRetries = 3, (context: MyContext) => context.uuid, failureDecider = Option(failureDecider))
 
 ```
 

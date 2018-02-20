@@ -36,12 +36,4 @@ object UniqueId {
   final case class Envelope(message: Any, id: Any) extends Provider {
     override def uniqueId: Any = id
   }
-
-  private[squbs] def javaUniqueIdMapperAsScala[Context](uniqueIdMapper: JFunction[Context, Optional[Any]]):
-  Context => Option[Any] = {
-
-    import scala.compat.java8.OptionConverters._
-
-    (context: Context) => toScala(uniqueIdMapper(context))
-  }
 }
