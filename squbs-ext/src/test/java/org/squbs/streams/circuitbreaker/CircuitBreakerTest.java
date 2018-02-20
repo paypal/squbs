@@ -44,7 +44,6 @@ import scala.util.Try;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -54,9 +53,9 @@ import java.util.function.Function;
 
 import static akka.pattern.PatternsCS.ask;
 
-public class CircuitBreakerBidiFlowTest {
+public class CircuitBreakerTest {
 
-    private static final ActorSystem system = ActorSystem.create("CircuitBreakerBidiFlowTest");
+    private static final ActorSystem system = ActorSystem.create("CircuitBreakerTest");
     private static final Materializer mat = ActorMaterializer.create(system);
     private static final FiniteDuration timeout = FiniteDuration.create(300, TimeUnit.MILLISECONDS);
     private static final Try<String> timeoutFailure = Failure.apply(new FlowTimeoutException("Flow timed out!"));
@@ -88,7 +87,7 @@ public class CircuitBreakerBidiFlowTest {
                 CircuitBreakerSettings.create(circuitBreakerState);
         final ActorRef ref = Flow.<String>create()
                 .map(s -> Pair.create(s, UUID.randomUUID()))
-                .via(CircuitBreakerBidiFlow.create(circuitBreakerSettings).join(flow))
+                .via(CircuitBreaker.create(circuitBreakerSettings).join(flow))
                 .to(Sink.ignore())
                 .runWith(Source.actorRef(25, OverflowStrategy.fail()), mat);
 
@@ -124,7 +123,7 @@ public class CircuitBreakerBidiFlowTest {
                         .withFailureDecider(out -> out.get().equals("c"));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed>
-                circuitBreakerBidiFlow = CircuitBreakerBidiFlow.create(circuitBreakerSettings);
+                circuitBreakerBidiFlow = CircuitBreaker.create(circuitBreakerSettings);
 
 
         final ActorRef ref = Flow.<String>create()
@@ -179,7 +178,7 @@ public class CircuitBreakerBidiFlowTest {
                        Pair<String, Integer>,
                        Pair<Try<String>, Integer>,
                        NotUsed>
-                circuitBreakerBidiFlow = CircuitBreakerBidiFlow.create(circuitBreakerSettings);
+                circuitBreakerBidiFlow = CircuitBreaker.create(circuitBreakerSettings);
 
         IdGen idGen = new IdGen();
         final CompletionStage<List<Pair<Try<String>, Integer>>> result =
@@ -260,7 +259,7 @@ public class CircuitBreakerBidiFlowTest {
                        Pair<String, MyContext>,
                        Pair<Try<String>, MyContext>,
                        NotUsed>
-                circuitBreakerBidiFlow = CircuitBreakerBidiFlow.create(circuitBreakerSettings);
+                circuitBreakerBidiFlow = CircuitBreaker.create(circuitBreakerSettings);
 
         IdGen idGen = new IdGen();
         final CompletionStage<List<Pair<Try<String>, MyContext>>> result =
@@ -337,7 +336,7 @@ public class CircuitBreakerBidiFlowTest {
                 Pair<String, MyContext>,
                 Pair<Try<String>, MyContext>,
                 NotUsed>
-                circuitBreakerBidiFlow = CircuitBreakerBidiFlow.create(circuitBreakerSettings);
+                circuitBreakerBidiFlow = CircuitBreaker.create(circuitBreakerSettings);
 
         IdGen idGen = new IdGen();
         final CompletionStage<List<Pair<Try<String>, MyContext>>> result =
@@ -379,7 +378,7 @@ public class CircuitBreakerBidiFlowTest {
 
         final ActorRef ref = Flow.<String>create()
                 .map(s -> Pair.create(s, UUID.randomUUID()))
-                .via(CircuitBreakerBidiFlow.create(circuitBreakerSettings).join(flow))
+                .via(CircuitBreaker.create(circuitBreakerSettings).join(flow))
                 .to(Sink.ignore())
                 .runWith(Source.actorRef(25, OverflowStrategy.fail()), mat);
 

@@ -4,7 +4,7 @@
 
 Akka Streams and Akka HTTP are great technologies to build highly resilient systems. They provide back-pressure to ensure you do not overload the system and the slowness of one component does not cause its work queue to pile up and end up in memory leaks. But, we need another safeguard to ensure our service stays responsive in the event of external or internal failures, and have alternate paths to satisfying the requests/messages due to such failures. If a downstream service is not responding or slow, we could alternatively try another service or fetch cached results instead of back-pressuring the stream and potentially the whole system.
 
-squbs introduces `CircuitBreakerBidi` Akka Streams `GraphStage` to provide circuit breaker functionality for streams.
+squbs introduces `CircuitBreaker` Akka Streams `GraphStage` to provide circuit breaker functionality for streams.
 
 ### Dependency
 
@@ -16,7 +16,7 @@ Add the following dependency to your `build.sbt` or scala build file:
 
 ### Usage
 
-The circuit breaker functionality is provided as a `BidiFlow` that can be connected to a flow via the `join` operator.  `CircuitBreakerBidi` might potentially change the order of messages, so it requires a `Context` to be carried around.  In addition, it needs to be able to uniquely identify each element for its internal mechanics.  The requirement is that either the `Context` itself or a mapping from `Context` should be able to uniquely identify an element (see [Context to Unique Id Mapping](#context-to-unique-id-mapping) section for more details).  Along with the `Context`, a `Try` is pushed downstream: 
+The circuit breaker functionality is provided as a `BidiFlow` that can be connected to a flow via the `join` operator.  `CircuitBreaker` might potentially change the order of messages, so it requires a `Context` to be carried around.  In addition, it needs to be able to uniquely identify each element for its internal mechanics.  The requirement is that either the `Context` itself or a mapping from `Context` should be able to uniquely identify an element (see [Context to Unique Id Mapping](#context-to-unique-id-mapping) section for more details).  Along with the `Context`, a `Try` is pushed downstream: 
 
 Circuit is `Closed`:
 
@@ -42,9 +42,9 @@ The state of the circuit breaker is hold in a `CircuitBreakerState` implementati
 ```scala
 import org.squbs.streams.circuitbreaker.CircuitBreakerSettings
 
-val circuitBreakerState = AtomicCircuitBreakerState("sample", 2, 100 milliseconds, 1 second)
-val circuitBreakerSettings = CircuitBreakerSettings[String, String, UUID](circuitBreakerState)
-val circuitBreakerBidiFlow = CircuitBreakerBidiFlow(circuitBreakerSettings)
+val state = AtomicCircuitBreakerState("sample", 2, 100 milliseconds, 1 second)
+val settings = CircuitBreakerSettings[String, String, UUID](state)
+val circuitBreaker = CircuitBreaker(settings)
 
 val flow = Flow[(String, UUID)].mapAsyncUnordered(10) { elem =>
   (ref ? elem).mapTo[(String, UUID)]
@@ -52,7 +52,7 @@ val flow = Flow[(String, UUID)].mapAsyncUnordered(10) { elem =>
 
 Source("a" :: "b" :: "c" :: Nil)
   .map(s => (s, UUID.randomUUID()))
-  .via(circuitBreakerBidiFlow.join(flow))
+  .via(circuitBreaker.join(flow))
   .runWith(Sink.seq)
 ```
 
@@ -63,7 +63,7 @@ For Java, use `CircuitBreakerSettings` from the `org.squbs.streams.circuitbreake
 ```java
 import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
 
-final CircuitBreakerState circuitBreakerState =
+final CircuitBreakerState state =
         AtomicCircuitBreakerState.create(
                 "sample",
                 2,
@@ -72,11 +72,12 @@ final CircuitBreakerState circuitBreakerState =
                 system.dispatcher(),
                 system.scheduler());
 
-CircuitBreakerSettings<String, String, UUID> circuitBreakerSettings =
-        CircuitBreakerSettings.create(circuitBreakerState);
+final CircuitBreakerSettings<String, String, UUID> settings = CircuitBreakerSettings.create(state);
 
-final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed>
-        circuitBreakerBidiFlow = CircuitBreakerBidiFlow.create(circuitBreakerSettings);
+final BidiFlow<Pair<String, UUID>,
+               Pair<String, UUID>,
+               Pair<String, UUID>,
+               Pair<Try<String>, UUID>, NotUsed> circuitBreaker = CircuitBreaker.create(settings);
 
 final Flow<Pair<String, UUID>, Pair<String, UUID>, NotUsed> flow =
         Flow.<Pair<String, UUID>>create()
@@ -86,7 +87,7 @@ final Flow<Pair<String, UUID>, Pair<String, UUID>, NotUsed> flow =
 
 Source.from(Arrays.asList("a", "b", "c"))
         .map(s -> Pair.create(s, UUID.randomUUID()))
-        .via(circuitBreakerBidiFlow.join(flow))
+        .via(circuitBreaker.join(flow))
         .runWith(Sink.seq(), mat);
 ```
 
@@ -101,8 +102,8 @@ A function of type `In => Try[Out]` can be provided via `withFallback` function:
 ```scala
 import org.squbs.streams.circuitbreaker.CircuitBreakerSettings
 
-val circuitBreakerSettings =
-  CircuitBreakerSettings[String, String, UUID](circuitBreakerState)
+val settings =
+  CircuitBreakerSettings[String, String, UUID](state)
     .withFallback((elem: String) => Success("Fallback Response!"))
 ```
 
@@ -113,8 +114,8 @@ A `Function<In, Try<Out>>` can be provided via `withFallback` function:
 ```java
 import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
 
-CircuitBreakerSettings circuitBreakerSettings =
-        CircuitBreakerSettings.<String, String, UUID>create(circuitBreakerState)
+CircuitBreakerSettings settings =
+        CircuitBreakerSettings.<String, String, UUID>create(state)
                 .withFallback(s -> Success.apply("Fallback Response!"));
 ```
 
@@ -129,8 +130,8 @@ A function of type `Try[Out] => Boolean` can be provided via `withFailureDecider
 ```scala
 import org.squbs.streams.circuitbreaker.CircuitBreakerSettings
 
-val circuitBreakerSettings =
-  CircuitBreakerSettings[HttpRequest, HttpResponse, UUID](circuitBreakerState)
+val settings =
+  CircuitBreakerSettings[HttpRequest, HttpResponse, UUID](state)
     .withFailureDecider(tryHttpResponse => tryHttpResponse.isFailure || tryHttpResponse.get.status.isFailure)
 ```
 
@@ -141,8 +142,8 @@ A `Function<Try<Out>, Boolean>` can be provided via `withFailureDecider` functio
 ```java
 import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
 
-CircuitBreakerSettings circuitBreakerSettings =
-        CircuitBreakerSettings.<HttpRequest, HttpResponse, UUID>create(circuitBreakerState)
+CircuitBreakerSettings settings =
+        CircuitBreakerSettings.<HttpRequest, HttpResponse, UUID>create(state)
                 .withFailureDecider(
                         tryHttpResponse -> tryHttpResponse.isFailure() || tryHttpResponse.get().status().isFailure());
 ```
@@ -163,7 +164,7 @@ val config = ConfigFactory.parseString(
     |exponential-backoff-factor = 2.0
   """.stripMargin)
 
-val circuitBreakerState = AtomicCircuitBreakerState("sample", config)
+val state = AtomicCircuitBreakerState("sample", config)
 ```
 
 ##### Java
@@ -176,7 +177,7 @@ Config config = ConfigFactory.parseString(
         "max-reset-timeout = 2 seconds\n" +
         "exponential-backoff-factor = 2.0");
         
-final CircuitBreakerState circuitBreakerState = AtomicCircuitBreakerState.create("sample", config, system);
+final CircuitBreakerState state = AtomicCircuitBreakerState.create("sample", config, system);
 ```
 
 #### Circuit Breaker across materializations
@@ -204,8 +205,8 @@ import org.squbs.streams.circuitbreaker.CircuitBreakerSettings
 
 case class MyContext(s: String, id: Long)
 
-val circuitBreakerSettings =
-  CircuitBreakerSettings[String, String, MyContext](circuitBreakerState)
+val settings =
+  CircuitBreakerSettings[String, String, MyContext](state)
     .withUniqueIdMapper(context => context.id)
 ```
 
@@ -230,8 +231,8 @@ class MyContext {
     }
 }
 
-CircuitBreakerSettings circuitBreakerSettings =
-        CircuitBreakerSettings.<String, String, MyContext>create(circuitBreakerState)
+CircuitBreakerSettings settings =
+        CircuitBreakerSettings.<String, String, MyContext>create(state)
                 .withUniqueIdMapper(context -> context.id());
 ```
 
@@ -244,7 +245,7 @@ An `ActorRef` can be subscribed to receive all `TransitionEvents` or any transit
 Here is an example that registers an `ActorRef` to receive events when circuit transitions to `Open` state:
 
 ```scala
-circuitBreakerState.subscribe(self, Open)
+state.subscribe(self, Open)
 ```
 
 ##### Java
@@ -252,7 +253,7 @@ circuitBreakerState.subscribe(self, Open)
 Here is an example that registers an `ActorRef` to receive events when circuit transitions to `Open` state:
 
 ```java
-circuitBreakerState.subscribe(getRef(), Open.instance());
+state.subscribe(getRef(), Open.instance());
 ```
 
 #### Metrics

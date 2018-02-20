@@ -2,7 +2,7 @@
 
 ### Overview
 
-Some stream use cases may require each message in a flow to be processed within a bounded time or to send a timeout failure message instead.  squbs introduces `TimeoutBidi` Akka Streams stage to add timeout functionality to streams.
+Some stream use cases may require each message in a flow to be processed within a bounded time or to send a timeout failure message instead.  squbs introduces `Timeout` Akka Streams stage to add timeout functionality to streams.
 
 ### Dependency
 
@@ -28,49 +28,50 @@ The timeout feature is supported for flows that guarantee message ordering as we
 
 #### Flows with message order guarantee
 
-`TimeoutBidiFlowOrdered` is used to create a timeout `BidiFlow` to wrap flows that do keep the order of messages.  Please note, with the message order guarantee, there can be a head-of-line blocking scenario, a slower element might cause subsequent elements to timeout.
+`TimeoutOrdered` is used to create a timeout `BidiFlow` to wrap flows that do keep the order of messages.  Please note, with the message order guarantee, there can be a head-of-line blocking scenario, a slower element might cause subsequent elements to timeout.
 
 ##### Scala
 
 ```scala
-val timeoutBidiFlow = TimeoutBidiFlowOrdered[String, String](20 milliseconds)
+val timeout = TimeoutOrdered[String, String](1 second)
 val flow = Flow[String].map(s => findAnEnglishWordThatStartWith(s))
 Source("a" :: "b" :: "c" :: Nil)
-  .via(timeoutBidiFlow.join(flow))
+  .via(timeout.join(flow))
   .runWith(Sink.seq)
 ```      
 
 ##### Java
 
 ```java
-final BidiFlow<String, String, String, Try<String>, NotUsed> timeoutBidiFlow =
-    TimeoutBidiFlowOrdered.create(timeout);
+final FiniteDuration duration = FiniteDuration.create(1, TimeUnit.SECONDS);
+
+final BidiFlow<String, String, String, Try<String>, NotUsed> timeout = TimeoutOrdered.create(duration);
 
 final Flow<String, String, NotUsed> flow =
     Flow.<String>create().map(s -> findAnEnglishWordThatStartWith(s));
         
 Source.from(Arrays.asList("a", "b", "c"))
-    .via(timeoutBidiFlow.join(flow))
+    .via(timeout.join(flow))
     .runWith(Sink.seq(), mat);
 ```   
 
 #### Flows without message order guarantee
 
-`TimeoutBidiFlowUnordered` is used to create a timeout `BidiFlow` to wrap flows that do not guarantee the order of messages.  To uniquely identify each element and its corresponding timing marks, a `context`, of any type defined by the application, needs to be carried around by the wrapped flow.  The requirement is that either the `Context` itself or a mapping from `Context` should be able to uniquely identify an element (see [Context to Unique Id Mapping](#context-to-unique-id-mapping) section for more details).
+`Timeout` is used to create a timeout `BidiFlow` to wrap flows that do not guarantee the order of messages.  To uniquely identify each element and its corresponding timing marks, a `context`, of any type defined by the application, needs to be carried around by the wrapped flow.  The requirement is that either the `Context` itself or a mapping from `Context` should be able to uniquely identify an element (see [Context to Unique Id Mapping](#context-to-unique-id-mapping) section for more details).
 
 ##### Scala
 
-`TimeoutBidiFlowUnordered[In, Out, Context](timeout: FiniteDuration)` is used to create an unordered timeout `BidiFlow`.  This `BidiFlow` can be joined with any flow that takes in a `(In, Context)` and outputs a `(Out, Context)`.
+`Timeout[In, Out, Context](timeout: FiniteDuration)` is used to create an unordered timeout `BidiFlow`.  This `BidiFlow` can be joined with any flow that takes in a `(In, Context)` and outputs a `(Out, Context)`.
 
 ```scala   
-val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, UUID](timeout) 
+val timeout = Timeout[String, String, UUID](1 second) 
 val flow = Flow[(String, UUID)].mapAsyncUnordered(10) { elem =>
   (ref ? elem).mapTo[(String, UUID)]
 }
 
 Source("a" :: "b" :: "c" :: Nil)
   .map { s => (s, UUID.randomUUID()) }
-  .via(timeoutBidiFlow.join(flow))
+  .via(timeout.join(flow))
   .runWith(Sink.seq)
 ```
 
@@ -79,7 +80,7 @@ Source("a" :: "b" :: "c" :: Nil)
 The following API is used to create an unordered timeout `BidiFlow`:
 
 ```java
-public class TimeoutBidiFlowUnordered {
+public class Timeout {
 	public static <In, Out, Context> BidiFlow<Pair<In, Context>, 
 	                                          Pair<In, Context>,
 	                                          Pair<Out, Context>,
@@ -92,8 +93,13 @@ public class TimeoutBidiFlowUnordered {
 This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair<In, Context>` and outputs a `akka.japi.Pair<Out, Context>`.
 
 ```java
-final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> timeoutBidiFlow =
-        TimeoutBidiFlowUnordered.create(timeout);    
+final FiniteDuration duration = FiniteDuration.create(1, TimeUnit.SECONDS);
+
+final BidiFlow<Pair<String, UUID>,
+               Pair<String, UUID>,
+               Pair<String, UUID>,
+               Pair<Try<String>, UUID>, NotUsed> timeout = Timeout.create(duration);    
+
 final Flow<Pair<String, UUID>, Pair<String, UUID>, NotUsed> flow =
         Flow.<Pair<String, UUID>>create()
                 .mapAsyncUnordered(10, elem -> ask(ref, elem, 5000))
@@ -101,7 +107,7 @@ final Flow<Pair<String, UUID>, Pair<String, UUID>, NotUsed> flow =
 
 Source.from(Arrays.asList("a", "b", "c"))
         .map(s -> new Pair<>(s, UUID.randomUUID()))
-        .via(timeoutBidiFlow.join(flow))
+        .via(timeout.join(flow))
         .runWith(Sink.seq(), mat);    
 ```
 
@@ -117,51 +123,31 @@ Source.from(Arrays.asList("a", "b", "c"))
 
 With the first three options, a unique id can be retrieved directly through the context.
 
-For the last option, `TimeoutBidiFlowUnordered` allows a function to be passed in as a parameter.
+For the last option, `Timeout` allows a function to be passed in via `TimeoutSettings`:
 
 
 ###### Scala
 
-The following API is used to pass a uniqueId mapper:
-
-```scala
-TimeoutBidiFlowUnordered[In, Out, Context](timeout: FiniteDuration,
-                                           uniqueIdMapper: Option[Context => Any])
-```
-  
-  This `BidiFlow` can be joined with any flow that takes in a `(In, Context)` and outputs a `(Out, Context)`.
-
 ```scala
 case class MyContext(s: String, uuid: UUID)
 
-val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, MyContext](timeout,
-                                                                         Some((context: MyContext) => context.uuid))
+val settings =
+  TimeoutSettings[String, String, MyContext](1 second)
+    .withUniqueIdMapper(context => context.uuid)
+
+val timeout = Timeout(settings)
+
 val flow = Flow[(String, MyContext)].mapAsyncUnordered(10) { elem =>
   (ref ? elem).mapTo[(String, MyContext)]
 }
 
 Source("a" :: "b" :: "c" :: Nil)
   .map( _ -> MyContext("dummy", UUID.randomUUID))
-  .via(timeoutBidiFlow.join(flow))
+  .via(timeout.join(flow))
   .runWith(Sink.seq) 
 ```
 
 ###### Java
-
-The following API is used to pass a uniqueId mapper:
-
-```java
-public class TimeoutBidiFlowUnordered {
-	public static <In, Out, Context> BidiFlow<Pair<In, Context>, 
-	                                          Pair<In, Context>,
-	                                          Pair<Out, Context>,
-	                                          Pair<Try<Out>, Context>,
-	                                          NotUsed>
-	create(FiniteDuration timeout, Function<Context, Object> uniqueIdMapper);
-}
-```
-
-This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair<In, Context>` and outputs a `akka.japi.Pair<Out, Context>`.
 
 ```java
 class MyContext {
@@ -178,12 +164,17 @@ class MyContext {
     }
 }
 
+final FiniteDuration duration = FiniteDuration.create(1, TimeUnit.SECONDS);
+
+final TimeoutSettings settings =
+    TimeoutSettings.<String, String, Context>create(duration)
+            .withUniqueIdMapper(context -> context.uuid);
+
 final BidiFlow<Pair<String, MyContext>,
                Pair<String, MyContext>,
                Pair<String, MyContext>,
                Pair<Try<String>, MyContext>,
-               NotUsed>
-    timeoutBidiFlow = TimeoutBidiFlowUnordered.create(timeout, context -> context.uuid);
+               NotUsed> timeout = Timeout.create(settings);
 
 final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
         Flow.<Pair<String, MyContext>>create()
@@ -192,31 +183,38 @@ final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
 
 Source.from(Arrays.asList("a", "b", "c"))
         .map(s -> new Pair<>(s, new MyContext("dummy", UUID.randomUUID())))
-        .via(timeoutBidiFlow.join(flow))
+        .via(timeout.join(flow))
         .runWith(Sink.seq(), mat);
 ```
 
 ##### Clean up callback
 
-The `TimeoutBidi` also provides a clean up callback function to be passed in. This function will be called for emitted elements that were already considered timed out.
+The `Timeout` also provides a clean up callback function to be passed in via `TimeoutSettings`. This function will be called for emitted elements that were already considered timed out.
 
-An example use case for this functionality is when `TimeoutBidi` is used with Akka Http client. As described in [Implications of the streaming nature of Request/Response Entities](http://doc.akka.io/docs/akka-http/current/scala/http/implications-of-streaming-http-entity.html), all http responses must be consumed or discarded. By passing a clean up callback to discard the timed out requests when they complete we avoid clogging down the stream.
+An example use case for this functionality is when `Timeout` is used with Akka Http client. As described in [Implications of the streaming nature of Request/Response Entities](http://doc.akka.io/docs/akka-http/current/scala/http/implications-of-streaming-http-entity.html), all http responses must be consumed or discarded. By passing a clean up callback to discard the timed out requests when they complete we avoid clogging down the stream.
 
 ###### Scala
 ```scala
 val akkaHttpDiscard = (response: HttpResponse) => response.discardEntityBytes()
 
-TimeoutBidiFlowUnordered[HttpRequest, HttpResponse](20 milliseconds, cleanUp = akkaHttpDiscard)
+val settings =
+  TimeoutSettings[HttpRequest, HttpResponse, Context](1 second)
+    .withCleanUp(response => response.discardEntityBytes())
+
+val timeout = Timeout(settings)
 ```
 
 ###### Java
 ```java
-final Consumer<HttpResponse> akkaHttpDiscard = httpResponse -> httpResponse.discardEntityBytes(materializer);
-final FiniteDuration timeout = FiniteDuration.create(20, TimeUnit.MILLISECONDS);
+final FiniteDuration duration = FiniteDuration.create(20, TimeUnit.MILLISECONDS);
+
+final TimeoutSettings settings =
+    TimeoutSettings.<HttpRequest, HttpResponse, Context>create(duration)
+            .withCleanUp(httpResponse -> httpResponse.discardEntityBytes(materializer));
+
 final BidiFlow<Pair<HttpRequest, UUID>, 
                Pair<HttpRequest, UUID>, 
                Pair<HttpResponse, UUID>, 
                Pair<Try<HttpResponse>, UUID>, 
-               NotUsed> 
-    timeoutBidiFlow = TimeoutBidiFlowUnordered.create(timeout, akkaHttpDiscard);
+               NotUsed> timeout = Timeout.create(settings);
 ```

@@ -33,7 +33,7 @@ import java.util.function.Function;
 
 public class BoundedOrderingTest {
 
-    static final ActorSystem system = ActorSystem.create("TimeoutBidiFlowTest");
+    static final ActorSystem system = ActorSystem.create("BoundedOrderingTest");
     static final Materializer mat = ActorMaterializer.create(system);
 
     @AfterClass
