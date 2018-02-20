@@ -23,7 +23,7 @@ import org.squbs.unicomplex.AbstractRouteDefinition;
 public class InfoRoute extends AbstractRouteDefinition {
 
     @Override
-    public Route route() throws Exception {
+    public Route route() {
         return get(() ->
                 path("context-info", () ->
                         complete(HttpEntities.create(ContentTypes.APPLICATION_JSON,

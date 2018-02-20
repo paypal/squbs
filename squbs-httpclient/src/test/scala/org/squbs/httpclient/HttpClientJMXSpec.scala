@@ -79,17 +79,15 @@ object HttpClientJMXSpec {
       |clientWithSocketOptionsOverride {
       |  type = squbs.httpclient
       |
-      |  akka.http.host-connection-pool {
-      |    client = {
-      |      socket-options {
-      |        so-receive-buffer-size = 1k
-      |        so-send-buffer-size = 2k
-      |        so-reuse-address = true
-      |        so-traffic-class = 3
-      |        tcp-keep-alive = true
-      |        tcp-oob-inline = true
-      |        tcp-no-delay = true
-      |      }
+      |  akka.http.client {
+      |    socket-options {
+      |      so-receive-buffer-size = 1k
+      |      so-send-buffer-size = 2k
+      |      so-reuse-address = true
+      |      so-traffic-class = 3
+      |      tcp-keep-alive = true
+      |      tcp-oob-inline = true
+      |      tcp-no-delay = true
       |    }
       |  }
       |}
@@ -153,27 +151,27 @@ class HttpClientJMXSpec extends FlatSpecLike with Matchers {
     assertJmxValue("sampleClient", "ConnectionPoolIdleTimeout",
       config.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
     assertJmxValue("sampleClient", "UserAgentHeader",
-      config.getString("akka.http.host-connection-pool.client.user-agent-header"))
+      config.getString("akka.http.client.user-agent-header"))
     assertJmxValue("sampleClient", "ConnectingTimeout",
-      config.get[Duration]("akka.http.host-connection-pool.client.connecting-timeout").toString)
+      config.get[Duration]("akka.http.client.connecting-timeout").toString)
     assertJmxValue("sampleClient", "ConnectionIdleTimeout",
-      config.get[Duration]("akka.http.host-connection-pool.client.idle-timeout").toString)
+      config.get[Duration]("akka.http.client.idle-timeout").toString)
     assertJmxValue("sampleClient", "RequestHeaderSizeHint",
-      config.getInt("akka.http.host-connection-pool.client.request-header-size-hint"))
+      config.getInt("akka.http.client.request-header-size-hint"))
     assertJmxValue("sampleClient", "SoReceiveBufferSize",
-      config.getString("akka.http.host-connection-pool.client.socket-options.so-receive-buffer-size"))
+      config.getString("akka.http.client.socket-options.so-receive-buffer-size"))
     assertJmxValue("sampleClient", "SoSendBufferSize",
-      config.getString("akka.http.host-connection-pool.client.socket-options.so-send-buffer-size"))
+      config.getString("akka.http.client.socket-options.so-send-buffer-size"))
     assertJmxValue("sampleClient", "SoReuseAddress",
-      config.getString("akka.http.host-connection-pool.client.socket-options.so-reuse-address"))
+      config.getString("akka.http.client.socket-options.so-reuse-address"))
     assertJmxValue("sampleClient", "SoTrafficClass",
-      config.getString("akka.http.host-connection-pool.client.socket-options.so-traffic-class"))
+      config.getString("akka.http.client.socket-options.so-traffic-class"))
     assertJmxValue("sampleClient", "TcpKeepAlive",
-      config.getString("akka.http.host-connection-pool.client.socket-options.tcp-keep-alive"))
+      config.getString("akka.http.client.socket-options.tcp-keep-alive"))
     assertJmxValue("sampleClient", "TcpOobInline",
-      config.getString("akka.http.host-connection-pool.client.socket-options.tcp-oob-inline"))
+      config.getString("akka.http.client.socket-options.tcp-oob-inline"))
     assertJmxValue("sampleClient", "TcpNoDelay",
-      config.getString("akka.http.host-connection-pool.client.socket-options.tcp-no-delay"))
+      config.getString("akka.http.client.socket-options.tcp-no-delay"))
     assertJmxValue("sampleClient", "MaxUriLength", config.getBytes("akka.http.parsing.max-uri-length"))
     assertJmxValue("sampleClient", "MaxMethodLength", config.getInt("akka.http.parsing.max-method-length"))
     assertJmxValue("sampleClient", "MaxResponseReasonLength",
@@ -270,19 +268,19 @@ class HttpClientJMXSpec extends FlatSpecLike with Matchers {
 
   it should "show socket options if set" in {
     ClientFlow("clientWithSocketOptionsOverride")
-    val `c.a.h.hcp.c.so` = "clientWithSocketOptionsOverride.akka.http.host-connection-pool.client.socket-options"
+    val `c.a.h.c.so` = "clientWithSocketOptionsOverride.akka.http.client.socket-options"
     assertJmxValue("clientWithSocketOptionsOverride", "SoReceiveBufferSize",
-      config.getBytes(s"${`c.a.h.hcp.c.so`}.so-receive-buffer-size").toString)
+      config.getBytes(s"${`c.a.h.c.so`}.so-receive-buffer-size").toString)
     assertJmxValue("clientWithSocketOptionsOverride", "SoSendBufferSize",
-      config.getBytes(s"${`c.a.h.hcp.c.so`}.so-send-buffer-size").toString)
+      config.getBytes(s"${`c.a.h.c.so`}.so-send-buffer-size").toString)
     assertJmxValue("clientWithSocketOptionsOverride", "SoReuseAddress",
-      config.getBoolean(s"${`c.a.h.hcp.c.so`}.so-reuse-address").toString)
+      config.getBoolean(s"${`c.a.h.c.so`}.so-reuse-address").toString)
     assertJmxValue("clientWithSocketOptionsOverride", "SoTrafficClass",
-      config.getInt(s"${`c.a.h.hcp.c.so`}.so-traffic-class").toString)
+      config.getInt(s"${`c.a.h.c.so`}.so-traffic-class").toString)
     assertJmxValue("clientWithSocketOptionsOverride", "TcpKeepAlive",
-      config.getBoolean(s"${`c.a.h.hcp.c.so`}.tcp-keep-alive").toString)
+      config.getBoolean(s"${`c.a.h.c.so`}.tcp-keep-alive").toString)
     assertJmxValue("clientWithSocketOptionsOverride", "TcpOobInline",
-      config.getBoolean(s"${`c.a.h.hcp.c.so`}.tcp-oob-inline").toString)
+      config.getBoolean(s"${`c.a.h.c.so`}.tcp-oob-inline").toString)
   }
 
   it should "show different environment values correctly" in {
