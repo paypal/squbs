@@ -84,6 +84,10 @@ publishMavenStyle in ThisBuild := true
 
 publishArtifact in Test := false
 
+// TODO: Remove the overwrite flag once https://github.com/sbt/sbt/issues/3725 is fixed.
+import com.typesafe.sbt.pgp.PgpKeys.publishSignedConfiguration
+publishSignedConfiguration := publishSignedConfiguration.value.withOverwrite(isSnapshot.value)
+
 pomIncludeRepository in ThisBuild := { _ => false }
 
 pomExtra in ThisBuild :=
