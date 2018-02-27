@@ -17,7 +17,6 @@ package org.squbs.unicomplex
 
 import java.lang.management.ManagementFactory
 import java.net.{HttpURLConnection, URL}
-import javax.management.ObjectName
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -30,12 +29,13 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
+import javax.management.ObjectName
 import org.scalatest.OptionValues._
 import org.scalatest.{AsyncFlatSpecLike, Matchers}
 import org.squbs.metrics.MetricsExtension
 import org.squbs.unicomplex.Timeouts.{awaitMax, _}
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, Promise}
 
 object ConnectionMetricsSpec {
   val classPaths = Array(getClass.getClassLoader.getResource("classpaths/ConnectionMetricsSpec").getPath)
@@ -191,9 +191,16 @@ class ConnectionMetricsFlow extends FlowDefinition with WebContext {
   val hello = Path(s"/${webContext}/hello")
   val connectionException = Path(s"/$webContext/connectionException")
 
-  override def flow = Flow[HttpRequest].map {
+  override def flow = Flow[HttpRequest].mapAsync(1) {
     case HttpRequest(_, Uri(_, _, `hello`, _, _), _, _, _) =>
-      HttpResponse(StatusCodes.OK, entity = "Hello World!")
+      val promise = Promise[HttpResponse]
+      import context.dispatcher
+
+      import scala.concurrent.duration._
+      context.system.scheduler.scheduleOnce(1 second) {
+        promise.success(HttpResponse(StatusCodes.OK, entity = "Hello World!"))
+      }
+      promise.future
     case HttpRequest(_, Uri(_, _, `connectionException`, _, _), _, _, _) =>
       throw new PeerClosedConnectionException(0, "Dummy Exception")
   }
