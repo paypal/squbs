@@ -2,7 +2,7 @@
 
 ## Introduction
 
-squbs (pronounced "skewbs") is a software container and a suite of components enabling standardization and operationalization of Akka and Akka HTTP applications/services in a large scale, managed, cloud environment. It standardizes how Akka applications are deployed in different environments and how they are hooked up to the operational environments of large, internet-scale organizations.
+squbs (pronounced "skewbs") is a suite of components enabling standardization and operationalization of Akka and Akka HTTP applications/services in a large scale, managed, cloud environment. It standardizes how Akka applications are deployed in different environments and how they are hooked up to the operational environments of large, internet-scale organizations.
 
 ## squbs Components
 
