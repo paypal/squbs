@@ -28,14 +28,12 @@ import akka.stream.javadsl.Source;
 import akka.stream.testkit.javadsl.TestSink;
 import org.testng.annotations.Test;
 import scala.concurrent.duration.Duration;
-import scala.concurrent.stm.ccstm.RetrySet;
 import scala.util.Failure;
 import scala.util.Success;
 import scala.util.Try;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
