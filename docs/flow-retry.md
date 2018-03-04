@@ -109,7 +109,7 @@ By default, any `Failure` from the joined `Flow` is considered a failure for ret
 
 ##### Scala
 
-A function of type `Try[Out] => Boolean` can be provided to `RetrySettings` via the `withFailureDecider` function. Below is an example where, along with any `Failure` message,
+A function of type `Try[Out] => Boolean` can be provided to `RetrySettings` via the `withFailureDecider` call. Below is an example where, along with any `Failure` message,
 a response with failing http status code is also considered a failure:
 
 ```scala
@@ -125,7 +125,7 @@ val retry = Retry(settings)
 
 ##### Java
 
-A `Function<Try<Out>, Boolean>` can be provided to `RetrySettings` via the `withFailureDecider` function.  Below is an example where,
+A `Function<Try<Out>, Boolean>` can be provided to `RetrySettings` via the `withFailureDecider` call.  Below is an example where,
 along with any `Failure` message, a `Success` of `HttpResponse` with status code `400` and above is also considered a failure:
 
 ```java
@@ -172,7 +172,7 @@ final BidiFlow<Pair<String, Context>,
 
 ```
 ##### Exponential backoff
-An optional exponential backoff factor can also be specified to increase the delay duration on each subsequent retry attempt (upto a maximum delay duration).
+An optional exponential backoff factor can also be specified to increase the delay duration on each subsequent retry attempt (up to a maximum delay duration).
 In the following examples, the first failure of any element will be retried after a delay of 200ms, and then any second attempt will be retried after 800ms.
   In general the retry delay duration will continue to increase using the formula `delay * N ^ exponentialBackOff` (where N is the retry number).
 
@@ -204,7 +204,7 @@ final BidiFlow<Pair<String, Context>,
 ```
 
 ##### Maximum delay
-An optional maximum delay duration can also be specified to provide an upper bound on the exponential back off delay
+An optional maximum delay duration can also be specified to provide an upper bound on the exponential backoff delay
 duration.  If no maximum delay is specified the exponential backoff will continue to increase the retry delay duration until the number of maxRetries.
 
 ###### Scala
