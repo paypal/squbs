@@ -29,6 +29,7 @@ import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import org.junit.Assert;
 import org.junit.Test;
+import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
 import scala.util.Failure;
 import scala.util.Success;
@@ -36,22 +37,20 @@ import scala.util.Try;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import static akka.pattern.PatternsCS.ask;
 
-public class TimeoutBidiFlowTest {
+public class TimeoutTest {
 
     final ActorSystem system = ActorSystem.create("TimeoutBidiFlowTest");
     final Materializer mat = ActorMaterializer.create(system);
-    final FiniteDuration timeout = FiniteDuration.create(300, TimeUnit.MILLISECONDS);
+    final FiniteDuration timeout = Duration.create(300, TimeUnit.MILLISECONDS);
     final Try<String> timeoutFailure = Failure.apply(new FlowTimeoutException("Flow timed out!"));
 
     @Test
@@ -64,7 +63,7 @@ public class TimeoutBidiFlowTest {
 
 
         final BidiFlow<String, String, String, Try<String>, NotUsed> timeoutBidiFlow =
-                TimeoutBidiFlowOrdered.create(timeout);
+                TimeoutOrdered.create(timeout);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -88,7 +87,7 @@ public class TimeoutBidiFlowTest {
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
 
         final BidiFlow<String, String, String, Try<String>, NotUsed> timeoutBidiFlow =
-                TimeoutBidiFlowOrdered.create(Timing.timeout(), cleanUp);
+                TimeoutOrdered.create(Timing.timeout(), cleanUp);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -109,7 +108,7 @@ public class TimeoutBidiFlowTest {
                         .map(elem -> (Pair<String, UUID>)elem);
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> timeoutBidiFlow =
-                TimeoutBidiFlowUnordered.create(timeout);
+                Timeout.create(timeout);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -145,8 +144,10 @@ public class TimeoutBidiFlowTest {
                         .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
                         .map(elem -> (Pair<String, MyContext>)elem);
 
+        TimeoutSettings settings = TimeoutSettings.<String, String, MyContext>create(timeout)
+                .withUniqueIdMapper(context -> context.uuid);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> timeoutBidiFlow =
-                TimeoutBidiFlowUnordered.create(timeout, context -> context.uuid);
+                Timeout.create(settings);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -191,7 +192,7 @@ public class TimeoutBidiFlowTest {
 
 
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> timeoutBidiFlow =
-                TimeoutBidiFlowUnordered.create(timeout);
+                Timeout.create(timeout);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -229,7 +230,7 @@ public class TimeoutBidiFlowTest {
 
 
         final BidiFlow<Pair<String, UniqueId.Envelope>, Pair<String, UniqueId.Envelope>, Pair<String, UniqueId.Envelope>, Pair<Try<String>, UniqueId.Envelope>, NotUsed> timeoutBidiFlow =
-                TimeoutBidiFlowUnordered.create(timeout);
+                Timeout.create(timeout);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -255,8 +256,9 @@ public class TimeoutBidiFlowTest {
                         .map(elem -> (Pair<String, UUID>)elem);
 
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
+        TimeoutSettings settings = TimeoutSettings.<String, String, UUID>create(Timing.timeout()).withCleanUp(cleanUp);
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> timeoutBidiFlow =
-                TimeoutBidiFlowUnordered.create(Timing.timeout(), cleanUp);
+                Timeout.create(settings);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -293,8 +295,11 @@ public class TimeoutBidiFlowTest {
                         .map(elem -> (Pair<String, MyContext>)elem);
 
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
+        TimeoutSettings settings = TimeoutSettings.<String, String, MyContext>create(Timing.timeout())
+                .withUniqueIdMapper(context -> context.uuid)
+                .withCleanUp(cleanUp);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> timeoutBidiFlow =
-                TimeoutBidiFlowUnordered.create(Timing.timeout(), context -> context.uuid, cleanUp);
+                Timeout.create(settings);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))

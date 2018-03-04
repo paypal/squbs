@@ -23,7 +23,6 @@ import akka.actor.{Actor, ActorSystem, Props}
 import akka.stream.scaladsl._
 import akka.stream.{ActorMaterializer, Attributes, FlowShape}
 import akka.testkit.TestKit
-import akka.util.Timeout
 import org.scalatest.{AsyncFlatSpecLike, Matchers}
 import org.squbs.streams.UniqueId.{Envelope, Provider}
 
@@ -32,11 +31,11 @@ import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with AsyncFlatSpecLike with Matchers{
+class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with AsyncFlatSpecLike with Matchers{
   import Timing._
 
   implicit val materializer = ActorMaterializer()
-  implicit val askTimeout = Timeout(10 seconds)
+  implicit val askTimeout = akka.util.Timeout(10 seconds)
 
   val timeoutFailure = Failure(FlowTimeoutException())
 
@@ -60,7 +59,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
       FlowShape(partition.in, merge.out)
     })
 
-    val timeoutFlow = TimeoutBidiFlowOrdered[String, String](timeout)
+    val timeoutFlow = TimeoutOrdered[String, String](timeout)
 
     val result = Source("a" :: "b" :: "c" :: Nil).via(timeoutFlow.join(flow)).runWith(Sink.seq)
     // "c" fails because of slowness of "b"
@@ -99,7 +98,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
       FlowShape(partition.in, merge.out)
     })
 
-    val timeoutFlow = TimeoutBidiFlowOrdered[String, String](timeout, cleanUp = cleanUpFunction)
+    val timeoutFlow = TimeoutOrdered[String, String](timeout, cleanUp = cleanUpFunction)
 
     val result = Source("a" :: "b" :: "c" :: Nil)
       .map{ s =>
@@ -120,7 +119,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
     import akka.pattern.ask
     val flow = Flow[String].mapAsync(3)(elem => (delayActor ? elem).mapTo[String])
 
-    val timeoutBidiFlow = TimeoutBidiFlowOrdered[String, String](timeout)
+    val timeoutBidiFlow = TimeoutOrdered[String, String](timeout)
 
     val result = Source("a" :: "b" :: "c" :: Nil).via(timeoutBidiFlow.join(flow)).runWith(Sink.seq)
     // "c" fails because of slowness of "b"
@@ -135,7 +134,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
       .withAttributes(Attributes.inputBuffer(initial = 2, max = 2))
       .mapAsync(2)(elem => (delayActor ? elem).mapTo[String])
 
-    val timeoutBidiFlow = TimeoutBidiFlowOrdered[String, String](timeout)
+    val timeoutBidiFlow = TimeoutOrdered[String, String](timeout)
 
     val result = Source("a" :: "b" :: "c" :: "c" :: "a" :: "a" :: Nil).via(timeoutBidiFlow.join(flow)).runWith(Sink.seq)
     // The first "c" fails because of slowness of "b".  With mapAsync(2), subsequent messages should not be delayed.
@@ -153,7 +152,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
     }
 
     var id = 0L
-    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, Long](timeout)
+    val timeoutBidiFlow = Timeout[String, String, Long](timeout)
     val result = Source("a" :: "b" :: "c" :: "c" :: "a" :: "a" :: Nil)
       .map { s => id += 1; (s, id) }
       .via(timeoutBidiFlow.join(flow))
@@ -165,7 +164,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
 
   it should "not complete the flow until timeout messages are sent when the ordered wrapped flow drop messages" in {
     val flow = Flow[String].filter(_ => false)
-    val timeoutBidiFlow = TimeoutBidiFlowOrdered[String, String](timeout)
+    val timeoutBidiFlow = TimeoutOrdered[String, String](timeout)
 
     val result = Source("a" :: "b" :: "c" :: Nil).via(timeoutBidiFlow.join(flow)).runWith(Sink.seq)
     val expected = timeoutFailure :: timeoutFailure :: timeoutFailure :: Nil
@@ -174,7 +173,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
 
   it should "not complete the flow until timeout messages are sent when the unordered wrapped flow drop messages" in {
     val flow = Flow[(String, Long)].filter(_ => false)
-    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, Long](timeout)
+    val timeoutBidiFlow = Timeout[String, String, Long](timeout)
     var id = 0L
     val result = Source("a" :: "b" :: "c" :: Nil)
       .map { s => id += 1; (s, id) }
@@ -192,7 +191,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
       (delayActor ? elem).mapTo[(String, UUID)]
     }
 
-    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, UUID](timeout)
+    val timeoutBidiFlow = Timeout[String, String, UUID](timeout)
     val result = Source("a" :: "b" :: "c" :: Nil)
       .map { s => (s, UUID.randomUUID()) }
       .via(timeoutBidiFlow.join(flow))
@@ -213,7 +212,6 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
 
     val isCleanedUp = Future.sequence(promiseMap.values.map(_.future))
 
-    val cleanUpFunction = (s: String) => promiseMap.get(s).foreach(_.success(true))
     val notCleanedUpFunction = (s: String) => promiseMap.get(s).foreach(_.trySuccess(false))
 
     import akka.pattern.ask
@@ -221,7 +219,9 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
       (delayActor ? elem).mapTo[(String, UUID)]
     }
 
-    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, UUID](timeout, cleanUp = cleanUpFunction)
+    val settings = TimeoutSettings[String, String, UUID](timeout)
+      .withCleanUp((s: String) => promiseMap.get(s).foreach(_.success(true)))
+    val timeoutBidiFlow = Timeout(settings)
     val result = Source("a" :: "b" :: "c" :: Nil)
       .map { s => (s, UUID.randomUUID()) }
       .map { case (s, uuid) =>
@@ -253,8 +253,8 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
       (delayActor ? elem).mapTo[(String, MyContext)]
     }
 
-    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, MyContext](timeout,
-                                                                             Some((context: MyContext) => context.uuid))
+    val settings = TimeoutSettings[String, String, MyContext](timeout).withUniqueIdMapper(context => context.uuid)
+    val timeoutBidiFlow = Timeout(settings)
 
     val result = Source("a" :: "b" :: "c" :: Nil)
       .map { s => (s, MyContext("dummy", UUID.randomUUID())) }
@@ -280,7 +280,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
       (delayActor ? elem).mapTo[(String, MyContext)]
     }
 
-    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, MyContext](timeout)
+    val timeoutBidiFlow = Timeout[String, String, MyContext](timeout)
 
     val result = Source("a" :: "b" :: "c" :: Nil)
       .map { s => (s, MyContext("dummy", UUID.randomUUID())) }
@@ -299,7 +299,7 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
       (delayActor ? elem).mapTo[(String, Envelope)]
     }
 
-    val timeoutBidiFlow = TimeoutBidiFlowUnordered[String, String, Envelope](timeout)
+    val timeoutBidiFlow = Timeout[String, String, Envelope](timeout)
 
     val result = Source("a" :: "b" :: "c" :: Nil)
       .map { s => (s, Envelope("dummy", UUID.randomUUID())) }
@@ -316,10 +316,10 @@ class TimeoutBidiFlowSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) wi
       override def uniqueId: Any = id
     }
 
-    TimeoutBidiUnordered[String, String, Int](timeout).uniqueId(1) should be(1)
-    TimeoutBidiUnordered[String, String, MyContext](timeout).uniqueId(MyContext(2)) should be(2)
-    TimeoutBidiUnordered[String, String, Envelope](timeout).uniqueId(Envelope("dummy", 3)) should be(3)
-    TimeoutBidiUnordered[String, String, MyContext](timeout, Some(context => context.id + 1)).uniqueId(MyContext(4)) should be(5)
+    (new Timeout(TimeoutSettings[String, String, Int](timeout))).uniqueId(1) should be(1)
+    (new Timeout(TimeoutSettings[String, String, MyContext](timeout))).uniqueId(MyContext(2)) should be(2)
+    (new Timeout(TimeoutSettings[String, String, Envelope](timeout))).uniqueId(Envelope("dummy", 3)) should be(3)
+    (new Timeout(TimeoutSettings[String, String, MyContext](timeout).withUniqueIdMapper(context => context.id + 1))).uniqueId(MyContext(4)) should be(5)
   }
 }
 

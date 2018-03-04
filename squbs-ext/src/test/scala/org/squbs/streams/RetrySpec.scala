@@ -31,19 +31,19 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpecLike with Matchers {
+class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpecLike with Matchers {
 
   implicit val materializer = ActorMaterializer()
   val failure = Failure(new Exception("failed"))
 
   it should "require failure retryCount > 0" in {
     an[IllegalArgumentException] should be thrownBy
-      RetryBidi[String, String, NotUsed](-1)
+      Retry[String, String, NotUsed](-1)
   }
 
   it should "require expbackoff >= 0" in {
     an[IllegalArgumentException] should be thrownBy
-      RetryBidi(RetrySettings[String, String, NotUsed](1, exponentialBackoffFactor = -0.5))
+      Retry(RetrySettings[String, String, NotUsed](1, exponentialBackoffFactor = -0.5))
   }
 
   it should "retry settings failure decider should default to None" in {
@@ -54,7 +54,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val flow = Flow[(String, Long)].map {
       case (elem, ctx) => (Success(elem), ctx)
     }
-    val retryBidi = RetryBidi[String, String, Long](1)
+    val retryBidi = Retry[String, String, Long](1)
 
     var context = 0L
     val result = Source("a" :: "b" :: "c" :: Nil)
@@ -76,7 +76,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     var context = 0L
     val result = Source("a" :: "b" :: "c" :: Nil)
       .map { e => context += 1; (e, context) }
-      .via(RetryBidi[String, String, Long](3).join(flow))
+      .via(Retry[String, String, Long](3).join(flow))
       .runWith(Sink.seq)
 
     val expected = (failure, 1) :: (Success("b"), 2) :: (Success("c"), 3) :: Nil
@@ -91,7 +91,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       case (elem, ctx) => (Success(elem), ctx)
     }
 
-    val retryBidi = RetryBidi[String, String, Long](3)
+    val retryBidi = Retry[String, String, Long](3)
 
     var context = 0L
     val result = Source("d" :: "e" :: "f" :: Nil)
@@ -111,7 +111,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       case (elem, ctx) => (Success(elem), ctx)
     }
 
-    val retryBidi = RetryBidi[String, String, Long](1)
+    val retryBidi = Retry[String, String, Long](1)
 
     var context = 0L
     val result = Source("d" :: "e" :: "f" :: Nil)
@@ -132,7 +132,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       case (elem, ctx) => (Success(elem), ctx)
     }
 
-    val retryBidi = RetryBidi[String, String, Long](1)
+    val retryBidi = Retry[String, String, Long](1)
 
     var context = 0L
     val result = Source("d" :: "e" :: "f" :: Nil)
@@ -153,7 +153,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     }
 
     val maxRetry = 10
-    val retryBidi = RetryBidi[String, String, Long](maxRetry)
+    val retryBidi = Retry[String, String, Long](maxRetry)
 
     val context = 42L
     val result = Source("x" :: Nil)
@@ -176,7 +176,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       case (elem, ctx) => (Success(elem), ctx)
     }
 
-    val retryBidi = RetryBidi[String, String, Long](2)
+    val retryBidi = Retry[String, String, Long](2)
 
     var context = 0L
     val result = Source("x" :: "y" :: "z" :: Nil)
@@ -198,7 +198,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val flow = Flow[(String, MyContext)].map {
       case (elem, ctx) => (Success(elem), ctx)
     }
-    val retry = RetryBidi(RetrySettings[String, String, MyContext](2).withUniqueIdMapper((context: MyContext) => context.uniqueId))
+    val retry = Retry(RetrySettings[String, String, MyContext](2).withUniqueIdMapper((context: MyContext) => context.uniqueId))
 
     var counter = 0L
     val result = Source("a" :: "b" :: "c" :: Nil)
@@ -223,7 +223,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val flow = Flow[(String, MyContext)].map {
       case (elem, ctx) => (Success(elem), ctx)
     }
-    val retry = RetryBidi[String, String, MyContext](retrySettings)
+    val retry = Retry[String, String, MyContext](retrySettings)
 
     var counter = 0L
     val result = Source("a" :: "b" :: "c" :: Nil)
@@ -242,7 +242,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val bottom = Flow[(String, Long)].map {
       case (_, ctx) => (failure, ctx)
     }
-    val retry = RetryBidi(RetrySettings[String, String, Long](maxRetries = 5))
+    val retry = Retry(RetrySettings[String, String, Long](max = 5))
     var context = 0L
     val (source, sink) = TestSource.probe[String]
       .map { s => context += 1; (s, context) }
@@ -260,7 +260,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val bottom = Flow[(String, Long)].map {
       case (_, ctx) => (failure, ctx)
     }
-    val retry = RetryBidi[String, String, Long](5)
+    val retry = Retry[String, String, Long](5)
     var context = 0L
     val (source, sink) = TestSource.probe[String]
       .map { s => context += 1; (s, context) }
@@ -278,7 +278,8 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       case (elem, ctx) => (Success(elem), ctx)
     }
     val failureDecider = (out: Try[String]) => out.isFailure || out.equals(Success("a")) // treat "a" as a failure for retry
-    val retry = RetryBidi(RetrySettings[String, String, Long](2, failureDecider = Option(failureDecider)))
+    val settings = RetrySettings[String, String, Long](2, failureDecider = Option(failureDecider))
+    val retry = Retry(settings)
 
     var context = 0L
     val (source, sink) = TestSource.probe[String]
@@ -295,7 +296,9 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       case (elem, ctx) => (Success(elem), ctx)
     }
     val failureDecider = (out: Try[String]) => out.isFailure || out.equals(Success("a")) // treat "a" as a failure for retry
-    val retry = RetryBidi(RetrySettings[String, String, Long](2).withFailureDecider(failureDecider))
+    val settings =
+      RetrySettings[String, String, Long](2).withFailureDecider(failureDecider)
+    val retry = Retry(settings)
 
     var context = 0L
     val (source, sink) = TestSource.probe[String]
@@ -312,7 +315,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       case ("1", ctx) => (Success("1"), ctx)
       case (_, ctx) => (failure, ctx)
     }
-    val retry = RetryBidi[String, String, Long](10)
+    val retry = Retry[String, String, Long](10)
 
     val (source, sink) = TestSource.probe[String]
       .map(x => (x.toString, x.toLong))
@@ -328,7 +331,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val bottom = Flow[(String, Long)].delay(10.millis).map {
       case (_, ctx) => (failure, ctx)
     }
-    val retry = RetryBidi[String, String, Long](1).withAttributes(inputBuffer(initial = 1, max = 1))
+    val retry = Retry[String, String, Long](1).withAttributes(inputBuffer(initial = 1, max = 1))
 
     val sink = Source(1 to 3)
       .map(x => (x.toString, x.toLong))
@@ -346,7 +349,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val bottom = Flow[(Long, Long)].map {
       case (elem, ctx) => if (ctx % 7 == 0) (failure, ctx) else (Success(elem), ctx) // fail every 7'th element
     }
-    val retry = RetryBidi[Long, Long, Long](1)
+    val retry = Retry[Long, Long, Long](1)
 
     val result = Source(1L to 10000)
       .map(x => (x, x))
@@ -363,7 +366,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val bottom = Flow[(String, Long)].map {
       case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx) // fail even elements
     }
-    val retry = RetryBidi(RetrySettings[String, String, Long](2, delay = 1 second))
+    val retry = Retry(RetrySettings[String, String, Long](2, delay = 1 second))
     val testSink = Source(1L to 5L)
       .map(x => (x.toString, x))
       .via(retry.join(bottom))
@@ -382,7 +385,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val bottom = Flow[(String, Long)].map {
       case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx)
     }
-    val retry = RetryBidi(RetrySettings[String, String, Long](maxRetries = 3, delay = 1 second, exponentialBackoffFactor = 2))
+    val retry = Retry(RetrySettings[String, String, Long](max = 3, delay = 1 second, exponentialBackoffFactor = 2))
     val sink = Source(1L to 5L)
       .map(x => (x.toString, x))
       .via(retry.join(bottom))
@@ -401,7 +404,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     val bottom = Flow[(String, Long)].map {
       case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx)
     }
-    val retry = RetryBidi(RetrySettings[String, String, Long](maxRetries = 3, delay = 1 second, exponentialBackoffFactor = 2,
+    val retry = Retry(RetrySettings[String, String, Long](max = 3, delay = 1 second, exponentialBackoffFactor = 2,
       maxDelay = 4 seconds))
     val sink = Source(1L to 5L)
       .map(x => (x.toString, x))
@@ -426,7 +429,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       .withMaxDelay(5 seconds)
       .withExponentialBackoff(2)
 
-    val retry = RetryBidi[String, String, Long](retrySettings)
+    val retry = Retry[String, String, Long](retrySettings)
 
     val sink = Source(1L to 5L)
       .map(x => (x.toString, x))
@@ -448,7 +451,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
     }
       .buffer(50, OverflowStrategy.backpressure)
 
-    val retry = RetryBidi[Long, Long, Long](2)
+    val retry = Retry[Long, Long, Long](2)
     val result = Source(1L to 100)
       .map(x => (x, x))
       .via(retry.join(bottom))
@@ -465,7 +468,7 @@ class RetryBidiSpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlat
       case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx) // fail every even element
     }
 
-    val retry = RetryBidi[Long, Long, Long](2)
+    val retry = Retry[Long, Long, Long](2)
     val result = Source(1L to 100)
       .map(x => (x, x))
       .via(retry.join(bottom))

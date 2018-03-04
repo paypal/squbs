@@ -54,7 +54,7 @@ case class CircuitBreakerSettings[In, Out, Context] private[japi] (
   import scala.compat.java8.OptionConverters._
 
   def toScala =
-    org.squbs.streams.circuitbreaker.CircuitBreakerSettings(
+    org.squbs.streams.circuitbreaker.CircuitBreakerSettings[In, Out, Context](
       circuitBreakerState,
       fallback.asScala.map(f => (in: In) => f(in)),
       (out: Out) => cleanUp.accept(out),
@@ -70,9 +70,9 @@ object CircuitBreakerSettings {
     * Creates a [[CircuitBreakerSettings]] with default values
     *
     * @param circuitBreakerState holds the state of circuit breaker
-    * @tparam In Input type of [[org.squbs.streams.circuitbreaker.CircuitBreakerBidiFlow]]
-    * @tparam Out Output type of [[org.squbs.streams.circuitbreaker.CircuitBreakerBidiFlow]]
-    * @tparam Context the carried content in [[org.squbs.streams.circuitbreaker.CircuitBreakerBidiFlow]]
+    * @tparam In Input type of [[org.squbs.streams.circuitbreaker.CircuitBreaker]]
+    * @tparam Out Output type of [[org.squbs.streams.circuitbreaker.CircuitBreaker]]
+    * @tparam Context the carried content in [[org.squbs.streams.circuitbreaker.CircuitBreaker]]
     * @return a [[CircuitBreakerSettings]] with default values
     */
   def create[In, Out, Context](circuitBreakerState: CircuitBreakerState): CircuitBreakerSettings[In, Out, Context] =

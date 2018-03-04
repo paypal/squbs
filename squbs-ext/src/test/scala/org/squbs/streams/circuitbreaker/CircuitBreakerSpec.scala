@@ -37,8 +37,8 @@ import scala.concurrent.{Await, Future, Promise}
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-class CircuitBreakerBidiFlowSpec
-  extends TestKit(ActorSystem("CircuitBreakerBidiFlowSpec", CircuitBreakerBidiFlowSpec.config))
+class CircuitBreakerSpec
+  extends TestKit(ActorSystem("CircuitBreakerBidiFlowSpec", CircuitBreakerSpec.config))
   with FlatSpecLike with Matchers with ImplicitSender {
 
   import Timing._
@@ -62,7 +62,7 @@ class CircuitBreakerBidiFlowSpec
   def flowWithCircuitBreaker(circuitBreakerState: CircuitBreakerState) = {
     Flow[String]
       .map(s => (s, UUID.randomUUID()))
-      .via(CircuitBreakerBidiFlow[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow()))
+      .via(CircuitBreaker[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow()))
       .to(Sink.ignore)
       .runWith(Source.actorRef[String](25, OverflowStrategy.fail))
   }
@@ -97,7 +97,7 @@ class CircuitBreakerBidiFlowSpec
 
     val circuitBreakerBidiFlow = BidiFlow
       .fromGraph {
-        CircuitBreakerBidi[String, String, UUID](
+        new CircuitBreaker[String, String, UUID](
           CircuitBreakerSettings(circuitBreakerState)
             .withFailureDecider(out => out.isFailure || out.equals(Success("b"))))
       }
@@ -122,7 +122,7 @@ class CircuitBreakerBidiFlowSpec
     val circuitBreakerState = AtomicCircuitBreakerState("FailFast", 2, timeout, 1 second)
     val circuitBreakerBidiFlow = BidiFlow
       .fromGraph {
-        CircuitBreakerBidi[String, String, Long](CircuitBreakerSettings(circuitBreakerState))
+        new CircuitBreaker[String, String, Long](CircuitBreakerSettings(circuitBreakerState))
       }
 
 
@@ -147,7 +147,7 @@ class CircuitBreakerBidiFlowSpec
     val circuitBreakerState = AtomicCircuitBreakerState("Fallback", 2, timeout, 10 milliseconds)
 
     val circuitBreakerBidiFlow = BidiFlow.fromGraph {
-      CircuitBreakerBidi[String, String, Long](
+      new CircuitBreaker[String, String, Long](
         CircuitBreakerSettings(circuitBreakerState).withFallback((elem: String) => Success("fb")))
     }
 
@@ -206,7 +206,7 @@ class CircuitBreakerBidiFlowSpec
       CircuitBreakerSettings[String, String, MyContext](
         AtomicCircuitBreakerState("UniqueId", 2, timeout, 10 milliseconds))
         .withUniqueIdMapper(context => context.id)
-    val circuitBreakerBidiFlow = CircuitBreakerBidiFlow(circuitBreakerSettings)
+    val circuitBreakerBidiFlow = CircuitBreaker(circuitBreakerSettings)
 
 
     var counter = 0L
@@ -249,7 +249,7 @@ class CircuitBreakerBidiFlowSpec
       CircuitBreakerSettings[String, String, MyContext](
         AtomicCircuitBreakerState("UniqueId", 2, timeout, 10 milliseconds))
         .withCleanUp(cleanUpFunction)
-    val circuitBreakerBidiFlow = CircuitBreakerBidiFlow(circuitBreakerSettings)
+    val circuitBreakerBidiFlow = CircuitBreaker(circuitBreakerSettings)
 
 
     var counter = 0L
@@ -320,7 +320,7 @@ class CircuitBreakerBidiFlowSpec
 
     val flow = Source.actorRef[String](25, OverflowStrategy.fail)
       .map(s => (s, UUID.randomUUID()))
-      .via(CircuitBreakerBidiFlow[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow))
+      .via(CircuitBreaker[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow))
       .map(_._1)
       .toMat(Sink.seq)(Keep.both)
 
@@ -345,7 +345,7 @@ class CircuitBreakerBidiFlowSpec
   private def assertFuture[T](future: Future[T])(assertion: T => Unit) = assertion(Await.result(future, 60 seconds))
 }
 
-object CircuitBreakerBidiFlowSpec {
+object CircuitBreakerSpec {
   val config = ConfigFactory.parseString(
     """
       |akka.test.single-expect-default = 30 seconds

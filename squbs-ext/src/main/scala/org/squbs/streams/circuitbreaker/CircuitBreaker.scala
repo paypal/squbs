@@ -22,7 +22,7 @@ import akka.japi.Pair
 import akka.stream._
 import akka.stream.scaladsl.{BidiFlow, Flow}
 import akka.stream.stage._
-import org.squbs.streams.{TimeoutBidiUnordered, UniqueId}
+import org.squbs.streams.{Timeout, TimeoutSettings, UniqueId}
 
 import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
@@ -76,7 +76,7 @@ import scala.util.{Failure, Success, Try}
   * @tparam Context the type of the context that is carried around along with the elements.  The context may be of any
   *                 type that can be used to uniquely identify each element
   */
-class CircuitBreakerBidi[In, Out, Context] private[circuitbreaker](
+class CircuitBreaker[In, Out, Context] private[circuitbreaker](
   circuitBreakerSettings: CircuitBreakerSettings[In, Out, Context])
   extends GraphStage[BidiShape[(In, Context), (In, Context), (Try[Out], Context), (Try[Out], Context)]] {
 
@@ -156,26 +156,7 @@ class CircuitBreakerBidi[In, Out, Context] private[circuitbreaker](
 
 }
 
-object CircuitBreakerBidi {
-
-  /**
-    * Creates a bidi [[GraphStage]] that is joined with a [[Flow]] to add Circuit Breaker functionality.
-    *
-    * @param circuitBreakerSettings @see [[CircuitBreakerSettings]]
-    * @tparam In the type of the elements pulled from the upstream along with the [[Context]] and pushed down to joined
-    *            flow
-    * @tparam Out the type that's contained in a [[Try]] and pushed downstream along with the [[Context]]
-    * @tparam Context the type of the context that is carried around along with the elements.  The context may be of any
-    *                 type that can be used to uniquely identify each element
-    * @return a [[CircuitBreakerBidi]] [[GraphStage]] that can be joined with a [[Flow]] with corresponding types to add
-    *         timeout functionality.
-    */
-  def apply[In, Out, Context](circuitBreakerSettings: CircuitBreakerSettings[In, Out, Context]):
-  CircuitBreakerBidi[In, Out, Context] =
-    new CircuitBreakerBidi(circuitBreakerSettings)
-}
-
-object CircuitBreakerBidiFlow {
+object CircuitBreaker {
 
   /**
     * Creates a [[BidiFlow]] that can be joined with a [[Flow]] to add Circuit Breaker functionality.
@@ -185,11 +166,12 @@ object CircuitBreakerBidiFlow {
   def apply[In, Out, Context](circuitBreakerSettings: CircuitBreakerSettings[In, Out, Context]):
   BidiFlow[(In, Context), (In, Context), (Out, Context), (Try[Out], Context), NotUsed] =
     BidiFlow
-      .fromGraph(CircuitBreakerBidi(circuitBreakerSettings))
-      .atop(TimeoutBidiUnordered(
-        circuitBreakerSettings.circuitBreakerState.callTimeout,
-        circuitBreakerSettings.uniqueIdMapper,
-        circuitBreakerSettings.cleanUp))
+      .fromGraph(new CircuitBreaker(circuitBreakerSettings))
+      .atop(Timeout(
+        TimeoutSettings[In, Out, Context](
+          circuitBreakerSettings.circuitBreakerState.callTimeout,
+          circuitBreakerSettings.uniqueIdMapper,
+          circuitBreakerSettings.cleanUp)))
 
   /**
     * Java API
@@ -201,7 +183,7 @@ object CircuitBreakerBidiFlow {
     */
   def create[In, Out, Context](circuitBreakerSettings: japi.CircuitBreakerSettings[In, Out, Context]):
   akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] =
-    JavaConverters.toJava[In, In, Out, Try[Out], Context](apply(circuitBreakerSettings.toScala))
+    JavaConverters.toJava[In, In, Out, Try[Out], Context](apply[In, Out, Context](circuitBreakerSettings.toScala))
 }
 
 /**
@@ -255,9 +237,9 @@ object CircuitBreakerSettings {
     * Creates a [[CircuitBreakerSettings]] with default values
     *
     * @param circuitBreakerState holds the state of circuit breaker
-    * @tparam In Input type of [[CircuitBreakerBidiFlow]]
-    * @tparam Out Output type of [[CircuitBreakerBidiFlow]]
-    * @tparam Context the carried content in [[CircuitBreakerBidiFlow]]
+    * @tparam In Input type of [[CircuitBreaker]]
+    * @tparam Out Output type of [[CircuitBreaker]]
+    * @tparam Context the carried content in [[CircuitBreaker]]
     * @return a [[CircuitBreakerSettings]] with default values
     */
   def apply[In, Out, Context](circuitBreakerState: CircuitBreakerState): CircuitBreakerSettings[In, Out, Context] =

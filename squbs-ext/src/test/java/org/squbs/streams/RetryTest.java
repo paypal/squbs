@@ -34,7 +34,6 @@ import scala.util.Try;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -44,9 +43,9 @@ import java.util.function.Function;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
-public class RetryBidiTest {
+public class RetryTest {
 
-    final private ActorSystem system = ActorSystem.create("RetryBidiTest");
+    final private ActorSystem system = ActorSystem.create("RetryTest");
     final private Materializer mat = ActorMaterializer.create(system);
     final private Try<String> failure = Failure.apply(new Exception("failed"));
 
@@ -68,7 +67,7 @@ public class RetryBidiTest {
                         .map(elem -> new Pair<Try<String>, UUID>(Success.apply(elem.first()), elem.second()));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, Pair<Try<String>, UUID>,
-                NotUsed> retry = RetryBidi.create(2);
+                NotUsed> retry = Retry.create(2);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -95,7 +94,7 @@ public class RetryBidiTest {
                                 return new Pair<>(Success.apply(elem.first()), elem.second());
                         });
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
-                Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(2);
+                Pair<Try<String>, UUID>, NotUsed> retry = Retry.create(2);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -118,7 +117,7 @@ public class RetryBidiTest {
                         .map(elem -> new Pair<Try<String>, UUID>(Success.apply(elem.first()), elem.second()));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, Pair<Try<String>, UUID>,
-                NotUsed> retry = RetryBidi.create(3);
+                NotUsed> retry = Retry.create(3);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -144,9 +143,11 @@ public class RetryBidiTest {
                     return new Pair<>(Success.apply(elem.first()), elem.second());
             });
 
+        RetrySettings settings = RetrySettings.<String, String, MyContext>create(3)
+                .withUniqueIdMapper(context -> context.uuid);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =
-                RetryBidi.create(3, context -> context.uuid);
+                Retry.create(settings);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -169,8 +170,9 @@ public class RetryBidiTest {
         final Function<Try<String>, Boolean> failureDecider =
                 out -> out.isFailure() || out.equals(Success.apply("a")); // treat "a" as a failure for retry
 
+        RetrySettings settings = RetrySettings.<String, String, UUID>create(1).withFailureDecider(failureDecider);
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
-                Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(1, Optional.of(failureDecider));
+                Pair<Try<String>, UUID>, NotUsed> retry = Retry.create(settings);
 
         Source.from(Arrays.asList("a", "b"))
                 .map(s -> new Pair<>(s, UUID.randomUUID()))
@@ -196,7 +198,7 @@ public class RetryBidiTest {
                         .withDelay(Duration.create(1, TimeUnit.SECONDS));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
-                Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(retrySettings);
+                Pair<Try<String>, UUID>, NotUsed> retry = Retry.create(retrySettings);
 
         Source.from(Arrays.asList("a", "b", "c"))
                 .map(s -> new Pair<>(s, UUID.randomUUID()))
@@ -225,7 +227,7 @@ public class RetryBidiTest {
                 .withMaxDelay(Duration.create(2, TimeUnit.SECONDS));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
-                Pair<Try<String>, UUID>, NotUsed> retry = RetryBidi.create(retrySettings);
+                Pair<Try<String>, UUID>, NotUsed> retry = Retry.create(retrySettings);
 
         Source.from(Arrays.asList("a", "b", "c"))
                 .map(s -> new Pair<>(s, UUID.randomUUID()))
@@ -253,9 +255,11 @@ public class RetryBidiTest {
         final Function<Try<String>, Boolean> failureDecider =
                 out -> out.isFailure() || out.equals(Success.apply("a")); // treat "a" as a failure for retry
 
+        RetrySettings settings = RetrySettings.<String, String, MyContext>create(3)
+                .withUniqueIdMapper(context -> context.uuid)
+                .withFailureDecider(failureDecider);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
-                Pair<Try<String>, MyContext>, NotUsed> retryFlow =
-                RetryBidi.create(3, context -> context.uuid, Optional.of(failureDecider));
+                Pair<Try<String>, MyContext>, NotUsed> retryFlow = Retry.create(settings);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -290,7 +294,7 @@ public class RetryBidiTest {
 
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =
-                RetryBidi.create(retrySettings);
+                Retry.create(retrySettings);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))

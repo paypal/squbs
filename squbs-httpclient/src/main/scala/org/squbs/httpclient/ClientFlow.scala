@@ -39,7 +39,7 @@ import org.squbs.env.{Default, Environment, EnvironmentResolverRegistry}
 import org.squbs.pipeline.{ClientPipeline, Context, PipelineExtension, PipelineSetting, RequestContext}
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
-import org.squbs.streams.circuitbreaker.{CircuitBreakerBidiFlow, CircuitBreakerSettings, japi}
+import org.squbs.streams.circuitbreaker.{CircuitBreaker, CircuitBreakerSettings, japi}
 import org.squbs.util.ConfigUtil._
 
 import scala.compat.java8.OptionConverters
@@ -237,7 +237,7 @@ object ClientFlow {
             cbs.uniqueIdMapper.map(f => (rc: RequestContext) => f(rc.attribute[T](AkkaHttpClientCustomContext).get)))
         .withCleanUp(tryHttpResponse => tryHttpResponse.foreach(cbs.cleanUp))
 
-    val circuitBreakerBidiFlow = CircuitBreakerBidiFlow(clientFlowCircuitBreakerSettings)
+    val circuitBreakerBidiFlow = CircuitBreaker(clientFlowCircuitBreakerSettings)
 
     circuitBreakerBidiFlow
       .joinMat(clientConnectionFlow)(Keep.right)

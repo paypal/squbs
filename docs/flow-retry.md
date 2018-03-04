@@ -2,7 +2,7 @@
 
 ### Overview
 
-Some stream use cases may require retrying of requests after a failure response.  squbs provides a `RetryBidi` Akka Streams stage to add a retry capability to
+Some stream use cases may require retrying of requests after a failure response.  squbs provides a `Retry` Akka Streams stage to add a retry capability to
  streams that need to add retries for any failing requests.
 
 ### Dependency
@@ -25,11 +25,11 @@ If all the retried attempts fail then the last failure for that request is emitt
 ##### Scala
 
 ```scala
-val retryBidi = RetryBidi[String, Long](maxRetries = 10)
+val retry = Retry[String, Long](max = 10)
 val flow = Flow[Try[String], Long].map(s => findAnEnglishWordThatStartWith(s))
 
 Source("a" :: "b" :: "c" :: Nil)
-  .via(retryBidi.join(flow))
+  .via(retry.join(flow))
   .runWith(Sink.seq)
 ```
 
@@ -39,13 +39,13 @@ Source("a" :: "b" :: "c" :: Nil)
 final BidiFlow<Pair<String, Long>,
                Pair<String, Long>,
                Pair<Try<String>, Long>,
-               Pair<Try<String>, Long>, NotUsed> retryBidi = RetryBidi.create(2L);
+               Pair<Try<String>, Long>, NotUsed> retry = Retry.create(2);
 
 final Flow<String, String, NotUsed> flow =
     Flow.<String>create().map(s -> findAnEnglishWordThatStartWith(s));
 
 Source.from(Arrays.asList("a", "b", "c"))
-    .via(retryBidi.join(flow))
+    .via(retry.join(flow))
     .runWith(Sink.seq(), mat);
 ```
 
@@ -61,34 +61,23 @@ The `Context` type itself might be used as a unique id.  However, in many scenar
 
 With the first three options, a unique id can be retrieved directly through the context.
 
-For the last option, `RetryBidi` allows a function to be passed in as a parameter.
+For the last option, `Retry` allows a function to be passed in through `RetrySettings`.
 
 ###### Scala
 
-The following API can be used to pass a uniqueId mapper:
 ```scala
-RetryBidi[In, Out, Context](maxRetries: Int, uniqueIdMapper: Context => Any)
-```
-
-This `BidiFlow` can be joined with any flow that takes in a `(In, Context)` and outputs a `(Out, Context)`.
-
-```scala
-import org.squbs.streams.RetrySettings
-
 case class MyContext(s: String, id: Long)
 
-val retrySettings =
+val settings =
   RetrySettings[String, String, MyContext](maxRetries = 3)
     .withUniqueIdMapper(context => context.id)
+    
+val retry = Retry(settings)    
 ```
 
 ###### Java
 
-The following API is used to pass a uniqueId mapper:
-
 ```java
-import org.squbs.streams.RetrySettings;
-
 class MyContext {
     private String s;
     private long id;
@@ -103,64 +92,54 @@ class MyContext {
     }
 }
 
-RetrySettings<String, String, MyContext> retrySettings =
+final RetrySettings settings =
         RetrySettings.<String, String, MyContext>create(3)
                 .withUniqueIdMapper(context -> context.id());
-```
-This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair<In, Context>` and outputs a `akka.japi.Pair<Try<Out>, Context>`.
-
-```java
-RetrySettings<String, String, MyContext> retrySettings =
-        RetrySettings.<String, String, MyContext>create(maxRetries)
-                .withUniqueIdMapper(context -> context.id());
-
-final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>,
-               Pair<Try<String>, MyContext>, Pair<Try<String>, MyContext>, NotUsed>
-                retryBidi = RetryBidi.create(retrySettings);
-
-final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
-        Flow.<Pair<String, MyContext>>create()
-                .mapAsyncUnordered(10, elem -> ask(ref, elem, 5000))
-                .map(elem -> (Pair<String, MyContext>)elem);
-
-Source.from(Arrays.asList("a", "b", "c"))
-        .map(s -> new Pair<>(s, new MyContext("dummy", UUID.randomUUID())))
-        .via(retryBidi.join(flow))
-        .runWith(Sink.seq(), mat);
-
+                
+final BidiFlow<Pair<String, MyContext>,
+               Pair<String, MyContext>,
+               Pair<Try<String>, MyContext>,
+               Pair<Try<String>, MyContext>, NotUsed> retry = Retry.create(settings);
 ```
 
 #### Failure decider
 
 By default, any `Failure` from the joined `Flow` is considered a failure for retry purposes.  However, the `Retry` stage also accepts an optional
- `failureDecider` parameter to more finely control what elements from the joined `Flow` should actually be treated as failures that should be retried.
+ `failureDecider` parameter, via `RetrySettings`, to more finely control what elements from the joined `Flow` should actually be treated as failures that should be retried.
 
 ##### Scala
 
-A function of type `Try[Out] => Boolean` can be provided via the `failureDecider` parameter. Below is an example where, along with any `Failure` message,
-Any response with failing http status code is also considered a failure:
+A function of type `Try[Out] => Boolean` can be provided to `RetrySettings` via the `withFailureDecider` call. Below is an example where, along with any `Failure` message,
+a response with failing http status code is also considered a failure:
 
 ```scala
-
 val failureDecider = (tryResponse: Try[HttpResponse]) => tryResponse.isFailure || tryResponse.get().status().isFailure()
 
-val retryBidi = RetryBidi[Request, Response, MyContext](maxRetries = 3, (context: MyContext) => context.uuid, failureDecider = Option(failureDecider))
+val settings =
+  RetrySettings[HttpRequest, HttpResponse, MyContext](max = 3)
+    .withFailureDecider(failureDecider)
+
+val retry = Retry(settings)
 
 ```
 
 ##### Java
 
-A `Function<Try<Out>, Boolean>` can be provided via Retry Optional `failureDecider` parameter to `create` method.  Below is an example where,
+A `Function<Try<Out>, Boolean>` can be provided to `RetrySettings` via the `withFailureDecider` call.  Below is an example where,
 along with any `Failure` message, a `Success` of `HttpResponse` with status code `400` and above is also considered a failure:
 
 ```java
-
 final Function<Try<HttpResponse>, Boolean> failureDecider =
-tryResponse -> tryResponse.isFailure() || tryResponse.get().status().isFailure());
+        tryResponse -> tryResponse.isFailure() || tryResponse.get().status().isFailure());
 
-final BidiFlow<Pair<HttpResponse, MyContext>, Pair<HttpResponse, MyContext>, Pair<Try<HttpResponse>, MyContext>,
-    Pair<Try<HttpResponse>, MyContext>, NotUsed> retryFlow =
-    RetryBidi.create(3L, Optional.of(failureDecider));
+final RetrySettings settings =
+        RetrySettings.<HttpRequest, HttpResponse, MyContext>create(1)
+                .withFailureDecider(failureDecider);
+
+final BidiFlow<Pair<HttpRequest, MyContext>,
+               Pair<HttpRequest, MyContext>,
+               Pair<Try<HttpResponse>, MyContext>,
+               Pair<Try<HttpResponse>, MyContext>, NotUsed> retry = Retry.create(settings);
 
 ```
 
@@ -169,59 +148,88 @@ final BidiFlow<Pair<HttpResponse, MyContext>, Pair<HttpResponse, MyContext>, Pai
 By default, any failures pulled from the joined `Flow` are immediately attempted to be retried.  However, the `Retry` stage also accepts an optional
  delay `Duration` parameter to add a timed delay between each subsequent retry attempt.  This duration is the minimum delay
  duration from when a failure is pulled from the joined flow to when it is re-attempted (pushed) again to the joined flow.
-For example to create a Retry stage that delays 200 milliseconds during retries:
+For example, to create a `Retry` stage that delays 200 milliseconds during retries:
 
 ##### Scala
 
 ```scala
-val retryBidi = RetryBidi[String, Long](maxRetries = 3, delay = 200 millis)
+val settings = RetrySettings[String, String, Context](max = 3).withDelay(1 second)
+
+val retry = Retry(settings)
 ```
 
 ##### Java
 
 ```java
-final BidiFlow<Pair<String, Context>, Pair<String, Context>,
-    Pair<Try<String>, Context>, Pair<Try<String>, Context>, NotUsed> retryBidi =
-    RetryBidi.create(3L, Duration.create("200 millis"));
+final RetrySettings settings =
+        RetrySettings.<String, String, Context>create(3)
+                .withDelay(Duration.create("200 millis"));
+        
+final BidiFlow<Pair<String, Context>,
+               Pair<String, Context>,
+               Pair<Try<String>, Context>,
+               Pair<Try<String>, Context>, NotUsed> retry = Retry.create(settings);
 
 ```
 ##### Exponential backoff
-An optional exponential backoff factor can also be specified to increase the delay duration on each subsequent retry attempt (upto a maximum delay duration)
-For example to add an exponentialBackoffFactor off of 2.0 for the above example:
+An optional exponential backoff factor can also be specified to increase the delay duration on each subsequent retry attempt (up to a maximum delay duration).
+In the following examples, the first failure of any element will be retried after a delay of 200ms, and then any second attempt will be retried after 800ms.
+  In general the retry delay duration will continue to increase using the formula `delay * N ^ exponentialBackOff` (where N is the retry number).
 
 ###### Scala
 
 ```scala
-val retryBidi = RetryBidi[String, Long](maxRetries = 4, delay = 200 millis, exponentialBackoffFactor = 2.0)
+val settings =
+  RetrySettings[String, String, Context](max = 3)
+    .withDelay(200 millis)
+    .withExponentialBackoff(2)
+
+val retry = Retry(settings)
 ```
 
 ###### Java
 
 ```java
-final BidiFlow<Pair<String, Context>, Pair<String, Context>,
-    Pair<Try<String>, Context>, Pair<Try<String>, Context>, NotUsed> retryBidi =
-    RetryBidi.create(4L, Duration.create(200, TimeUnit.MILLISECONDS), 2.0);
+final RetrySettings settings =
+        RetrySettings.create<String, String, Context>.create(3)
+                .withDelay(Duration.create("200 millis"))
+                .withExponentialBackoff(2.0);
+    
+
+final BidiFlow<Pair<String, Context>,
+               Pair<String, Context>,
+               Pair<Try<String>, Context>,
+               Pair<Try<String>, Context>, NotUsed> retry = Retry.create(settings);
 
 ```
 
-The first failure of any element will be retried after a delay of 200ms, and then any second attempt will be retried after 800ms.
-  In general the retry delay duration will continue to increase using the formula { delay duration } * N ^ exponentialBackOff (where N is the retry number).
-
 ##### Maximum delay
-An optional maximum delay duration (`maxDelay`) can also be specified to provide an upper bound on the exponential back delay
+An optional maximum delay duration can also be specified to provide an upper bound on the exponential backoff delay
 duration.  If no maximum delay is specified the exponential backoff will continue to increase the retry delay duration until the number of maxRetries.
 
 ###### Scala
 
 ```scala
-val retryBidi = RetryBidi[String, Long](maxRetries = 4, delay = 200 millis, exponentialBackoffFactor = 2.0, maxDelay = 400 millis)
+val settings =
+  RetrySettings[String, String, Context](max = 3)
+    .withDelay(200 millis)
+    .withExponentialBackoff(2)
+    .withMaxDelay(400 millis)
+
+val retry = Retry(settings)
 ```
 
 ###### Java
 
 ```java
-final BidiFlow<Pair<String, Context>, Pair<String, Context>,
-    Pair<Try<String>, Context>, Pair<Try<String>, Context>, NotUsed> retryBidi =
-    RetryBidi.create(4L, Duration.create(200, TimeUnit.MILLISECONDS), 2.0, Duration.create("400 millis"));
+final RetrySettings settings =
+        RetrySettings.create<String, String, Context>.create(3)
+                .withDelay(Duration.create("200 millis"))
+                .withExponentialBackoff(2.0)
+                withMaxDelay(Duration.create("400 millis"));
 
+final BidiFlow<Pair<String, Context>,
+               Pair<String, Context>,
+               Pair<Try<String>, Context>,
+               Pair<Try<String>, Context>, NotUsed> retry = Retry.create(settings);
 ```

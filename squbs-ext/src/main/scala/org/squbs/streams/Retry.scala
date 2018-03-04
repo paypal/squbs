@@ -17,7 +17,6 @@
 package org.squbs.streams
 
 import java.lang.{Boolean => JBoolean}
-import java.util.Optional
 import java.util.function.{Function => JFunction}
 
 import akka.NotUsed
@@ -32,11 +31,18 @@ import scala.collection.mutable
 import scala.concurrent.duration.{Duration, FiniteDuration, _}
 import scala.util.Try
 
-object RetryBidi {
+object Retry {
 
-  def apply[In, Out, Context](maxRetries: Int):
+  /**
+    * @param max     maximum number of retry attempts on any failures before giving up.
+    * @tparam In      the type of elements pulled from upstream along with the [[Context]]
+    * @tparam Out     the type of the elements that are pushed to downstream along with the [[Context]]
+    * @tparam Context the type of the context that is carried along with the elements.
+    * @return a [[BidiFlow]] with Retry functionality
+    */
+  def apply[In, Out, Context](max: Int):
   BidiFlow[(In, Context), (In, Context), (Try[Out], Context), (Try[Out], Context), NotUsed] =
-    apply(RetrySettings[In, Out, Context](maxRetries))
+    apply(RetrySettings[In, Out, Context](max))
 
   /**
     * @param retrySettings @see [[RetrySettings]]
@@ -47,60 +53,35 @@ object RetryBidi {
     */
   def apply[In, Out, Context](retrySettings: RetrySettings[In, Out, Context]):
   BidiFlow[(In, Context), (In, Context), (Try[Out], Context), (Try[Out], Context), NotUsed] =
-    BidiFlow.fromGraph(new RetryBidi(
-      maxRetries = retrySettings.maxRetries,
+    BidiFlow.fromGraph(new Retry(
+      max = retrySettings.max,
       uniqueIdMapper = retrySettings.uniqueIdMapper,
       failureDecider = retrySettings.failureDecider,
       delay = retrySettings.delay,
       exponentialBackoffFactor = retrySettings.exponentialBackoffFactor,
       maxDelay = retrySettings.maxDelay))
 
-  import scala.compat.java8.OptionConverters._
   /**
     * Java API
-    * Creates a [[akka.stream.javadsl.BidiFlow]] that can be joined with a [[akka.stream.javadsl.Flow]] to add
-    * Retry functionality with uniqueIdMapper and custom failure decider
+    *
+    * @param max     maximum number of retry attempts on any failures before giving up.
+    * @tparam In      the type of elements pulled from upstream along with the [[Context]]
+    * @tparam Out     the type of the elements that are pushed to downstream along with the [[Context]]
+    * @tparam Context the type of the context that is carried along with the elements.
+    * @return a [[BidiFlow]] with Retry functionality
     */
-  def create[In, Out, Context](maxRetries: Integer, uniqueIdMapper: JFunction[Context, Any],
-                               failureDecider: Optional[JFunction[Try[Out], JBoolean]]):
+  def create[In, Out, Context](max: Integer):
   javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Try[Out], Context], Pair[Try[Out], Context], NotUsed] =
-    JavaConverters.toJava(apply[In, Out, Context](new RetrySettings[In, Out, Context](
-      maxRetries = maxRetries,
-      uniqueIdMapper = Some(uniqueIdMapper.apply(_)),
-      failureDecider = failureDecider.asScala.map(f => (out: Try[Out]) => f(out)))))
+    create(RetrySettings[In, Out, Context](max))
 
   /**
     * Java API
-    * @see above for details about each parameter
-    */
-  def create[In, Out, Context](maxRetries: Integer,
-                               failureDecider: Optional[JFunction[Try[Out], JBoolean]]):
-  javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Try[Out], Context], Pair[Try[Out], Context], NotUsed] =
-    JavaConverters.toJava(apply[In, Out, Context](new RetrySettings[In, Out, Context](
-      maxRetries = maxRetries,
-      failureDecider = failureDecider.asScala.map(f => (out: Try[Out]) => f(out)))))
-
-  /**
-    * Java API
-    * @see above for details about each parameter.
-    */
-  def create[In, Out, Context](maxRetries: Integer, uniqueIdMapper: JFunction[Context, Any]):
-  javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Try[Out], Context], Pair[Try[Out], Context], NotUsed] =
-    JavaConverters.toJava(apply(RetrySettings[In, Out, Context](
-      maxRetries = maxRetries,
-      uniqueIdMapper = Some(uniqueIdMapper.apply(_)))))
-
-  /**
-    * Java API
-    * @see above for details about each parameter.
-    */
-  def create[In, Out, Context](maxRetries: Integer):
-  javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Try[Out], Context], Pair[Try[Out], Context], NotUsed] =
-    create(RetrySettings[In, Out, Context](maxRetries))
-
-  /**
-    * Java API
-    * @see above for details about each parameter.
+    *
+    * @param retrySettings @see [[RetrySettings]]
+    * @tparam In      the type of elements pulled from upstream along with the [[Context]]
+    * @tparam Out     the type of the elements that are pushed to downstream along with the [[Context]]
+    * @tparam Context the type of the context that is carried along with the elements.
+    * @return a [[BidiFlow]] with Retry functionality
     */
   def create[In, Out, Context](retrySettings: RetrySettings[In, Out, Context]):
   javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Try[Out], Context], Pair[Try[Out], Context], NotUsed] =
@@ -128,7 +109,7 @@ object RetryBidi {
   *           Out2         +------+        In2
   * }}}
   *
-  * @param maxRetries maximum number of retry attempts on any failing [[Try]]'s
+  * @param max maximum number of retry attempts on any failing [[Try]]'s
   * @param uniqueIdMapper function that maps a [[Context]] to a unique value per element
   * @param failureDecider function that gets called to determine if an element passed by the joined [[Flow]] is a
   *                       failure
@@ -141,12 +122,12 @@ object RetryBidi {
   *             This then gets wrapped with a [[Try]] and pushed downstream with a [[Context]]
   * @tparam Context the type of the context that is carried around along with the elements.
   */
-final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int,
-                                                         uniqueIdMapper: Option[Context => Any] = None,
-                                                         failureDecider: Option[Try[Out] => Boolean] = None,
-                                                         delay: FiniteDuration = Duration.Zero,
-                                                         exponentialBackoffFactor: Double = 1.0,
-                                                         maxDelay: FiniteDuration = Duration.Zero)
+final class Retry[In, Out, Context] private[streams](max: Int,
+                                                     uniqueIdMapper: Option[Context => Any] = None,
+                                                     failureDecider: Option[Try[Out] => Boolean] = None,
+                                                     delay: FiniteDuration = Duration.Zero,
+                                                     exponentialBackoffFactor: Double = 1.0,
+                                                     maxDelay: FiniteDuration = Duration.Zero)
   extends GraphStage[BidiShape[(In, Context), (In, Context), (Try[Out], Context), (Try[Out], Context)]] {
 
   private val in1 = Inlet[(In, Context)]("RetryBidi.in1")
@@ -158,7 +139,7 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int,
   private val timerName = "RetryStageTimer"
   override val shape = BidiShape(in1, out1, in2, out2)
 
-  require(maxRetries > 0, "maximum retry count must be positive")
+  require(max > 0, "maximum retry count must be positive")
   require(delay == Duration.Zero || delayAsNanos > precisionAsNanos, "Delay must be greater than timer precision")
   require(exponentialBackoffFactor >= 0.0, "backoff factor must be >= 0.0")
   require(maxDelay == Duration.Zero || maxDelay >= delay, "maxDelay must be larger than delay")
@@ -260,7 +241,7 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int,
         val key = uniqueId(context)
 
         if (isFailure(elem)) {
-          if (retryRegistry(key)._3 >= maxRetries) {
+          if (retryRegistry(key)._3 >= max) {
             retryRegistry -= key
 
             if (isAvailable(out2)) {
@@ -367,7 +348,7 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int,
   *   - [[Context]] is of type [[UniqueId.Envelope]]
   *   - [[Context]] can be mapped to a unique id by calling {{{uniqueIdMapper}}}
   *
-  * @param maxRetries     maximum number of retry attempts on any failures before giving up.
+  * @param max     maximum number of retry attempts on any failures before giving up.
   * @param uniqueIdMapper function that maps [[Context]] to a unique id
   * @param failureDecider function to determine if an element passed by the joined [[Flow]] is
   *                       actually a failure or not
@@ -379,13 +360,12 @@ final class RetryBidi[In, Out, Context] private[streams](maxRetries: Int,
   * @tparam Context the type of the context that is carried along with the elements.
   * @return a [[RetrySettings]] with specified values
   */
-case class RetrySettings[In, Out, Context] private[streams](
-   maxRetries: Int,
-   uniqueIdMapper: Option[Context => Any] = None,
-   failureDecider: Option[Try[Out] => Boolean] = None,
-   delay: FiniteDuration = Duration.Zero,
-   exponentialBackoffFactor: Double = 0.0,
-   maxDelay: FiniteDuration = Duration.Zero) {
+case class RetrySettings[In, Out, Context] private[streams](max: Int,
+                                                            uniqueIdMapper: Option[Context => Any] = None,
+                                                            failureDecider: Option[Try[Out] => Boolean] = None,
+                                                            delay: FiniteDuration = Duration.Zero,
+                                                            exponentialBackoffFactor: Double = 0.0,
+                                                            maxDelay: FiniteDuration = Duration.Zero) {
 
   def withUniqueIdMapper(uniqueIdMapper: Context => Any): RetrySettings[In, Out, Context] =
     copy(uniqueIdMapper = Some(uniqueIdMapper))
@@ -414,9 +394,9 @@ object RetrySettings {
     * Creates a [[RetrySettings]] with default values that can be used to create a RetryBidi
     *
     * @param maxRetries the maximum number of retry attempts on any failures before giving up.
-    * @tparam In Input type of [[RetryBidi]]
-    * @tparam Out Output type of [[RetryBidi]]
-    * @tparam Context the context type in [[RetryBidi]]
+    * @tparam In Input type of [[Retry]]
+    * @tparam Out Output type of [[Retry]]
+    * @tparam Context the context type in [[Retry]]
     * @return a [[RetrySettings]] with default values
     */
   def apply[In, Out, Context](maxRetries: Int): RetrySettings[In, Out, Context] =
@@ -427,9 +407,9 @@ object RetrySettings {
     *
     * Creates a [[RetrySettings]] with default values that can be used to create a RetryBidi
     *
-    * @tparam In Input type of [[org.squbs.streams.RetryBidi]]
-    * @tparam Out Output type of [[org.squbs.streams.RetryBidi]]
-    * @tparam Context the carried content in [[org.squbs.streams.RetryBidi]]
+    * @tparam In Input type of [[org.squbs.streams.Retry]]
+    * @tparam Out Output type of [[org.squbs.streams.Retry]]
+    * @tparam Context the carried content in [[org.squbs.streams.Retry]]
     * @return a [[RetrySettings]] with default values
     */
   def create[In, Out, Context](maxRetries: Integer): RetrySettings[In, Out, Context] =
