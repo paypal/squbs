@@ -23,6 +23,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState;
+import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
 
 import javax.management.ObjectName;
@@ -43,8 +44,8 @@ public class CircuitBreakerStateTest {
         AtomicCircuitBreakerState.create(
                 "java-params-with-default-exponential-backoff",
                 1,
-                FiniteDuration.create(50, TimeUnit.MILLISECONDS),
-                FiniteDuration.create(20, TimeUnit.MILLISECONDS),
+                Duration.create(50, TimeUnit.MILLISECONDS),
+                Duration.create(20, TimeUnit.MILLISECONDS),
                 system.dispatcher(),
                 system.scheduler());
         assertJmxValue("java-params-with-default-exponential-backoff", "MaxFailures", 1);
@@ -58,9 +59,9 @@ public class CircuitBreakerStateTest {
     public void testCreateCircuitBreakerStateWithExponentialBackoff() throws Exception {
         AtomicCircuitBreakerState.create(
                 "java-params-with-custom-exponential-backoff", 1,
-                FiniteDuration.create(50, TimeUnit.MILLISECONDS),
-                FiniteDuration.create(20, TimeUnit.MILLISECONDS),
-                FiniteDuration.create(2, TimeUnit.MINUTES),
+                Duration.create(50, TimeUnit.MILLISECONDS),
+                Duration.create(20, TimeUnit.MILLISECONDS),
+                Duration.create(2, TimeUnit.MINUTES),
                 16.0,
                 system.dispatcher(),
                 system.scheduler());

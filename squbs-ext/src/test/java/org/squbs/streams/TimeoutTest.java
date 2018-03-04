@@ -29,6 +29,7 @@ import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import org.junit.Assert;
 import org.junit.Test;
+import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
 import scala.util.Failure;
 import scala.util.Success;
@@ -49,7 +50,7 @@ public class TimeoutTest {
 
     final ActorSystem system = ActorSystem.create("TimeoutBidiFlowTest");
     final Materializer mat = ActorMaterializer.create(system);
-    final FiniteDuration timeout = FiniteDuration.create(300, TimeUnit.MILLISECONDS);
+    final FiniteDuration timeout = Duration.create(300, TimeUnit.MILLISECONDS);
     final Try<String> timeoutFailure = Failure.apply(new FlowTimeoutException("Flow timed out!"));
 
     @Test
