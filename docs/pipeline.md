@@ -103,6 +103,8 @@ dummyflow {
 
 A sample `DummyBidiFlow` looks like below:
 
+##### Scala
+
 ```scala
 class DummyBidiFlow extends PipelineFlowFactory {
 
@@ -116,6 +118,27 @@ class DummyBidiFlow extends PipelineFlowFactory {
 }
 ```
 
+##### Java
+
+```java
+public class DummyBidiFlow extends AbstractPipelineFlowFactory {
+
+    @Override
+    public BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed> create(Context context, ActorSystem system) {
+        return BidiFlow.fromGraph(GraphDSL.create(b -> {
+            final FlowShape<RequestContext, RequestContext> inbound = b.add(
+                    Flow.of(RequestContext.class)
+                            .map(rc -> rc.addRequestHeader(RawHeader.create("DummyRequest", "ReqValue"))));
+            final FlowShape<RequestContext, RequestContext> outbound = b.add(
+                    Flow.of(RequestContext.class)
+                            .map(rc -> rc.addResponseHeader(RawHeader.create("DummyResponse", "ResValue"))));
+
+            return BidiShape.fromFlows(inbound, outbound);
+        }));
+    }
+}
+```
+
 #### Aborting the flow
 In certain scenarios, a stage in pipeline may have a need to abort the flow and return an `HttpResponse`, e.g., in case of authentication/authorization.  In such scenarios, the rest of the pipeline should be skipped and the request should not reach to the squbs service.  To skip the rest of the flow: 
 
@@ -123,6 +146,8 @@ In certain scenarios, a stage in pipeline may have a need to abort the flow and 
 * call `abortWith` on `RequestContext` with an `HttpResponse` when you need to abort.
 
 In the below `DummyAbortableBidiFlow ` example, `authorization ` is a bidi flow with `abortable` and it aborts the flow is user is not authorized: 
+
+##### Scala
 
 ```scala
 class DummyAbortableBidiFlow extends PipelineFlowFactory {
@@ -158,6 +183,60 @@ class DummyAbortableBidiFlow extends PipelineFlowFactory {
 
     BidiShape.fromFlows(authorization, noneFlow)
   })
+}
+```
+
+##### Java
+
+```java
+public class DummyAbortableBidiFlow extends AbstractPipelineFlowFactory {
+
+    @Override
+    public BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed>
+    create(Context context, ActorSystem system) {
+
+        return BidiFlow.fromGraph(GraphDSL.create(b -> {
+            final FlowShape<RequestContext, RequestContext> inboundA = b.add(
+                Flow.of(RequestContext.class)
+                    .map(rc -> rc.addRequestHeader(RawHeader.create("keyInA", "valInA"))));
+            final FlowShape<RequestContext, RequestContext> inboundC = b.add(
+                Flow.of(RequestContext.class)
+                    .map(rc -> rc.addRequestHeader(RawHeader.create("keyInC", "valInC"))));
+            final FlowShape<RequestContext, RequestContext> outboundA = b.add(
+                Flow.of(RequestContext.class)
+                    .map(rc -> rc.addRequestHeader(RawHeader.create("keyOutA", "valOutA"))));
+            final FlowShape<RequestContext, RequestContext> outboundC = b.add(
+                Flow.of(RequestContext.class)
+                    .map(rc -> rc.addResponseHeader(RawHeader.create("keyOutC", "valOutC"))));
+
+            final BidiShape<RequestContext, RequestContext> inboundOutboundB =
+                b.add(Pipeline.abortable(authorization));
+
+            b.from(inboundA).toInlet(inboundOutboundB.in1());
+            b.to(inboundC).fromOutlet(inboundOutboundB.out1());
+            b.from(outboundC).toInlet(inboundOutboundB.in2());
+            b.to(outboundA).fromOutlet(inboundOutboundB.out2());
+
+            return new BidiShape<>(inboundA.in(), inboundC.out(), outboundC.in(), outboundA.out());
+        }));
+    }
+
+    final BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed> authorization =
+        BidiFlow.fromGraph(GraphDSL.create(b -> {
+            final FlowShape<RequestContext, RequestContext> authorization = b.add(
+                Flow.of(RequestContext.class)
+                    .map(rc -> {
+                        if (!isAuthorized()) {
+                            rc.abortWith(HttpResponse.create()
+                                .withStatus(StatusCodes.Unauthorized()).withEntity("Not Authorized!"));
+                        } else return rc;
+                    }));
+
+            FlowShape<RequestContext, RequestContext, NotUsed> noneFlow = b.add(
+                    Flow.of(RequestContext.class));
+
+            return BidiShape.fromFlows(authorization, noneFlow);
+        }));
 }
 ```
 

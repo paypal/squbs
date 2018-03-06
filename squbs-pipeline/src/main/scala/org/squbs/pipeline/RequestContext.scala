@@ -16,17 +16,42 @@
 
 package org.squbs.pipeline
 
+import java.util.Optional
+
+import akka.http.javadsl.model.{HttpRequest => jmHttpRequest, HttpResponse => jmHttpResponse}
 import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+import scala.compat.java8.OptionConverters._
 import scala.util.{Success, Try}
+
+object RequestContext {
+
+  /**
+    * Java API. For creating instance of RequestContext
+    */
+  def create(request: jmHttpRequest, httpPipeliningOrder: Long): RequestContext =
+    RequestContext(request.asInstanceOf[HttpRequest], httpPipeliningOrder)
+
+}
 
 case class RequestContext(request: HttpRequest,
                           httpPipeliningOrder: Long, // TODO Come up with a better val name
                           response: Option[Try[HttpResponse]] = None,
                           attributes: Map[String, Any] = Map.empty) {
 
-  def ++(attributes: (String, Any)*): RequestContext = {
+  def withResponse(response: Option[Try[HttpResponse]]): RequestContext = {
+    copy(response = response)
+  }
+
+  /*
+  Java API
+   */
+  def withResponse(response: Optional[Try[jmHttpResponse]]): RequestContext = {
+    withResponse(response.asScala.asInstanceOf[Option[Try[HttpResponse]]])
+  }
+
+  def withAttributes(attributes: (String, Any)*): RequestContext = {
     this.copy(attributes = this.attributes ++ attributes)
   }
 
@@ -34,10 +59,10 @@ case class RequestContext(request: HttpRequest,
   Java API
    */
   def withAttributes(attributes: java.util.List[(String, Any)]): RequestContext = {
-    ++(attributes: _*)
+    withAttributes(attributes = attributes.asScala: _*)
   }
 
-  def --(attributeKeys: String*): RequestContext = {
+  def removeAttributes(attributeKeys: String*): RequestContext = {
     this.copy(attributes = this.attributes -- attributeKeys)
   }
 
@@ -45,7 +70,7 @@ case class RequestContext(request: HttpRequest,
     Java API
   */
   def removeAttributes(attributeKeys: java.util.List[String]): RequestContext = {
-    --(attributeKeys: _*)
+    removeAttributes(attributeKeys.asScala: _*)
   }
 
   def attribute[T](key: String): Option[T] = {
@@ -72,4 +97,18 @@ case class RequestContext(request: HttpRequest,
   }
 
   def abortWith(httpResponse: HttpResponse): RequestContext = copy(response = Option(Try(httpResponse)))
+
+  /*
+    Java API
+   */
+  def getRequest: jmHttpRequest = request.asInstanceOf[jmHttpRequest]
+
+  def getResponse: Optional[Try[jmHttpResponse]] =
+    Optional.ofNullable(response.orNull.asInstanceOf[Try[jmHttpResponse]])
+
+  def getAttribute[T](key: String): Optional[T] = attribute(key).asJava
+
+  def abortWith(httpResponse: jmHttpResponse): RequestContext =
+    copy(response = Option(Try(httpResponse.asInstanceOf[HttpResponse])))
+
 }

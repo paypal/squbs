@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 PayPal
+ * Copyright 2018 PayPal
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,25 +18,46 @@ package org.squbs.pipeline
 
 import akka.NotUsed
 import akka.actor._
-import akka.stream.scaladsl._
+import akka.stream.{javadsl, scaladsl}
 import com.typesafe.config.ConfigObject
 
-import scala.annotation.tailrec
 import scala.util.Try
 
 sealed trait PipelineType
-case object ServerPipeline extends PipelineType
-case object ClientPipeline extends PipelineType
+case object ServerPipeline extends PipelineType {
+  def instance = this
+}
+case object ClientPipeline extends PipelineType {
+}
 
 case class Context(name: String, pipelineType: PipelineType)
 
-trait PipelineFlowFactory {
+sealed trait PipelineFlowFactoryType
+trait PipelineFlowFactory extends PipelineFlowFactoryType {
 
   def create(context: Context)(implicit system: ActorSystem):
-  BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]
+  scaladsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]
 }
 
-class PipelineExtensionImpl(flowFactoryMap: Map[String, PipelineFlowFactory],
+/**
+  * Java API
+  */
+object Pipeline {
+  def abortable(flow: javadsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]):
+  javadsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed] =
+    AbortableBidiFlow(flow.asScala).abortable.asJava
+}
+
+/**
+  * Java API
+  */
+abstract class AbstractPipelineFlowFactory extends PipelineFlowFactoryType {
+
+  def create(context: Context, system: ActorSystem):
+    javadsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]
+}
+
+class PipelineExtensionImpl(flowFactoryMap: Map[String, PipelineFlowFactoryType],
                             serverDefaultFlows: (Option[String], Option[String]),
                             clientDefaultFlows: (Option[String], Option[String]))
                            (implicit system: ActorSystem) extends Extension {
@@ -46,7 +67,7 @@ class PipelineExtensionImpl(flowFactoryMap: Map[String, PipelineFlowFactory],
     val (appFlow, defaultsOn) = pipelineSetting
 
     val (defaultPreFlow, defaultPostFlow) =
-      if(defaultsOn getOrElse true) {
+      if (defaultsOn getOrElse true) {
         context.pipelineType match {
           case ServerPipeline => serverDefaultFlows
           case ClientPipeline => clientDefaultFlows
@@ -54,28 +75,22 @@ class PipelineExtensionImpl(flowFactoryMap: Map[String, PipelineFlowFactory],
       } else (None, None)
 
     val pipelineFlowNames = (defaultPreFlow :: appFlow :: defaultPostFlow :: Nil).flatten
-
-    if(pipelineFlowNames.isEmpty) None
-    else buildPipeline(pipelineFlowNames, context)
+    buildPipeline(pipelineFlowNames, context)
   }
 
   private def buildPipeline(flowNames: Seq[String], context: Context) = {
 
-    val flows = flowNames.toList collect { case name =>
-      val flowFactory = flowFactoryMap.getOrElse(name, throw new IllegalArgumentException(s"Invalid pipeline name $name"))
-      flowFactory.create(context)
-    }
+    val flows = flowNames map { case name =>
+      val flowFactory = flowFactoryMap
+        .getOrElse(name, throw new IllegalArgumentException(s"Invalid pipeline name $name"))
 
-    @tailrec
-    def connectFlows(currentFlow: PipelineFlow, flowList: List[PipelineFlow]): PipelineFlow = {
-
-      flowList match {
-        case Nil => currentFlow
-        case head :: tail => connectFlows(currentFlow atop head, tail)
+      flowFactory match {
+        case factory: PipelineFlowFactory => factory.create(context)
+        case factory: AbstractPipelineFlowFactory => factory.create(context, system).asScala
+        case factory => throw new IllegalArgumentException(s"Unsupported flow factory type ${factory.getClass.getName}")
       }
     }
-
-    Some(connectFlows(flows.head, flows.tail))
+    flows.reduceLeftOption(_ atop _)
   }
 }
 
@@ -91,11 +106,11 @@ object PipelineExtension extends ExtensionId[PipelineExtensionImpl] with Extensi
         (n, v.toConfig)
     }
 
-    var flowMap = Map.empty[String, PipelineFlowFactory]
+    var flowMap = Map.empty[String, PipelineFlowFactoryType]
     flows foreach { case (name, config) =>
       val factoryClassName = config.getString("factory")
 
-      val flowFactory = Class.forName(factoryClassName).newInstance().asInstanceOf[PipelineFlowFactory]
+      val flowFactory = Class.forName(factoryClassName).newInstance().asInstanceOf[PipelineFlowFactoryType]
 
       flowMap = flowMap + (name -> flowFactory)
     }

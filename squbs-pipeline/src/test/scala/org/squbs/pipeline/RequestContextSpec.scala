@@ -38,11 +38,11 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
 
     rc1.attributes should have size 0
 
-    val rc2 = rc1.withAttributes(util.Arrays.asList(("key1" -> "val1")))
+    val rc2 = rc1.withAttributes(("key1" -> "val1"))
     rc1.attributes should have size 0 // Immutability
     rc2.attribute("key1") should be(Some("val1"))
 
-    val rc3 = rc2 ++ ("key2" -> 1) ++ ("key3"-> new Exception("Bad Val"))
+    val rc3 = rc2.withAttributes("key2" -> 1).withAttributes("key3"-> new Exception("Bad Val"))
     rc3.attribute("key2") should be(Some(1))
     rc3.attribute[Exception]("key3").value.getMessage should be("Bad Val")
     rc3.attribute("key1") should be(Some("val1"))
@@ -53,7 +53,7 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
     rc3.attributes should have size 3 // Immutability
     rc4.attributes should have size 2
 
-    val rc5 = rc4 -- ("notexists")
+    val rc5 = rc4.removeAttributes("notexists")
     rc5.attributes should have size 2
     rc5.attribute("key2") should be(Some(1))
     rc5.attribute[Exception]("key3").value.getMessage should be("Bad Val")
