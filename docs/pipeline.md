@@ -189,7 +189,7 @@ class DummyAbortableBidiFlow extends PipelineFlowFactory {
 ##### Java
 
 ```java
-public class DummyAbortableBidiFlow extends AbstractPipelineFlowFactory {
+public class DummyAbortableBidiFlow extends japi.PipelineFlowFactory {
 
     @Override
     public BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed>
@@ -210,7 +210,7 @@ public class DummyAbortableBidiFlow extends AbstractPipelineFlowFactory {
                     .map(rc -> rc.addResponseHeader(RawHeader.create("keyOutC", "valOutC"))));
 
             final BidiShape<RequestContext, RequestContext> inboundOutboundB =
-                b.add(Pipeline.abortable(authorization));
+                b.add(abortable(authorization));
 
             b.from(inboundA).toInlet(inboundOutboundB.in1());
             b.to(inboundC).fromOutlet(inboundOutboundB.out1());

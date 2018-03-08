@@ -24,40 +24,40 @@ import com.typesafe.config.ConfigObject
 import scala.util.Try
 
 sealed trait PipelineType
-case object ServerPipeline extends PipelineType {
-  def instance = this
-}
-case object ClientPipeline extends PipelineType {
-}
+case object ServerPipeline extends PipelineType
+case object ClientPipeline extends PipelineType
 
 case class Context(name: String, pipelineType: PipelineType)
 
-sealed trait PipelineFlowFactoryType
-trait PipelineFlowFactory extends PipelineFlowFactoryType {
+package japi {
+
+  import akka.stream.javadsl.BidiFlow
+
+  /**
+    * Java API
+    */
+  trait PipelineFlowFactory {
+
+    def create(context: Context, system: ActorSystem):
+    javadsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]
+
+    def abortable(flow: BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]):
+    javadsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed] =
+      AbortableBidiFlow(flow.asScala).abortable.asJava
+  }
+
+}
+
+trait PipelineFlowFactory extends japi.PipelineFlowFactory {
 
   def create(context: Context)(implicit system: ActorSystem):
   scaladsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]
+
+  override def create(context: Context, system: ActorSystem):
+  javadsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed] = create(context)(system).asJava
 }
 
-/**
-  * Java API
-  */
-object Pipeline {
-  def abortable(flow: javadsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]):
-  javadsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed] =
-    AbortableBidiFlow(flow.asScala).abortable.asJava
-}
-
-/**
-  * Java API
-  */
-abstract class AbstractPipelineFlowFactory extends PipelineFlowFactoryType {
-
-  def create(context: Context, system: ActorSystem):
-    javadsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]
-}
-
-class PipelineExtensionImpl(flowFactoryMap: Map[String, PipelineFlowFactoryType],
+class PipelineExtensionImpl(flowFactoryMap: Map[String, japi.PipelineFlowFactory],
                             serverDefaultFlows: (Option[String], Option[String]),
                             clientDefaultFlows: (Option[String], Option[String]))
                            (implicit system: ActorSystem) extends Extension {
@@ -86,7 +86,7 @@ class PipelineExtensionImpl(flowFactoryMap: Map[String, PipelineFlowFactoryType]
 
       flowFactory match {
         case factory: PipelineFlowFactory => factory.create(context)
-        case factory: AbstractPipelineFlowFactory => factory.create(context, system).asScala
+        case factory: japi.PipelineFlowFactory => factory.create(context, system).asScala
         case factory => throw new IllegalArgumentException(s"Unsupported flow factory type ${factory.getClass.getName}")
       }
     }
@@ -106,11 +106,11 @@ object PipelineExtension extends ExtensionId[PipelineExtensionImpl] with Extensi
         (n, v.toConfig)
     }
 
-    var flowMap = Map.empty[String, PipelineFlowFactoryType]
+    var flowMap = Map.empty[String, japi.PipelineFlowFactory]
     flows foreach { case (name, config) =>
       val factoryClassName = config.getString("factory")
 
-      val flowFactory = Class.forName(factoryClassName).newInstance().asInstanceOf[PipelineFlowFactoryType]
+      val flowFactory = Class.forName(factoryClassName).newInstance().asInstanceOf[japi.PipelineFlowFactory]
 
       flowMap = flowMap + (name -> flowFactory)
     }

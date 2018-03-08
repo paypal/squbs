@@ -24,9 +24,12 @@ import akka.stream.FlowShape;
 import akka.stream.javadsl.BidiFlow;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.GraphDSL;
+import org.squbs.pipeline.Context;
+import org.squbs.pipeline.RequestContext;
+import org.squbs.pipeline.japi.PipelineFlowFactory;
 
 //#create-pipelineflowfactory-java
-public class DummyFlowJ extends AbstractPipelineFlowFactory {
+public class DummyFlowJ implements PipelineFlowFactory {
 
     final private BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed> dummyBidi =
       BidiFlow.fromGraph(GraphDSL.create(b -> {

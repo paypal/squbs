@@ -45,21 +45,21 @@ public class AbortableBidiFlowTest {
 
     private static final String cfg =
         "dummyFlow2 {\n" +
-            "  type = squbs.pipelineflow\n" +
-            "  factory = org.squbs.pipeline.DummyFlow2J\n" +
-            "}\n" +
-            "preFlow {\n" +
-            "  type = squbs.pipelineflow\n" +
-            "  factory = org.squbs.pipeline.PreFlowJ\n" +
-            "}\n" +
-            "postFlow {\n" +
-            "  type = squbs.pipelineflow\n" +
-            "  factory = org.squbs.pipeline.PostFlowJ\n" +
-            "}\n" +
-            "squbs.pipeline.server.default {\n" +
-            "  pre-flow = preFlow\n" +
-            "  post-flow = postFlow\n" +
-            "}\n";
+        "  type = squbs.pipelineflow\n" +
+        "  factory = org.squbs.pipeline.DummyFlow2J\n" +
+        "}\n" +
+        "preFlow {\n" +
+        "  type = squbs.pipelineflow\n" +
+        "  factory = org.squbs.pipeline.PreFlowJ\n" +
+        "}\n" +
+        "postFlow {\n" +
+        "  type = squbs.pipelineflow\n" +
+        "  factory = org.squbs.pipeline.PostFlowJ\n" +
+        "}\n" +
+        "squbs.pipeline.server.default {\n" +
+        "  pre-flow = preFlow\n" +
+        "  post-flow = postFlow\n" +
+        "}\n";
 
     private static final ActorSystem system = ActorSystem.create("AbortableBidiFlowTest",
         ConfigFactory.parseString(cfg));
@@ -78,7 +78,7 @@ public class AbortableBidiFlowTest {
     public void testAbortableFlow() throws Exception {
         final BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed> pipelineFlow =
             pipeLineExtension.getFlow(new Tuple2<>(Option.apply("dummyFlow2"), Option.apply(true)),
-                new Context("dummy", ServerPipeline.instance())).get().asJava();
+                new Context("dummy", ServerPipeline$.MODULE$)).get().asJava();
 
         Flow<RequestContext, RequestContext, NotUsed> httpFlow = pipelineFlow.join(dummyEndpoint);
         final CompletionStage<RequestContext> result = Source
@@ -123,7 +123,7 @@ public class AbortableBidiFlowTest {
     public void testAbortableFlowWithAbort() throws Exception {
         final BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed> pipelineFlow =
             pipeLineExtension.getFlow(new Tuple2<>(Option.apply("dummyFlow2"), Option.apply(true)),
-                new Context("dummy", ServerPipeline.instance())).get().asJava();
+                new Context("dummy", ServerPipeline$.MODULE$)).get().asJava();
 
         Flow<RequestContext, RequestContext, NotUsed> httpFlow = pipelineFlow.join(dummyEndpoint);
         RawHeader abortHeader = RawHeader.create("abort", "dummyValue");

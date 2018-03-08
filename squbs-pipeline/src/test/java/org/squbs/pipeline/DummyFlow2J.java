@@ -26,13 +26,16 @@ import akka.stream.FlowShape;
 import akka.stream.javadsl.BidiFlow;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.GraphDSL;
+import org.squbs.pipeline.Context;
+import org.squbs.pipeline.RequestContext;
+import org.squbs.pipeline.japi.PipelineFlowFactory;
 
 import java.util.Comparator;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 //#create-abortable-pipelineflowfactory-java
-public class DummyFlow2J extends AbstractPipelineFlowFactory {
+public class DummyFlow2J implements PipelineFlowFactory {
 
     final private Flow<RequestContext, RequestContext, NotUsed> dummyAborterFlow = Flow.<RequestContext>create().map(rc ->
         rc.getRequest().getHeader("abort").map(x -> rc.abortWith(
@@ -63,7 +66,7 @@ public class DummyFlow2J extends AbstractPipelineFlowFactory {
             final FlowShape<RequestContext, RequestContext> stageB = b.add(Flow.of(RequestContext.class)
                 .map(rc -> rc.addRequestHeader(RawHeader.create("keyB", "valB"))));
             final BidiShape<RequestContext, RequestContext, RequestContext, RequestContext> stageC =
-                b.add(Pipeline.abortable(dummyBidi));
+                b.add(abortable(dummyBidi));
             final FlowShape<RequestContext, RequestContext> stageD = b.add(Flow.of(RequestContext.class)
                 .map(rc -> rc.addRequestHeader(RawHeader.create("keyD", "valD"))));
             final FlowShape<RequestContext, RequestContext> stageE = b.add(Flow.of(RequestContext.class)
