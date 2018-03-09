@@ -40,15 +40,15 @@ case class RequestContext(request: HttpRequest,
                           response: Option[Try[HttpResponse]] = None,
                           attributes: Map[String, Any] = Map.empty) {
 
-  def withResponse(response: Option[Try[HttpResponse]]): RequestContext = {
-    copy(response = response)
+  def withResponse(response: Try[HttpResponse]): RequestContext = {
+    copy(response = Option(response))
   }
 
   /*
   Java API
    */
-  def withResponse(response: Optional[Try[jmHttpResponse]]): RequestContext = {
-    withResponse(response.asScala.asInstanceOf[Option[Try[HttpResponse]]])
+  def withJavaResponse(response: Try[jmHttpResponse]): RequestContext = {
+    withResponse(response.asInstanceOf[Try[HttpResponse]])
   }
 
   def withAttributes(attributes: (String, Any)*): RequestContext = {

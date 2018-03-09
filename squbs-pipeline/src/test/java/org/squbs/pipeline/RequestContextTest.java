@@ -18,7 +18,6 @@ package org.squbs.pipeline;
 
 import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
-import akka.japi.Pair;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 import scala.util.Success;
@@ -53,9 +52,9 @@ public class RequestContextTest {
 
     @Test
     public void testCreateFromResponse() {
-        Optional<Try<HttpResponse>> respT = Optional.of(Success.apply(HttpResponse.create()));
-        RequestContext rc = RequestContext.create(HttpRequest.create(), 0).withResponse(respT);
-        assertEquals(rc.getResponse(), respT);
+        Try<HttpResponse> respT = Success.apply(HttpResponse.create());
+        RequestContext rc = RequestContext.create(HttpRequest.create(), 0).withJavaResponse(respT);
+        assertEquals(rc.getResponse(), Optional.of(respT));
     }
 
     @Test

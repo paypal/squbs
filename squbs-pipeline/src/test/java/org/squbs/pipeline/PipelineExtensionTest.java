@@ -34,7 +34,6 @@ import scala.util.Success;
 
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -68,13 +67,13 @@ public class PipelineExtensionTest {
     private static final PipelineExtensionImpl pipeLineExtension = PipelineExtension.get(system);
 
     private final Flow<RequestContext, RequestContext, NotUsed> dummyEndpoint = Flow.<RequestContext>create().map(r ->
-        RequestContext.create(r.getRequest(), r.httpPipeliningOrder()).withResponse(
-            Optional.of(Success.apply(HttpResponse.create()
+        RequestContext.create(r.getRequest(), r.httpPipeliningOrder()).withJavaResponse(
+            Success.apply(HttpResponse.create()
                 .withEntity(StreamSupport.stream(r.getRequest().getHeaders().spliterator(), false)
                     .sorted(Comparator.comparing(HttpHeader::name))
                     .map(Object::toString)
                     .collect(Collectors.joining(",")))
-                .withHeaders(r.getRequest().getHeaders())))));
+                .withHeaders(r.getRequest().getHeaders()))));
 
     @Test
     public void testFlowWithDefaults() throws Exception {

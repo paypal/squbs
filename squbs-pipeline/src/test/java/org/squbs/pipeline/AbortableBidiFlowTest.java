@@ -68,11 +68,11 @@ public class AbortableBidiFlowTest {
 
     private final Flow<RequestContext, RequestContext, NotUsed> dummyEndpoint = Flow.<RequestContext>create().map(rc ->
         RequestContext.create(rc.getRequest(), rc.httpPipeliningOrder())
-            .withResponse(Optional.of(Success.apply(HttpResponse.create()
+            .withJavaResponse(Success.apply(HttpResponse.create()
                 .withEntity(StreamSupport.stream(rc.getRequest().getHeaders().spliterator(), false)
                     .sorted(Comparator.comparing(HttpHeader::name))
                     .map(Object::toString)
-                    .collect(Collectors.joining(",")))))));
+                    .collect(Collectors.joining(","))))));
 
     @Test
     public void testAbortableFlow() throws Exception {
