@@ -106,6 +106,12 @@ object MaterializerSpec {
       |io.tcp {
       |  write-buffer-size = 16 KiB
       |}
+      |stream-ref {
+      |  buffer-capacity = 32
+      |  demand-redelivery-interval = 1 second
+      |  subscription-timeout = 30 seconds
+      |}
+      |blocking-io-dispatcher = "akka.stream.default-blocking-io-dispatcher"
     """.stripMargin)
 
   val boot = UnicomplexBoot(config)

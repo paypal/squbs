@@ -15,12 +15,12 @@
  */
 package org.squbs.httpclient
 import java.util.Optional
-import javax.net.ssl.SSLContext
 
-import akka.http.impl.model.JavaUri
 import akka.http.javadsl
+import akka.http.org.squbs.util.JavaConverters
 import akka.http.scaladsl.model.Uri
 import com.typesafe.config.Config
+import javax.net.ssl.SSLContext
 
 import scala.compat.java8.OptionConverters._
 
@@ -54,10 +54,6 @@ object HttpEndpoint {
   /**
    * Java API
    */
-  def create(uri: javadsl.model.Uri, sslContext: Optional[SSLContext], config: Optional[Config]): HttpEndpoint = {
-    uri match {
-      case JavaUri(sUri) => HttpEndpoint(sUri, sslContext.asScala, config.asScala)
-      case _ => throw new IllegalArgumentException("Illegitimately created uri.")
-    }
-  }
+  def create(uri: javadsl.model.Uri, sslContext: Optional[SSLContext], config: Optional[Config]): HttpEndpoint =
+    HttpEndpoint(JavaConverters.toScala(uri), sslContext.asScala, config.asScala)
 }
