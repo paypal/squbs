@@ -1,0 +1,8 @@
+name: squbs-pipelineTests
+
+tests:
+  - name: PipelineTests
+    classes:
+      - org.squbs.pipeline.PipelineExtensionTest
+      - org.squbs.pipeline.AbortableBidiFlowTest
+      - org.squbs.pipeline.RequestContextTest

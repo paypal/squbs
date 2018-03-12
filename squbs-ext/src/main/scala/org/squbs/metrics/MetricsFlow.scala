@@ -42,7 +42,7 @@ object MetricsFlow {
 
     val inbound = Flow[RequestContext].map { rc =>
       metrics.meter(requestCount).mark()
-      rc ++ (requestTime -> metrics.timer(requestTime).time())
+      rc.withAttribute(requestTime, metrics.timer(requestTime).time())
     }
 
     val outbound = Flow[RequestContext].map { rc =>

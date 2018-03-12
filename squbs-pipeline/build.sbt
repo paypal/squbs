@@ -12,7 +12,11 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "ch.qos.logback" % "logback-classic" % logbackInTestV % "test"
 )
+enablePlugins(de.johoop.testngplugin.TestNGPlugin)
 
-(testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pipeline")
+testOptions in Test ++= Seq(
+  Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pipeline"),
+  Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
+)
 
 updateOptions := updateOptions.value.withCachedResolution(true)

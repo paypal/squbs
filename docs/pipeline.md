@@ -103,16 +103,39 @@ dummyflow {
 
 A sample `DummyBidiFlow` looks like below:
 
+##### Scala
+
 ```scala
 class DummyBidiFlow extends PipelineFlowFactory {
 
   override def create(context: Context)(implicit system: ActorSystem): PipelineFlow = {
      BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
-      val inbound = b.add(Flow[RequestContext].map { rc => rc.addRequestHeader(RawHeader("DummyRequest", "ReqValue")) })
-      val outbound = b.add(Flow[RequestContext].map{ rc => rc.addResponseHeader(RawHeader("DummyResponse", "ResValue"))})
+      val inbound = b.add(Flow[RequestContext].map { rc => rc.withRequestHeader(RawHeader("DummyRequest", "ReqValue")) })
+      val outbound = b.add(Flow[RequestContext].map{ rc => rc.withResponseHeader(RawHeader("DummyResponse", "ResValue"))})
       BidiShape.fromFlows(inbound, outbound)
     })
   }
+}
+```
+
+##### Java
+
+```java
+public class DummyBidiFlow extends AbstractPipelineFlowFactory {
+
+    @Override
+    public BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed> create(Context context, ActorSystem system) {
+        return BidiFlow.fromGraph(GraphDSL.create(b -> {
+            final FlowShape<RequestContext, RequestContext> inbound = b.add(
+                    Flow.of(RequestContext.class)
+                            .map(rc -> rc.withRequestHeader(RawHeader.create("DummyRequest", "ReqValue"))));
+            final FlowShape<RequestContext, RequestContext> outbound = b.add(
+                    Flow.of(RequestContext.class)
+                            .map(rc -> rc.withResponseHeader(RawHeader.create("DummyResponse", "ResValue"))));
+
+            return BidiShape.fromFlows(inbound, outbound);
+        }));
+    }
 }
 ```
 
@@ -124,6 +147,8 @@ In certain scenarios, a stage in pipeline may have a need to abort the flow and 
 
 In the below `DummyAbortableBidiFlow ` example, `authorization ` is a bidi flow with `abortable` and it aborts the flow is user is not authorized: 
 
+##### Scala
+
 ```scala
 class DummyAbortableBidiFlow extends PipelineFlowFactory {
 
@@ -131,10 +156,10 @@ class DummyAbortableBidiFlow extends PipelineFlowFactory {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
-      val inboundA = b.add(Flow[RequestContext].map { rc => rc.addRequestHeader(RawHeader("keyInA", "valInA")) })
-      val inboundC = b.add(Flow[RequestContext].map { rc => rc.addRequestHeader(RawHeader("keyInC", "valInC")) })
-      val outboundA = b.add(Flow[RequestContext].map { rc => rc.addResponseHeaders(RawHeader("keyOutA", "valOutA"))})
-      val outboundC = b.add(Flow[RequestContext].map { rc => rc.addResponseHeaders(RawHeader("keyOutC", "valOutC"))})
+      val inboundA = b.add(Flow[RequestContext].map { rc => rc.withRequestHeader(RawHeader("keyInA", "valInA")) })
+      val inboundC = b.add(Flow[RequestContext].map { rc => rc.withRequestHeader(RawHeader("keyInC", "valInC")) })
+      val outboundA = b.add(Flow[RequestContext].map { rc => rc.withResponseHeader(RawHeader("keyOutA", "valOutA"))})
+      val outboundC = b.add(Flow[RequestContext].map { rc => rc.withResponseHeader(RawHeader("keyOutC", "valOutC"))})
 
       val inboundOutboundB = b.add(authorization abortable)
 
@@ -158,6 +183,60 @@ class DummyAbortableBidiFlow extends PipelineFlowFactory {
 
     BidiShape.fromFlows(authorization, noneFlow)
   })
+}
+```
+
+##### Java
+
+```java
+public class DummyAbortableBidiFlow extends japi.PipelineFlowFactory {
+
+    @Override
+    public BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed>
+    create(Context context, ActorSystem system) {
+
+        return BidiFlow.fromGraph(GraphDSL.create(b -> {
+            final FlowShape<RequestContext, RequestContext> inboundA = b.add(
+                Flow.of(RequestContext.class)
+                    .map(rc -> rc.withRequestHeader(RawHeader.create("keyInA", "valInA"))));
+            final FlowShape<RequestContext, RequestContext> inboundC = b.add(
+                Flow.of(RequestContext.class)
+                    .map(rc -> rc.withRequestHeader(RawHeader.create("keyInC", "valInC"))));
+            final FlowShape<RequestContext, RequestContext> outboundA = b.add(
+                Flow.of(RequestContext.class)
+                    .map(rc -> rc.withRequestHeader(RawHeader.create("keyOutA", "valOutA"))));
+            final FlowShape<RequestContext, RequestContext> outboundC = b.add(
+                Flow.of(RequestContext.class)
+                    .map(rc -> rc.withResponseHeader(RawHeader.create("keyOutC", "valOutC"))));
+
+            final BidiShape<RequestContext, RequestContext> inboundOutboundB =
+                b.add(abortable(authorization));
+
+            b.from(inboundA).toInlet(inboundOutboundB.in1());
+            b.to(inboundC).fromOutlet(inboundOutboundB.out1());
+            b.from(outboundC).toInlet(inboundOutboundB.in2());
+            b.to(outboundA).fromOutlet(inboundOutboundB.out2());
+
+            return new BidiShape<>(inboundA.in(), inboundC.out(), outboundC.in(), outboundA.out());
+        }));
+    }
+
+    final BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed> authorization =
+        BidiFlow.fromGraph(GraphDSL.create(b -> {
+            final FlowShape<RequestContext, RequestContext> authorization = b.add(
+                Flow.of(RequestContext.class)
+                    .map(rc -> {
+                        if (!isAuthorized()) {
+                            rc.abortWith(HttpResponse.create()
+                                .withStatus(StatusCodes.Unauthorized()).withEntity("Not Authorized!"));
+                        } else return rc;
+                    }));
+
+            FlowShape<RequestContext, RequestContext, NotUsed> noneFlow = b.add(
+                    Flow.of(RequestContext.class));
+
+            return BidiShape.fromFlows(authorization, noneFlow);
+        }));
 }
 ```
 

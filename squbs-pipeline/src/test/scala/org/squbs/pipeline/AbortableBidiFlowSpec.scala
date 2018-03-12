@@ -36,7 +36,7 @@ class AbortableBidiFlowSpec extends TestKit(ActorSystem("AbortableBidiFlowSpec",
   implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)
   val dummyEndpoint = Flow[RequestContext].map { rc =>
-    rc.copy(response = Some(Try(HttpResponse(entity = s"${rc.request.headers.sortBy(_.name).mkString(",")}"))))
+    rc.withResponse(Try(HttpResponse(entity = s"${rc.request.headers.sortBy(_.name).mkString(",")}")))
   }
 
   it should "run the entire flow" in {
@@ -125,12 +125,12 @@ class DummyFlow2 extends PipelineFlowFactory {
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
 
-      val stageA = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyA", "valA")) })
-      val stageB = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyB", "valB")) })
+      val stageA = b.add(Flow[RequestContext].map { rc => rc.withRequestHeaders(RawHeader("keyA", "valA")) })
+      val stageB = b.add(Flow[RequestContext].map { rc => rc.withRequestHeaders(RawHeader("keyB", "valB")) })
       val stageC = b.add(dummyBidi abortable)
-      val stageD = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyD", "valD")) })
-      val stageE = b.add(Flow[RequestContext].map { rc => rc.addResponseHeaders(RawHeader("keyE", "valE")) })
-      val stageF = b.add(Flow[RequestContext].map { rc => rc.addResponseHeaders(RawHeader("keyF", "valF")) })
+      val stageD = b.add(Flow[RequestContext].map { rc => rc.withRequestHeaders(RawHeader("keyD", "valD")) })
+      val stageE = b.add(Flow[RequestContext].map { rc => rc.withResponseHeaders(RawHeader("keyE", "valE")) })
+      val stageF = b.add(Flow[RequestContext].map { rc => rc.withResponseHeaders(RawHeader("keyF", "valF")) })
 
       stageA ~> stageB ~> stageC.in1
                           stageC.out1 ~> stageD
@@ -149,8 +149,8 @@ class DummyFlow2 extends PipelineFlowFactory {
   }
 
   val dummyBidi = BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
-    val requestFlow = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyC1", "valC1")) }.via(dummyAborterFlow) )
-    val responseFlow = b.add(Flow[RequestContext].map { rc => rc.addResponseHeaders(RawHeader("keyC2", "valC2")) } )
+    val requestFlow = b.add(Flow[RequestContext].map { rc => rc.withRequestHeaders(RawHeader("keyC1", "valC1")) }.via(dummyAborterFlow) )
+    val responseFlow = b.add(Flow[RequestContext].map { rc => rc.withResponseHeaders(RawHeader("keyC2", "valC2")) } )
     BidiShape.fromFlows(requestFlow, responseFlow)
   })
 }
