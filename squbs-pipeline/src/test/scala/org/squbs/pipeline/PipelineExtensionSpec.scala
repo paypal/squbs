@@ -36,7 +36,7 @@ class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec",
   implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)
   val dummyEndpoint = Flow[RequestContext].map { r =>
-    r.copy(response = Some(Try(HttpResponse(entity = s"${r.request.headers.sortBy(_.name).mkString(",")}"))))
+    r.withResponse(Try(HttpResponse(entity = s"${r.request.headers.sortBy(_.name).mkString(",")}")))
   }
 
   it should "build the flow with defaults" in {
@@ -148,7 +148,7 @@ class PipelineExtensionSpec3 extends TestKit(ActorSystem("PipelineExtensionSpec3
   implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)
   val dummyEndpoint = Flow[RequestContext].map { r =>
-    r.copy(response = Some(Try(HttpResponse(entity = s"${r.request.headers.sortBy(_.name).mkString(",")}"))))
+    r.withResponse(Try(HttpResponse(entity = s"${r.request.headers.sortBy(_.name).mkString(",")}")))
   }
 
   it should "return None when no custom flow exists and no defaults specified in config" in {

@@ -36,7 +36,7 @@ class AbortableBidiFlowSpec extends TestKit(ActorSystem("AbortableBidiFlowSpec",
   implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)
   val dummyEndpoint = Flow[RequestContext].map { rc =>
-    rc.copy(response = Some(Try(HttpResponse(entity = s"${rc.request.headers.sortBy(_.name).mkString(",")}"))))
+    rc.withResponse(Try(HttpResponse(entity = s"${rc.request.headers.sortBy(_.name).mkString(",")}")))
   }
 
   it should "run the entire flow" in {

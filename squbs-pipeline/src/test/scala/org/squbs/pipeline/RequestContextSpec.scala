@@ -68,7 +68,7 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
     rc3.response should be(None)
     rc3.request.headers should contain(RawHeader("key1", "val1"))
 
-    val rc4 = rc3.copy(response = Some(Try(HttpResponse())))
+    val rc4 = rc3.withResponse(Try(HttpResponse()))
     rc4.response.value.get.headers should have size 0
     val rc5 = rc4.withResponseHeader(RawHeader("key4", "val4"))
     val rc6 = rc5.withResponseHeaders(RawHeader("key5", "val5"), RawHeader("key6", "val6"))
