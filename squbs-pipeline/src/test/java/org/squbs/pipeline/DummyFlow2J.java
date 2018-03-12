@@ -50,9 +50,9 @@ public class DummyFlow2J implements PipelineFlowFactory {
     final private BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed> dummyBidi =
         BidiFlow.fromGraph(GraphDSL.create(b -> {
             final FlowShape<RequestContext, RequestContext> requestFlow = b.add(Flow.of(RequestContext.class)
-                .map(rc -> rc.addRequestHeader(RawHeader.create("keyC1", "valC1"))).via(dummyAborterFlow));
+                .map(rc -> rc.withRequestHeader(RawHeader.create("keyC1", "valC1"))).via(dummyAborterFlow));
             final FlowShape<RequestContext, RequestContext> responseFlow = b.add(Flow.of(RequestContext.class)
-                .map(rc -> rc.addResponseHeader(RawHeader.create("keyC2", "valC2"))));
+                .map(rc -> rc.withResponseHeader(RawHeader.create("keyC2", "valC2"))));
             return BidiShape.fromFlows(requestFlow, responseFlow);
         }));
 
@@ -62,17 +62,17 @@ public class DummyFlow2J implements PipelineFlowFactory {
 
         return BidiFlow.fromGraph(GraphDSL.create(b -> {
             final FlowShape<RequestContext, RequestContext> stageA = b.add(Flow.of(RequestContext.class)
-                .map(rc -> rc.addRequestHeader(RawHeader.create("keyA", "valA"))));
+                .map(rc -> rc.withRequestHeader(RawHeader.create("keyA", "valA"))));
             final FlowShape<RequestContext, RequestContext> stageB = b.add(Flow.of(RequestContext.class)
-                .map(rc -> rc.addRequestHeader(RawHeader.create("keyB", "valB"))));
+                .map(rc -> rc.withRequestHeader(RawHeader.create("keyB", "valB"))));
             final BidiShape<RequestContext, RequestContext, RequestContext, RequestContext> stageC =
                 b.add(abortable(dummyBidi));
             final FlowShape<RequestContext, RequestContext> stageD = b.add(Flow.of(RequestContext.class)
-                .map(rc -> rc.addRequestHeader(RawHeader.create("keyD", "valD"))));
+                .map(rc -> rc.withRequestHeader(RawHeader.create("keyD", "valD"))));
             final FlowShape<RequestContext, RequestContext> stageE = b.add(Flow.of(RequestContext.class)
-                .map(rc -> rc.addResponseHeader(RawHeader.create("keyE", "valE"))));
+                .map(rc -> rc.withResponseHeader(RawHeader.create("keyE", "valE"))));
             final FlowShape<RequestContext, RequestContext> stageF = b.add(Flow.of(RequestContext.class)
-                .map(rc -> rc.addResponseHeader(RawHeader.create("keyF", "valF"))));
+                .map(rc -> rc.withResponseHeader(RawHeader.create("keyF", "valF"))));
 
             b.from(stageA).via(stageB).toInlet(stageC.in1());
             b.to(stageD).fromOutlet(stageC.out1());

@@ -34,7 +34,7 @@ public class DummyFlowJ implements PipelineFlowFactory {
     final private BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed> dummyBidi =
       BidiFlow.fromGraph(GraphDSL.create(b -> {
           final FlowShape<RequestContext, RequestContext> requestFlow = b.add(Flow.of(RequestContext.class)
-            .map(rc -> rc.addRequestHeader(RawHeader.create("keyC", "valC"))));
+            .map(rc -> rc.withRequestHeader(RawHeader.create("keyC", "valC"))));
           final FlowShape<RequestContext, RequestContext> responseFlow = b.add(Flow.of(RequestContext.class));
           return BidiShape.fromFlows(requestFlow, responseFlow);
       }));
@@ -46,13 +46,13 @@ public class DummyFlowJ implements PipelineFlowFactory {
         return BidiFlow.fromGraph(GraphDSL.create(b -> {
             // each stage enriches RequestContext
             final FlowShape<RequestContext, RequestContext> stageA = b.add(Flow.of(RequestContext.class)
-              .map(rc -> rc.addRequestHeader(RawHeader.create("keyA", "valA"))));
+              .map(rc -> rc.withRequestHeader(RawHeader.create("keyA", "valA"))));
             final FlowShape<RequestContext, RequestContext> stageB = b.add(Flow.of(RequestContext.class)
-              .map(rc -> rc.addRequestHeader(RawHeader.create("keyB", "valB"))));
+              .map(rc -> rc.withRequestHeader(RawHeader.create("keyB", "valB"))));
             final BidiShape<RequestContext, RequestContext, RequestContext, RequestContext> stageC =
               b.add(dummyBidi);
             final FlowShape<RequestContext, RequestContext> stageD = b.add(Flow.of(RequestContext.class)
-              .map(rc -> rc.addResponseHeader(RawHeader.create("keyD", "valD"))));
+              .map(rc -> rc.withResponseHeader(RawHeader.create("keyD", "valD"))));
 
             b.from(stageA).via(stageB).toInlet(stageC.in1());
             b.to(stageD).fromOutlet(stageC.out2());

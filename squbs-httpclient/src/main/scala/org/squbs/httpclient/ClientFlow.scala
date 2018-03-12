@@ -251,7 +251,7 @@ object ClientFlow {
     PipelineExtension(system).getFlow(pipelineSetting, Context(name, ClientPipeline)) match {
       case Some(pipeline) =>
         val tupleToRequestContext = Flow[(HttpRequest, T)].map { case (request, t) =>
-          RequestContext(request, 0).withAttributes(AkkaHttpClientCustomContext -> t)
+          RequestContext(request, 0).withAttribute(AkkaHttpClientCustomContext, t)
         }
 
         val fromRequestContextToTuple = Flow[RequestContext].map { rc =>
@@ -274,7 +274,7 @@ object ClientFlow {
         })
       case None =>
         val customContextToRequestContext = Flow[(HttpRequest, T)].map { case (request, t) =>
-          (request, RequestContext(request, 0).withAttributes(AkkaHttpClientCustomContext -> t))
+          (request, RequestContext(request, 0).withAttribute(AkkaHttpClientCustomContext, t))
         }
 
         val requestContextToCustomContext =

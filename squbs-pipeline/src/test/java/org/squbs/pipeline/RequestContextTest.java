@@ -31,12 +31,11 @@ public class RequestContextTest {
     @Test
     public void testCreateWithAttributes() {
         List<String> testL = Arrays.asList("1", "2", "3");
-        List<Tuple2<String, Object>> attrs = Arrays.asList(
-            Tuple2.apply("keyA", "strA"),
-            Tuple2.apply("keyB", testL),
-            Tuple2.apply("keyC", "strC"));
 
-        RequestContext rc = RequestContext.create(HttpRequest.create(), 0).withAttributes(attrs);
+        RequestContext rc = RequestContext.create(HttpRequest.create(), 0)
+                .withAttribute("keyA", "strA")
+                .withAttribute("keyB", testL)
+                .withAttribute("keyC", "strC");
         assertEquals(rc.getAttribute("keyA"), Optional.of("strA"));
         assertEquals(rc.getAttribute("keyB"), Optional.of(testL));
         assertEquals(rc.getAttribute("keyC"), Optional.of("strC"));
@@ -53,7 +52,7 @@ public class RequestContextTest {
     @Test
     public void testCreateFromResponse() {
         Try<HttpResponse> respT = Success.apply(HttpResponse.create());
-        RequestContext rc = RequestContext.create(HttpRequest.create(), 0).withJavaResponse(respT);
+        RequestContext rc = RequestContext.create(HttpRequest.create(), 0).withResponse(respT);
         assertEquals(rc.getResponse(), Optional.of(respT));
     }
 

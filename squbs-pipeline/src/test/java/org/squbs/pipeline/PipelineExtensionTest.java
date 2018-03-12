@@ -67,7 +67,7 @@ public class PipelineExtensionTest {
     private static final PipelineExtensionImpl pipeLineExtension = PipelineExtension.get(system);
 
     private final Flow<RequestContext, RequestContext, NotUsed> dummyEndpoint = Flow.<RequestContext>create().map(r ->
-        RequestContext.create(r.getRequest(), r.httpPipeliningOrder()).withJavaResponse(
+        RequestContext.create(r.getRequest(), r.httpPipeliningOrder()).withResponse(
             Success.apply(HttpResponse.create()
                 .withEntity(StreamSupport.stream(r.getRequest().getHeaders().spliterator(), false)
                     .sorted(Comparator.comparing(HttpHeader::name))

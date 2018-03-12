@@ -18,97 +18,68 @@ package org.squbs.pipeline
 
 import java.util.Optional
 
-import akka.http.javadsl.model.{HttpRequest => jmHttpRequest, HttpResponse => jmHttpResponse}
-import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse}
+import akka.http.javadsl.{model => jm}
+import akka.http.scaladsl.{model => sm}
 
+import scala.annotation.varargs
 import scala.collection.JavaConverters._
 import scala.compat.java8.OptionConverters._
 import scala.util.{Success, Try}
 
 object RequestContext {
 
+  def apply(request: sm.HttpRequest, httpPipeliningOrder: Long): RequestContext =
+    new RequestContext(request, httpPipeliningOrder)
+
   /**
-    * Java API. For creating instance of RequestContext
+    * Java API
     */
-  def create(request: jmHttpRequest, httpPipeliningOrder: Long): RequestContext =
-    RequestContext(request.asInstanceOf[HttpRequest], httpPipeliningOrder)
+  def create(request: jm.HttpRequest, httpPipeliningOrder: Long): RequestContext =
+    apply(request.asInstanceOf[sm.HttpRequest], httpPipeliningOrder)
 
 }
 
-case class RequestContext(request: HttpRequest,
-                          httpPipeliningOrder: Long, // TODO Come up with a better val name
-                          response: Option[Try[HttpResponse]] = None,
-                          attributes: Map[String, Any] = Map.empty) {
+case class RequestContext private (request: sm.HttpRequest,
+                                   httpPipeliningOrder: Long,
+                                   response: Option[Try[sm.HttpResponse]] = None,
+                                   attributes: Map[String, Any] = Map.empty) {
 
-  def withResponse(response: Try[HttpResponse]): RequestContext = {
-    copy(response = Option(response))
-  }
+  def withResponse(response: Try[jm.HttpResponse]): RequestContext =
+    copy(response = Option(response.map(_.asInstanceOf[sm.HttpResponse])))
 
-  /*
-  Java API
-   */
-  def withJavaResponse(response: Try[jmHttpResponse]): RequestContext = {
-    withResponse(response.asInstanceOf[Try[HttpResponse]])
-  }
+  def withAttribute(name: String, value: Any): RequestContext =
+    this.copy(attributes = this.attributes + (name -> value))
 
-  def withAttributes(attributes: (String, Any)*): RequestContext = {
-    this.copy(attributes = this.attributes ++ attributes)
-  }
+  def removeAttribute(name: String): RequestContext = this.copy(attributes = this.attributes - name)
 
-  /*
-  Java API
-   */
-  def withAttributes(attributes: java.util.List[(String, Any)]): RequestContext = {
-    withAttributes(attributes = attributes.asScala: _*)
-  }
+  def withRequestHeader(header: jm.HttpHeader): RequestContext = withRequestHeaders(header)
 
-  def removeAttributes(attributeKeys: String*): RequestContext = {
-    this.copy(attributes = this.attributes -- attributeKeys)
-  }
+  @varargs
+  def withRequestHeaders(headers: jm.HttpHeader*): RequestContext = copy(request = request.addHeaders(headers.asJava))
 
-  /*
-    Java API
-  */
-  def removeAttributes(attributeKeys: java.util.List[String]): RequestContext = {
-    removeAttributes(attributeKeys.asScala: _*)
-  }
+  def withResponseHeader(header: jm.HttpHeader): RequestContext = withResponseHeaders(header)
 
-  def attribute[T](key: String): Option[T] = {
-    attributes.get(key) flatMap (v => Option(v).asInstanceOf[Option[T]])
-  }
+  @varargs
+  def withResponseHeaders(headers: jm.HttpHeader*): RequestContext =
+    copy(response = response.map(_.map(_.addHeaders(headers.asJava))))
 
-  def addRequestHeader(header: HttpHeader): RequestContext = {
-    copy(request = request.copy(headers = request.headers :+ header))
-  }
+  def abortWith(httpResponse: jm.HttpResponse): RequestContext =
+    copy(response = Option(Try(httpResponse.asInstanceOf[sm.HttpResponse])))
 
-  def addRequestHeaders(headers: HttpHeader*): RequestContext = {
-    copy(request = request.copy(headers = request.headers ++ headers))
-  }
+  def attribute[T](key: String): Option[T] = attributes.get(key) flatMap (v => Option(v).asInstanceOf[Option[T]])
 
-  def addResponseHeader(header: HttpHeader): RequestContext = {
-    addResponseHeaders(header)
-  }
-
-  def addResponseHeaders(headers: HttpHeader*): RequestContext = {
-    response.fold(this) {
-      case Success(resp) => copy(response = Option(Try(resp.copy(headers = resp.headers ++ headers))))
-      case _ => this
-    }
-  }
-
-  def abortWith(httpResponse: HttpResponse): RequestContext = copy(response = Option(Try(httpResponse)))
-
-  /*
-    Java API
-   */
-  def getRequest: jmHttpRequest = request.asInstanceOf[jmHttpRequest]
-
-  def getResponse: Optional[Try[jmHttpResponse]] =
-    Optional.ofNullable(response.orNull.asInstanceOf[Try[jmHttpResponse]])
-
+  /**
+    * Java API
+    */
   def getAttribute[T](key: String): Optional[T] = attribute(key).asJava
 
-  def abortWith(httpResponse: jmHttpResponse): RequestContext =
-    copy(response = Option(Try(httpResponse.asInstanceOf[HttpResponse])))
+  /**
+    Java API
+   */
+  def getRequest: jm.HttpRequest = request
 
+  /**
+    * Java API
+    */
+  def getResponse: Optional[Try[jm.HttpResponse]] = response.map(_.map(_.asInstanceOf[jm.HttpResponse])).asJava
 }

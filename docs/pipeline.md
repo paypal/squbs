@@ -110,8 +110,8 @@ class DummyBidiFlow extends PipelineFlowFactory {
 
   override def create(context: Context)(implicit system: ActorSystem): PipelineFlow = {
      BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
-      val inbound = b.add(Flow[RequestContext].map { rc => rc.addRequestHeader(RawHeader("DummyRequest", "ReqValue")) })
-      val outbound = b.add(Flow[RequestContext].map{ rc => rc.addResponseHeader(RawHeader("DummyResponse", "ResValue"))})
+      val inbound = b.add(Flow[RequestContext].map { rc => rc.withRequestHeader(RawHeader("DummyRequest", "ReqValue")) })
+      val outbound = b.add(Flow[RequestContext].map{ rc => rc.withResponseHeader(RawHeader("DummyResponse", "ResValue"))})
       BidiShape.fromFlows(inbound, outbound)
     })
   }
@@ -128,10 +128,10 @@ public class DummyBidiFlow extends AbstractPipelineFlowFactory {
         return BidiFlow.fromGraph(GraphDSL.create(b -> {
             final FlowShape<RequestContext, RequestContext> inbound = b.add(
                     Flow.of(RequestContext.class)
-                            .map(rc -> rc.addRequestHeader(RawHeader.create("DummyRequest", "ReqValue"))));
+                            .map(rc -> rc.withRequestHeader(RawHeader.create("DummyRequest", "ReqValue"))));
             final FlowShape<RequestContext, RequestContext> outbound = b.add(
                     Flow.of(RequestContext.class)
-                            .map(rc -> rc.addResponseHeader(RawHeader.create("DummyResponse", "ResValue"))));
+                            .map(rc -> rc.withResponseHeader(RawHeader.create("DummyResponse", "ResValue"))));
 
             return BidiShape.fromFlows(inbound, outbound);
         }));
@@ -156,10 +156,10 @@ class DummyAbortableBidiFlow extends PipelineFlowFactory {
 
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
-      val inboundA = b.add(Flow[RequestContext].map { rc => rc.addRequestHeader(RawHeader("keyInA", "valInA")) })
-      val inboundC = b.add(Flow[RequestContext].map { rc => rc.addRequestHeader(RawHeader("keyInC", "valInC")) })
-      val outboundA = b.add(Flow[RequestContext].map { rc => rc.addResponseHeaders(RawHeader("keyOutA", "valOutA"))})
-      val outboundC = b.add(Flow[RequestContext].map { rc => rc.addResponseHeaders(RawHeader("keyOutC", "valOutC"))})
+      val inboundA = b.add(Flow[RequestContext].map { rc => rc.withRequestHeader(RawHeader("keyInA", "valInA")) })
+      val inboundC = b.add(Flow[RequestContext].map { rc => rc.withRequestHeader(RawHeader("keyInC", "valInC")) })
+      val outboundA = b.add(Flow[RequestContext].map { rc => rc.withResponseHeader(RawHeader("keyOutA", "valOutA"))})
+      val outboundC = b.add(Flow[RequestContext].map { rc => rc.withResponseHeader(RawHeader("keyOutC", "valOutC"))})
 
       val inboundOutboundB = b.add(authorization abortable)
 
@@ -198,16 +198,16 @@ public class DummyAbortableBidiFlow extends japi.PipelineFlowFactory {
         return BidiFlow.fromGraph(GraphDSL.create(b -> {
             final FlowShape<RequestContext, RequestContext> inboundA = b.add(
                 Flow.of(RequestContext.class)
-                    .map(rc -> rc.addRequestHeader(RawHeader.create("keyInA", "valInA"))));
+                    .map(rc -> rc.withRequestHeader(RawHeader.create("keyInA", "valInA"))));
             final FlowShape<RequestContext, RequestContext> inboundC = b.add(
                 Flow.of(RequestContext.class)
-                    .map(rc -> rc.addRequestHeader(RawHeader.create("keyInC", "valInC"))));
+                    .map(rc -> rc.withRequestHeader(RawHeader.create("keyInC", "valInC"))));
             final FlowShape<RequestContext, RequestContext> outboundA = b.add(
                 Flow.of(RequestContext.class)
-                    .map(rc -> rc.addRequestHeader(RawHeader.create("keyOutA", "valOutA"))));
+                    .map(rc -> rc.withRequestHeader(RawHeader.create("keyOutA", "valOutA"))));
             final FlowShape<RequestContext, RequestContext> outboundC = b.add(
                 Flow.of(RequestContext.class)
-                    .map(rc -> rc.addResponseHeader(RawHeader.create("keyOutC", "valOutC"))));
+                    .map(rc -> rc.withResponseHeader(RawHeader.create("keyOutC", "valOutC"))));
 
             final BidiShape<RequestContext, RequestContext> inboundOutboundB =
                 b.add(abortable(authorization));

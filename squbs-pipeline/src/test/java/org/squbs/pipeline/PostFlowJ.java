@@ -24,8 +24,6 @@ import akka.stream.FlowShape;
 import akka.stream.javadsl.BidiFlow;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.GraphDSL;
-import org.squbs.pipeline.Context;
-import org.squbs.pipeline.RequestContext;
 import org.squbs.pipeline.japi.PipelineFlowFactory;
 
 public class PostFlowJ implements PipelineFlowFactory {
@@ -34,9 +32,9 @@ public class PostFlowJ implements PipelineFlowFactory {
     create(Context context, ActorSystem system) {
         return BidiFlow.fromGraph(GraphDSL.create(b -> {
             final FlowShape<RequestContext, RequestContext> inbound = b.add(Flow.of(RequestContext.class)
-              .map(rc -> rc.addRequestHeader(RawHeader.create("keyPostInbound", "valPostInbound"))));
+              .map(rc -> rc.withRequestHeader(RawHeader.create("keyPostInbound", "valPostInbound"))));
             final FlowShape<RequestContext, RequestContext> outbound = b.add(Flow.of(RequestContext.class)
-              .map(rc -> rc.addResponseHeader(RawHeader.create("keyPostOutbound", "valPostOutbound"))));
+              .map(rc -> rc.withResponseHeader(RawHeader.create("keyPostOutbound", "valPostOutbound"))));
             return BidiShape.fromFlows(inbound, outbound);
         }));
     }

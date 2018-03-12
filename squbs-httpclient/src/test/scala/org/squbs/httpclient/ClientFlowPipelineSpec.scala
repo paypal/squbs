@@ -176,10 +176,10 @@ class DummyFlow extends PipelineFlowFactory {
     BidiFlow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
 
-      val stageA = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyA", "valA")) })
-      val stageB = b.add(Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyB", "valB")) })
+      val stageA = b.add(Flow[RequestContext].map { rc => rc.withRequestHeader(RawHeader("keyA", "valA")) })
+      val stageB = b.add(Flow[RequestContext].map { rc => rc.withRequestHeader(RawHeader("keyB", "valB")) })
       val stageC = b.add(dummyBidi)
-      val stageD = b.add(Flow[RequestContext].map { rc => rc.addResponseHeaders(RawHeader("keyD", "valD")) })
+      val stageD = b.add(Flow[RequestContext].map { rc => rc.withResponseHeader(RawHeader("keyD", "valD")) })
 
       stageA ~> stageB ~> stageC.in1
       stageD <~           stageC.out2
@@ -188,15 +188,15 @@ class DummyFlow extends PipelineFlowFactory {
     })
   }
 
-  val requestFlow = Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyC", "valC")) }
+  val requestFlow = Flow[RequestContext].map { rc => rc.withRequestHeader(RawHeader("keyC", "valC")) }
   val dummyBidi =  BidiFlow.fromFlows(requestFlow, Flow[RequestContext])
 }
 
 class PreFlow extends PipelineFlowFactory {
 
   override def create(context: Context)(implicit system: ActorSystem): PipelineFlow = {
-    val inbound = Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyPreInbound", "valPreInbound")) }
-    val outbound = Flow[RequestContext].map { rc => rc.addResponseHeaders(RawHeader("keyPreOutbound", "valPreOutbound")) }
+    val inbound = Flow[RequestContext].map { rc => rc.withRequestHeader(RawHeader("keyPreInbound", "valPreInbound")) }
+    val outbound = Flow[RequestContext].map { rc => rc.withResponseHeader(RawHeader("keyPreOutbound", "valPreOutbound")) }
     BidiFlow.fromFlows(inbound, outbound)
   }
 }
@@ -204,8 +204,8 @@ class PreFlow extends PipelineFlowFactory {
 class PostFlow extends PipelineFlowFactory {
 
   override def create(context: Context)(implicit system: ActorSystem): PipelineFlow = {
-    val inbound = Flow[RequestContext].map { rc => rc.addRequestHeaders(RawHeader("keyPostInbound", "valPostInbound")) }
-    val outbound = Flow[RequestContext].map { rc => rc.addResponseHeaders(RawHeader("keyPostOutbound", "valPostOutbound")) }
+    val inbound = Flow[RequestContext].map { rc => rc.withRequestHeader(RawHeader("keyPostInbound", "valPostInbound")) }
+    val outbound = Flow[RequestContext].map { rc => rc.withResponseHeader(RawHeader("keyPostOutbound", "valPostOutbound")) }
     BidiFlow.fromFlows(inbound, outbound)
   }
 }

@@ -38,22 +38,22 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
 
     rc1.attributes should have size 0
 
-    val rc2 = rc1.withAttributes(("key1" -> "val1"))
+    val rc2 = rc1.withAttribute("key1", "val1")
     rc1.attributes should have size 0 // Immutability
     rc2.attribute("key1") should be(Some("val1"))
 
-    val rc3 = rc2.withAttributes("key2" -> 1).withAttributes("key3"-> new Exception("Bad Val"))
+    val rc3 = rc2.withAttribute("key2", 1).withAttribute("key3", new Exception("Bad Val"))
     rc3.attribute("key2") should be(Some(1))
     rc3.attribute[Exception]("key3").value.getMessage should be("Bad Val")
     rc3.attribute("key1") should be(Some("val1"))
 
     rc3.attributes should have size 3
 
-    val rc4 = rc3.removeAttributes(util.Arrays.asList("key1"))
+    val rc4 = rc3.removeAttribute("key1")
     rc3.attributes should have size 3 // Immutability
     rc4.attributes should have size 2
 
-    val rc5 = rc4.removeAttributes("notexists")
+    val rc5 = rc4.removeAttribute("notexists")
     rc5.attributes should have size 2
     rc5.attribute("key2") should be(Some(1))
     rc5.attribute[Exception]("key3").value.getMessage should be("Bad Val")
@@ -61,8 +61,8 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
 
   it should "handle headers correctly" in {
     val rc1 = RequestContext(HttpRequest(), 0)
-    val rc2 = rc1.addRequestHeader(RawHeader("key1", "val1"))
-    val rc3 = rc2.addRequestHeaders(RawHeader("key2", "val2"), RawHeader("key3", "val3"))
+    val rc2 = rc1.withRequestHeader(RawHeader("key1", "val1"))
+    val rc3 = rc2.withRequestHeaders(RawHeader("key2", "val2"), RawHeader("key3", "val3"))
 
     rc3.request.headers should have size 3
     rc3.response should be(None)
@@ -70,9 +70,9 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
 
     val rc4 = rc3.copy(response = Some(Try(HttpResponse())))
     rc4.response.value.get.headers should have size 0
-    val rc5 = rc4.addResponseHeader(RawHeader("key4", "val4"))
-    val rc6 = rc5.addResponseHeaders(RawHeader("key5", "val5"), RawHeader("key6", "val6"))
-    val rc7 = rc6.addResponseHeader(RawHeader("key7", "val7"))
+    val rc5 = rc4.withResponseHeader(RawHeader("key4", "val4"))
+    val rc6 = rc5.withResponseHeaders(RawHeader("key5", "val5"), RawHeader("key6", "val6"))
+    val rc7 = rc6.withResponseHeader(RawHeader("key7", "val7"))
     rc7.request.headers should have size 3
     rc7.response.value.get.headers should have size 4
     rc7.response.value.get.headers should contain(RawHeader("key4", "val4"))
