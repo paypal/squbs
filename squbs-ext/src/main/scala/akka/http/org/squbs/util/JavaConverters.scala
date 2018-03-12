@@ -73,4 +73,6 @@ object JavaConverters {
   js.Flow[Pair[jm.HttpRequest, T], Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] = {
     adaptTupleFlow[T](flow)
   }
+
+  def toScala(uri: akka.http.javadsl.model.Uri) = JavaMapping.toScala(uri)
 }
