@@ -16,12 +16,15 @@
 
 package org.squbs.httpclient
 
+import java.lang.management.ManagementFactory
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
+import javax.management.ObjectName
 import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
 import org.squbs.resolver._
 import org.squbs.testkit.Timeouts._
@@ -98,5 +101,21 @@ class ClientFlowSpec  extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
     an [HttpClientEndpointNotExistException] should be thrownBy {
       ClientFlow[Int]("cannotResolve")
     }
+  }
+
+  it should "use default for the scheme" in {
+    // https://github.com/paypal/squbs/issues/616
+    ClientFlow[Int]("http://wwww.google.com:80")
+    Future {
+      assertJmxValue("http://wwww.google.com:80", "EndpointUri", "http://wwww.google.com")
+      assertJmxValue("http://wwww.google.com:80", "EndpointPort", "80")
+    }
+  }
+
+  def assertJmxValue(clientName: String, key: String, expectedValue: Any) = {
+    val oName = ObjectName.getInstance(
+      s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=${ObjectName.quote(clientName)}")
+    val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
+    actualValue shouldEqual expectedValue
   }
 }

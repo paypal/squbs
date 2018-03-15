@@ -139,6 +139,7 @@ class HttpClientJMXSpec extends FlatSpecLike with Matchers {
 
     assertJmxValue("sampleClient", "Name", "sampleClient")
     assertJmxValue("sampleClient", "EndpointUri", "http://localhost:8080")
+    assertJmxValue("sampleClient", "EndpointPort", "8080")
     assertJmxValue("sampleClient", "Environment", "DEFAULT")
     assertJmxValue("sampleClient", "Pipeline", "N/A")
     assertJmxValue("sampleClient", "DefaultPipeline", "on")
