@@ -15,16 +15,10 @@
  */
 package org.squbs.httpclient
 
-import javax.management.MXBean
-
-import akka.http.scaladsl.model.Uri.ParsingMode.{Relaxed, Strict}
 import akka.http.scaladsl.settings.ConnectionPoolSettings
-import akka.http.scaladsl.settings.ParserSettings.CookieParsingMode.{RFC6265, Raw}
-import akka.http.scaladsl.settings.ParserSettings.ErrorLoggingVerbosity.{Full, Off, Simple}
-import akka.http.scaladsl.settings.ParserSettings.IllegalResponseHeaderValueProcessingMode
-import akka.http.scaladsl.settings.ParserSettings.IllegalResponseHeaderValueProcessingMode.{Ignore, Warn}
 import akka.io.Inet.SO.{ReceiveBufferSize, ReuseAddress, SendBufferSize, TrafficClass}
 import akka.io.Tcp.SO.{KeepAlive, OOBInline, TcpNoDelay}
+import javax.management.MXBean
 
 import scala.language.implicitConversions
 
@@ -32,6 +26,7 @@ import scala.language.implicitConversions
 trait HttpClientConfigMXBean {
   def getName: String
   def getEndpointUri: String
+  def getEndpointPort: String
   def getEnvironment: String
   def getPipeline: String
   def getDefaultPipeline: String
@@ -86,6 +81,7 @@ trait HttpClientConfigMXBean {
 
 case class HttpClientConfigMXBeanImpl(name: String,
                                       endpointUri: String,
+                                      endpointPort: Int,
                                       environment: String,
                                       pipeline: Option[String],
                                       defaultPipelineOn: Option[Boolean],
@@ -144,6 +140,8 @@ case class HttpClientConfigMXBeanImpl(name: String,
   override def getName: String = name
 
   override def getEndpointUri: String = endpointUri
+
+  override def getEndpointPort: String = endpointPort.toString
 
   override def getEnvironment: String = environment
 

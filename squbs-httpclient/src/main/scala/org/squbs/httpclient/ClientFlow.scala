@@ -150,6 +150,7 @@ object ClientFlow {
     val clientConfigWithDefaults = clientSpecificConfig.map(_.withFallback(config)).getOrElse(config)
     val cps = settings.getOrElse(ConnectionPoolSettings(clientConfigWithDefaults))
 
+    val endpointPort = endpoint.uri.effectivePort
     val clientConnectionFlow =
       if (endpoint.uri.scheme == "https") {
 
@@ -162,10 +163,10 @@ object ClientFlow {
         } getOrElse Http().defaultClientHttpsContext
 
         Http().cachedHostConnectionPoolHttps[RequestContext](endpoint.uri.authority.host.address,
-          endpoint.uri.authority.port, httpsConnectionContext, cps)
+          endpointPort, httpsConnectionContext, cps)
       } else {
         Http().cachedHostConnectionPool[RequestContext](endpoint.uri.authority.host.address,
-          endpoint.uri.authority.port, cps)
+          endpointPort, cps)
       }
 
     val enableCircuitBreaker =
@@ -185,6 +186,7 @@ object ClientFlow {
     if(!mBeanServer.isRegistered(beanName)) mBeanServer.registerMBean(HttpClientConfigMXBeanImpl(
       name,
       endpoint.uri.toString,
+      endpointPort,
       environment.name,
       pipelineName,
       defaultFlowsOn,
