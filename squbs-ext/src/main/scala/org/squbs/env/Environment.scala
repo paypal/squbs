@@ -131,9 +131,9 @@ trait EnvironmentResolverRegistryMXBean {
 case class EnvironmentResolverRegistryMXBeanImpl(system: ActorSystem) extends EnvironmentResolverRegistryMXBean {
 
   override def getEnvironmentResolverInfo: util.List[EnvironmentResolverInfo] = {
-    import scala.collection.JavaConversions._
-    EnvironmentResolverRegistry(system).environmentResolvers.zipWithIndex map { case(resolver, position) =>
+    import scala.collection.JavaConverters._
+    EnvironmentResolverRegistry(system).environmentResolvers.zipWithIndex.map { case(resolver, position) =>
       EnvironmentResolverInfo(position, resolver.name, resolver.getClass.getName)
-    }
+    }.asJava
   }
 }

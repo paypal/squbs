@@ -39,6 +39,7 @@ import org.squbs.unicomplex.UnicomplexBoot.StartupType
 
 import scala.annotation.varargs
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.control.NonFatal
@@ -276,23 +277,20 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   class CubesBean extends CubesMXBean {
 
     override def getCubes: util.List[CubeInfo] = {
-      import scala.collection.JavaConversions._
-
-      cubes.values.toSeq map { c =>
+      cubes.values.toSeq.map { c =>
         CubeInfo(c._1.info.name, c._1.info.fullName, c._1.info.version, c._1.cubeSupervisor.toString())
-      }
+      }.asJava
     }
   }
 
   class ExtensionsBean extends ExtensionsMXBean {
     override def getExtensions: util.List[ExtensionInfo] = {
-      import scala.collection.JavaConversions._
-      extensions map { e =>
+      extensions.map { e =>
         val (phase, ex) = e.exceptions.headOption map {
           case (iphase, exception) => (iphase, exception.toString)
         } getOrElse (("", ""))
         ExtensionInfo(e.info.name, e.sequence, phase, ex)
-      }
+      }.asJava
     }
   }
 
@@ -618,8 +616,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   import context.dispatcher
 
-  import scala.collection.JavaConversions._
-
   val cubeName = self.path.name
   val actorErrorStatesAgent = Agent[Map[String, ActorErrorState]](Map())
 
@@ -633,7 +629,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     override def getWellKnownActors: String = context.children.mkString(",")
 
-    override def getActorErrorStates: util.List[ActorErrorState] = actorErrorStatesAgent().values.toList
+    override def getActorErrorStates: util.List[ActorErrorState] = actorErrorStatesAgent().values.toList.asJava
   }
 
   override def preStart() {

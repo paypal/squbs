@@ -20,6 +20,7 @@ import akka.NotUsed
 import akka.actor._
 import akka.stream.{javadsl, scaladsl}
 import com.typesafe.config.ConfigObject
+import collection.JavaConverters._
 
 import scala.util.Try
 
@@ -100,8 +101,7 @@ object PipelineExtension extends ExtensionId[PipelineExtensionImpl] with Extensi
 
     val config = system.settings.config
 
-    import collection.JavaConversions._
-    val flows = config.root.toSeq collect {
+    val flows = config.root.asScala.toSeq collect {
       case (n, v: ConfigObject) if v.toConfig.hasPath("type") && v.toConfig.getString("type") == "squbs.pipelineflow" =>
         (n, v.toConfig)
     }

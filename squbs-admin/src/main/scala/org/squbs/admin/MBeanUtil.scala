@@ -25,7 +25,7 @@ import org.json4s.JsonAST._
 import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.util.Try
 
 object MBeanUtil {
@@ -34,7 +34,7 @@ object MBeanUtil {
 
   def allObjectNames: List[String] = {
     val beans = server.queryMBeans(null, null)
-    beans.map { bean =>
+    beans.asScala.map { bean =>
       bean.getObjectName.toString
     } .toList.sorted
   }
@@ -103,7 +103,7 @@ object MBeanUtil {
     }
 
     private def toJObject(c: CompositeData) =
-      JObject(c.getCompositeType.keySet.toList.sorted collect {
+      JObject(c.getCompositeType.keySet.asScala.toList.sorted collect {
         case key if !(exclusions contains key) => key -> eval { c.get(key)}
       })
 

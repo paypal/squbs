@@ -23,6 +23,8 @@ import org.scalatest._
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex.dummyfailedextensions.{DummyFailedExtensionA, DummyFailedExtensionB}
+import scala.collection.JavaConverters._
+
 
 object SystemStatusTest {
 
@@ -35,12 +37,10 @@ object SystemStatusTest {
 		"InitFailCube",
     "DummyFailedExtensions") map (dummyJarsDir + "/" + _)
 
-	import scala.collection.JavaConversions._
-
 	val mapConfig = ConfigFactory.parseMap(
 		Map(
 			"squbs.actorsystem-name" -> "SystemStatusTest",
-			"squbs." + JMX.prefixConfig -> Boolean.box(true)))
+			"squbs." + JMX.prefixConfig -> Boolean.box(true)).asJava)
 
   val boot = UnicomplexBoot(mapConfig)
     .createUsing {

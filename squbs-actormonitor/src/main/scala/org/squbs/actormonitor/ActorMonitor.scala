@@ -21,7 +21,7 @@ import org.squbs.actormonitor.ActorMonitorBean._
 import org.squbs.lifecycle.GracefulStopHelper
 import org.squbs.unicomplex.JMX._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 private[actormonitor] case class ActorMonitorConfig(maxActorCount: Int, maxChildrenDisplay: Int)
 
@@ -36,12 +36,12 @@ private[actormonitor] class ActorMonitor(_monitorConfig: ActorMonitorConfig) ext
 
   override def postStop() {
     unregister(prefix + configBean)
-    totalBeans foreach unregister
+    totalBeans.asScala.foreach(unregister)
   }
 
   def receive = {
     case "refresh" =>
-      totalBeans foreach unregister
+      totalBeans.asScala.foreach(unregister)
       context.actorSelection("/*") ! Identify(monitorConfig)
     case ActorIdentity(monitorConfig: ActorMonitorConfig , Some(actor))=>
       implicit val config = monitorConfig

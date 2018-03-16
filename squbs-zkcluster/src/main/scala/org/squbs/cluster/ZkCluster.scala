@@ -34,7 +34,7 @@ import org.apache.zookeeper.server.quorum.flexible.QuorumMaj
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
 import org.squbs.cluster.rebalance.{DataCenterAwareRebalanceLogic, RebalanceLogic}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -124,7 +124,7 @@ case class ZkCluster(zkAddress: Address,
     val properties = new Properties
     properties.load(new ByteArrayInputStream(bytes))
     val newConfig = new QuorumMaj(properties)
-    newConfig.getAllMembers.values() map { server =>
+    newConfig.getAllMembers.values().asScala.map { server =>
       server.addr.getAddress.getHostAddress + ":" + server.clientAddr.getPort
     } mkString ","
   }
@@ -151,7 +151,7 @@ case class ZkCluster(zkAddress: Address,
     stopped set true
     val client = curatorFwk.get()
     client.getConnectionStateListenable.removeListener(connectionStateListener)
-    shutdownListeners foreach (_(curatorFwkWithNs()))
+    shutdownListeners.asScala.foreach (_(curatorFwkWithNs()))
     client.close()
   }
 }

@@ -26,7 +26,7 @@ import org.apache.curator.framework.api.CuratorWatcher
 import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.language.postfixOps
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
@@ -58,7 +58,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
   override def postStop(): Unit = stopped set true
 
   private def initialize()(implicit curatorFwk: CuratorFramework) = {
-    segmentsToPartitions = curatorFwk.getChildren.forPath("/segments").map{
+    segmentsToPartitions = curatorFwk.getChildren.forPath("/segments").asScala.map{
       segment => segment -> watchOverSegment(segment)
     }.toMap
   }
@@ -73,6 +73,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
             self ! ZkSegmentChanged(
               segment,
               curatorFwk.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath)
+                .asScala
                 .map { p => ByteString(pathToKey(p))}.toSet
             )
           case _ =>
@@ -99,7 +100,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
     }
     partitionWatchers += segment -> partitionWatcher
     //initialize with the current set of partitions
-    curatorFwk.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath).map{p =>
+    curatorFwk.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath).asScala.map{p =>
       val partitionKey = ByteString(pathToKey(p))
       partitionKey -> watchOverPartition(segment, partitionKey, partitionWatcher)
     }.collect{
@@ -193,15 +194,15 @@ object ZkPartitionsManager {
   def loadPartitions()(implicit zkClient: CuratorFramework,
                        segmentationLogic: SegmentationLogic): Map[ByteString, ZkPartitionData] = {
     import segmentationLogic._
-    zkClient.getChildren.forPath("/segments") flatMap { segment =>
-      zkClient.getChildren.forPath(s"/segments/$segment")
-    } map { key =>
+    zkClient.getChildren.forPath("/segments").asScala.flatMap { segment =>
+      zkClient.getChildren.forPath(s"/segments/$segment").asScala
+    }.map { key =>
       val parKey = ByteString(pathToKey(key))
       val size = partitionSize(parKey)
       val members = partitionServants(parKey)
       val props = Try(zkClient.getData.forPath(partitionZkPath(parKey))) getOrElse Array.empty
       parKey -> ZkPartitionData(parKey, members, size, props)
-    } toMap
+    }.toMap
   }
 
   private def partitionServants(partitionKey: ByteString)

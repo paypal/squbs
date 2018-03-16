@@ -21,7 +21,7 @@ import com.typesafe.config.ConfigException.{Missing, WrongType}
 import com.typesafe.config.{Config, ConfigException, ConfigMemorySize}
 import com.typesafe.scalalogging.LazyLogging
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 import scala.util.matching.Regex
@@ -43,12 +43,12 @@ object ConfigUtil extends LazyLogging {
     def getTry[T: TypeTag](path: String): Try[T] = Try {
       (typeTag[T] match {
         case StringTag => underlying.getString(path)
-        case StringListTag => underlying.getStringList(path).toSeq
+        case StringListTag => underlying.getStringList(path).asScala.toSeq
         case TypeTag.Int => underlying.getInt(path)
         case TypeTag.Boolean => underlying.getBoolean(path)
         case TypeTag.Double => underlying.getDouble(path)
         case ConfigTag => underlying.getConfig(path)
-        case ConfigListTag => underlying.getConfigList(path).toSeq
+        case ConfigListTag => underlying.getConfigList(path).asScala.toSeq
         case RegexTag => new Regex(underlying.getString(path))
         case ConfigMemorySizeTag => underlying.getMemorySize(path)
         case FiniteDurationTag => Duration(underlying.getString(path)).asInstanceOf[FiniteDuration]
@@ -94,7 +94,7 @@ object ConfigUtil extends LazyLogging {
         } catch {
           case e: ConfigException.Missing => None
         }
-      list map (_.toSeq)
+      list map (_.asScala.toSeq)
     }
 
 
@@ -130,7 +130,7 @@ object ConfigUtil extends LazyLogging {
         } catch {
           case e: ConfigException.Missing => None
         }
-      list map (_.toSeq)
+      list map (_.asScala.toSeq)
     }
 
     def getOptionalDuration(path: String): Option[FiniteDuration] = {
@@ -152,7 +152,7 @@ object ConfigUtil extends LazyLogging {
   }
 
   def ipv4 = {
-    val addresses = NetworkInterface.getNetworkInterfaces flatMap (_.getInetAddresses) filter { a =>
+    val addresses = NetworkInterface.getNetworkInterfaces.asScala.flatMap (_.getInetAddresses.asScala) filter { a =>
       a.isInstanceOf[Inet4Address] && !a.isLoopbackAddress
     }
     addresses.next().getHostAddress

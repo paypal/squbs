@@ -22,7 +22,7 @@ import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot}
 import org.squbs.testkit.{PortGetter, CustomTestKit => SCustomTestKit}
 
-import scala.collection.JavaConversions.asScalaBuffer
+import scala.collection.JavaConverters._
 
 abstract class CustomTestKit(val boot: UnicomplexBoot) extends PortGetter {
   val system: ActorSystem = boot.actorSystem
@@ -46,15 +46,15 @@ abstract class CustomTestKit(val boot: UnicomplexBoot) extends PortGetter {
   }
 
   def this(resources: java.util.List[String], withClassPath: Boolean) {
-    this(SCustomTestKit.boot(resources = Option(resources.toList), withClassPath = Option(withClassPath)))
+    this(SCustomTestKit.boot(resources = Option(resources.asScala.toList), withClassPath = Option(withClassPath)))
   }
 
   def this(actorSystemName: String, resources: java.util.List[String], withClassPath: Boolean) {
-    this(SCustomTestKit.boot(Option(actorSystemName), resources = Option(resources.toList), withClassPath = Option(withClassPath)))
+    this(SCustomTestKit.boot(Option(actorSystemName), resources = Option(resources.asScala.toList), withClassPath = Option(withClassPath)))
   }
 
   def this(config: Config, resources: java.util.List[String], withClassPath: Boolean) {
-    this(SCustomTestKit.boot(config = Option(config), resources = Option(resources.toList), withClassPath = Option(withClassPath)))
+    this(SCustomTestKit.boot(config = Option(config), resources = Option(resources.asScala.toList), withClassPath = Option(withClassPath)))
   }
 
   def shutdown() = Unicomplex(system).uniActor ! GracefulStop

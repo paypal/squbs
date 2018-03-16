@@ -36,6 +36,7 @@ import org.squbs.util.ConfigUtil._
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
@@ -89,11 +90,10 @@ object UnicomplexBoot extends LazyLogging {
       case None =>
         // Sorry, the configDir is used to read the file. So it cannot be read from this config file.
         val configDir = new File(baseConfig.getString(extConfigDirKey))
-        import collection.JavaConversions._
         val configNames = baseConfig.getStringList(extConfigNameKey)
         configNames.add("application")
         val parseOptions = ConfigParseOptions.defaults().setAllowMissing(true)
-        val addConfigs = configNames map {
+        val addConfigs = configNames.asScala.map {
           name => ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
         }
         if (addConfigs.isEmpty) baseConfig
@@ -112,8 +112,7 @@ object UnicomplexBoot extends LazyLogging {
     val cpResources: Seq[URL] =
       if (withClassPath) {
         val loader = getClass.getClassLoader
-        import scala.collection.JavaConversions._
-        Seq("conf", "json", "properties") flatMap { ext => loader.getResources(s"META-INF/squbs-meta.$ext") }
+        Seq("conf", "json", "properties").flatMap { ext => loader.getResources(s"META-INF/squbs-meta.$ext").asScala }
       } else Seq.empty
 
     // Dedup the resources, just in case.
@@ -413,8 +412,7 @@ object UnicomplexBoot extends LazyLogging {
   }
 
   def configuredListeners(config: Config): Map[String, Config] = {
-    import collection.JavaConversions._
-    val listeners = config.root.toSeq collect {
+    val listeners = config.root.asScala.toSeq.collect {
       case (n, v: ConfigObject) if v.toConfig.getOption[String]("type").contains("squbs.listener") => (n, v.toConfig)
     }
 
