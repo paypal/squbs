@@ -24,7 +24,7 @@ import org.junit.Rule
 import org.squbs.testkit.{DebugTiming, PortGetter, CustomTestKit => SCustomTestKit}
 import org.squbs.unicomplex.UnicomplexBoot
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 abstract class JUnitCustomRouteTestKit(val boot: UnicomplexBoot) extends {
   implicit override val system: ActorSystem = boot.actorSystem
@@ -50,11 +50,11 @@ abstract class JUnitCustomRouteTestKit(val boot: UnicomplexBoot) extends {
   }
 
   def this(resources: java.util.List[String], withClassPath: Boolean) {
-    this(SCustomTestKit.boot(resources = Option(resources), withClassPath = Option(withClassPath)))
+    this(SCustomTestKit.boot(resources = Option(resources.asScala), withClassPath = Option(withClassPath)))
   }
 
   def this(config: Config, resources: java.util.List[String], withClassPath: Boolean) {
-    this(SCustomTestKit.boot(config = Option(config), resources = Option(resources),
+    this(SCustomTestKit.boot(config = Option(config), resources = Option(resources.asScala),
       withClassPath = Option(withClassPath)))
   }
 }

@@ -30,6 +30,7 @@ import com.typesafe.config.Config
 import scala.beans.BeanProperty
 import scala.collection.concurrent.TrieMap
 import scala.language.{implicitConversions, postfixOps}
+import scala.collection.JavaConverters._
 
 object JMX {
 
@@ -200,10 +201,9 @@ trait ForkJoinPoolMXBean {
 
 class SystemSettingBean(config: Config) extends SystemSettingMXBean {
   lazy val settings:util.List[SystemSetting] = {
-    import scala.collection.JavaConversions._
     def iterateMap(prefix: String, map: util.Map[String, AnyRef]): util.Map[String, String] = {
       val result = new util.TreeMap[String, String]()
-      map.foreach {
+      map.asScala.foreach {
         case (key, v: util.List[_]) =>
           val value = v.asInstanceOf[util.List[AnyRef]]
           result.putAll(iterateList(s"$prefix$key", value))
@@ -218,7 +218,7 @@ class SystemSettingBean(config: Config) extends SystemSettingMXBean {
     def iterateList(prefix: String, list: util.List[AnyRef]): util.Map[String, String] = {
       val result = new util.TreeMap[String, String]()
 
-      list.zipWithIndex.foreach{
+      list.asScala.zipWithIndex.foreach{
         case (v: util.List[_], i) =>
           val value = v.asInstanceOf[util.List[AnyRef]]
           result.putAll(iterateList(s"$prefix[$i]", value))
@@ -230,9 +230,9 @@ class SystemSettingBean(config: Config) extends SystemSettingMXBean {
       result
     }
 
-    iterateMap("", config.root.unwrapped()).toList.map{case (k:String, v:String) => {
+    iterateMap("", config.root.unwrapped()).asScala.toList.map{case (k:String, v:String) => {
       SystemSetting(k, v)
-    }}
+    }}.asJava
   }
   override def getSystemSetting: util.List[SystemSetting] = settings
 }

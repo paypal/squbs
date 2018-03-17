@@ -28,6 +28,7 @@ import org.squbs.util.ConfigUtil._
 import scala.concurrent.ExecutionContext
 import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
+import scala.collection.JavaConverters._
 
 trait ServiceRegistryBase[A] {
 
@@ -175,11 +176,10 @@ trait WebContext {
 class ListenerBean[A](listenerRoutes: => Map[String, Seq[(A, FlowWrapper, PipelineSetting)]]) extends ListenerMXBean {
 
   override def getListeners: java.util.List[ListenerInfo] = {
-    import scala.collection.JavaConversions._
     listenerRoutes.flatMap { case (listenerName, routes) =>
       routes map { case (webContext, servant, _) => // TODO Pass PipelineSetting
         ListenerInfo(listenerName, webContext.toString, servant.actor.toString)
       }
-    }.toSeq
+    }.toSeq.asJava
   }
 }

@@ -26,7 +26,7 @@ import net.openhft.chronicle.wire.{WireIn, WireOut}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.util.Random
 
 object StreamSpecUtil {
@@ -50,7 +50,7 @@ class StreamSpecUtil[T, S](outputPort: Int = 1) {
       "persist-dir" -> s"${tempPath.getAbsolutePath}",
       "output-ports" -> s"$outputPorts",
       "roll-cycle" -> "TEST_SECONDLY".toLowerCase()
-    )
+    ).asJava
   }
 
   val in = Source(1 to elementCount)

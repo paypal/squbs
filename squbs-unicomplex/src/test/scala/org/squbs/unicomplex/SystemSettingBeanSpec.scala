@@ -18,7 +18,7 @@ package org.squbs.unicomplex
 
 import com.typesafe.config.{ConfigFactory}
 import org.scalatest.{Matchers, FlatSpecLike}
-import collection.JavaConversions._
+import collection.JavaConverters._
 
 class SystemSettingBeanSpec extends FlatSpecLike with Matchers{
 
@@ -56,7 +56,7 @@ class SystemSettingBeanSpec extends FlatSpecLike with Matchers{
         |}
       """.stripMargin)
     val bean = new SystemSettingBean(config)
-    val settings = bean.getSystemSetting
+    val settings = bean.getSystemSetting.asScala
     settings.length should be(19)
     settings.find(_.key.equals("root.str")).get.value should be("1")
     settings.find(_.key.equals("root.number")).get.value should be("2")

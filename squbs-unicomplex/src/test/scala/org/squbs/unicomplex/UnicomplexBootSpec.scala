@@ -22,6 +22,7 @@ import com.typesafe.config.{ConfigException, ConfigFactory}
 import java.io.{File, PrintWriter}
 
 import scala.util.Try
+import scala.collection.JavaConverters._
 
 class UnicomplexBootSpec extends FunSpecLike with Matchers {
 
@@ -66,10 +67,9 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
     }
 
     it ("Should load addOnConfig if provided") {
-      import scala.collection.JavaConversions._
       val addOnConfig = ConfigFactory.parseMap(Map(
         "squbs.testAttribute" -> "foobar"
-      ))
+      ).asJava)
       val config = getFullConfig(Some(addOnConfig))
       config.getString("squbs.actorsystem-name") should be ("squbs")
       config.getString("squbs.testAttribute") should be ("foobar")
@@ -244,10 +244,9 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
     }
 
     it ("should merge the addOnConfig with original config") {
-      import scala.collection.JavaConversions._
       val addOnConfig = ConfigFactory.parseMap(Map(
         "configTest" -> Boolean.box(true)
-      ))
+      ).asJava)
       val finalConfig = UnicomplexBoot.getFullConfig(Some(addOnConfig))
       Try(finalConfig.getConfig("squbs")).toOption should not be (None)
       finalConfig.getBoolean("configTest") should be (true)

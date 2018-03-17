@@ -26,6 +26,7 @@ import org.squbs.cluster.JMX._
 
 import scala.language.postfixOps
 import scala.util.Try
+import scala.collection.JavaConverters._
 
 private[cluster] sealed trait ZkClusterState
 
@@ -95,16 +96,14 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
 
   // reflect the current memory snapshot in the MXBean
   class MembersInfoBean extends MembersInfoMXBean {
-    import scala.collection.JavaConversions._
     override def getLeader: String = stateData.leader.map(_.toString).toString
-    override def getMembers: util.List[String] = stateData.members.map(_.toString).toList
+    override def getMembers: util.List[String] = stateData.members.map(_.toString).toList.asJava
   }
 
   class PartitionsInfoBean extends PartitionsInfoMXBean {
-    import scala.collection.JavaConversions._
-    override def getPartitions: util.List[PartitionInfo] = stateData.partitions map {
+    override def getPartitions: util.List[PartitionInfo] = stateData.partitions.map {
       case (key, data) => PartitionInfo(key, partitionZkPath(key), data.members.mkString(","))
-    } toList
+    }.toList.asJava
   }
 
   //the reason we put startWith into #preStart is to allow postRestart to trigger new FSM actor when recover from error

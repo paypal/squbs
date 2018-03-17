@@ -29,7 +29,7 @@ import org.squbs.util.ConfigUtil._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.util.Try
 
 object CustomTestKit {
@@ -91,7 +91,7 @@ object CustomTestKit {
 
     targetPathOption map { targetPath =>
       Seq("conf", "json", "properties")
-        .flatMap { ext => loader.getResources(s"META-INF/squbs-meta.$ext") }
+        .flatMap { ext => loader.getResources(s"META-INF/squbs-meta.$ext").asScala }
         .map { _.getPath}
         .filter { _.startsWith(targetPath) }
     } getOrElse Seq.empty
@@ -99,7 +99,7 @@ object CustomTestKit {
 
   def defaultConfig(actorSystemName: String): Config = {
     val baseConfig = ConfigFactory.load()
-    val listeners = baseConfig.root.toSeq collect {
+    val listeners = baseConfig.root.asScala.toSeq.collect {
       case (n, v: ConfigObject) if v.toConfig.getOption[String]("type").contains("squbs.listener") => n
     }
 

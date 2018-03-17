@@ -26,7 +26,7 @@ import org.apache.curator.framework.recipes.leader.{LeaderLatch, LeaderLatchList
 import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 private[cluster] case class ZkLeaderElected(address: Option[Address])
 private[cluster] case class ZkMembersChanged(members: Set[Address])
@@ -75,7 +75,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
       override def process(event: WatchedEvent): Unit = {
         log.debug("[membership] membership watch event:{} when stopped:{}", event, stopped.toString)
         if(!stopped.get && event.getType == EventType.NodeChildrenChanged) {
-          refresh(curatorFwk.getChildren.usingWatcher(this).forPath("/members"))
+          refresh(curatorFwk.getChildren.usingWatcher(this).forPath("/members").asScala)
         }
       }
     }).forPath("/members")
@@ -85,7 +85,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
       zkClusterActor ! ZkMembersChanged(members.map(m => AddressFromURIString(pathToKey(m))).toSet)
     }
 
-    refresh(members)
+    refresh(members.asScala)
   }
   
   override def postStop(): Unit = {

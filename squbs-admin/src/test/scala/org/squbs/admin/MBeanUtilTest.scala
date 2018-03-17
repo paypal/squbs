@@ -25,7 +25,7 @@ import org.json4s.jackson.JsonMethods._
 import org.scalatest._
 
 import scala.beans.{BeanProperty, BooleanBeanProperty}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class MBeanUtilTest extends FunSpecLike with Matchers with BeforeAndAfterAll with Inspectors with OptionValues {
 
@@ -37,7 +37,7 @@ class MBeanUtilTest extends FunSpecLike with Matchers with BeforeAndAfterAll wit
         AnotherTestObject("Hi TestObject2", props1 = false)), Array(KeyValueObject("foo", "bar"),
         KeyValueObject("foobar", "baz")),
       Map("foo" -> AnotherTestObject("Hi TestObject3", props1 = false),
-        "bar" -> AnotherTestObject("Hi TestObject4", props1 = true)))
+        "bar" -> AnotherTestObject("Hi TestObject4", props1 = true)).asJava)
 
     ManagementFactory.getPlatformMBeanServer.registerMBean(testBean,
       new ObjectName("org.squbs.admin.test:type=TestBean"))

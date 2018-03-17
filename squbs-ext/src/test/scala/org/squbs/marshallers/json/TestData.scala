@@ -19,6 +19,7 @@ import java.util
 
 import org.json4s.CustomSerializer
 import org.json4s.JsonAST._
+import scala.collection.JavaConverters._
 
 object TestData {
   val fullTeamWithPrivateMembers: TeamWithPrivateMembers = {
@@ -46,14 +47,13 @@ object TestData {
     new EmployeeBean(4, "Liz", "Taylor", 35, false)
   ))
 
-  import scala.collection.JavaConversions._
   val fullTeamWithCaseClassMember: TeamBeanWithCaseClassMember =
     new TeamBeanWithCaseClassMember("squbs Team", List[Employee](
       Employee(1, "John", "Doe", 20, male = true),
       Employee(2, "Mike", "Moon", 25, male = true),
       Employee(3, "Jane", "Williams", 30, male = false),
       Employee(4, "Liz", "Taylor", 35, male = false)
-    ))
+    ).asJava)
 
   val fullTeam: Team = Team("squbs Team", List[Employee](
     Employee(1, "John", "Doe", 20, male = true),
@@ -62,7 +62,7 @@ object TestData {
     Employee(4, "Liz", "Taylor", 35, male = false)
   ))
 
-  val pageTest: PageData = new PageData(100, Seq("one", "two", "three"))
+  val pageTest: PageData = new PageData(100, Seq("one", "two", "three").asJava)
 
   val newTeamMember: Employee = Employee(5, "Jack", "Ripper", 35, male = true)
   val newTeamMemberBean: EmployeeBean = new EmployeeBean(5, "Jack", "Ripper", 35, true)

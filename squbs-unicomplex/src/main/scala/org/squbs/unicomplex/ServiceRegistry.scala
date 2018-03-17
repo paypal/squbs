@@ -41,6 +41,7 @@ import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
+import scala.collection.JavaConverters._
 
 /**
   * Akka HTTP based [[ServiceRegistryBase]] implementation.
@@ -175,11 +176,10 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
   override protected def listenerStateMXBean(): ListenerStateMXBean = {
     new ListenerStateMXBean {
-      import scala.collection.JavaConversions._
       override def getListenerStates: java.util.List[ListenerState] = {
         serverBindings.map { case (name, ServerBindingInfo(sb, exception)) =>
           ListenerState(name, sb.map(_ => "Success").getOrElse("Failed"), exception.getOrElse("").toString)
-        } .toSeq
+        }.toSeq.asJava
       }
     }
   }

@@ -85,7 +85,7 @@ public class CustomTestKitTest extends CustomTestKit {
         private static List<String> resources = Arrays.asList(
                 TestConfig.class.getClassLoader().getResource("").getPath() + "/CustomTestKitTest/META-INF/squbs-meta.conf");
 
-        private static scala.collection.immutable.List resourcesAsScala = scala.collection.JavaConversions.asScalaBuffer(resources).toList();
+        private static scala.collection.immutable.List resourcesAsScala = scala.collection.JavaConverters.asScalaBuffer(resources).toList();
         private static UnicomplexBoot boot = UnicomplexBoot.apply(ConfigFactory.parseMap(configMap)).scanResources(resourcesAsScala).start();
     }
 }
