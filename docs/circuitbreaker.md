@@ -182,7 +182,7 @@ final CircuitBreakerState state = AtomicCircuitBreakerState.create("sample", con
 
 #### Circuit Breaker across materializations
 
-Please note, in many scenarios, the same circuit breaker instance is used across multiple materializations of the same flow.  For such scenarios, make sure to use a `CircuitBreakerState` instance that can be modified concurrently.  The default implementation `AtomicCircuitBreakerState` uses `Atomic` variables and can be used across multiple materializations.  More implementations, e.g., `Agent` based, can be introduced in the future.
+Please note, in many scenarios, the same circuit breaker instance is used across multiple materializations of the same flow.  For such scenarios, make sure to use a `CircuitBreakerState` instance that can be modified concurrently.  The default implementation `AtomicCircuitBreakerState` uses `Atomic` variables and can be used across multiple materializations.  More implementations can be introduced in the future.
 
 #### Context to Unique Id Mapping
 
