@@ -328,7 +328,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     succeed
   }
 
-  it should "backpressures when retryQ size reaches internal buffer size" in {
+  it should "backpressure when retryQ size reaches internal buffer size" in {
     val bottom = Flow[(String, Long)].map {
       case (elem, ctx) => if(ctx == 1) (failure, ctx) else (Success(elem), ctx)
     }
@@ -349,7 +349,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     succeed
   }
 
-  it should "backpressures when retryQ size reaches configured threshold" in {
+  it should "backpressure when retryQ size reaches configured threshold" in {
     val bottom = Flow[(String, Long)].map {
       case (elem, ctx) => if(ctx == 1) (failure, ctx) else (Success(elem), ctx)
     }
@@ -506,7 +506,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     }
   }
 
-  it should "not back pressure if downstream demands more and retryQ is not growing" in {
+  it should "not backpressure if downstream demands more and retryQ is not growing" in {
     // https://github.com/paypal/squbs/issues/623
     val delayActor = system.actorOf(Props[DelayActor])
     import akka.pattern.ask
@@ -518,6 +518,30 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
         .map { case (elem, ctx) => (Success(elem), ctx) }
 
     val retry = Retry[Long, Long, Long](2).withAttributes(inputBuffer(initial = 1, max = 1))
+    val stream = Source(1L to 500)
+      .map(x => (x, x))
+      .via(retry.join(delayFlow))
+      .runWith(Sink.seq)
+
+    // It should not impact the throughput when the stream is happy.  If it were to back pressure, it would take
+    // 500 seconds, because internal buffer size is 1 and each takes 1 second.  The current setup with concurrency
+    // level 100, it should take 500 / 100 = 5 seconds.  Setting it to 10 seconds to prevent Travis CI problems.
+    val result = Await.result(stream, 10 seconds)
+    result should contain theSameElementsAs (1L to 500 map(elem => (Success(elem), elem)))
+  }
+
+  it should "not backpressure if downstream demands more and retryQ is not growing with larger internal buffer size" in {
+    // https://github.com/paypal/squbs/issues/623
+    val delayActor = system.actorOf(Props[DelayActor])
+    import akka.pattern.ask
+    implicit val askTimeout = akka.util.Timeout(10 seconds)
+
+    val delayFlow =
+      Flow[(Long, Long)]
+        .mapAsyncUnordered(100)(elem => (delayActor ? elem).mapTo[(Long, Long)])
+        .map { case (elem, ctx) => (Success(elem), ctx) }
+
+    val retry = Retry[Long, Long, Long](2).withAttributes(inputBuffer(initial = 16, max = 16))
     val stream = Source(1L to 500)
       .map(x => (x, x))
       .via(retry.join(delayFlow))

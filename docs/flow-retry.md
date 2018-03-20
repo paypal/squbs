@@ -171,6 +171,7 @@ final BidiFlow<Pair<String, Context>,
                Pair<Try<String>, Context>, NotUsed> retry = Retry.create(settings);
 
 ```
+
 ##### Exponential backoff
 An optional exponential backoff factor can also be specified to increase the delay duration on each subsequent retry attempt (up to a maximum delay duration).
 In the following examples, the first failure of any element will be retried after a delay of 200ms, and then any second attempt will be retried after 800ms.
@@ -228,6 +229,32 @@ final RetrySettings settings =
                 .withExponentialBackoff(2.0)
                 withMaxDelay(Duration.create("400 millis"));
 
+final BidiFlow<Pair<String, Context>,
+               Pair<String, Context>,
+               Pair<Try<String>, Context>,
+               Pair<Try<String>, Context>, NotUsed> retry = Retry.create(settings);
+```
+
+##### Configuring the threshold for backpressure
+
+If downstream is having trouble, `Retry` starts back pressuring when the elements waiting to be retired reaches to a certain threshold.  By default, the threashold is equal to the internal buffer size of `Retry` Akka Stream Grapstage (please see [Akka Stream Attributes](https://doc.akka.io/docs/akka/current/stream/stream-composition.html#attributes)).  The threshold can be made independent of internal buffer size by calling `withMaxWaitingRetries`:
+
+
+##### Scala
+
+```scala
+val settings = RetrySettings[String, String, Context](max = 3).withMaxWaitingRetries(50)
+
+val retry = Retry(settings)
+```
+
+##### Java
+
+```java
+final RetrySettings settings =
+        RetrySettings.<String, String, Context>create(3)
+                .withMaxWaitingRetries(50)
+        
 final BidiFlow<Pair<String, Context>,
                Pair<String, Context>,
                Pair<Try<String>, Context>,
