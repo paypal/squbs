@@ -225,7 +225,7 @@ object TimeoutPolicy extends LazyLogging {
    * @return timeout policy
    */
   def apply(name: Option[String] = None, initial: FiniteDuration, rule: TimeoutRule = FixedTimeoutRule,
-            debug: FiniteDuration = 1000 seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)
+            debug: FiniteDuration = 1000.seconds, minSamples: Int = 1000, startOverCount: Int = Int.MaxValue)
            (implicit ec: ExecutionContext): TimeoutPolicy = {
     require(initial != null, "initial is required")
     require(debug != null, "debug is required")
@@ -283,7 +283,7 @@ object TimeoutPolicyBuilder {
 case class TimeoutPolicyBuilder(name: Option[String] = None,
                                 initial: FiniteDuration,
                                 rule: TimeoutRule = FixedTimeoutRule,
-                                debug: FiniteDuration = 1000 seconds,
+                                debug: FiniteDuration = 1000.seconds,
                                 minSamples: Int = 1000,
                                 startOverCount: Int = Int.MaxValue)
                                (implicit ec: ExecutionContext) {

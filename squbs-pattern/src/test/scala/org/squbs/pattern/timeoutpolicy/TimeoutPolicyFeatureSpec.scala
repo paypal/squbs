@@ -29,7 +29,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
 
   "TimeoutPolicy return faster than timeout" should "works fine" in {
     //val policy = TimeoutPolicy(name = Some("test"), initial = 1 second, fixedRule, minSamples = 1)
-    val policy = TimeoutPolicy(name = Some("mypolicy"), initial = 1 second)
+    val policy = TimeoutPolicy(name = Some("mypolicy"), initial = 1.second)
 
     for(i<- 1 to 9) {
       val start = System.nanoTime
@@ -46,7 +46,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
   }
 
   "TimeoutPolicy throw exception when timeout" should "works fine" in {
-    val policy = TimeoutPolicy(name = Some("mypolicy"), initial = 1 second)
+    val policy = TimeoutPolicy(name = Some("mypolicy"), initial = 1.second)
 
     for(i<- 1 to 3) {
       val start = System.nanoTime
@@ -68,7 +68,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
 
   "Random.nextGaussian" should "work as expected" in {
     //import scala.concurrent.ExecutionContext.Implicits.global
-    val timeoutPolicy = TimeoutPolicy(name = Some("test"), initial = 1 seconds, rule = 3 sigma, minSamples = 50, startOverCount = 500)
+    val timeoutPolicy = TimeoutPolicy(name = Some("test"), initial = 1.seconds, rule = 3.sigma, minSamples = 50, startOverCount = 500)
     val sigma = 30
     val mean = 50
     val random = new Random(100)
@@ -130,7 +130,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
 
   "Random.nextGaussian with 1 sigma" should "work as expected" in {
     //import scala.concurrent.ExecutionContext.Implicits.global
-    val timeoutPolicy = TimeoutPolicy(name = Some("test"), initial = 1 seconds, rule = 1 sigma, minSamples = 50, startOverCount = 500)
+    val timeoutPolicy = TimeoutPolicy(name = Some("test"), initial = 1.seconds, rule = 1.sigma, minSamples = 50, startOverCount = 500)
     val sigma = 30
     val mean = 50
     val random = new Random(100)

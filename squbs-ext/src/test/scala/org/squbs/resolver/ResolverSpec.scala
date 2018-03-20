@@ -23,6 +23,7 @@ import akka.testkit.TestKit
 import org.scalatest.OptionValues._
 import org.scalatest.{BeforeAndAfterEach, FlatSpecLike, Matchers}
 import org.squbs.env._
+import scala.language.existentials
 
 import scala.language.postfixOps
 

@@ -36,9 +36,9 @@ class ShutdownSpec extends TestKit(ShutdownSpec.boot.actorSystem) with FlatSpecL
     import system.dispatcher
     Future { Shutdown.main(Array("ShutdownSpec")) }
     // Unicomplex stop should immediately be triggered.
-    expectMsg(1 second, Stopping)
+    expectMsg(1.second, Stopping)
     val t2 = System.nanoTime
-    Duration(t2 - t1, NANOSECONDS) should be < (1 second)
+    Duration(t2 - t1, NANOSECONDS) should be < (1.second)
   }
 }
 
@@ -63,9 +63,9 @@ class ShutdownSpec2 extends TestKit(ShutdownSpec2.boot.actorSystem) with FlatSpe
     import system.dispatcher
     Future { Shutdown.main(Array("ShutdownSpec2")) }
     // Unicomplex stop should not be triggered at least for 6 seconds
-    expectMsg(10 seconds, Stopping)
+    expectMsg(10.seconds, Stopping)
     val t2 = System.nanoTime
-    Duration(t2 - t1, NANOSECONDS) should be > (6 seconds)
+    Duration(t2 - t1, NANOSECONDS) should be > (6.seconds)
   }
 }
 
@@ -89,11 +89,11 @@ class ShutdownSpec3 extends TestKit(ShutdownSpec3.boot.actorSystem) with FlatSpe
     Unicomplex("ShutdownSpec3") ! ObtainLifecycleEvents(Stopping)
     val t1 = System.nanoTime
     import system.dispatcher
-    Future { Shutdown.shutdown(Some(5 seconds), Some("ShutdownSpec3")) }
+    Future { Shutdown.shutdown(Some(5.seconds), Some("ShutdownSpec3")) }
     // Unicomplex stop should not be triggered at least for 5 seconds
-    expectMsg(10 seconds, Stopping)
+    expectMsg(10.seconds, Stopping)
     val t2 = System.nanoTime
-    Duration(t2 - t1, NANOSECONDS) should be > (5 seconds)
+    Duration(t2 - t1, NANOSECONDS) should be > (5.seconds)
   }
 }
 
@@ -115,9 +115,9 @@ class ShutdownSpec4 extends TestKit(ShutdownSpec4.boot.actorSystem) with FlatSpe
   it should "not trigger shutdown if the shutdown has already been started" in {
     Unicomplex("ShutdownSpec4") ! ObtainLifecycleEvents(Stopping)
     Unicomplex("ShutdownSpec4") ! GracefulStop
-    expectMsg(1 second, Stopping)
-    Shutdown.shutdown(Some(5432 milliseconds), Some("ShutdownSpec4")) // Blocking to make sure we wait for it complete
-    expectNoMsg(1 second)
+    expectMsg(1.second, Stopping)
+    Shutdown.shutdown(Some(5432.milliseconds), Some("ShutdownSpec4")) // Blocking to make sure we wait for it complete
+    expectNoMessage(1.second)
     ShutdownSpec4.counter should be (0)
   }
 }

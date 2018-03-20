@@ -22,13 +22,13 @@ class TimeoutRuleConversionsSpec extends FlatSpecLike with Matchers{
 
   "Implicit Conversions" should "work" in {
 
-    (1 sigma).asInstanceOf[SigmaTimeoutRule].unit should be(1.0)
-    (1 σ).asInstanceOf[SigmaTimeoutRule].unit should be(1.0)
+    (1.sigma).asInstanceOf[SigmaTimeoutRule].unit should be(1.0)
+    (1.σ).asInstanceOf[SigmaTimeoutRule].unit should be(1.0)
 
     // around 2.99
-    ((99.7 percent).asInstanceOf[SigmaTimeoutRule].unit * 10).round should be(30)
-    ((99.7 `%ile`).asInstanceOf[SigmaTimeoutRule].unit * 10).round should be(30)
-    ((99.7 percentile).asInstanceOf[SigmaTimeoutRule].unit * 10).round should be(30)
+    ((99.7.percent).asInstanceOf[SigmaTimeoutRule].unit * 10).round should be(30)
+    ((99.7.`%ile`).asInstanceOf[SigmaTimeoutRule].unit * 10).round should be(30)
+    ((99.7.percentile).asInstanceOf[SigmaTimeoutRule].unit * 10).round should be(30)
 
     fixedRule should be(FixedTimeoutRule)
   }

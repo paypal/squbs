@@ -39,7 +39,7 @@ import scala.collection.mutable
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.language.postfixOps
+import scala.language.{postfixOps, existentials}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -462,7 +462,7 @@ object UnicomplexBoot extends LazyLogging {
   def startServiceInfra(boot: UnicomplexBoot)(implicit actorSystem: ActorSystem) {
     import actorSystem.dispatcher
     val startTime = System.nanoTime
-    implicit val timeout = Timeout((boot.listeners.size * 10) seconds)
+    implicit val timeout = Timeout((boot.listeners.size * 10).seconds)
     val ackFutures =
       for ((listenerName, config) <- boot.listeners) yield {
         Unicomplex(actorSystem).uniActor ? StartListener(listenerName, config)

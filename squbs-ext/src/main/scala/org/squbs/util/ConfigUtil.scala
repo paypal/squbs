@@ -124,6 +124,7 @@ object ConfigUtil extends LazyLogging {
 
 
     def getOptionalConfigList(path: String): Option[Seq[Config]] = {
+      import scala.language.existentials
       val list =
         try {
           Some(underlying.getConfigList(path))

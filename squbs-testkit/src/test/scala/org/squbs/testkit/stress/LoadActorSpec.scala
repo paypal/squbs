@@ -27,8 +27,8 @@ import scala.concurrent.duration._
 class LoadActorSpec extends TestKit(ActorSystem("LoadActorSpec"))
 with ImplicitSender with FunSpecLike with Matchers {
 
-  val warmUp = 20 seconds
-  val steady = 40 seconds
+  val warmUp = 20.seconds
+  val steady = 40.seconds
 
   it ("Shall achieve the requested large TPS and report proper CPU statistics") {
     val ir = 500
@@ -39,7 +39,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     loadActor ! StartLoad(startTime, ir, warmUp, steady) {
       system.actorOf(Props[LoadTestActor]) ! TestPing
     }
-    statsActor ! StartStats(startTime, warmUp, steady, 1 seconds)
+    statsActor ! StartStats(startTime, warmUp, steady, 1.seconds)
 
     var responseCount = 0l
 
@@ -79,7 +79,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     loadActor ! StartLoad(startTime, ir, warmUp, steady) {
       system.actorOf(Props[LoadTestActor]) ! TestPing
     }
-    statsActor ! StartStats(startTime, warmUp, steady, 1 seconds)
+    statsActor ! StartStats(startTime, warmUp, steady, 1.seconds)
 
     var responseCount = 0l
 
@@ -125,13 +125,13 @@ class StatLogger(startTimeNs: Long, warmUp: FiniteDuration, steady: FiniteDurati
   import context.dispatcher
   // Starting 5 seconds early to test stats outside warmUp.
   val scheduler = context.system.scheduler.schedule(
-    warmUp - (5 seconds) + ((startTimeNs - System.nanoTime()) nanoseconds), 5 seconds, self, TestPing)
+    warmUp - (5.seconds) + ((startTimeNs - System.nanoTime()).nanoseconds), 5.seconds, self, TestPing)
 
   def receive = {
     case TestPing =>
       loadActor ! GetStats
       statsActor ! GetStats
-      if (((System.nanoTime() - startTimeNs) nanoseconds) > warmUp + steady)
+      if (((System.nanoTime() - startTimeNs).nanoseconds) > warmUp + steady)
         scheduler.cancel()
 
     case LoadStats(tpsSoFar) => println(s"Achieved TPS: $tpsSoFar")

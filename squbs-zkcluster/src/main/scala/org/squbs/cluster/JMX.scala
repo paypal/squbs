@@ -19,6 +19,7 @@ package org.squbs.cluster
 import java.beans.ConstructorProperties
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
+import scala.language.implicitConversions
 
 import akka.actor.ActorContext
 

@@ -270,7 +270,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
 
     sink.request(1)
     source.sendNext("a").sendNext("b").sendComplete()
-    val next = sink.requestNext(3 seconds)
+    val next = sink.requestNext(3.seconds)
     assert((failure, 1) == next)
   }
 
@@ -399,7 +399,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
 
     testSink.request(5)
       .expectNextN((Success("1"), 1L) :: (Success("3"), 3L) :: (Success("5"), 5L) :: Nil)
-      .expectNoMsg(2 second) // 2 x (1s delay)
+      .expectNoMessage(2 second) // 2 x (1s delay)
       .expectNext((failure, 2L))
       .expectNext((failure, 4L))
       .expectComplete()
@@ -418,7 +418,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
 
     sink.request(5)
       .expectNextN((Success("1"), 1L) :: (Success("3"), 3L) :: (Success("5"), 5L) :: Nil)
-      .expectNoMsg(14 seconds) // (1s delay + 4s delay + 9s)
+      .expectNoMessage(14.seconds) // (1s delay + 4s delay + 9s)
       .expectNext((failure, 2L))
       .expectNext((failure, 4L))
       .expectComplete()
@@ -430,7 +430,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
       case (elem, ctx) => if (ctx % 2 == 0) (failure, ctx) else (Success(elem), ctx)
     }
     val retry = Retry(RetrySettings[String, String, Long](max = 3, delay = 1 second, exponentialBackoffFactor = 2,
-      maxDelay = 4 seconds))
+      maxDelay = 4.seconds))
     val sink = Source(1L to 5L)
       .map(x => (x.toString, x))
       .via(retry.join(bottom))
@@ -438,7 +438,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
 
     sink.request(5)
       .expectNextN((Success("1"), 1L) :: (Success("3"), 3L) :: (Success("5"), 5L) :: Nil)
-      .expectNoMsg(9 seconds) // (1s + 4s + 4s maxDelay)
+      .expectNoMessage(9.seconds) // (1s + 4s + 4s maxDelay)
       .expectNext((failure, 2L))
       .expectNext((failure, 4L))
       .expectComplete()
@@ -451,7 +451,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     }
     val retrySettings = RetrySettings[String, String, Long](2)
       .withDelay(1 second)
-      .withMaxDelay(5 seconds)
+      .withMaxDelay(5.seconds)
       .withExponentialBackoff(2)
 
     val retry = Retry[String, String, Long](retrySettings)
@@ -463,7 +463,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
 
     sink.request(5)
       .expectNext((Success("1"), 1L), (Success("3"), 3L), (Success("5"), 5L))
-      .expectNoMsg(5 seconds)
+      .expectNoMessage(5.seconds)
       .expectNext((failure, 2L))
       .expectNext((failure, 4L))
       .expectComplete()

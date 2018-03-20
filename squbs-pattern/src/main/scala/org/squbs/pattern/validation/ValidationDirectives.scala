@@ -19,6 +19,7 @@ package org.squbs.pattern.validation
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, ValidationRejection}
 import com.wix.accord.{Descriptions, Validator}
+import scala.language.implicitConversions
 
 trait ValidationDirectives {
   def validate(magnet: ValidationMagnet) = magnet()

@@ -33,7 +33,7 @@ import scala.concurrent.{Await, Future}
 class MaterializationMetricsCollectorSpec extends TestKit(ActorSystem("MaterializationMetricsCollectorSpec"))
   with AsyncFlatSpecLike with Matchers {
 
-  val awaitMax = 60 seconds
+  val awaitMax = 60.seconds
   implicit val materializer = ActorMaterializer()
 
   it should "update metrics when upstream finishes" in {

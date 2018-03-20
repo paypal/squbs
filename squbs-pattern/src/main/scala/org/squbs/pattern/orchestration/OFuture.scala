@@ -20,6 +20,7 @@ import scala.collection.generic.CanBuildFrom
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
+import scala.language.higherKinds
 
 /** The trait that represents futures like scala.concurrent.Future BUT works in a single threaded environment.
   * It does not have blocking calls to the future and a future cannot be created from passing a closure.

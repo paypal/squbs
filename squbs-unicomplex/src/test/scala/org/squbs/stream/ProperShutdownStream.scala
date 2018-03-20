@@ -42,7 +42,7 @@ class ProperShutdownStream extends PerpetualStream[(ActorRef, Future[Long])] {
     v
   }
 
-  val managedSource = LifecycleManaged().source(Source fromIterator generator _)
+  val managedSource = LifecycleManaged(system).source(Source fromIterator generator _)
 
   val throttle = Flow[Int].throttle(5000, 1 second, 1000, Shaping)
 

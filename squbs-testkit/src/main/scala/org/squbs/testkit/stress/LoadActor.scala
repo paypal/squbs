@@ -51,12 +51,12 @@ class LoadActor extends Actor {
     var steadyRequests = 0L
     var lastWakeUp = Long.MinValue
 
-    val minInterval = 50 milliseconds
-    val submitInterval = (1000000000 / tps) nanoseconds
+    val minInterval = 50.milliseconds
+    val submitInterval = (1000000000 / tps).nanoseconds
     val firingInterval = if (submitInterval < minInterval) minInterval else submitInterval
     val steadyStart = startTimeNs + warmUp.toNanos
     val endTime = startTimeNs + warmUp.toNanos + steady.toNanos
-    val firstFire = (startTimeNs + firingInterval.toNanos - System.nanoTime) nanoseconds
+    val firstFire = (startTimeNs + firingInterval.toNanos - System.nanoTime).nanoseconds
     val scheduler = context.system.scheduler.schedule(firstFire, firingInterval, self, Ping)
 
     var nextIntervalStart = firingInterval.toNanos + startTimeNs
@@ -119,7 +119,7 @@ class CPUStatsActor extends Actor {
     import startMessage._
 
     val cpu = new CPULoad
-    val firstFire = (startTimeNs + warmUp.toNanos - System.nanoTime()) nanoseconds
+    val firstFire = (startTimeNs + warmUp.toNanos - System.nanoTime()).nanoseconds
     val endTime = startTimeNs + warmUp.toNanos + steady.toNanos
     val scheduler = context.system.scheduler.schedule(firstFire, interval, self, Ping)
 

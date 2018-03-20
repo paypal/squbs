@@ -132,7 +132,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
           logger.warn("Did not register all relevant actors just yet. Refreshing...")
         }
         cfgBeanCount should be >= 11
-      }, max = awaitMax, interval = 2 seconds)
+      }, max = awaitMax, interval = 2.seconds)
     }
 
     "1.0) getMailBoxSize of unicomplex" in {

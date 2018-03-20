@@ -200,7 +200,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val mBeanServer = ManagementFactory.getPlatformMBeanServer
       val cubesObjName = new ObjectName(prefix(system) + cubesName)
       val attr = mBeanServer.getAttribute(cubesObjName, "Cubes")
-      attr shouldBe a [Array[Any]]
+      attr shouldBe a [Array[_]]
       val attrs = attr.asInstanceOf[Array[_]]
 
       // 6 cubes registered above.
@@ -229,7 +229,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val mBeanServer = ManagementFactory.getPlatformMBeanServer
       val listenersObjName = new ObjectName(prefix(system) + listenersName)
       val ls = mBeanServer.getAttribute(listenersObjName, "Listeners")
-      ls shouldBe a [Array[Any]]
+      ls shouldBe a [Array[_]]
       val listeners = ls.asInstanceOf[Array[_]]
       all (listeners) shouldBe a [javax.management.openmbean.CompositeData]
 
@@ -243,7 +243,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val mBeanServer = ManagementFactory.getPlatformMBeanServer
       val extensionObjName = new ObjectName(prefix(system) + extensionsName)
       val xs = mBeanServer.getAttribute(extensionObjName, "Extensions")
-      xs shouldBe a [Array[Any]]
+      xs shouldBe a [Array[_]]
       val extensions = xs.asInstanceOf[Array[_]]
       all (extensions) shouldBe a [javax.management.openmbean.CompositeData]
       extensions should have size 2
