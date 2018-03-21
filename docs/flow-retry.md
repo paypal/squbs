@@ -237,7 +237,7 @@ final BidiFlow<Pair<String, Context>,
 
 ##### Configuring the threshold for backpressure
 
-If downstream is having trouble, `Retry` starts back pressuring when the elements waiting to be retired reaches to a certain threshold.  By default, the threashold is equal to the internal buffer size of `Retry` Akka Stream Grapstage (please see [Akka Stream Attributes](https://doc.akka.io/docs/akka/current/stream/stream-composition.html#attributes)).  The threshold can be made independent of internal buffer size by calling `withMaxWaitingRetries`:
+If the joined flow keeps returning failures, `Retry` starts back pressuring when the elements waiting to be retried reaches to a certain threshold.  By default, the threshold is equal to the internal buffer size of `Retry` Akka Stream `GraphStage` (please see [Akka Stream Attributes](https://doc.akka.io/docs/akka/current/stream/stream-composition.html#attributes)).  The threshold can be made independent of internal buffer size by calling `withMaxWaitingRetries`:
 
 
 ##### Scala
