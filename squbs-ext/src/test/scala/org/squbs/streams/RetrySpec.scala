@@ -19,7 +19,7 @@ package org.squbs.streams
 import java.util.concurrent.atomic.AtomicLong
 
 import akka.NotUsed
-import akka.actor.ActorSystem
+import akka.actor.{Actor, ActorSystem, Props}
 import akka.stream.Attributes.inputBuffer
 import akka.stream.{ActorMaterializer, OverflowStrategy, ThrottleMode}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
@@ -27,6 +27,7 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestKit
 import org.scalatest.{AsyncFlatSpecLike, Matchers}
 
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
@@ -327,11 +328,13 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     succeed
   }
 
-  it should "backpressures upstream when buffer full" in {
-    val bottom = Flow[(String, Long)].delay(10.millis).map {
-      case (_, ctx) => (failure, ctx)
+  it should "backpressure when retryQ size reaches internal buffer size" in {
+    val bottom = Flow[(String, Long)].map {
+      case (elem, ctx) => if(ctx == 1) (failure, ctx) else (Success(elem), ctx)
     }
-    val retry = Retry[String, String, Long](1).withAttributes(inputBuffer(initial = 1, max = 1))
+
+    val settings = RetrySettings[String, String, Long](1).withDelay(100 milliseconds)
+    val retry = Retry[String, String, Long](settings).withAttributes(inputBuffer(initial = 1, max = 1))
 
     val sink = Source(1 to 3)
       .map(x => (x.toString, x.toLong))
@@ -339,9 +342,31 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
       .runWith(TestSink.probe)
 
     sink.request(3)
-      .expectNoMsg(10.millis)
+      .expectNoMessage(100.millis)
       .expectNext((failure, 1L))
-      .expectNoMsg(10.millis)
+      .expectNext((Success("2"), 2L))
+      .expectNext((Success("3"), 3L))
+    succeed
+  }
+
+  it should "backpressure when retryQ size reaches configured threshold" in {
+    val bottom = Flow[(String, Long)].map {
+      case (elem, ctx) => if(ctx == 1) (failure, ctx) else (Success(elem), ctx)
+    }
+
+    val settings = RetrySettings[String, String, Long](1).withDelay(100 milliseconds).withMaxWaitingRetries(1)
+    val retry = Retry[String, String, Long](settings)
+
+    val sink = Source(1 to 3)
+      .map(x => (x.toString, x.toLong))
+      .via(retry.join(bottom))
+      .runWith(TestSink.probe)
+
+    sink.request(3)
+      .expectNoMessage(100.millis)
+      .expectNext((failure, 1L))
+      .expectNext((Success("2"), 2L))
+      .expectNext((Success("3"), 3L))
     succeed
   }
 
@@ -481,4 +506,60 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     }
   }
 
+  it should "not backpressure if downstream demands more and retryQ is not growing" in {
+    // https://github.com/paypal/squbs/issues/623
+    val delayActor = system.actorOf(Props[RetryDelayActor])
+    import akka.pattern.ask
+    implicit val askTimeout = akka.util.Timeout(10 seconds)
+
+    val delayFlow =
+      Flow[(Long, Long)]
+        .mapAsyncUnordered(100)(elem => (delayActor ? elem).mapTo[(Long, Long)])
+        .map { case (elem, ctx) => (Success(elem), ctx) }
+
+    val retry = Retry[Long, Long, Long](2).withAttributes(inputBuffer(initial = 1, max = 1))
+    val stream = Source(1L to 500)
+      .map(x => (x, x))
+      .via(retry.join(delayFlow))
+      .runWith(Sink.seq)
+
+    // It should not impact the throughput when the stream is happy.  If it were to back pressure, it would take
+    // 500 seconds, because internal buffer size is 1 and each takes 1 second.  The current setup with concurrency
+    // level 100, it should take 500 / 100 = 5 seconds.  Setting it to 10 seconds to prevent Travis CI problems.
+    val result = Await.result(stream, 10 seconds)
+    result should contain theSameElementsAs (1L to 500 map(elem => (Success(elem), elem)))
+  }
+
+  it should "not backpressure if downstream demands more and retryQ is not growing with larger internal buffer size" in {
+    // https://github.com/paypal/squbs/issues/623
+    val delayActor = system.actorOf(Props[RetryDelayActor])
+    import akka.pattern.ask
+    implicit val askTimeout = akka.util.Timeout(10 seconds)
+
+    val delayFlow =
+      Flow[(Long, Long)]
+        .mapAsyncUnordered(100)(elem => (delayActor ? elem).mapTo[(Long, Long)])
+        .map { case (elem, ctx) => (Success(elem), ctx) }
+
+    val retry = Retry[Long, Long, Long](2).withAttributes(inputBuffer(initial = 16, max = 16))
+    val stream = Source(1L to 500)
+      .map(x => (x, x))
+      .via(retry.join(delayFlow))
+      .runWith(Sink.seq)
+
+    // It should not impact the throughput when the stream is happy.  If it were to back pressure, it would take
+    // 500 seconds, because internal buffer size is 1 and each takes 1 second.  The current setup with concurrency
+    // level 100, it should take 500 / 100 = 5 seconds.  Setting it to 10 seconds to prevent Travis CI problems.
+    val result = Await.result(stream, 10 seconds)
+    result should contain theSameElementsAs (1L to 500 map(elem => (Success(elem), elem)))
+  }
+}
+
+class RetryDelayActor extends Actor {
+
+  import context.dispatcher
+
+  def receive = {
+    case element => context.system.scheduler.scheduleOnce(1 seconds, sender(), element)
+  }
 }

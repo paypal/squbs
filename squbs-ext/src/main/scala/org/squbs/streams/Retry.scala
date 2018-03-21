@@ -59,7 +59,8 @@ object Retry {
       failureDecider = retrySettings.failureDecider,
       delay = retrySettings.delay,
       exponentialBackoffFactor = retrySettings.exponentialBackoffFactor,
-      maxDelay = retrySettings.maxDelay))
+      maxDelay = retrySettings.maxDelay,
+      maxWaitingRetries = retrySettings.maxWaitingRetries))
 
   /**
     * Java API
@@ -127,7 +128,8 @@ final class Retry[In, Out, Context] private[streams](max: Int,
                                                      failureDecider: Option[Try[Out] => Boolean] = None,
                                                      delay: FiniteDuration = Duration.Zero,
                                                      exponentialBackoffFactor: Double = 1.0,
-                                                     maxDelay: FiniteDuration = Duration.Zero)
+                                                     maxDelay: FiniteDuration = Duration.Zero,
+                                                     maxWaitingRetries: Option[Int] = None)
   extends GraphStage[BidiShape[(In, Context), (In, Context), (Try[Out], Context), (Try[Out], Context)]] {
 
   private val in1 = Inlet[(In, Context)]("RetryBidi.in1")
@@ -174,11 +176,12 @@ final class Retry[In, Out, Context] private[streams](max: Int,
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new TimerGraphStageLogic(shape)
     with StageLogging {
 
-    val internalBufferSize: Int =
+    val retryQMaxSize = maxWaitingRetries.getOrElse {
       inheritedAttributes.get[InputBuffer] match {
         case None => throw new IllegalStateException(s"Couldn't find InputBuffer Attribute for $this")
         case Some(InputBuffer(_, max)) => max
       }
+    }
 
     implicit val elementPriority: Ordering[(Long, Any)] = Ordering.by[(Long, Any), Long](e => e._1).reverse
     private val retryQ: mutable.PriorityQueue[(Long, Any)] = mutable.PriorityQueue.empty
@@ -188,7 +191,8 @@ final class Retry[In, Out, Context] private[streams](max: Int,
     private val noDelay = delay == Duration.Zero
     private def upstreamFinished = isClosed(in1)
 
-    private def shouldPullIn1 = !hasBeenPulled(in1) && retryRegistry.size < internalBufferSize && !upstreamFinished
+    private def shouldPullIn1 = !hasBeenPulled(in1) && retryQ.size < retryQMaxSize && !upstreamFinished
+    private def hasBackpressuredIn1 = isAvailable(out1) && !hasBeenPulled(in1) && !upstreamFinished
     private def completeStageIfFinished() = if (retryRegistry.isEmpty && upstreamFinished) completeStage()
 
     private def isHeadReady: Boolean = noDelay || retryQ.head._1 <= System.nanoTime()
@@ -244,6 +248,9 @@ final class Retry[In, Out, Context] private[streams](max: Int,
           if (retryRegistry(key)._3 >= max) {
             retryRegistry -= key
 
+            // If a demand from out1 was not propagated to in1 because of retryQ size earlier
+            if(hasBackpressuredIn1) pull(in1)
+
             if (isAvailable(out2)) {
               push(out2, (elem, context))
               completeStageIfFinished()
@@ -275,6 +282,10 @@ final class Retry[In, Out, Context] private[streams](max: Int,
           }
         } else {
           retryRegistry -= key
+
+          // If a demand from out1 was not propagated to in1 because of retryQ size earlier
+          if(hasBackpressuredIn1) pull(in1)
+
           if (isAvailable(out2)) {
             push(out2, (elem, context))
             completeStageIfFinished()
@@ -355,6 +366,7 @@ final class Retry[In, Out, Context] private[streams](max: Int,
   * @param delay            to delay between retrying each failed element.
   * @param exponentialBackoffFactor exponential amount the delay duration will be increased upon each retry
   * @param maxDelay maximum delay duration for retry.
+  * @param maxWaitingRetries maximum number of elements waiting to be retried.  Defaults to stream internal buffer size.
   * @tparam In      the type of elements pulled from upstream along with the [[Context]]
   * @tparam Out     the type of the elements that are pushed to downstream along with the [[Context]]
   * @tparam Context the type of the context that is carried along with the elements.
@@ -365,7 +377,8 @@ case class RetrySettings[In, Out, Context] private[streams](max: Int,
                                                             failureDecider: Option[Try[Out] => Boolean] = None,
                                                             delay: FiniteDuration = Duration.Zero,
                                                             exponentialBackoffFactor: Double = 0.0,
-                                                            maxDelay: FiniteDuration = Duration.Zero) {
+                                                            maxDelay: FiniteDuration = Duration.Zero,
+                                                            maxWaitingRetries: Option[Int] = None) {
 
   def withUniqueIdMapper(uniqueIdMapper: Context => Any): RetrySettings[In, Out, Context] =
     copy(uniqueIdMapper = Some(uniqueIdMapper))
@@ -381,6 +394,8 @@ case class RetrySettings[In, Out, Context] private[streams](max: Int,
 
   def withMaxDelay(maxDelay: FiniteDuration): RetrySettings[In, Out, Context] =
     copy(maxDelay = maxDelay)
+
+  def withMaxWaitingRetries(max: Int): RetrySettings[In, Out, Context] = copy(maxWaitingRetries = Some(max))
 
   /**
     * Java API
