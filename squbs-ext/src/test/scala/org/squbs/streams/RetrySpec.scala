@@ -508,7 +508,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
 
   it should "not backpressure if downstream demands more and retryQ is not growing" in {
     // https://github.com/paypal/squbs/issues/623
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[RetryDelayActor])
     import akka.pattern.ask
     implicit val askTimeout = akka.util.Timeout(10 seconds)
 
@@ -532,7 +532,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
 
   it should "not backpressure if downstream demands more and retryQ is not growing with larger internal buffer size" in {
     // https://github.com/paypal/squbs/issues/623
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[RetryDelayActor])
     import akka.pattern.ask
     implicit val askTimeout = akka.util.Timeout(10 seconds)
 
@@ -555,7 +555,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
   }
 }
 
-class DelayActor extends Actor {
+class RetryDelayActor extends Actor {
 
   import context.dispatcher
 
