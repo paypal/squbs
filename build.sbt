@@ -1,6 +1,6 @@
 
 
-scalaVersion in ThisBuild := "2.12.4"
+scalaVersion in ThisBuild := "2.12.5"
 
 organization in ThisBuild := "org.squbs"
 
