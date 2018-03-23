@@ -26,7 +26,7 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
 
   "Random.nextGaussian" should "work as expected" in {
     import scala.concurrent.ExecutionContext.Implicits.global
-    val timeoutPolicy = TimeoutPolicy(Some("test"), initial = 1 seconds, rule = 3 sigma, minSamples = 100, startOverCount = 500)
+    val timeoutPolicy = TimeoutPolicy(Some("test"), initial = 1.seconds, rule = 3.sigma, minSamples = 100, startOverCount = 500)
     val sigma = 30
     val mean = 50
     for (i <- 0 until 1000) {
@@ -59,10 +59,10 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
   }
 
   def negativeExponential(truncate: Boolean): Unit = {
-    val delay = getDelay(truncate = truncate, cycleMin = 20 millis, cycleMean = 30 millis, cycleMax = 50 milliseconds)
+    val delay = getDelay(truncate = truncate, cycleMin = 20.millis, cycleMean = 30.millis, cycleMax = 50.milliseconds)
 
     import scala.concurrent.ExecutionContext.Implicits.global
-    val timeoutPolicy = TimeoutPolicy(Some("test"), initial = 1 seconds, rule = 3 sigma)
+    val timeoutPolicy = TimeoutPolicy(Some("test"), initial = 1.seconds, rule = 3.sigma)
     for (i <- 0 until 1000) {
       val tx = timeoutPolicy.transaction
       Try{
@@ -85,9 +85,9 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
   }
 
   def getDelay(truncate: Boolean = true,
-               cycleMin: FiniteDuration = 0 seconds,
-               cycleMean: FiniteDuration = 1 seconds,
-               cycleMax: FiniteDuration = 5 seconds): () => FiniteDuration = {
+               cycleMin: FiniteDuration = 0.seconds,
+               cycleMean: FiniteDuration = 1.seconds,
+               cycleMax: FiniteDuration = 5.seconds): () => FiniteDuration = {
 
     val (shift, mean) =
       if (!truncate) {
@@ -110,7 +110,7 @@ class SimulateDistributionSpec extends FlatSpecLike with Matchers{
             cycleMax.toNanos
           else iDelay
         } else 0L
-      delay nanoseconds
+      delay.nanoseconds
     }
   }
 }

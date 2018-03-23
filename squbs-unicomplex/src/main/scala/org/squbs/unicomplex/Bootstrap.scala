@@ -54,7 +54,7 @@ object Shutdown extends App {
     UnicomplexBoot.actorSystems.get(name) map { actorSystem =>
       val delay = delayParameter orElse
         actorSystem.settings.config.getOption[FiniteDuration]("squbs.shutdown-delay") getOrElse Duration.Zero
-      implicit val squbsStopTimeout = Timeout(actorSystem.settings.config.get[FiniteDuration]("squbs.default-stop-timeout", 3 seconds))
+      implicit val squbsStopTimeout = Timeout(actorSystem.settings.config.get[FiniteDuration]("squbs.default-stop-timeout", 3.seconds))
       val systemState = (Unicomplex(actorSystem).uniActor ? SystemState).mapTo[LifecycleState]
 
       import actorSystem.dispatcher

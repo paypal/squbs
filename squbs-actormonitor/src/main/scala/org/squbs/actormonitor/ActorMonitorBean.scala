@@ -18,6 +18,7 @@ package org.squbs.actormonitor
 
 import java.lang.management.ManagementFactory
 import javax.management.MXBean
+import scala.language.existentials
 
 import akka.actor.{ActorContext, ActorRef, Props}
 import org.squbs.unicomplex.JMX._

@@ -44,7 +44,7 @@ class CircuitBreakerSpec
   import Timing._
 
   implicit val materializer = ActorMaterializer()
-  implicit val askTimeout = Timeout(10 seconds)
+  implicit val askTimeout = Timeout(10.seconds)
   import system.dispatcher
   implicit val scheduler = system.scheduler
 
@@ -78,7 +78,7 @@ class CircuitBreakerSpec
   }
 
   it should "reset failure count after success" in {
-    val circuitBreakerState = AtomicCircuitBreakerState("ResetFailCount", 2, timeout, 10 milliseconds)
+    val circuitBreakerState = AtomicCircuitBreakerState("ResetFailCount", 2, timeout, 10.milliseconds)
     circuitBreakerState.subscribe(self, TransitionEvents)
     val ref = flowWithCircuitBreaker(circuitBreakerState)
     ref ! "a"
@@ -92,7 +92,7 @@ class CircuitBreakerSpec
 
   it should "decide on failures based on the provided function" in {
     // Not testing call timeout here.  So, settng it to a high number just to remove any potential effect.
-    val circuitBreakerState = AtomicCircuitBreakerState("FailureDecider", 2, 1 hour, 10 milliseconds)
+    val circuitBreakerState = AtomicCircuitBreakerState("FailureDecider", 2, 1 hour, 10.milliseconds)
     circuitBreakerState.subscribe(self, TransitionEvents)
 
     val circuitBreakerBidiFlow = BidiFlow
@@ -144,7 +144,7 @@ class CircuitBreakerSpec
   }
 
   it should "respond with fallback" in {
-    val circuitBreakerState = AtomicCircuitBreakerState("Fallback", 2, timeout, 10 milliseconds)
+    val circuitBreakerState = AtomicCircuitBreakerState("Fallback", 2, timeout, 10.milliseconds)
 
     val circuitBreakerBidiFlow = BidiFlow.fromGraph {
       new CircuitBreaker[String, String, Long](
@@ -174,7 +174,7 @@ class CircuitBreakerSpec
       Option(ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key))
     }
 
-    val circuitBreakerState = AtomicCircuitBreakerState("MetricsCB", 2, timeout, 10 seconds)
+    val circuitBreakerState = AtomicCircuitBreakerState("MetricsCB", 2, timeout, 10.seconds)
       .withMetricRegistry(MetricsExtension(system).metrics)
 
     circuitBreakerState.subscribe(self, Open)
@@ -204,7 +204,7 @@ class CircuitBreakerSpec
 
     val circuitBreakerSettings =
       CircuitBreakerSettings[String, String, MyContext](
-        AtomicCircuitBreakerState("UniqueId", 2, timeout, 10 milliseconds))
+        AtomicCircuitBreakerState("UniqueId", 2, timeout, 10.milliseconds))
         .withUniqueIdMapper(context => context.id)
     val circuitBreakerBidiFlow = CircuitBreaker(circuitBreakerSettings)
 
@@ -247,7 +247,7 @@ class CircuitBreakerSpec
 
     val circuitBreakerSettings =
       CircuitBreakerSettings[String, String, MyContext](
-        AtomicCircuitBreakerState("UniqueId", 2, timeout, 10 milliseconds))
+        AtomicCircuitBreakerState("UniqueId", 2, timeout, 10.milliseconds))
         .withCleanUp(cleanUpFunction)
     val circuitBreakerBidiFlow = CircuitBreaker(circuitBreakerSettings)
 
@@ -288,17 +288,17 @@ class CircuitBreakerSpec
     ref ! "b"
     ref ! "b"
     expectMsg(Open)
-    expectNoMsg(10 milliseconds)
+    expectNoMessage(10.milliseconds)
     expectMsg(HalfOpen)
     ref ! "b"
     expectMsg(Open)
-    expectNoMsg(10 milliseconds)
+    expectNoMessage(10.milliseconds)
     expectMsg(HalfOpen)
 
     1 to 6 foreach { i =>
       ref ! "b"
       expectMsg(Open)
-      expectNoMsg(100 milliseconds)
+      expectNoMessage(100.milliseconds)
       expectMsg(HalfOpen)
     }
 
@@ -306,7 +306,7 @@ class CircuitBreakerSpec
     expectMsg(Open)
     // reset-timeout should be maxed at 100 milliseconds.  Otherwise, it would have been 2.7 hours by this line.
     // Giving it 5 seconds as timing characteristics may not be as precise in different CI systems.
-    expectMsg(5 seconds, HalfOpen)
+    expectMsg(5.seconds, HalfOpen)
   }
 
   it should "share the circuit breaker state across materializations" in {
@@ -342,7 +342,7 @@ class CircuitBreakerSpec
     }
   }
 
-  private def assertFuture[T](future: Future[T])(assertion: T => Unit) = assertion(Await.result(future, 60 seconds))
+  private def assertFuture[T](future: Future[T])(assertion: T => Unit) = assertion(Await.result(future, 60.seconds))
 }
 
 object CircuitBreakerSpec {
@@ -378,6 +378,6 @@ class DelayActor extends Actor {
 object Timing {
   val timeout = 1 second
   val shorterThenTimeout = timeout / 100
-  val longerThenTimeout = timeout + (2 seconds)
+  val longerThenTimeout = timeout + (2.seconds)
   val checkCleanedUpTime = longerThenTimeout + (500 millisecond)
 }

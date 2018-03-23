@@ -26,25 +26,25 @@ class TimeoutPolicySpec extends FlatSpecLike with Matchers{
 
   "TimeoutPolicy Object" should "works fine" in {
     an [IllegalArgumentException] should be thrownBy TimeoutPolicy(Some(""), null, null)
-    an [IllegalArgumentException] should be thrownBy TimeoutPolicy(Some(""), 1 second, fixedRule, debug = null)
+    an [IllegalArgumentException] should be thrownBy TimeoutPolicy(Some(""), 1.second, fixedRule, debug = null)
 
     val preLength = TimeoutPolicy.policyMetrics.size
-    val policy = TimeoutPolicy(None, 1 second, fixedRule)
+    val policy = TimeoutPolicy(None, 1.second, fixedRule)
 
     TimeoutPolicy.policyMetrics.size should be(preLength)
     policy shouldBe a [FixedTimeoutPolicy]
 
-    val sigmaPolicy = TimeoutPolicy(Some("test"), 1 seconds, 2 sigma, minSamples = 1)
+    val sigmaPolicy = TimeoutPolicy(Some("test"), 1.seconds, 2.sigma, minSamples = 1)
 
     TimeoutPolicy.policyMetrics.get("test") should not be None
   }
 
   "Run FixedTimeoutPolicy in function" should "work" in {
-    val policy = TimeoutPolicy(name = Some("test"), initial = 1 second, fixedRule, minSamples = 1)
+    val policy = TimeoutPolicy(name = Some("test"), initial = 1.second, fixedRule, minSamples = 1)
 
     for(i <- 0 until 10) {
       policy.execute(timeout => {
-        timeout should be(1 second)
+        timeout should be(1.second)
         Thread.sleep(10)
       })
     }
@@ -53,7 +53,7 @@ class TimeoutPolicySpec extends FlatSpecLike with Matchers{
 
     val metrics = policy.metrics
     metrics.name should contain ("test")
-    metrics.initial should be (1 second)
+    metrics.initial should be (1.second)
     metrics.totalCount should be (10)
     TimeoutPolicy.resetPolicy("test")
 
@@ -62,7 +62,7 @@ class TimeoutPolicySpec extends FlatSpecLike with Matchers{
   }
 
   "Run SigmaTimeoutPolicy in explicit transaction" should "work" in {
-    val policy = TimeoutPolicy(name = Some("test"), initial = 1 second, 3 sigma, minSamples = 1)
+    val policy = TimeoutPolicy(name = Some("test"), initial = 1.second, 3.sigma, minSamples = 1)
 
     for(i <- 0 until 10) {
       val tx = policy.transaction
@@ -81,7 +81,7 @@ class TimeoutPolicySpec extends FlatSpecLike with Matchers{
 
     val metrics = policy.metrics
     metrics.name should contain ("test")
-    metrics.initial should be (1 second)
+    metrics.initial should be (1.second)
     metrics.totalCount should be (10)
   }
 }

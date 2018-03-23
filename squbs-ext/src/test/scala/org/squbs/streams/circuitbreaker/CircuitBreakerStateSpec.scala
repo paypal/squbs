@@ -37,8 +37,8 @@ class CircuitBreakerStateSpec extends TestKit(ActorSystem("CircuitBreakerStateSp
     AtomicCircuitBreakerState(
       "params-with-default-exponential-backoff",
       1,
-      50 milliseconds,
-      20 milliseconds)
+      50.milliseconds,
+      20.milliseconds)
 
     assertJmxValue("params-with-default-exponential-backoff", "MaxFailures", 1)
     assertJmxValue("params-with-default-exponential-backoff", "CallTimeout", "50 milliseconds")
@@ -51,9 +51,9 @@ class CircuitBreakerStateSpec extends TestKit(ActorSystem("CircuitBreakerStateSp
     AtomicCircuitBreakerState(
       "params-with-custom-exponential-backoff",
       1,
-      50 milliseconds,
-      20 milliseconds,
-      2 minutes,
+      50.milliseconds,
+      20.milliseconds,
+      2.minutes,
       16.0)
     assertJmxValue("params-with-custom-exponential-backoff", "MaxFailures", 1)
     assertJmxValue("params-with-custom-exponential-backoff", "CallTimeout", "50 milliseconds")

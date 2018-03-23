@@ -124,7 +124,7 @@ with AsyncAssertions {
       val mbeanServer = ManagementFactory.getPlatformMBeanServer
       val cubesObjName = new ObjectName(prefix(system) + cubesName)
       val attr = mbeanServer.getAttribute(cubesObjName, "Cubes")
-      attr shouldBe a [Array[Any]]
+      attr shouldBe a [Array[_]]
       all (attr.asInstanceOf[Array[Any]]) shouldBe a [javax.management.openmbean.CompositeData]
       // 5 cubes registered above.
       val cAttr = attr.asInstanceOf[Array[_]]

@@ -102,7 +102,7 @@ trait PerpetualStreamMatValue[T] {
 
   def matValue(perpetualStreamName: String)(implicit classTag: ClassTag[T]): Sink[T, NotUsed] = {
     implicit val _ = context.system
-    implicit val timeout: Timeout = Timeout(10 seconds)
+    implicit val timeout: Timeout = Timeout(10.seconds)
     import akka.pattern.ask
 
     val responseF = (SafeSelect(perpetualStreamName) ? MatValueRequest).mapTo[Sink[T, NotUsed]]

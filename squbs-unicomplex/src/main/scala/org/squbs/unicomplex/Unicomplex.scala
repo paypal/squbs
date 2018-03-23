@@ -689,7 +689,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       val hostActor = context.actorOf(props, name)
       initMap += hostActor -> None
       pendingContexts += 1
-      (hostActor ? FlowRequest).mapTo[Try[Materializer => Flow[RequestContext, RequestContext, NotUsed]]] onSuccess {
+      (hostActor ? FlowRequest).mapTo[Try[Materializer => Flow[RequestContext, RequestContext, NotUsed]]] foreach {
         case Success(flow) =>
           val reg = RegisterContext(listeners, webContext, FlowWrapper(flow, hostActor), ps)
           (Unicomplex() ? reg).mapTo[Try[_]].map {

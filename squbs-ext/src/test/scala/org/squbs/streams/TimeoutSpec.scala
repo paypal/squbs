@@ -35,7 +35,7 @@ class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with Async
   import Timing._
 
   implicit val materializer = ActorMaterializer()
-  implicit val askTimeout = akka.util.Timeout(10 seconds)
+  implicit val askTimeout = akka.util.Timeout(10.seconds)
 
   val timeoutFailure = Failure(FlowTimeoutException())
 
@@ -343,6 +343,6 @@ class DelayActor extends Actor {
 object Timing {
   val timeout = 1 second
   val shorterThenTimeout = timeout / 100
-  val longerThenTimeout = timeout + (2 seconds)
+  val longerThenTimeout = timeout + (2.seconds)
   val checkCleanedUpTime = longerThenTimeout + (500 millisecond)
 }

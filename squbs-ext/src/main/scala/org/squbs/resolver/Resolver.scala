@@ -64,11 +64,13 @@ class ResolverRegistryExtension(system: ExtendedActorSystem) extends Extension w
     *
     * @param resolver The resolver implementation
     */
-  def register[T: ClassTag](resolver: Resolver[T]): Unit =
+  def register[T: ClassTag](resolver: Resolver[T]): Unit = {
+    import scala.language.existentials
     resolvers.find { case (_, oldResolver) => oldResolver.name == resolver.name } match {
       case None => resolvers = (classTag[T].runtimeClass, resolver) :: resolvers
       case Some(_) => logger.warn(s"Endpoint Resolver: ${resolver.name} already registered, skipped!")
     }
+  }
 
   /**
     * Scala API to register a resolver on the fly.

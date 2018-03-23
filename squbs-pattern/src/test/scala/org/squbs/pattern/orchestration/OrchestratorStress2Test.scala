@@ -48,7 +48,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     loadActor ! StartLoad(startTime, ir, warmUp, steady){
       system.actorOf(Props[SimpleForComprehension2Actor]) ! OrchestrationRequest("SyncLoadTest")
     }
-    statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
+    statsActor ! StartStats(startTime, warmUp, steady, 5.seconds)
 
     var sumFinishTime = 0l
     var sumFinishCount = 0l
@@ -89,7 +89,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     loadActor ! StartLoad(startTime, ir, warmUp, steady){
       system.actorOf(Props[Test2Orchestrator]) ! OrchestrationRequest("LoadTest")
     }
-    statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
+    statsActor ! StartStats(startTime, warmUp, steady, 5.seconds)
 
     var sumSubmitTime = 0l
     var sumSubmitCount = 0l
@@ -140,7 +140,7 @@ with ImplicitSender with FunSpecLike with Matchers {
     loadActor ! StartLoad(startTime, ir, warmUp, steady){
       system.actorOf(Props[TestAsk2Orchestrator]) ! OrchestrationRequest("LoadTest")
     }
-    statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
+    statsActor ! StartStats(startTime, warmUp, steady, 5.seconds)
 
     var sumSubmitTime = 0l
     var sumSubmitCount = 0l
@@ -202,7 +202,7 @@ class SimpleForComprehension2Actor extends Actor with Orchestrator with RequestF
 
     import Requests._
 
-    val delay = 10 milliseconds
+    val delay = 10.milliseconds
 
     val startTime = System.nanoTime()
 
@@ -250,7 +250,7 @@ class Test2Orchestrator extends Actor with Orchestrator with RequestFunctions wi
 
     import Requests._
 
-    val delay = 10 milliseconds
+    val delay = 10.milliseconds
 
     val startTime = System.nanoTime()
 
@@ -315,7 +315,7 @@ class TestAsk2Orchestrator extends Actor with Orchestrator with ActorLogging {
 
     import Requests._
 
-    val delay = 10 milliseconds
+    val delay = 10.milliseconds
 
     val startTime = System.nanoTime()
 

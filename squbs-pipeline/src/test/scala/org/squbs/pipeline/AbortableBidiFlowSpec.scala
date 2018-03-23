@@ -127,7 +127,7 @@ class DummyFlow2 extends PipelineFlowFactory {
 
       val stageA = b.add(Flow[RequestContext].map { rc => rc.withRequestHeaders(RawHeader("keyA", "valA")) })
       val stageB = b.add(Flow[RequestContext].map { rc => rc.withRequestHeaders(RawHeader("keyB", "valB")) })
-      val stageC = b.add(dummyBidi abortable)
+      val stageC = b.add(dummyBidi.abortable)
       val stageD = b.add(Flow[RequestContext].map { rc => rc.withRequestHeaders(RawHeader("keyD", "valD")) })
       val stageE = b.add(Flow[RequestContext].map { rc => rc.withResponseHeaders(RawHeader("keyE", "valE")) })
       val stageF = b.add(Flow[RequestContext].map { rc => rc.withResponseHeaders(RawHeader("keyF", "valF")) })

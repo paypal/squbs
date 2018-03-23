@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 
 object Timeouts {
 
-  implicit val askTimeout = Timeout(30 seconds)
+  implicit val askTimeout = Timeout(30.seconds)
 
-  val awaitMax = 240 seconds
+  val awaitMax = 240.seconds
 }
