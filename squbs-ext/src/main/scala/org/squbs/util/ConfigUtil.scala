@@ -123,16 +123,12 @@ object ConfigUtil extends LazyLogging {
     }
 
 
-    def getOptionalConfigList(path: String): Option[Seq[Config]] = {
-      import scala.language.existentials
-      val list =
-        try {
-          Some(underlying.getConfigList(path))
+    def getOptionalConfigList(path: String): Option[Seq[Config]] = try {
+          Some(underlying.getConfigList(path).asScala)
         } catch {
           case e: ConfigException.Missing => None
         }
-      list map (_.asScala.toSeq)
-    }
+
 
     def getOptionalDuration(path: String): Option[FiniteDuration] = {
       import scala.concurrent.duration._
