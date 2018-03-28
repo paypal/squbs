@@ -16,16 +16,22 @@
 
 package org.squbs.streams
 
+import java.lang.management.ManagementFactory
 import java.lang.{Boolean => JBoolean}
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.{Function => JFunction}
 
+import javax.management.{MXBean, ObjectName}
 import akka.NotUsed
+import akka.actor.ActorSystem
 import akka.http.org.squbs.util.JavaConverters
 import akka.japi.Pair
 import akka.stream.Attributes.InputBuffer
 import akka.stream._
 import akka.stream.scaladsl.{BidiFlow, Flow}
 import akka.stream.stage._
+import com.codahale.metrics.MetricRegistry
+import org.squbs.metrics.MetricsExtension
 
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, FiniteDuration, _}
@@ -53,14 +59,7 @@ object Retry {
     */
   def apply[In, Out, Context](retrySettings: RetrySettings[In, Out, Context]):
   BidiFlow[(In, Context), (In, Context), (Try[Out], Context), (Try[Out], Context), NotUsed] =
-    BidiFlow.fromGraph(new Retry(
-      max = retrySettings.max,
-      uniqueIdMapper = retrySettings.uniqueIdMapper,
-      failureDecider = retrySettings.failureDecider,
-      delay = retrySettings.delay,
-      exponentialBackoffFactor = retrySettings.exponentialBackoffFactor,
-      maxDelay = retrySettings.maxDelay,
-      maxWaitingRetries = retrySettings.maxWaitingRetries))
+    BidiFlow.fromGraph(new Retry(retrySettings))
 
   /**
     * Java API
@@ -110,27 +109,16 @@ object Retry {
   *           Out2         +------+        In2
   * }}}
   *
-  * @param max maximum number of retry attempts on any failing [[Try]]'s
-  * @param uniqueIdMapper function that maps a [[Context]] to a unique value per element
-  * @param failureDecider function that gets called to determine if an element passed by the joined [[Flow]] is a
-  *                       failure
-  * @param delay the delay duration to wait between each retry.  Defaults to 0 nanos (no delay)
-  * @param exponentialBackoffFactor The exponential backoff factor that the delay duration will be increased on each
-  *                                 retry
-  * @param maxDelay The maximum retry delay duration during retry backoff
+  * @param settings the settings to configure Retry with
   * @tparam In the type of elements pulled from the upstream along with the [[Context]]
   * @tparam Out the type of the elements that are pushed by the joined [[Flow]] along with the [[Context]].
   *             This then gets wrapped with a [[Try]] and pushed downstream with a [[Context]]
   * @tparam Context the type of the context that is carried around along with the elements.
   */
-final class Retry[In, Out, Context] private[streams](max: Int,
-                                                     uniqueIdMapper: Option[Context => Any] = None,
-                                                     failureDecider: Option[Try[Out] => Boolean] = None,
-                                                     delay: FiniteDuration = Duration.Zero,
-                                                     exponentialBackoffFactor: Double = 1.0,
-                                                     maxDelay: FiniteDuration = Duration.Zero,
-                                                     maxWaitingRetries: Option[Int] = None)
+final class Retry[In, Out, Context] private[streams](settings: RetrySettings[In, Out, Context])
   extends GraphStage[BidiShape[(In, Context), (In, Context), (Try[Out], Context), (Try[Out], Context)]] {
+
+  import settings._
 
   private val in1 = Inlet[(In, Context)]("RetryBidi.in1")
   private val out1 = Outlet[(In, Context)]("RetryBidi.out1")
@@ -139,6 +127,7 @@ final class Retry[In, Out, Context] private[streams](max: Int,
   private val delayAsNanos = delay.toNanos
   private val precisionAsNanos = 10.milliseconds.toNanos // the linux timer precision
   private val timerName = "RetryStageTimer"
+  private val nameSuffix = new AtomicInteger(-1)
   override val shape = BidiShape(in1, out1, in2, out2)
 
   require(max > 0, "maximum retry count must be positive")
@@ -182,6 +171,20 @@ final class Retry[In, Out, Context] private[streams](max: Int,
         case Some(InputBuffer(_, max)) => max
       }
     }
+    private val matNumber = nameSuffix.incrementAndGet
+    private val uniqueRetryName = if (matNumber == 0) name else s"$name-$matNumber"
+    val retryMetrics = metricRegistry.map(registry =>
+      RetryMetricsImpl(
+        max,
+        delay,
+        exponentialBackoffFactor,
+        maxDelay,
+        retryQMaxSize,
+        uniqueRetryName,
+        registry,
+        () => retryQ.size,
+        () => retryRegistry.size)
+    ).getOrElse(NoOpRetryMetrics)
 
     implicit val elementPriority: Ordering[(Long, Any)] = Ordering.by[(Long, Any), Long](e => e._1).reverse
     private val retryQ: mutable.PriorityQueue[(Long, Any)] = mutable.PriorityQueue.empty
@@ -252,6 +255,7 @@ final class Retry[In, Out, Context] private[streams](max: Int,
             if(hasBackpressuredIn1) pull(in1)
 
             if (isAvailable(out2)) {
+              retryMetrics.markFailure()
               push(out2, (elem, context))
               completeStageIfFinished()
             } else {
@@ -259,13 +263,14 @@ final class Retry[In, Out, Context] private[streams](max: Int,
               log.error("out2 is not available for push.  Dropping exhausted element")
             }
           } else {
+            retryMetrics.markRetry()
             val retryTime = System.nanoTime + delayTime(incrementAndGetRetryCount(key))
             val shouldRetryBeforeTheHeadOfQueue = retryQ.headOption.exists(_._1 - retryTime >= precisionAsNanos)
             if (shouldRetryBeforeTheHeadOfQueue) cancelTimer(timerName) // Because, the next retry time just changed
 
             retryQ.enqueue((retryTime, key))
 
-            if(isAvailable(out1)) {
+            if (isAvailable(out1)) {
               if (isHeadReady) {
                 val (elem, ctx, _) = retryRegistry(retryQ.dequeue()._2)
                 push(out1, (elem, ctx))
@@ -281,6 +286,7 @@ final class Retry[In, Out, Context] private[streams](max: Int,
             pull(in2)
           }
         } else {
+          retryMetrics.markSuccess()
           retryRegistry -= key
 
           // If a demand from out1 was not propagated to in1 because of retryQ size earlier
@@ -345,7 +351,7 @@ final class Retry[In, Out, Context] private[streams](max: Int,
 }
 
 /**
-  * A Retry Settings class for configuring a RetryBidi
+  * A Retry Settings class for configuring a Retry
   *
   * Retry functionality requires each element passing through is uniquely identifiable for retrying, so
   * it requires a [[Context]], of any type carried along with the flow's input and output element as a
@@ -372,13 +378,16 @@ final class Retry[In, Out, Context] private[streams](max: Int,
   * @tparam Context the type of the context that is carried along with the elements.
   * @return a [[RetrySettings]] with specified values
   */
-case class RetrySettings[In, Out, Context] private[streams](max: Int,
-                                                            uniqueIdMapper: Option[Context => Any] = None,
-                                                            failureDecider: Option[Try[Out] => Boolean] = None,
-                                                            delay: FiniteDuration = Duration.Zero,
-                                                            exponentialBackoffFactor: Double = 0.0,
-                                                            maxDelay: FiniteDuration = Duration.Zero,
-                                                            maxWaitingRetries: Option[Int] = None) {
+case class RetrySettings[In, Out, Context] private[streams](
+  max: Int,
+  uniqueIdMapper: Option[Context => Any] = None,
+  failureDecider: Option[Try[Out] => Boolean] = None,
+  delay: FiniteDuration = Duration.Zero,
+  exponentialBackoffFactor: Double = 0.0,
+  maxDelay: FiniteDuration = Duration.Zero,
+  maxWaitingRetries: Option[Int] = None,
+  name: String = "Retry",
+  metricRegistry: Option[MetricRegistry] = None) {
 
   def withUniqueIdMapper(uniqueIdMapper: Context => Any): RetrySettings[In, Out, Context] =
     copy(uniqueIdMapper = Some(uniqueIdMapper))
@@ -396,6 +405,9 @@ case class RetrySettings[In, Out, Context] private[streams](max: Int,
     copy(maxDelay = maxDelay)
 
   def withMaxWaitingRetries(max: Int): RetrySettings[In, Out, Context] = copy(maxWaitingRetries = Some(max))
+
+  def withMetrics(name: String)(implicit system: ActorSystem): RetrySettings[In, Out, Context] =
+    copy(name = name, metricRegistry = Some(MetricsExtension.get(system).metrics))
 
   /**
     * Java API
@@ -429,4 +441,108 @@ object RetrySettings {
     */
   def create[In, Out, Context](maxRetries: Integer): RetrySettings[In, Out, Context] =
     RetrySettings[In, Out, Context](maxRetries)
+}
+
+@MXBean
+trait RetrySettingsMXBean {
+  def getName: String
+  def getMaxRetries: Int
+  def getDelay: String
+  def getMaxDelay: String
+  def getExponentialBackoffFactor: Double
+  def getMaxBufferSize: Int
+}
+
+private case class RetrySettingsMXBeanImpl(
+  name: String,
+  maxRetries: Int,
+  delay: String,
+  maxDelay: String,
+  exponentialBackoffFactor: Double,
+  maxBufferSize: Int) extends RetrySettingsMXBean {
+
+  override def getName: String = name
+  override def getMaxRetries: Int = maxRetries
+  override def getDelay: String = delay
+  override def getMaxDelay: String = maxDelay
+  override def getExponentialBackoffFactor: Double = exponentialBackoffFactor
+  override def getMaxBufferSize: Int = maxBufferSize
+}
+
+
+trait RetryMetrics {
+  /**
+    * Mark a failure element in Retry stage.
+    */
+  def markRetry(): Unit = {}
+
+  /**
+    * Mark a failing element that all retries were exhausted through Retry stage.
+    */
+  def markFailure(): Unit = {}
+
+  /**
+    * Mark a Success element passing trough Retry stage.
+    */
+  def markSuccess(): Unit = {}
+}
+
+object NoOpRetryMetrics extends RetryMetrics
+
+case class RetryMetricsImpl private[streams](max: Int,
+                                             delay: FiniteDuration,
+                                             exponentialBackoffFactor: Double,
+                                             maxDelay: FiniteDuration,
+                                             maxWaitingRetries: Int,
+                                             name: String,
+                                             metricRegistry: MetricRegistry,
+                                             retryQSize: () => Int,
+                                             registrySize: () => Int)
+  extends RetryMetrics {
+
+  val RetryCount = s"$name.retry-count"
+  val FailedCount = s"$name.failed-count" // count of exhausted retries
+  val SuccessCount = s"$name.success-count"
+
+  private val mBeanServer = ManagementFactory.getPlatformMBeanServer
+  private val retrySettingsBeanName = new ObjectName(
+    s"org.squbs.configuration:type=squbs.retry.settings,name=${ObjectName.quote(name)}")
+
+  if (!mBeanServer.isRegistered(retrySettingsBeanName))
+    mBeanServer.registerMBean(
+      RetrySettingsMXBeanImpl(
+        name,
+        max,
+        delay.toString,
+        maxDelay.toString,
+        exponentialBackoffFactor,
+        maxWaitingRetries),
+      retrySettingsBeanName)
+
+  private val retryStateBeanName = new ObjectName(
+    s"org.squbs.configuration:type=squbs.retry.state,name=${ObjectName.quote(name)}")
+
+  if (!mBeanServer.isRegistered(retryStateBeanName))
+    mBeanServer.registerMBean(RetryStateMXBeanImpl(name, retryQSize, registrySize), retryStateBeanName)
+
+  override def markRetry(): Unit = metricRegistry.meter(RetryCount).mark()
+
+  override def markFailure(): Unit = metricRegistry.meter(FailedCount).mark()
+
+  override def markSuccess(): Unit = metricRegistry.meter(SuccessCount).mark()
+}
+
+@MXBean
+trait RetryStateMXBean {
+  def getName: String
+  def getQueueSize: Int
+  def getRegistrySize: Int
+}
+
+case class RetryStateMXBeanImpl(name: String,
+                                retryQSize: () => Int,
+                                registrySize: () => Int) extends RetryStateMXBean {
+  override def getName: String = name
+  override def getQueueSize: Int = retryQSize()
+  override def getRegistrySize: Int = registrySize()
 }

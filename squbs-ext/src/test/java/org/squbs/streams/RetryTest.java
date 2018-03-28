@@ -26,18 +26,21 @@ import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import akka.stream.testkit.javadsl.TestSink;
+import org.squbs.metrics.MetricsExtension;
 import org.testng.annotations.Test;
 import scala.concurrent.duration.Duration;
 import scala.util.Failure;
 import scala.util.Success;
 import scala.util.Try;
 
+import javax.management.ObjectName;
+import java.lang.management.ManagementFactory;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 import static org.testng.Assert.assertEquals;
@@ -60,7 +63,7 @@ public class RetryTest {
     }
 
     @Test
-    public void testRetryBidi() throws ExecutionException, InterruptedException {
+    public void testRetryBidi() throws Exception {
 
         final Flow<Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> flow =
                 Flow.<Pair<String, UUID>>create()
@@ -83,7 +86,7 @@ public class RetryTest {
     }
 
     @Test
-    public void testRetryBidiWithFailures() throws ExecutionException, InterruptedException {
+    public void testRetryBidiWithFailures() throws Exception {
 
         final Flow<Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> bottom =
                 Flow.<Pair<String, UUID>>create()
@@ -110,7 +113,7 @@ public class RetryTest {
     }
 
     @Test
-    public void testRetryBidiWithRetryFlow() throws ExecutionException, InterruptedException {
+    public void testRetryBidiWithRetryFlow() throws Exception {
 
         final Flow<Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> flow =
                 Flow.<Pair<String, UUID>>create()
@@ -133,7 +136,7 @@ public class RetryTest {
     }
 
     @Test
-    public void testRetryBidiWithUniqueIdMapper() throws ExecutionException, InterruptedException {
+    public void testRetryBidiWithUniqueIdMapper() throws Exception {
         final Flow<Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> bottom =
                 Flow.<Pair<String, MyContext>>create()
             .map(elem -> {
@@ -241,7 +244,7 @@ public class RetryTest {
     }
 
     @Test
-    public void testRetryBidiWithMapperDecider() throws ExecutionException, InterruptedException {
+    public void testRetryBidiWithMapperDecider() throws Exception {
 
         final Flow<Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> bottom =
                 Flow.<Pair<String, MyContext>>create()
@@ -308,4 +311,47 @@ public class RetryTest {
                 "Did not get the expected elements from retry stage");
     }
 
+    @Test
+    public void testRetryWithMetrics() throws Exception {
+        AtomicBoolean first = new AtomicBoolean(true);
+        final Flow<Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> bottom =
+            Flow.<Pair<String, UUID>>create()
+                .map(elem -> {
+                    if (elem.first().equals("a"))
+                        return new Pair<>(failure, elem.second());
+                    else if (elem.first().equals("b") && first.get()) {
+                        first.set(false);
+                        return new Pair<>(failure, elem.second());
+                    } else {
+                        first.set(true);
+                        return new Pair<>(Success.apply(elem.first()), elem.second());
+                    }
+                });
+
+        final RetrySettings retrySettings =
+            RetrySettings.<String, Try<String>, UUID>create(1)
+                .withMetrics("myRetry", system);
+
+        final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>,
+            Pair<Try<String>, UUID>, NotUsed> retry = Retry.create(retrySettings);
+
+        final CompletionStage<List<Try<String>>> result = Source.from(Arrays.asList("a", "b", "c"))
+            .map(s -> new Pair<>(s, UUID.randomUUID()))
+            .via(retry.join(bottom))
+            .map(Pair::first)
+            .runWith(Sink.seq(), mat);
+
+        final List<Try<String>> expected = Arrays.asList(failure, Success.apply("b"), Success.apply("c"));
+        assertTrue(result.toCompletableFuture().get().containsAll(expected),
+            "Did not get the expected elements from retry stage");
+
+        assertEquals(metricsJmxValue("myRetry.retry-count", "Count"), 2);
+        assertEquals(metricsJmxValue("myRetry.failed-count", "Count"), 1);
+        assertEquals(metricsJmxValue("myRetry.success-count", "Count"), 2);
+    }
+
+    private int metricsJmxValue(String name, String key) throws Exception {
+        ObjectName oName = ObjectName.getInstance(MetricsExtension.get(system).Domain() + ":name=" + name);
+        return Integer.parseInt(ManagementFactory.getPlatformMBeanServer().getAttribute(oName, key).toString());
+    }
 }
