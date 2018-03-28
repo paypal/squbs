@@ -16,7 +16,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
   "ch.qos.logback" % "logback-classic" % logbackInTestV % "test",
-  "org.json4s" %% "json4s-jackson" % json4sV
+  "org.json4s" %% "json4s-jackson" % json4sV,
+  "com.fasterxml.jackson.core" % "jackson-databind" % jacksonV // TODO Remove once json4s brings 2.9.4+
 )
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")
