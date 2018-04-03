@@ -7,7 +7,7 @@
 * [Service Discovery](#service-discovery-chain): Lets any service discovery mechanism to be plugged in and allows resolving HTTP endpoints by string identifiers, e.g., `paymentserv`.
 * [Per Client configuration](#per-client-configuration): Let's each client to individually override defaults in `application.conf`.
 * [Pipeline](#pipeline): Allows a `Bidi`Akka Streams flow to be registered globally or individually for clients.
-* [Metrics](#metrics): Provides [Codahale Metrics](http://metrics.dropwizard.io/3.1.0/getting-started/) out-of-the-box for each client.    
+* [Metrics](#metrics): Provides [Codahale Metrics](http://metrics.dropwizard.io/3.1.0/getting-started/) out-of-the-box for each client **without** AspectJ.
 * [JMX Beans](#jmx-beans): Exposes the configuration of each client as JMX beans.
 * [Circuit Breaker](#circuit-breaker): Provides resiliency with a stream based circuit breaker.
 
@@ -234,7 +234,7 @@ Please see [squbs pipeline](pipeline.md) to find out how to create a pipeline an
 
 ### Metrics
 
-squbs comes with pre-built [pipeline](#pipeline) elements for metrics collection and squbs activator templates sets those as default.  Accordingly, each squbs http client is enabled to collect [Codahale Metrics](http://metrics.dropwizard.io/3.1.0/getting-started/) out-of-the-box without any code change or configuration.  The following metrics are available on JMX by default:
+squbs comes with pre-built [pipeline](#pipeline) elements for metrics collection and squbs activator templates sets those as default.  Accordingly, each squbs http client is enabled to collect [Codahale Metrics](http://metrics.dropwizard.io/3.1.0/getting-started/) out-of-the-box without any code change or configuration.  Please note, squbs metrics collection does NOT require AspectJ or any other runtime code weaving.  The following metrics are available on JMX by default:
 
    * Request Timer
    * Request Count Meter
