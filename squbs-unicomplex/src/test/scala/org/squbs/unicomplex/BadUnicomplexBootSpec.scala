@@ -83,7 +83,7 @@ with AsyncAssertions {
   import BadUnicomplexBootSpec._
   import system.dispatcher
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

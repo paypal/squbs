@@ -116,7 +116,7 @@ class ResolverRegistryExtension(system: ExtendedActorSystem) extends Extension w
     register[T](resolver)(ClassTag(clazz))
   }
 
-  def unregister(name: String) {
+  def unregister(name: String): Unit = {
     val originalLength = resolvers.length
     resolvers = resolvers.filterNot { case (_, res) => res.name == name }
     if (resolvers.length == originalLength)

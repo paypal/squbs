@@ -53,7 +53,7 @@ class JavaRouteSvcSpec extends TestKit(
   val portBindingsF = (Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]]
   val portF = portBindingsF map { bindings => bindings("default-listener") }
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

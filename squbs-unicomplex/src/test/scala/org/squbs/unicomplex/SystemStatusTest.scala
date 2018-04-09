@@ -55,7 +55,7 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
 	with WordSpecLike with Matchers with BeforeAndAfterAll
 	with SequentialNestedSuiteExecution {
 
-	override def beforeAll() {
+	override def beforeAll(): Unit = {
     awaitAssert({
       Unicomplex(system).uniActor ! ReportStatus
       receiveOne(awaitMax) match {
@@ -66,7 +66,7 @@ class SystemStatusTest extends TestKit(SystemStatusTest.boot.actorSystem) with I
     }, max = awaitMax)
 	}
 
-	override def afterAll() {
+	override def afterAll(): Unit = {
 		Unicomplex(system).uniActor ! GracefulStop
 	}
 

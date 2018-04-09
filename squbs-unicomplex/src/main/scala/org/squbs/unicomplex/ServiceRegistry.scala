@@ -112,7 +112,7 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
   }
 
   override private[unicomplex] def registerContext(listeners: Iterable[String], webContext: String, servant: FlowWrapper,
-                                                   ps: PipelineSetting)(implicit context: ActorContext) {
+                                                   ps: PipelineSetting)(implicit context: ActorContext): Unit = {
 
     // Calling this here just to see if it would throw an exception.
     // We do not want it to be thrown at materialization time, instead face it during startup.

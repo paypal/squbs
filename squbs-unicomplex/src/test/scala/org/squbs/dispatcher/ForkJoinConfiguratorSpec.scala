@@ -119,7 +119,7 @@ class ForkJoinConfiguratorSpec extends TestKit(ForkJoinConfiguratorSpec.boot.act
     }
   }
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 }

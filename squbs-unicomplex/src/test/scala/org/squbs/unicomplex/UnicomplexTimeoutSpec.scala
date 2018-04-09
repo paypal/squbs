@@ -64,7 +64,7 @@ class UnicomplexTimeoutSpec extends TestKit(UnicomplexTimeoutSpec.boot.actorSyst
   import akka.pattern.ask
   val port = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)("default-listener")
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

@@ -21,7 +21,7 @@ import akka.actor.ActorSystem
   * Test helper for Java tests.
   */
 object EnvTestHelper {
-  def clearRegistries(system: ActorSystem) {
+  def clearRegistries(system: ActorSystem): Unit = {
     EnvironmentResolverRegistry(system).environmentResolvers = List.empty[EnvironmentResolver]
   }
 

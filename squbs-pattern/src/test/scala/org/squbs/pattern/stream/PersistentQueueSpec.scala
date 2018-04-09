@@ -29,7 +29,7 @@ class PersistentQueueSpec extends FlatSpec with Matchers with PrivateMethodTeste
 
   implicit val serializer = QueueSerializer[ByteString]()
 
-  def delete(file: File) {
+  def delete(file: File): Unit = {
     if (file.isDirectory)
       Option(file.listFiles).map(_.toList).getOrElse(Nil).foreach(delete)
     file.delete

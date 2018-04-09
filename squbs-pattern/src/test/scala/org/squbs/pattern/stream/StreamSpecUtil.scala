@@ -69,7 +69,7 @@ class StreamSpecUtil[T, S](outputPort: Int = 1) {
 
   def clean() = delete(tempPath)
 
-  private def delete(file: File) {
+  private def delete(file: File): Unit = {
     if (file.isDirectory)
       Option(file.listFiles).map(_.toList).getOrElse(Nil).foreach(delete)
     file.delete

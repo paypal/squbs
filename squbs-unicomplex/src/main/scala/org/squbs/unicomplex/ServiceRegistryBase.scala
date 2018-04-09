@@ -38,7 +38,7 @@ trait ServiceRegistryBase[A] {
 
   protected def listenerRoutes_=[B](newListenerRoutes: Map[String, Seq[(B, FlowWrapper, PipelineSetting)]]): Unit
 
-  private[unicomplex] def prepListeners(listenerNames: Iterable[String])(implicit context: ActorContext) {
+  private[unicomplex] def prepListeners(listenerNames: Iterable[String])(implicit context: ActorContext): Unit = {
     listenerRoutes = listenerNames.map { listener =>
       listener -> Seq.empty[(A, FlowWrapper, PipelineSetting)]
     }.toMap

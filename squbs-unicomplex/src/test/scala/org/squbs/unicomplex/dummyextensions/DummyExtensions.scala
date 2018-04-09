@@ -24,19 +24,19 @@ trait DummyExtension extends ExtensionLifecycle {
 
   def state: String
 
-  override def preInit() {
+  override def preInit(): Unit = {
     _state += "preInit"
   }
 
-  override def init() {
+  override def init(): Unit = {
     _state += "init"
   }
 
-  override def preCubesInit() {
+  override def preCubesInit(): Unit = {
     _state += "preCubesInit"
   }
 
-  override def postInit() {
+  override def postInit(): Unit = {
     _state += "postInit"
   }
 }
@@ -55,11 +55,11 @@ class DummyExtensionC extends DummyExtension {
 
   def state = "C" + _state
 
-  override def init() {
+  override def init(): Unit = {
     throw new RuntimeException("BadInit", new RuntimeException("BadInitRootCause"))
   }
 
-  override def shutdown() {
+  override def shutdown(): Unit = {
     println("DummyExtensionC shutdown...")
     throw new RuntimeException("BadShutdown")
   }

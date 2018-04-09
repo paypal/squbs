@@ -459,7 +459,7 @@ object UnicomplexBoot extends LazyLogging {
     (activeAliases, activeListeners, missingAliases)
   }
 
-  def startServiceInfra(boot: UnicomplexBoot)(implicit actorSystem: ActorSystem) {
+  def startServiceInfra(boot: UnicomplexBoot)(implicit actorSystem: ActorSystem): Unit = {
     import actorSystem.dispatcher
     val startTime = System.nanoTime
     implicit val timeout = Timeout((boot.listeners.size * 10).seconds)
@@ -620,7 +620,7 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
     boot
   }
 
-  def registerExtensionShutdown(actorSystem: ActorSystem) {
+  def registerExtensionShutdown(actorSystem: ActorSystem): Unit = {
     if (extensions.nonEmpty) {
       actorSystem.registerOnTermination {
         // Run the shutdown in a different thread, not in the ActorSystem's onTermination thread.
@@ -630,7 +630,7 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
         if (stopJVM) {
           val shutdownTimer = new Timer(true)
           shutdownTimer.schedule(new TimerTask {
-            def run() {
+            def run(): Unit = {
               System.exit(0)
             }
           }, 5000)

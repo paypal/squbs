@@ -75,14 +75,14 @@ class MultipleUnicomplexTest extends TestKit(MultipleUnicomplexTest.boot.actorSy
   val sys1 = system
   val sys2 = MultipleUnicomplexTest.boot2.actorSystem
   
-  override def beforeAll() {
+  override def beforeAll(): Unit = {
     sys.addShutdownHook {
       Unicomplex(sys2).uniActor ! GracefulStop
       Unicomplex(sys1).uniActor ! GracefulStop
     }
   }
   
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(sys2).uniActor ! GracefulStop
     Unicomplex(sys1).uniActor ! GracefulStop
   }

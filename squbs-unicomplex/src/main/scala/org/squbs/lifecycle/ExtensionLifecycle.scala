@@ -39,25 +39,25 @@ trait ExtensionLifecycle {
   /**
     * Before the [[init]] phase, to let extensions to influence each other
     */
-  def preInit() {}
+  def preInit(): Unit = {}
 
   /**
     * Before unicomplex starts (actor system has not been created yet)
     */
-  def init() {}
+  def init(): Unit = {}
 
   /**
     * After unicomplex starts, but before any cubes are initialized
     */
-  def preCubesInit() {}
+  def preCubesInit(): Unit = {}
 
   /**
     * After cubes are initialized
     */
-  def postInit() {}
+  def postInit(): Unit = {}
 
   /**
     * [[akka.actor.ActorSystem.registerOnTermination]]
     */
-  def shutdown() {}
+  def shutdown(): Unit = {}
 }

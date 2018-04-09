@@ -64,7 +64,7 @@ class StreamTestSpec extends TestKit(StreamTestSpec.boot.actorSystem) with Impli
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val port = portBindings("default-listener")
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

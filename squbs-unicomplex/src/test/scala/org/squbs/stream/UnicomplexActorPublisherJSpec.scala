@@ -45,7 +45,7 @@ final class UnicomplexActorPublisherJSpec extends FlatSpecLike with Matchers wit
   val (pub, sub) = mat.toScala
   val (pubIn, pubTrigger) = pub.toScala
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

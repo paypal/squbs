@@ -44,7 +44,7 @@ final class UnicomplexActorPublisherSpec extends FlatSpecLike with Matchers with
   // expose probe port(s)
   val ((pubIn, pubTrigger), sub) = LifecycleManaged(system).source(in).toMat(TestSink.probe[String])(Keep.both).run()
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

@@ -116,11 +116,11 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
     previous
   }
 
-  def reset() {
+  def reset(): Unit = {
     reset(newStartOverCount = 0)
   }
 
-  def reset(initial: Option[FiniteDuration]) {
+  def reset(initial: Option[FiniteDuration]): Unit = {
     reset(initial, 0)
   }
 

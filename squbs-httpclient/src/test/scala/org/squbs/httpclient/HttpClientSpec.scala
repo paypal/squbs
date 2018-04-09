@@ -62,7 +62,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
       .map { case (t, _) => t }
   }
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     system.terminate()
   }
 

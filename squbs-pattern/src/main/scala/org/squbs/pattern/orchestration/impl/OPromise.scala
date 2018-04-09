@@ -33,7 +33,7 @@ private[orchestration] trait OPromise[T] extends org.squbs.pattern.orchestration
 
   protected var errorReporter = defaultReporter
 
-  def setErrorReporter(reporter: Throwable => Unit) {
+  def setErrorReporter(reporter: Throwable => Unit): Unit = {
     errorReporter = reporter
   }
 }
