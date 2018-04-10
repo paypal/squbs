@@ -84,7 +84,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
   val port = portBindings("default-listener")
 
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

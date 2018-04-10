@@ -61,7 +61,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   import Timeouts.awaitMax
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

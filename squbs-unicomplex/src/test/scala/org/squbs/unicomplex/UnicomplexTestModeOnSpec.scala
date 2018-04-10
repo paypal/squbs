@@ -59,7 +59,7 @@ class UnicomplexTestModeOnSpec extends TestKit(UnicomplexTestModeOnSpec.boot.act
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

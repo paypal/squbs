@@ -82,7 +82,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
   import org.squbs.testkit.Timeouts._
   import system.dispatcher
 
-  override def beforeAll() {
+  override def beforeAll(): Unit = {
     // Make sure all actors are indeed alive.
     val idFuture1 = (system.actorSelection("/user/TestCube/TestActor") ? Identify(None)).mapTo[ActorIdentity]
     val idFuture2 = (system.actorSelection("/user/TestCube/TestActorWithRoute") ? Identify(None)).mapTo[ActorIdentity]
@@ -97,7 +97,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
   }
 
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

@@ -99,7 +99,7 @@ object ListenerStateSpec{
 class ListenerStateSpec extends TestKit(ListenerStateSpec.boot.actorSystem) with FlatSpecLike
   with Matchers with BeforeAndAfterAll {
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

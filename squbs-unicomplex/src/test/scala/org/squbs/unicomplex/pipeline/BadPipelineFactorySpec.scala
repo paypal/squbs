@@ -54,7 +54,7 @@ class BadPipelineFactorySpec extends TestKit(
 
   implicit val am = ActorMaterializer()
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

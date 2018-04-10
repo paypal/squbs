@@ -61,7 +61,7 @@ class LoadActor extends Actor {
 
     var nextIntervalStart = firingInterval.toNanos + startTimeNs
 
-    def invoke() {
+    def invoke(): Unit = {
       val wakeUpTime = System.nanoTime()
       if (wakeUpTime >= endTime) {
         scheduler.cancel()
@@ -75,7 +75,7 @@ class LoadActor extends Actor {
         }
 
         @tailrec
-        def invoke(times: Int) {
+        def invoke(times: Int): Unit = {
           if (times > 0) {
             invokeOnce()
             invoke(times - 1)

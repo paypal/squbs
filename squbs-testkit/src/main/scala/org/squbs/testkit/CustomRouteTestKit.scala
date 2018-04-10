@@ -51,11 +51,11 @@ abstract class CustomRouteTestKit(val boot: UnicomplexBoot) extends {
     this(CustomTestKit.boot(config = Option(config), resources = Option(resources), withClassPath = Option(withClassPath)))
   }
 
-  override protected def beforeAll() {
+  override protected def beforeAll(): Unit = {
     CustomTestKit.checkInit(system)
   }
 
-  override protected def afterAll() {
+  override protected def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 }

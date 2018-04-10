@@ -29,7 +29,7 @@ import scala.collection.JavaConverters._
 
 class MBeanUtilTest extends FunSpecLike with Matchers with BeforeAndAfterAll with Inspectors with OptionValues {
 
-  override def beforeAll() {
+  override def beforeAll(): Unit = {
 
     val testBean = TestBean("Hello", 123.456, Long.MaxValue, props03 = false,
       AnotherTestObject("Hi TestObject", props1 = true), Array(1.0f, 1.5f, 2.0f, 2.5f), Array(true, false, false, true),

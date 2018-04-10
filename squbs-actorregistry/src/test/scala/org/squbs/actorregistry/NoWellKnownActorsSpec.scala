@@ -50,7 +50,7 @@ class NoWellKnownActorsSpec extends TestKit(NoWellKnownActorsSpec.boot.actorSyst
 
   import NoWellKnownActorsSpec._
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

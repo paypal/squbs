@@ -131,7 +131,7 @@ class MaterializerSpec extends TestKit(
   val defaultListenerPort = portBindings("default-listener")
   val testListenerPort = portBindings("test-listener")
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 

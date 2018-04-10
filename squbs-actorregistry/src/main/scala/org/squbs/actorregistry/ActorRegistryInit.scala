@@ -29,7 +29,7 @@ import scala.concurrent.duration._
 
 private class ActorRegistryInit extends ExtensionLifecycle with LazyLogging {
 
-  override def postInit() {
+  override def postInit(): Unit = {
     logger.info(s"postInit ${this.getClass}")
 
     import ConfigUtil._

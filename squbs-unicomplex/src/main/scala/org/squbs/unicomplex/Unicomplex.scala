@@ -298,7 +298,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   private val stateMXBean = new SystemStateBean
 
 
-  override def preStart() {
+  override def preStart(): Unit = {
     Unicomplex.actors.put(context.system.name, self)
 
     import org.squbs.unicomplex.JMX._
@@ -308,7 +308,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
     register(new ExtensionsBean, prefix + extensionsName)
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     import org.squbs.unicomplex.JMX._ // JMX registrations
     unregister(prefix + extensionsName)
     unregister(prefix + cubesName)
@@ -523,7 +523,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       sender() ! serviceRegistry.portBindings
   }
 
-  def updateCubes(reports: InitReports) {
+  def updateCubes(reports: InitReports): Unit = {
     val reg = cubes get sender()
     reg match {
       case Some((registration, _)) =>
@@ -570,7 +570,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   def pendingServiceStarts = servicesStarted && !serviceRegistry.isListenersBound
 
-  def updateSystemState(state: LifecycleState) {
+  def updateSystemState(state: LifecycleState): Unit = {
     if (state != systemState) {
       systemState = state
 
@@ -632,14 +632,14 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     override def getActorErrorStates: util.List[ActorErrorState] = actorErrorStatesAgent().values.toList.asJava
   }
 
-  override def preStart() {
+  override def preStart(): Unit = {
     import org.squbs.unicomplex.JMX._
     val cubeStateMXBean = new CubeStateBean
     register(cubeStateMXBean, prefix + cubeStateName + cubeName)
 
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     import org.squbs.unicomplex.JMX._
     unregister(prefix + cubeStateName + cubeName)
   }

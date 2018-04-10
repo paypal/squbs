@@ -23,7 +23,7 @@ import org.squbs.lifecycle.ExtensionLifecycle
 
 private class ActorMonitorInit extends ExtensionLifecycle with LazyLogging {
 
-  override def postInit() {
+  override def postInit(): Unit = {
     logger.info(s"postInit ${this.getClass}")
 
     import boot._

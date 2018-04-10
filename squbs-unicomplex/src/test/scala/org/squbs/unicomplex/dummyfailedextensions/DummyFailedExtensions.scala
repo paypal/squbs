@@ -24,15 +24,15 @@ trait DummyFailedExtension extends ExtensionLifecycle {
 
   def state: String
 
-  override def preInit() {
+  override def preInit(): Unit = {
     _state += "preInit"
   }
 
-  override def init() {
+  override def init(): Unit = {
     _state += "init"
   }
 
-  override def postInit() {
+  override def postInit(): Unit = {
     _state += "postInit"
   }
 }
@@ -40,7 +40,7 @@ class DummyFailedExtensionA extends DummyFailedExtension{
 
   def state = "A" + _state
 
-  override def preInit() {
+  override def preInit(): Unit = {
     throw new IllegalStateException("Test failing preInit()")
   }
 }

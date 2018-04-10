@@ -34,7 +34,7 @@ private[actormonitor] class ActorMonitor(_monitorConfig: ActorMonitorConfig) ext
   register(new ActorMonitorConfigBean(monitorConfig, self, context), prefix + configBean )
   context.actorSelection("/*") ! Identify(monitorConfig)
 
-  override def postStop() {
+  override def postStop(): Unit = {
     unregister(prefix + configBean)
     totalBeans.asScala.foreach(unregister)
   }

@@ -48,7 +48,7 @@ private[actorregistry] class ActorRegistry extends Actor with Stash {
     def getActorMessageTypeList = registry.getOrElse(actor, List.empty[CubeActorMessageType]).map(_.toString).asJava
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     unregister(prefix + ActorRegistry.configBean)
     totalBeans.asScala.foreach(unregister)
   }

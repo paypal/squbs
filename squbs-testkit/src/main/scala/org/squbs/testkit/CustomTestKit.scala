@@ -36,7 +36,7 @@ object CustomTestKit {
 
   private[testkit] val actorSystems = collection.concurrent.TrieMap.empty[String, ActorSystem]
 
-  private[testkit] def checkInit(actorSystem: ActorSystem) {
+  private[testkit] def checkInit(actorSystem: ActorSystem): Unit = {
     if (actorSystems.putIfAbsent(actorSystem.name, actorSystem).isEmpty)
       sys.addShutdownHook {
         val stopTimeoutInMs = actorSystem.settings.config.getDuration("squbs.default-stop-timeout", TimeUnit.MILLISECONDS)
@@ -165,11 +165,11 @@ abstract class CustomTestKit(val boot: UnicomplexBoot) extends TestKit(boot.acto
     this(CustomTestKit.boot(config = Option(config), resources = Option(resources), withClassPath = Option(withClassPath)))
   }
 
-  override protected def beforeAll() {
+  override protected def beforeAll(): Unit = {
     CustomTestKit.checkInit(system)
   }
 
-  override protected def afterAll() {
+  override protected def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 }

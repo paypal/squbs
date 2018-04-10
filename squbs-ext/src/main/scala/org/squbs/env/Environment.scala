@@ -75,7 +75,7 @@ trait EnvironmentResolver {
 class EnvironmentResolverRegistryExtension(system: ExtendedActorSystem) extends Extension with LazyLogging {
   private[env] var environmentResolvers = List.empty[EnvironmentResolver]
 
-  def register(resolver: EnvironmentResolver) {
+  def register(resolver: EnvironmentResolver): Unit = {
     environmentResolvers.find(_.name == resolver.name) match {
       case None => environmentResolvers = resolver :: environmentResolvers
       case Some(oldResolver) =>
@@ -83,7 +83,7 @@ class EnvironmentResolverRegistryExtension(system: ExtendedActorSystem) extends 
     }
   }
 
-  def unregister(name: String) {
+  def unregister(name: String): Unit = {
     val originalLength = environmentResolvers.length
     environmentResolvers = environmentResolvers.filterNot(_.name == name)
     if(environmentResolvers.length == originalLength)

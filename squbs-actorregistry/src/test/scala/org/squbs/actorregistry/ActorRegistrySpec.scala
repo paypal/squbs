@@ -63,7 +63,7 @@ abstract class ActorRegistrySpec(testBootstrap: TestBootstrap) extends TestKit(t
   import org.squbs.testkit.Timeouts._
 
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
   }
 
