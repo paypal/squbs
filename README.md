@@ -5,7 +5,7 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/57368c396cb649c590e4ba678675e55c)](https://www.codacy.com/app/akara-sucharitakul/squbs)
 [![Codacy Coverage](https://api.codacy.com/project/badge/coverage/57368c396cb649c590e4ba678675e55c)](https://www.codacy.com/app/akara-sucharitakul/squbs)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.squbs/squbs-unicomplex_2.12/badge.svg?style=flat)](http://search.maven.org/#search|ga|1|g:org.squbs)
-[![License](http://img.shields.io/:license-Apache%202-red.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
+[![License](https://img.shields.io/badge/License-Apache%202.0-red.svg)](https://opensource.org/licenses/Apache-2.0)
 
 squbs (pronounced "skewbs") is a suite of components enabling standardization and operationalization of Akka and Akka HTTP applications/services in a large scale, managed, cloud environment. It standardizes how Akka applications are deployed in different environments and how they are hooked up to the operational environments of large, internet-scale organizations.
 
