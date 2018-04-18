@@ -210,6 +210,18 @@ class MaterializerSpec extends TestKit(
     }
   }
 
+  it should "obtain the default materializer through the Java API" in {
+    val actual = MaterializerTest.getMaterializer(system, "default-materializer")
+    val expected = Unicomplex(system).materializer("default-materializer")
+    actual shouldEqual expected
+  }
+
+  it should "obtain a custom materializer through the Java API" in {
+    val actual = MaterializerTest.getMaterializer(system, "test-materializer-1")
+    val expected = Unicomplex(system).materializer("test-materializer-1")
+    actual shouldEqual expected
+  }
+
   it should "have default-materializer defined by default" in {
     Unicomplex(system).materializer("default-materializer")
 

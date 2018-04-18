@@ -113,9 +113,17 @@ A squbs materializer is nothing but an Akka Streams `Materializer` that is speci
 
    * a `Materializer` can be accessed from different locations through an Akka Extension as follows:
 
-   ```scala
-   implicit val mat = Unicomplex(system).materializer("default-materializer")
-   ```
+     **Scala**
+   
+     ```scala
+     implicit val mat = Unicomplex(system).materializer("default-materializer")
+     ```
+   
+     **Java**
+   
+     ```java
+     final Materializer mat = Unicomplex.get(system).materializer("default-materializer")
+     ```
 
    * a materializer can be referenced from a [squbs listener](#listeners).
    * The materializers in use by an application can be reported on JMX with the corresponding settings.
