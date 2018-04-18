@@ -79,12 +79,16 @@ class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
 
     try {
       val clazz = Class.forName(materializerFactoryClass)
-      val materializer = clazz.getMethod("createMaterializer", classOf[ActorSystem]).invoke(clazz.newInstance(), system).asInstanceOf[Materializer]
-      if(materializer.isInstanceOf[ActorMaterializer]) {
-        val actorMaterializer = materializer.asInstanceOf[ActorMaterializer]
-        import org.squbs.unicomplex.JMX._
-        val actorMaterializerBean = new ActorMaterializerBean(name, clazz.getName, actorMaterializer)
-        register(actorMaterializerBean, prefix(system) + materializerName + ObjectName.quote(name))
+      val materializer = clazz
+        .getMethod("createMaterializer", classOf[ActorSystem])
+        .invoke(clazz.newInstance(), system)
+        .asInstanceOf[Materializer]
+      materializer match {
+        case actorMaterializer: ActorMaterializer =>
+          import org.squbs.unicomplex.JMX._
+          val actorMaterializerBean = new ActorMaterializerBean(name, clazz.getName, actorMaterializer)
+          register(actorMaterializerBean, prefix(system) + materializerName + ObjectName.quote(name))
+        case _ =>
       }
       materializers.putIfAbsent(name, materializer)
       materializers.get(name)
@@ -101,6 +105,13 @@ object Unicomplex extends ExtensionId[UnicomplexExtension] with ExtensionIdProvi
   override def lookup() = Unicomplex
 
   override def createExtension(system: ExtendedActorSystem) = new UnicomplexExtension(system)
+
+  /**
+    * Java API to retrieve the [[UnicomplexExtension]].
+    * @param system The actor system.
+    * @return The [[UnicomplexExtension]]
+    */
+  override def get(system: ActorSystem): UnicomplexExtension = super.get(system)
 
   type InitReport = Try[Option[String]]
 
