@@ -51,6 +51,19 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     assert(RetrySettings(1).failureDecider.equals(None))
   }
 
+  it should "require delay to be greater than max timer precision" in {
+    an[IllegalArgumentException] should be thrownBy
+      Retry(RetrySettings[String, String, NotUsed](1, delay = FiniteDuration(5, MILLISECONDS)))
+  }
+
+  it should "require maxdelay to be greater than delay" in {
+    an[IllegalArgumentException] should be thrownBy
+      Retry(RetrySettings[String, String, NotUsed](
+        3,
+        delay = FiniteDuration(2, SECONDS),
+        maxDelay = FiniteDuration(1, SECONDS)))
+  }
+
   it should "return all expected elements if no failures" in {
     val flow = Flow[(String, Long)].map {
       case (elem, ctx) => (Success(elem), ctx)
