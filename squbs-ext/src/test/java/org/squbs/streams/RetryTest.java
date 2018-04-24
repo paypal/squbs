@@ -43,8 +43,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 public class RetryTest {
 
@@ -81,8 +81,8 @@ public class RetryTest {
 
         final List<Try<String>> expected = Arrays.asList(Success.apply("a"), Success.apply("b"), Success.apply("c"));
         List<Try<String>> actual = result.toCompletableFuture().get();
-        assertEquals(actual.size(), 3);
-        assertTrue(actual.containsAll(expected), "Did not get the expected elements from retry stage");
+        assertEquals(3, actual.size());
+        assertTrue("Did not get the expected elements from retry stage", actual.containsAll(expected));
     }
 
     @Test
@@ -108,8 +108,8 @@ public class RetryTest {
 
         final List<Try<String>> expected = Arrays.asList(failure, Success.apply("b"), failure);
         List<Try<String>> actual = result.toCompletableFuture().get();
-        assertEquals(actual.size(), 3);
-        assertTrue(actual.containsAll(expected), "Did not get the expected elements from retry stage");
+        assertEquals(3, actual.size());
+        assertTrue("Did not get the expected elements from retry stage", actual.containsAll(expected));
     }
 
     @Test
@@ -131,8 +131,8 @@ public class RetryTest {
 
         final List<Try<String>> expected = Arrays.asList(Success.apply("a"), Success.apply("b"), Success.apply("c"));
         List<Try<String>> actual = result.toCompletableFuture().get();
-        assertEquals(actual.size(), 3);
-        assertTrue(actual.containsAll(expected), "Did not get the expected elements from retry stage");
+        assertEquals(3, actual.size());
+        assertTrue("Did not get the expected elements from retry stage", actual.containsAll(expected));
     }
 
     @Test
@@ -160,8 +160,8 @@ public class RetryTest {
                         .runWith(Sink.seq(), mat);
 
         final List<Try<String>> expected = Arrays.asList(Success.apply("a"), Success.apply("c"), failure);
-        assertTrue(result.toCompletableFuture().get().containsAll(expected),
-                "Did not get the expected elements from retry stage");
+        assertTrue("Did not get the expected elements from retry stage",
+            result.toCompletableFuture().get().containsAll(expected));
     }
 
     @Test
@@ -272,8 +272,8 @@ public class RetryTest {
                         .runWith(Sink.seq(), mat);
 
         final List<Try<String>> expected = Arrays.asList(Success.apply("a"), Success.apply("c"), failure);
-        assertTrue(result.toCompletableFuture().get().containsAll(expected),
-                "Did not get the expected elements from retry stage");
+        assertTrue("Did not get the expected elements from retry stage",
+            result.toCompletableFuture().get().containsAll(expected));
     }
 
     @Test
@@ -307,8 +307,8 @@ public class RetryTest {
                         .runWith(Sink.seq(), mat);
 
         final List<Try<String>> expected = Arrays.asList(Success.apply("a"), Success.apply("c"), failure);
-        assertTrue(result.toCompletableFuture().get().containsAll(expected),
-                "Did not get the expected elements from retry stage");
+        assertTrue("Did not get the expected elements from retry stage",
+            result.toCompletableFuture().get().containsAll(expected));
     }
 
     @Test
@@ -342,12 +342,12 @@ public class RetryTest {
             .runWith(Sink.seq(), mat);
 
         final List<Try<String>> expected = Arrays.asList(failure, Success.apply("b"), Success.apply("c"));
-        assertTrue(result.toCompletableFuture().get().containsAll(expected),
-            "Did not get the expected elements from retry stage");
+        assertTrue("Did not get the expected elements from retry stage",
+            result.toCompletableFuture().get().containsAll(expected));
 
-        assertEquals(metricsJmxValue("myRetry.retry-count", "Count"), 2);
-        assertEquals(metricsJmxValue("myRetry.failed-count", "Count"), 1);
-        assertEquals(metricsJmxValue("myRetry.success-count", "Count"), 2);
+        assertEquals(2, metricsJmxValue("myRetry.retry-count", "Count"));
+        assertEquals(1, metricsJmxValue("myRetry.failed-count", "Count"));
+        assertEquals(2, metricsJmxValue("myRetry.success-count", "Count"));
     }
 
     private int metricsJmxValue(String name, String key) throws Exception {
