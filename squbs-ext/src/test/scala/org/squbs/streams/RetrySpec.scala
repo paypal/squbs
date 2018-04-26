@@ -341,6 +341,22 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     succeed
   }
 
+  it should "complete when joined flow cancels" in {
+    val bottom = Flow[(String, Long)].takeWhile(_._2 < 2).map {
+      case (elem, ctx) => (failure, ctx)
+    }
+
+    val retry = Retry[String, String, Long](1)
+    val (_, sink) = Source(1 to 2)
+      .map(x => (x.toString, x.toLong))
+      .via(retry.join(bottom))
+      .toMat(TestSink.probe)(Keep.both).run()
+
+    sink.request(2).expectNext()
+    sink.expectComplete()
+    succeed
+  }
+
   it should "backpressure when retryQ size reaches internal buffer size" in {
     val bottom = Flow[(String, Long)].map {
       case (elem, ctx) => if(ctx == 1) (failure, ctx) else (Success(elem), ctx)
