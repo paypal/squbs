@@ -84,11 +84,44 @@ class RetryJMXSpec extends TestKit(ActorSystem("RetryJMXSpec")) with FlatSpecLik
     awaitAssert(metricsJmxValue("myRetry-1.retry-count", "Count").value shouldBe 3, 10 seconds)
   }
 
+  it should "publish the retry setting via jmx" in {
+    val bottom = Flow[(String, Long)].delay(1 second).map {
+      case (_, ctx) => (Failure(new Exception("failed")), ctx)
+    }
+    val retry = Retry(RetrySettings[String, String, Long](3)
+      .withDelay(1.second)
+      .withExponentialBackoff(3)
+      .withMaxDelay(2.seconds)
+      .withMaxWaitingRetries(10)
+      .withMetrics("retrySettingJmx"))
+
+    var context = 0L
+    val sink = Source("a" :: "b" :: "c" :: Nil)
+      .map { s => context += 1; (s, context) }
+      .via(retry.join(bottom))
+      .map { case (s, _) => s }
+      .runWith(TestSink.probe)
+    sink.request(3)
+    awaitAssert {
+      jmxSettingsValue("retrySettingJmx", "MaxRetries").value shouldBe 3
+      jmxSettingsValue("retrySettingJmx", "Delay").value shouldBe "1 second"
+      jmxSettingsValue("retrySettingJmx", "Name").value shouldBe "retrySettingJmx"
+      jmxSettingsValue("retrySettingJmx", "MaxDelay").value shouldBe "2 seconds"
+      jmxSettingsValue("retrySettingJmx", "MaxBufferSize").value shouldBe 10
+      jmxSettingsValue("retrySettingJmx", "ExponentialBackoffFactor").value shouldBe 3
+    }
+  }
+
   private def metricsJmxValue(beanName: String, key: String): Option[AnyRef] = {
     val oName = ObjectName.getInstance(s"${MetricsExtension(system).Domain}:name=${beanName}")
     Option(ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key))
   }
 
+  private def jmxSettingsValue(name: String, key: String): Option[AnyRef] = {
+    val oName = ObjectName.getInstance(
+      s"org.squbs.configuration:type=squbs.retry.settings,name=${ObjectName.quote(name)}")
+    Option(ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key))
+  }
 }
 
 class RetryStateJmxSpec extends TestKit(ActorSystem("RetryStateJmxSpec")) with FlatSpecLike with Matchers {
