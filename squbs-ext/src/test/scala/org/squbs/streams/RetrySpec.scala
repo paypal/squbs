@@ -146,7 +146,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
       case (elem, ctx) => (Success(elem), ctx)
     }
 
-    val retryBidi = Retry[String, String, Long](1)
+    val retryBidi = Retry[String, String, Long](2)
 
     var context = 0L
     val result = Source("d" :: "e" :: "f" :: Nil)
@@ -212,7 +212,8 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     val flow = Flow[(String, MyContext)].map {
       case (elem, ctx) => (Success(elem), ctx)
     }
-    val retry = Retry(RetrySettings[String, String, MyContext](2).withUniqueIdMapper((context: MyContext) => context.uniqueId))
+    val retry = Retry(RetrySettings[String, String, MyContext](2)
+      .withUniqueIdMapper((context: MyContext) => context.uniqueId))
 
     var counter = 0L
     val result = Source("a" :: "b" :: "c" :: Nil)
@@ -250,6 +251,17 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     result map {
       _ should contain theSameElementsAs expected
     }
+  }
+
+  it should "establish the uniqueId correctly" in {
+    case class MyContext(id: Int) extends UniqueId.Provider {
+      override def uniqueId: Any = id
+    }
+
+    (new Retry(RetrySettings[String, String, Int](1))).uniqueId(1) should be(1)
+    (new Retry(RetrySettings[String, String, MyContext](1))).uniqueId(MyContext(2)) should be(2)
+    (new Retry(RetrySettings[String, String, MyContext](1)
+      .withUniqueIdMapper(context => context.id + 1))).uniqueId(MyContext(4)) should be(5)
   }
 
   it should "cancel upstream if downstream cancels" in {
@@ -341,25 +353,59 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     succeed
   }
 
-  it should "complete when joined flow cancels" in {
+  it should "cancel when joined flow cancels" in {
     val bottom = Flow[(String, Long)].takeWhile(_._2 < 2).map {
       case (elem, ctx) => (failure, ctx)
     }
 
     val retry = Retry[String, String, Long](1)
-    val (_, sink) = Source(1 to 2)
+    val (source, sink) = TestSource.probe[String]
       .map(x => (x.toString, x.toLong))
       .via(retry.join(bottom))
       .toMat(TestSink.probe)(Keep.both).run()
+    source.sendNext("1").sendNext("2")
+    sink.request(2).expectNext
+    source.expectCancellation()
+    succeed
+  }
 
-    sink.request(2).expectNext()
-    sink.expectComplete()
+  it should "complete stage when joined flow cancelled with no pending retries" in {
+    val bottom = Flow[(String, Long)].map {
+      case (elem, ctx) => (Success(elem), ctx)
+    }.takeWhile(_._2 < 2, true)
+
+    val retry = Retry[String, String, Long](1)
+    val (source, sink) = TestSource.probe[String]
+      .map(x => (x.toString, x.toLong))
+      .via(retry.join(bottom))
+      .toMat(TestSink.probe)(Keep.both).run()
+    source.sendNext("1").sendNext("2")
+    sink.request(2).expectNext
+    sink.expectNext
+    sink.expectComplete
+    succeed
+  }
+
+  it should "fail stage when joined flow cancelled with pending retries" in {
+    val bottom = Flow[(Long, Long)].map {
+      case (elem, ctx) => (failure, ctx)
+    }.takeWhile(_._2 < 2, true)
+
+    val retry = Retry(RetrySettings[Long, Long, Long](3).withDelay(2.second))
+
+    val (source, sink) = TestSource.probe[Long]
+      .map(x => (x, x))
+      .via(retry.join(bottom))
+      .toMat(TestSink.probe)(Keep.both).run()
+    source.sendNext(1).sendNext(2)
+    sink.request(2)
+    source.expectCancellation()
     succeed
   }
 
   it should "backpressure when retryQ size reaches internal buffer size" in {
     val bottom = Flow[(String, Long)].map {
-      case (elem, ctx) => if(ctx == 1) (failure, ctx) else (Success(elem), ctx)
+      case (elem, ctx) => if (ctx == 1) (failure, ctx) else (Success(elem), ctx)
     }
 
     val settings = RetrySettings[String, String, Long](1).withDelay(100 milliseconds)
@@ -383,7 +429,8 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
       case (elem, ctx) => if(ctx == 1) (failure, ctx) else (Success(elem), ctx)
     }
 
-    val settings = RetrySettings[String, String, Long](1).withDelay(100 milliseconds).withMaxWaitingRetries(1)
+    val settings = RetrySettings[String, String, Long](1)
+      .withDelay(100 milliseconds).withMaxWaitingRetries(1)
     val retry = Retry[String, String, Long](settings)
 
     val sink = Source(1 to 3)
@@ -396,6 +443,27 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
       .expectNext((failure, 1L))
       .expectNext((Success("2"), 2L))
       .expectNext((Success("3"), 3L))
+    succeed
+  }
+
+  it should "continue with demand after backpressure when retryQ reaches QMaxSize" in { //#255
+    val delayFlow = Flow[(Long, Long)].map {
+      { case (elem, ctx) => if (ctx < 3) (failure, ctx) else (Success(elem), ctx) }
+    }
+
+    val retry = Retry(RetrySettings[Long, Long, Long](1))
+      .withAttributes(inputBuffer(initial = 1, max = 1))
+
+    val sink = Source(1L to 3L)
+      .map(x => (x, x))
+      .via(retry.join(delayFlow))
+      .runWith(TestSink.probe)
+
+    sink.request(2)
+      .expectNext((failure, 1L))
+      .request(1)
+      .expectNext((failure, 2L))
+    //.expectNoMessage(100.millis) //TODO
     succeed
   }
 
@@ -582,6 +650,7 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     val result = Await.result(stream, 10 seconds)
     result should contain theSameElementsAs (1L to 500 map(elem => (Success(elem), elem)))
   }
+
 }
 
 class RetryDelayActor extends Actor {

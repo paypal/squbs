@@ -166,10 +166,7 @@ final class Retry[In, Out, Context] private[streams](settings: RetrySettings[In,
     with StageLogging {
 
     val retryQMaxSize = maxWaitingRetries.getOrElse {
-      inheritedAttributes.get[InputBuffer] match {
-        case None => throw new IllegalStateException(s"Couldn't find InputBuffer Attribute for $this")
-        case Some(InputBuffer(_, max)) => max
-      }
+      inheritedAttributes.mandatoryAttribute[InputBuffer].max
     }
     private val matNumber = nameSuffix.incrementAndGet
     private val uniqueRetryName = if (matNumber == 0) name else s"$name-$matNumber"
@@ -236,10 +233,7 @@ final class Retry[In, Out, Context] private[streams](settings: RetrySettings[In,
       }
 
       override def onDownstreamFinish(): Unit =
-        if (retryRegistry.isEmpty) {
-          completeStage()
-          log.debug("completed Out1")
-        } else cancel(in1)
+        if (retryRegistry.isEmpty) completeStage() else cancel(in1)
     })
 
     setHandler(in2, handler = new InHandler {
@@ -252,7 +246,7 @@ final class Retry[In, Out, Context] private[streams](settings: RetrySettings[In,
             retryRegistry -= key
 
             // If a demand from out1 was not propagated to in1 because of retryQ size earlier
-            if(hasBackpressuredIn1) pull(in1)
+            if (hasBackpressuredIn1) pull(in1)
 
             if (isAvailable(out2)) {
               retryMetrics.markFailure()
@@ -290,7 +284,7 @@ final class Retry[In, Out, Context] private[streams](settings: RetrySettings[In,
           retryRegistry -= key
 
           // If a demand from out1 was not propagated to in1 because of retryQ size earlier
-          if(hasBackpressuredIn1) pull(in1)
+          if (hasBackpressuredIn1) pull(in1)
 
           if (isAvailable(out2)) {
             push(out2, (elem, context))
