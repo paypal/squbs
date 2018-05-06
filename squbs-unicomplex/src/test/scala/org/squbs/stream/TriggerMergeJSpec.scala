@@ -36,11 +36,11 @@ class TriggerMergeJSpec extends TestKit(ActorSystem.create("TriggerMergeJSpec"))
 
     // does not trigger flow
     pubTrigger.sendNext(3)
-    sub.expectNoMsg()
+    sub.expectNoMessage(remainingOrDefault)
 
     // does not trigger flow
     pubTrigger.sendNext(0)
-    sub.expectNoMsg()
+    sub.expectNoMessage(remainingOrDefault)
 
     // trigger flow
     pubTrigger.sendNext(1)
@@ -68,17 +68,17 @@ class TriggerMergeJSpec extends TestKit(ActorSystem.create("TriggerMergeJSpec"))
     // pause flow
     pubIn.sendNext("6")
     sub.request(1)
-    sub.expectNoMsg()
+    sub.expectNoMessage(remainingOrDefault)
   }
 
   "TriggerMergeJ" should "re-start the flow" in {
     // does not re-start flow
     pubTrigger.sendNext(3)
-    sub.expectNoMsg()
+    sub.expectNoMessage(remainingOrDefault)
 
     // does not re-start flow
     pubTrigger.sendNext(0)
-    sub.expectNoMsg()
+    sub.expectNoMessage(remainingOrDefault)
 
     // re-start flow
     pubTrigger.sendNext(1)
@@ -100,7 +100,7 @@ class TriggerMergeJSpec extends TestKit(ActorSystem.create("TriggerMergeJSpec"))
 
     pubIn.sendNext("9")
     sub.request(1)
-    sub.expectNoMsg()
+    sub.expectNoMessage(remainingOrDefault)
   }
 
   "TriggerMergeJ" should "match stage name" in {
