@@ -23,7 +23,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.FileIO
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.concurrent.AsyncAssertions
+import org.scalatest.concurrent.Waiters
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
@@ -56,7 +56,7 @@ object StreamTestSpec {
 }
 
 class StreamTestSpec extends TestKit(StreamTestSpec.boot.actorSystem) with ImplicitSender with WordSpecLike
-    with Matchers with BeforeAndAfterAll with AsyncAssertions {
+    with Matchers with BeforeAndAfterAll with Waiters {
 
   implicit val am = ActorMaterializer()
   import system.dispatcher

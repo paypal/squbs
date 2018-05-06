@@ -23,7 +23,7 @@ import akka.pattern._
 import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.concurrent.AsyncAssertions
+import org.scalatest.concurrent.Waiters
 import org.scalatest.{BeforeAndAfterAll, Inspectors, Matchers, WordSpecLike}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
@@ -73,7 +73,7 @@ object ForkJoinConfiguratorSpec {
 }
 
 class ForkJoinConfiguratorSpec extends TestKit(ForkJoinConfiguratorSpec.boot.actorSystem) with ImplicitSender
-    with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll with AsyncAssertions {
+    with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll with Waiters {
 
   import ForkJoinConfiguratorSpec._
   import system.dispatcher

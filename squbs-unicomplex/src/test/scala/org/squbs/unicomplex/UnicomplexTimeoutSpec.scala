@@ -22,7 +22,7 @@ import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
-import org.scalatest.concurrent.AsyncAssertions
+import org.scalatest.concurrent.Waiters
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 
@@ -58,7 +58,7 @@ object UnicomplexTimeoutSpec {
 }
 
 class UnicomplexTimeoutSpec extends TestKit(UnicomplexTimeoutSpec.boot.actorSystem) with ImplicitSender
-    with WordSpecLike with Matchers with BeforeAndAfterAll with AsyncAssertions {
+    with WordSpecLike with Matchers with BeforeAndAfterAll with Waiters {
 
   implicit val am = ActorMaterializer()
   import akka.pattern.ask

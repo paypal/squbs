@@ -25,7 +25,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest._
-import org.scalatest.concurrent.AsyncAssertions
+import org.scalatest.concurrent.Waiters
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
 import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
@@ -77,7 +77,7 @@ object ActorMonitorSpec extends LazyLogging {
 
 class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with ImplicitSender
                              with WordSpecLike with Matchers with BeforeAndAfterAll
-                             with AsyncAssertions with LazyLogging {
+                             with Waiters with LazyLogging {
 
   import org.squbs.testkit.Timeouts._
   import system.dispatcher
