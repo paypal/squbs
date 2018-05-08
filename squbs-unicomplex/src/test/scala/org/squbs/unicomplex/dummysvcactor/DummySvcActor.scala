@@ -52,7 +52,7 @@ class DummySvcActor extends Actor with WebContext with ActorLogging {
 
       val origSender = sender()
 
-      future onSuccess {
+      future onComplete  {
         case byteCount => origSender ! HttpResponse(StatusCodes.OK, entity = s"Received $chunkCount chunks and $byteCount bytes.")
       }
 

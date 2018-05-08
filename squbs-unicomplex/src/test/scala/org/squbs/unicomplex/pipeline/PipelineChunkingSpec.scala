@@ -97,7 +97,7 @@ class PipelineChunkingSpec extends TestKit(PipelineChunkingSpec.boot.actorSystem
     val responseF = Http().singleRequest(HttpRequest(HttpMethods.POST,
       uri = s"http://127.0.0.1:$port/fileuploadroute/file-upload",
       entity = HttpEntity(MediaTypes.`application/octet-stream`,
-        FileIO.fromFile(file, chunkSize))))
+        FileIO.fromPath(file.toPath, chunkSize))))
 
     val (actualResponseEntity, actualResponseHeaders) = Await.result(
       responseF flatMap { r => extractEntityAsString(r) map {
