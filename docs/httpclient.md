@@ -55,10 +55,9 @@ final ActorMaterializer mat = ActorMaterializer.create(system);
 
 final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool>
     clientFlow = ClientFlow.create("sample", system, mat); // Only this line is specific to squbs
-
-CompletionStage<Pair<Try<HttpResponse>, Integer>> =
-    Source
-        .single(Pair.create(request, 42))
+    
+final CompletionStage<Pair<Try<HttpResponse>, Integer>> responseFuture =
+    Source.single(Pair.create(HttpRequest.create().withUri("/"), 42))
         .via(clientFlow)
         .runWith(Sink.head(), mat);
 ```
@@ -82,14 +81,15 @@ Below is an `HttpRequest` creation example in Scala.  Please see [HTTP Model Sca
 ```scala
 import HttpProtocols._
 import MediaTypes._
-import HttpCharsets._
-val userData = ByteString("abc")
+  
+val charset = HttpCharsets.`UTF-8`
+val userData = ByteString("abc", charset.nioCharset())
 val authorization = headers.Authorization(BasicHttpCredentials("user", "pass"))
 
 HttpRequest(
   PUT,
   uri = "/user",
-  entity = HttpEntity(`text/plain` withCharset `UTF-8`, userData),
+  entity = HttpEntity(`text/plain` withCharset charset, userData),
   headers = List(authorization),
   protocol = `HTTP/1.0`)
 ```
@@ -111,7 +111,7 @@ HttpRequest complexRequest =
 
 ### Service Discovery Chain
 
-`squbs-httpclient` does not require hostname/port combination to be provided during client pool creation.  Instead it allows a service discovery chain to be registered which allows resolving `HttpEndpoint`s by a string identifier by running through the registered service discovery mechanisms.  For instance, in the above example, `"sample"` is the logical name of the service that client wants to connect, the configured service discovery chain will resolve it to an `HttpEndpoint` which includes host and port, e.g., `http://akka.io:80`.
+`squbs-httpclient` does not require a hostname/port combination to be provided during client pool creation.  Instead it allows a service discovery chain to be registered which allows resolving `HttpEndpoint`s by a string identifier by running through the registered service discovery mechanisms.  For instance, in the above example, `"sample"` is the logical name of the service that client wants to connect, the configured service discovery chain will resolve it to an `HttpEndpoint` which includes host and port, e.g., `http://akka.io:80`.
 
 Please note, you can still pass a valid http URI as a string to `ClientFlow` as a default resolver to resolve valid http URIs is pre-registered in the service discovery chain by default:
 
@@ -125,12 +125,13 @@ There are two variations of registering resolvers as shown below. The closure st
 Register function type `(String, Env) => Option[HttpEndpoint]`:
 
 ```scala
-ResolverRegistry(system).register[HttpEndpoint]("SampleEndpointResolver", { (svcName, env) =>
+ResolverRegistry(system).register[HttpEndpoint]("SampleEndpointResolver") { (svcName, env) =>
   svcName match {
     case "sample" => Some(HttpEndpoint("http://akka.io:80"))
     case "google" => Some(HttpEndpoint("http://www.google.com:80"))
     case _ => None
-})
+  }
+}
 ```
 
 Register class extending `Resolver[HttpEndpoint]`:
@@ -195,7 +196,7 @@ You can register multiple `Resolver`s.  The chain is executed in the reverse ord
 
 If the resolved endpoint is a secure one, e.g., https, an `SSLContext` can be passed to `HttpEndpoint` as an optional parameter.
 
-An optional `Config` can also be passed to `HttpEndpoint` to override the default configuration.  However, the client specific configuration has always higher precendence over the passed in configuration.
+An optional `Config` can also be passed to `HttpEndpoint` to override the default configuration.  However, the client specific configuration has higher precedence over the passed in configuration.
 
 Please see [Resource Resolution](resolver.md) for details on resolution in general.
 
@@ -217,7 +218,7 @@ sample {
 
 ### Pipeline
 
-We often need to have common infrastructure functionality or organizational standards across different clients.  Such infrastructure includes, but is not limited to, logging, metrics collection, request tracing, authentication/authorization, tracking, cookie management, A/B testing, etc.  As squbs promotes separation of concerns, such logic would belong to infrastructure and not client implementation. The [squbs pipeline](pipeline.md) allows infrastructure to provide components installed into a client without client owner having to worry about such aspects.  Please see [squbs pipeline](pipeline.md) for more details.
+We often need to have common infrastructure functionality or organizational standards across different clients.  Such infrastructure includes, but is not limited to, logging, metrics collection, request tracing, authentication/authorization, tracking, cookie management, A/B testing, etc.  As squbs promotes separation of concerns, such logic would belong to infrastructure and not client implementation. The [squbs pipeline](pipeline.md) allows infrastructure to provide components installed into a client without the client owner having to worry about such aspects.  Please see [squbs pipeline](pipeline.md) for more details.
 
 Generally speaking, a pipeline is a Bidi Flow acting as a bridge in between squbs client and the Akka HTTP layer.  `squbs-httpclient` allows registering a Bidi Akka Streams flow globally for all clients (default pipeline) or for individual clients.  To register a client specific pipeline, set the `pipeline` configuration.  You can turn on/off the default pipeline via `defaultPipeline` setting (it is set to `on`, if not specified):   
 

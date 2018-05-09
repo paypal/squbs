@@ -101,7 +101,7 @@ The squbs `reference.conf` declares a `blocking-dispatcher` used for blocking I/
 
 ## Listeners
 
-A listener defines a port binding and the behavior of this port binding such as security, authentication, etc. A default listener is provided by the squbs `reference.conf`. This can be overridden by the application providing it's `application.conf` file or the `application.conf` file in its external config directory. Please see [Bootstrapping squbs](bootstrap.md#configuration-resolution) for details how squbs reads its configuration file.
+A listener defines a port binding and the behavior of this port binding such as security, authentication, etc. A default listener is provided by the squbs `reference.conf`. This can be overridden by the application providing its `application.conf` file or the `application.conf` file in its external config directory. Please see [Bootstrapping squbs](bootstrap.md#configuration-resolution) for details how squbs reads its configuration file.
 
 A listener is declared at the root level of the configuration file. The name generally follows the pattern `*-listener` but this is not a requirement. What defines the entry as a listener is the `type` field under the listener entry. It must be set to `squbs.listener`. Please see the `default-listener` example above on how to configure new listeners listening to different ports.
 
