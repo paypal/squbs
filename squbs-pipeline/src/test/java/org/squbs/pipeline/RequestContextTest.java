@@ -19,7 +19,6 @@ package org.squbs.pipeline;
 import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import org.testng.annotations.Test;
-import scala.Tuple2;
 import scala.util.Success;
 import scala.util.Try;
 
@@ -28,8 +27,9 @@ import java.util.*;
 import static org.testng.Assert.assertEquals;
 
 public class RequestContextTest {
+
     @Test
-    public void testCreateWithAttributes() {
+    public void testCreateWithAttribute() {
         List<String> testL = Arrays.asList("1", "2", "3");
 
         RequestContext rc = RequestContext.create(HttpRequest.create(), 0)
@@ -40,6 +40,22 @@ public class RequestContextTest {
         assertEquals(rc.getAttribute("keyB"), Optional.of(testL));
         assertEquals(rc.getAttribute("keyC"), Optional.of("strC"));
         assertEquals(rc.getAttribute("keyD"), Optional.empty());
+    }
+
+    @Test
+    public void testCreateWithAttributes() {
+        Map<String, Object> attrs = new HashMap<>();
+        attrs.put("key1", "val1");
+        attrs.put("key2", 1);
+        attrs.put("key3", new Exception("Bad Val"));
+
+        RequestContext rc1 = RequestContext.create(HttpRequest.create(), 0);
+        RequestContext rc2 = rc1.withAttributes(attrs);
+
+        assertEquals(rc1.attributes().size(), 0);
+
+        assertEquals(rc2.attributes().size(), attrs.size());
+        attrs.forEach((key, value) -> assertEquals(rc2.getAttribute(key), Optional.of(value)));
     }
 
     @Test

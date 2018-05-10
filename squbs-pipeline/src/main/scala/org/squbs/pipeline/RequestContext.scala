@@ -20,11 +20,10 @@ import java.util.Optional
 
 import akka.http.javadsl.{model => jm}
 import akka.http.scaladsl.{model => sm}
-
 import scala.annotation.varargs
 import scala.collection.JavaConverters._
 import scala.compat.java8.OptionConverters._
-import scala.util.{Success, Try}
+import scala.util.Try
 
 object RequestContext {
 
@@ -50,7 +49,18 @@ case class RequestContext private (request: sm.HttpRequest,
   def withAttribute(name: String, value: Any): RequestContext =
     this.copy(attributes = this.attributes + (name -> value))
 
-  def removeAttribute(name: String): RequestContext = this.copy(attributes = this.attributes - name)
+  @varargs
+  def withAttributes(attributes: (String, Any)*): RequestContext = withAttributes(attributes.toMap)
+
+  /**
+    * Java API
+    */
+  def withAttributes(attributes: java.util.Map[String, Any]): RequestContext = withAttributes(attributes.asScala.toMap)
+
+  def removeAttribute(name: String): RequestContext = removeAttributes(name)
+
+  @varargs
+  def removeAttributes(names: String*): RequestContext = this.copy(attributes = this.attributes -- names)
 
   def withRequestHeader(header: jm.HttpHeader): RequestContext = withRequestHeaders(header)
 
@@ -82,4 +92,7 @@ case class RequestContext private (request: sm.HttpRequest,
     * Java API
     */
   def getResponse: Optional[Try[jm.HttpResponse]] = response.map(_.map(_.asInstanceOf[jm.HttpResponse])).asJava
+
+  private def withAttributes(attributes: Map[String, Any]): RequestContext =
+    this.copy(attributes = this.attributes ++ attributes)
 }
