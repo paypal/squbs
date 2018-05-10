@@ -197,7 +197,7 @@ the order between starting these is indeterministic. The shutdown order is the r
 
 The squbs runtime can be properly shutdown by sending the `Unicomplex()` a `GracefulStop` message. 
  
-The default startup main method, `org.squbs.unicomplex.Bootstrap`, registers a JVM shutdown hook that sends a `GracefulStop` message to `Unicomplex`.  Accodingly, if a squbs app is started by using the default main method, the system will be shutdown gracefully when JVM receives a `SIGTERM`.  
+The default startup main method, `org.squbs.unicomplex.Bootstrap`, registers a JVM shutdown hook that sends a `GracefulStop` message to `Unicomplex`.  Accordingly, if a squbs app is started by using the default main method, the system will be shutdown gracefully when JVM receives a `SIGTERM`.  
 
 If some other monitor process is responsible for shutting down the app, e.g. JSW, `org.squbs.unicomplex.Shutdown` can be set as the main method to gracefully shutdown the system.  This `Shutdown` main method sends a `GracefulStop` message to `Unicomplex` as well.
 

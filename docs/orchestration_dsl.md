@@ -191,7 +191,7 @@ import org.squbs.pattern.orchestration.{OFuture, OPromise}
 
 ### Java: `CompletableFuture`
 
-The java CompletableFuture with it's **synchronous** callbacks are used as placeholders for values to be satisfied during the orchestration. The synchronous callbacks ensures the processing of the future to happen on the thread it is completed. In the orchestration model, it would be the thread the orchestrator actor is scheduled for receiving and processing the message. This ensures there is no concurrent close-over of the actor state. All callbacks are processed in the scope of the actor.
+The java CompletableFuture with its **synchronous** callbacks are used as placeholders for values to be satisfied during the orchestration. The synchronous callbacks ensures the processing of the future to happen on the thread it is completed. In the orchestration model, it would be the thread the orchestrator actor is scheduled for receiving and processing the message. This ensures there is no concurrent close-over of the actor state. All callbacks are processed in the scope of the actor.
 
 ```java
 import java.util.concurrent.CompletableFuture;

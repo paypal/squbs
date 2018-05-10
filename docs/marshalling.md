@@ -2,7 +2,7 @@
 
 ### Overview
 
-Marshalling and unmarshalling is used both on the client and server side. On the server side it is used to map an incoming request to a Scala or Java object and to map a Scala or Java object to an outgoing response. Similarly, on the client side, it is used to marshal an object to an outgoing HTTP request and unmarshal it from an incoming response. There could be a multitude of content formats for marshalling/unmarshalling, common ones are JSON and XML. Please see following pages for quick examples of JSON marshalling and unmarshalling in Akka HTTP:
+Marshalling and unmarshalling is used both on the client and server side. On the server side it is used to map an incoming request to a Scala or Java object and to map a Scala or Java object to an outgoing response. Similarly, on the client side, it is used to marshal an object to an outgoing HTTP request and unmarshal it from an incoming response. There could be a multitude of content formats for marshalling/unmarshalling, common ones are JSON and XML. Please see the following pages for quick examples of JSON marshalling and unmarshalling in Akka HTTP:
 
 * Scala - [spray-json Support](http://doc.akka.io/docs/akka-http/current/scala/http/common/json-support.html#spray-json-support)
 * Java - [Jackson Support](http://doc.akka.io/docs/akka-http/current/java/http/common/json-support.html#json-support-via-jackson).
@@ -251,7 +251,7 @@ Besides using marshallers and marshallers as part of Akka HTTP Routing DSL, manu
 
 ##### Scala
 
-Akka provides a great [Scala DSL for marshalling and unmarshalling](http://doc.akka.io/docs/akka-http/current/scala/http/common/marshalling.html#using-marshallers). It's use can be seen in the example below:
+Akka provides a great [Scala DSL for marshalling and unmarshalling](http://doc.akka.io/docs/akka-http/current/scala/http/common/marshalling.html#using-marshallers). Its use can be seen in the example below:
 
 ```scala
 import akka.actor.ActorSystem

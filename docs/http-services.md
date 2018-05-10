@@ -21,11 +21,11 @@ The following dependency is needed for starting the server as well as registerin
 
 ## Defining the Service
 
-Services can be defined in either Scala or Java, using either the high-level or low-level API. Service definition classes **MUST HAVE no-argument constructors** and must be registered in order to handle incoming Http requests.
+Services can be defined in either Scala or Java, using either the high-level or low-level API. Service definition classes **MUST HAVE no-argument constructors** and must be registered in order to handle incoming HTTP requests.
 
 ### High-Level Scala API
 
-The high-level server-side API is represented by Akka HTTP's `Route` artifact and it's directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` function as follows:
+The high-level server-side API is represented by Akka HTTP's `Route` artifact and its directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` function as follows:
 
 ```scala
 import akka.http.scaladsl.server.Route
@@ -33,7 +33,7 @@ import org.squbs.unicomplex.RouteDefinition
 
 class PingPongSvc extends RouteDefinition {
 
-  def route: Route = path("ping") {
+  override def route: Route = path("ping") {
     get {
       complete("pong")
     }
@@ -69,7 +69,7 @@ import org.squbs.unicomplex.FlowDefinition
 
 class SampleFlowSvc extends FlowDefinition {
 
-  def flow = Flow[HttpRequest].map {
+  override def flow = Flow[HttpRequest].map {
     case HttpRequest(_, Uri(_, _, Path("ping"), _, _), _, _, _) =>
       HttpResponse(StatusCodes.OK, entity = "pong")
     case _ =>
@@ -81,7 +81,7 @@ This provides access to the `Flow` representation of the Akka HTTP low-level ser
 
 ### High-Level Java API
 
-The high-level server-side API is represented by Akka HTTP's `Route` artifact and it's directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` method as follows:
+The high-level server-side API is represented by Akka HTTP's `Route` artifact and its directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` method as follows:
 
 ```java
 import akka.http.javadsl.server.ExceptionHandler;
@@ -130,7 +130,7 @@ Please refer to the [Akka HTTP high-level API](http://doc.akka.io/docs/akka-http
 
 ### Low-Level Java API
 
-To use the Java low-level API, just extend `org.squbs.unicomplex.AbstractFlowDefinition` and override the `flow` method. The `flow` needs to be of type `Flow[HttpRequest, HttpResponse, NotUsed]` using the Java DSL and model provided by Akka Http. Note the imports in the followings:
+To use the Java low-level API, just extend `org.squbs.unicomplex.AbstractFlowDefinition` and override the `flow` method. The `flow` needs to be of type `Flow[HttpRequest, HttpResponse, NotUsed]` using the Java DSL and model provided by Akka HTTP. Note the imports in the following:
 
 ```java
 import akka.NotUsed;
@@ -157,7 +157,7 @@ public class JavaFlowSvc extends AbstractFlowDefinition {
 
 **Note:** The `webContext()` method as well as the `context()` method for accessing the actor context are provided by the `AbstractFlowDefinition` class.
 
-This provides access to the `Flow` representation of the Akka Http low-level server-side API. Please refer to the [Akka HTTP low-level API](http://doc.akka.io/docs/akka-http/current/java/http/server-side/low-level-server-side-api.html#streams-and-http), [Akka Streams](http://doc.akka.io/docs/akka/current/java/stream/stream-quickstart.html), and the [Http model](http://doc.akka.io/docs/akka-http/current/java/http/http-model.html#http-model-java) documentation for further information on constructing more sophisticated `Flow`s.
+This provides access to the `Flow` representation of the Akka HTTP low-level server-side API. Please refer to the [Akka HTTP low-level API](http://doc.akka.io/docs/akka-http/current/java/http/server-side/low-level-server-side-api.html#streams-and-http), [Akka Streams](http://doc.akka.io/docs/akka/current/java/stream/stream-quickstart.html), and the [HTTP model](http://doc.akka.io/docs/akka-http/current/java/http/http-model.html#http-model-java) documentation for further information on constructing more sophisticated `Flow`s.
 
 ## Service Registration
 
@@ -198,7 +198,7 @@ The pipeline is a set of request pre- and post-processors before and after the r
 
 Unlike programming to Akka HTTP directly, squbs provides all socket binding and connection management through its listeners. Just provide the request/response handling through one or more of the APIs discussed above and register those implementations to squbs. This allows standardization of the binding configuration across services and allows uniform configuration management across services.
 
-A listener is declared in `application.conf` or `reference.conf` usually living in the project's `src/main/resources` directory. Listeners declare interfaces, ports, Https security attributes, and name aliases, and are explained in [Configuration](configuration.md)
+A listener is declared in `application.conf` or `reference.conf`, usually living in the project's `src/main/resources` directory. Listeners declare interfaces, ports, HTTPS security attributes, and name aliases, and are explained in [Configuration](configuration.md#listeners).
 
 A service handler attaches itself to one or more listeners. The `listeners` attribute is a list of listeners or aliases the handler should bind to. If listeners are not defined, it will default to the `default-listener`.
 
@@ -248,7 +248,7 @@ class SampleFlowSvc extends FlowDefinition with WebContext {
 There are a few rules you have to keep in mind when implementing a `FlowDefinition` (Scala) or `AbstractFlowDefinition` (Java):
 
 1. **Exactly one response:** It is the responsibility of the application to generate exactly one response for every request.
-2. **Response ordering:** The ordering of responses matches the ordering of the associated requests (which is relevant if HTTP pipelining is enabled where processing of multiple incoming requests may overlap).
+2. **Response ordering:** The ordering of responses matches the ordering of the associated requests, which is relevant if HTTP pipelining is enabled where processing of multiple incoming requests may overlap.
 3. **Concurrent state access:** The flow can be materialized multiple times, causing multiple instances of the `Flow` itself. If these instances access any state in the encapsulating `FlowDefinition` or `AbstractFlowDefinition`, it is important to note such access can be concurrent, both for reads and writes. It is not safe for such accesses to read or write mutable state inside the encapsulating class. The use of Akka `Actor`s is highly encouraged in such situations.
 4. **Access to actor context:** The `FlowDefinition`/`AbstractFlowDefinition` has access to the `ActorContext` with the `context` field (Scala) or `context()` method (Java) by default. This can be used to create new actors or access other actors.
 5. **Access to web context:** For the Scala `FlowDefinition`, if the `WebContext` trait is mixed in, it will have access to the field `webContext`. The Java `AbstractFlowDefinition` provides the `webContext()` method in all cases. This field/method is used to determine the web context or path from the root where this `FlowDefinition`/`AbstractFlowDefinition` is handling requests. 

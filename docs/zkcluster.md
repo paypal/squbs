@@ -2,9 +2,9 @@
 
 ## Overview
 
-squbs is achieving clustering of services through the zkcluster module. zkcluster is an [Akka extension](http://doc.akka.io/docs/akka/snapshot/scala/extending-akka.html) which leverages [ZooKeeper](https://zookeeper.apache.org/) to manage akka cluster & partitions.
-it's similar to [Akka Cluster](http://doc.akka.io/docs/akka/snapshot/common/cluster.html) for the functions of leadership & membership management.
-But it's richer as it provides partitioning support, and eliminates the need of `entry-nodes`.
+squbs achieves clustering of services through the zkcluster module. zkcluster is an [Akka extension](http://doc.akka.io/docs/akka/snapshot/scala/extending-akka.html) which leverages [ZooKeeper](https://zookeeper.apache.org/) to manage akka cluster and partitions.
+It's similar to [Akka Cluster](http://doc.akka.io/docs/akka/snapshot/common/cluster.html) for the functions of leadership and membership management.
+However, it's richer as it provides partitioning support and eliminates the need of `entry-nodes`.
 
 ## Configuration
 
@@ -85,7 +85,9 @@ zkCluster(system).addShutdownListener(listener: () => Unit)
 
 Add the following dependency to your build.sbt or scala build file:
 
+```scala
 "org.squbs" %% "squbs-zkcluster" % squbsVersion
+```
 
 ## Design
 
