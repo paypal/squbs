@@ -16,12 +16,14 @@
 
 package org.squbs.unicomplex.dummysvcactor
 
-import akka.actor.{ActorRef, ActorLogging, Actor}
+import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import org.squbs.unicomplex.WebContext
+
+import scala.util.{Failure, Success}
 
 
 case object RegisterTimeoutHandler
@@ -53,7 +55,8 @@ class DummySvcActor extends Actor with WebContext with ActorLogging {
       val origSender = sender()
 
       future onComplete  {
-        case byteCount => origSender ! HttpResponse(StatusCodes.OK, entity = s"Received $chunkCount chunks and $byteCount bytes.")
+        case Success(byteCount) => origSender ! HttpResponse(StatusCodes.OK, entity = s"Received $chunkCount chunks and $byteCount bytes.")
+        case Failure(e) => HttpResponse(StatusCodes.InternalServerError, entity = s"Fail to process chunks: $e")
       }
 
     case req @ HttpRequest(_, Uri(_, _, Path("/dummysvcactor/timeout"), _, _), _, _, _) =>
