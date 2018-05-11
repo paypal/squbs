@@ -38,7 +38,7 @@ class DummySvcActor extends Actor with WebContext with ActorLogging {
   import context.dispatcher
 
   def receive: Receive = {
-    case req@HttpRequest(_, Uri(_, _, Path("/dummysvcactor/ping"), _, _), _, _, _) =>
+    case req @ HttpRequest(_, Uri(_, _, Path("/dummysvcactor/ping"), _, _), _, _, _) =>
       log.debug("Received request " + req.uri)
       sender() ! HttpResponse(StatusCodes.OK, entity = "pong")
 
@@ -47,9 +47,9 @@ class DummySvcActor extends Actor with WebContext with ActorLogging {
       var chunkCount = 0L
       var byteCount = 0L
 
-      val future = req.entity.dataBytes.filter(_.length > 0).runForeach{ b =>
-          chunkCount += 1
-          byteCount += b.length
+      val future = req.entity.dataBytes.filter(_.length > 0).runForeach { b =>
+        chunkCount += 1
+        byteCount += b.length
       }
 
       val origSender = sender()
