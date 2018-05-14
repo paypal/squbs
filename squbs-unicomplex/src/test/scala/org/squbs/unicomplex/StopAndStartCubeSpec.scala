@@ -79,7 +79,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   "Unicomplex" should "not be able to stop a stopped cube" in {
     Unicomplex(system).uniActor ! StopCube("DummyCube")
-    expectNoMsg()
+    expectNoMessage()
   }
 
   "Unicomplex" should "be able to start a cube" in {
@@ -96,7 +96,7 @@ with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   "Unicomplex" should "not be able to start a running cube" in {
     Unicomplex(system).uniActor ! StartCube("DummyCube")
-    expectNoMsg()
+    expectNoMessage()
   }
 
 }

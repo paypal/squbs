@@ -23,7 +23,7 @@ import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import org.scalatest.concurrent.AsyncAssertions
+import org.scalatest.concurrent.Waiters
 import org.scalatest.{BeforeAndAfterAll, Inspectors, Matchers, WordSpecLike}
 import org.squbs.lifecycle.GracefulStop
 
@@ -55,7 +55,7 @@ object ScanResourceSpec {
 }
 
 class ScanResourceSpec extends TestKit(ScanResourceSpec.boot.actorSystem) with ImplicitSender with WordSpecLike
-    with Matchers with Inspectors with BeforeAndAfterAll with AsyncAssertions {
+    with Matchers with Inspectors with BeforeAndAfterAll with Waiters {
 
   import ScanResourceSpec._
   import system.dispatcher

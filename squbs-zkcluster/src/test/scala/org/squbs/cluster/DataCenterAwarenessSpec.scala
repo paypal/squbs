@@ -16,7 +16,7 @@
 package org.squbs.cluster
 
 import org.scalatest.{Matchers, FlatSpec}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.mockito.Mockito._
 import akka.actor._
 import akka.routing.ActorSelectionRoutee

@@ -210,7 +210,7 @@ public class RetryTest {
                 .runWith(TestSink.probe(system), mat)
                 .request(3)
                 .expectNext(Success.apply("a"), Success.apply("c"))
-                .expectNoMsg(Duration.create(3, TimeUnit.SECONDS))
+                .expectNoMessage(Duration.create(3, TimeUnit.SECONDS))
                 .expectNext(failure);
     }
 
@@ -239,7 +239,7 @@ public class RetryTest {
                 .runWith(TestSink.probe(system), mat)
                 .request(3)
                 .expectNext(Success.apply("a"), Success.apply("c"))
-                .expectNoMsg(Duration.create(5, TimeUnit.SECONDS)) //1s + 2s + 2s
+                .expectNoMessage(Duration.create(5, TimeUnit.SECONDS)) //1s + 2s + 2s
                 .expectNext(failure);
     }
 

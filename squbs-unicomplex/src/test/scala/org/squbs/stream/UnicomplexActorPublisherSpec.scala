@@ -19,6 +19,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
+import akka.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest._
 import org.squbs.lifecycle.GracefulStop
@@ -26,7 +27,7 @@ import org.squbs.unicomplex._
 
 import scala.concurrent.duration._
 
-final class UnicomplexActorPublisherSpec extends FlatSpecLike with Matchers with BeforeAndAfterAll {
+object UnicomplexActorPublisherSpec {
   val myConfig: Config = ConfigFactory.parseString(
     """
       | squbs.actorsystem-name = UnicomplexActorPublisherSpec
@@ -35,7 +36,11 @@ final class UnicomplexActorPublisherSpec extends FlatSpecLike with Matchers with
     .scanResources("/")
     .initExtensions
     .start()
-  implicit val system = boot.actorSystem
+}
+
+final class UnicomplexActorPublisherSpec extends TestKit(UnicomplexActorPublisherSpec.boot.actorSystem)
+    with FlatSpecLike with Matchers with BeforeAndAfterAll {
+
   implicit val materializer = ActorMaterializer()
   val duration = 10.second
 
@@ -58,7 +63,7 @@ final class UnicomplexActorPublisherSpec extends FlatSpecLike with Matchers with
 
     // re-send Active to unicomplex trigger, flow continues
     sub.request(2)
-    sub.expectNoMsg()
+    sub.expectNoMessage(remainingOrDefault)
     pubTrigger ! SystemState
     pubIn.sendNext("3")
     pubIn.sendNext("4")

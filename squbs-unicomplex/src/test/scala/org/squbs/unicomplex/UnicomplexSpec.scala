@@ -29,7 +29,7 @@ import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
-import org.scalatest.concurrent.{AsyncAssertions, Eventually}
+import org.scalatest.concurrent.{Waiters, Eventually}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
@@ -73,7 +73,7 @@ object UnicomplexSpec {
 
 class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with ImplicitSender
                              with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll
-                             with AsyncAssertions with Eventually {
+                             with Waiters with Eventually {
 
   import UnicomplexSpec._
   import system.dispatcher

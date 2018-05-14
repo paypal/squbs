@@ -23,7 +23,7 @@ import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
-import org.scalatest.concurrent.AsyncAssertions
+import org.scalatest.concurrent.Waiters
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex.dummyextensions.DummyExtension
@@ -78,7 +78,7 @@ object BadUnicomplexBootSpec {
 
 class BadUnicomplexBootSpec extends TestKit(BadUnicomplexBootSpec.boot.actorSystem) with ImplicitSender
 with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll
-with AsyncAssertions {
+with Waiters {
 
   import BadUnicomplexBootSpec._
   import system.dispatcher
