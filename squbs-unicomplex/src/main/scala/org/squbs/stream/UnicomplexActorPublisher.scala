@@ -39,7 +39,7 @@ final class UnicomplexActorPublisher extends ActorPublisher[LifecycleState] {
   private def demand_? : Boolean = totalDemand > 0
 }
 
-case class LifecycleManaged[T, M]( system: ActorSystem) {
+case class LifecycleManaged[T, M]()(implicit system: ActorSystem) {
   val trigger = Source.actorPublisher[LifecycleState](Props.create(classOf[UnicomplexActorPublisher]))
     .collect {
       case Active => ENABLE
