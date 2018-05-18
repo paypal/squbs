@@ -17,7 +17,6 @@ package org.squbs.httpclient
 import java.util.Optional
 
 import akka.http.javadsl
-import akka.http.org.squbs.util.JavaConverters
 import akka.http.scaladsl.model.Uri
 import com.typesafe.config.Config
 import javax.net.ssl.SSLContext
@@ -55,5 +54,5 @@ object HttpEndpoint {
    * Java API
    */
   def create(uri: javadsl.model.Uri, sslContext: Optional[SSLContext], config: Optional[Config]): HttpEndpoint =
-    HttpEndpoint(JavaConverters.toScala(uri), sslContext.asScala, config.asScala)
+    HttpEndpoint(uri.asScala, sslContext.asScala, config.asScala)
 }
