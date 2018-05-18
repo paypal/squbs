@@ -26,7 +26,7 @@ val aggregatedSource = LifecycleManaged().source(inSource)
 
 ```java
 final Source inSource = <your-original-source>
-final Source aggregatedSource = new LifecycleManaged(system).source(inSource);
+final Source aggregatedSource = new LifecycleManaged().source(inSource);
 ```
 
 The resulting source will be an aggregated source materialize to a `(T, ActorRef)` where `T` is the materialized type of `inSource` and `ActorRef` is the materialized type of the trigger actor which receives events from the Unicomplex, the squbs container.

@@ -33,7 +33,7 @@ public class ProperShutdownStreamJ extends AbstractPerpetualStream<Pair<ActorRef
             });
 
     Source<Integer, Pair<NotUsed, ActorRef>> managedSource =
-            new LifecycleManaged<Integer, NotUsed>(getContext().getSystem())
+            new LifecycleManaged<Integer, NotUsed>()
                     .source(toBeManaged);
 
     Sink<Integer, CompletionStage<Long>> counter =

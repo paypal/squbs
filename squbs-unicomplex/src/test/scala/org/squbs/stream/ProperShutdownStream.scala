@@ -32,7 +32,6 @@ object ProperShutdownStream {
 
 class ProperShutdownStream extends PerpetualStream[(ActorRef, Future[Long])] {
   import ProperShutdownStream._
-  import context.system
   import org.squbs.unicomplex.Timeouts._
 
   override def stopTimeout = awaitMax
