@@ -47,7 +47,7 @@ final class UnicomplexActorPublisherSpec extends TestKit(UnicomplexActorPublishe
   val in = TestSource.probe[String]
 
   // expose probe port(s)
-  val ((pubIn, pubTrigger), sub) = LifecycleManaged(system).source(in).toMat(TestSink.probe[String])(Keep.both).run()
+  val ((pubIn, pubTrigger), sub) = LifecycleManaged().source(in).toMat(TestSink.probe[String](system))(Keep.both).run()
 
   override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
