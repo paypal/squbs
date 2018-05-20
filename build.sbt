@@ -1,4 +1,4 @@
-
+import Shared._
 
 scalaVersion in ThisBuild := "2.12.6"
 
@@ -19,12 +19,6 @@ fork in ThisBuild := true
 parallelExecution in ThisBuild := false
 
 updateOptions in ThisBuild := updateOptions.value.withCachedResolution(true)
-
-val par = {
-  val travis = sys.env.getOrElse("TRAVIS", default = "false") == "true"
-  if (travis) 2
-  else sys.runtime.availableProcessors
-}
 
 concurrentRestrictions in Global := Seq(Tags.limitAll(par))
 
