@@ -16,7 +16,6 @@
 package org.squbs.pattern.stream
 
 import java.io.{File, FileNotFoundException}
-import java.util.function.{Function => JFunc}
 
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
@@ -25,7 +24,7 @@ import net.openhft.chronicle.core.OS
 import net.openhft.chronicle.queue.ChronicleQueueBuilder
 import net.openhft.chronicle.queue.impl.single.SingleChronicleQueue
 import net.openhft.chronicle.queue.impl.{RollingResourcesCache, StoreFileListener}
-import net.openhft.chronicle.wire.{ReadMarshallable, WireIn, WireOut, WriteMarshallable}
+import net.openhft.chronicle.wire.{WireIn, WireOut}
 import org.slf4j.LoggerFactory
 
 case class Event[T](outputPortId: Int, index: Long, entry: T)
@@ -82,12 +81,8 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
   // The value is based on epoch time and grows incrementally.
   // https://github.com/OpenHFT/Chronicle-Queue/blob/chronicle-queue-4.5.13/src/main/java/net/openhft/chronicle/queue/RollCycle.java#L35
   private[stream] val fileIdParser = new RollingResourcesCache(queue.rollCycle(), queue.epoch(),
-    new JFunc[String, File] {
-      def apply(name: String) = new File(builder.path(), name + SUFFIX)
-    },
-    new JFunc[File, String] {
-      def apply(file: File): String = file.getName.stripSuffix(SUFFIX)
-    }
+    (name: String) => new File(builder.path(), name + SUFFIX),
+    (file: File) => file.getName.stripSuffix(SUFFIX)
   )
 
   private def mountIndexFile(): Unit = {
@@ -113,11 +108,8 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
     *
     * @param element The element to be added.
     */
-  def enqueue(element: T): Unit = {
-    appender.writeDocument(new WriteMarshallable {
-      override def writeMarshallable(wire: WireOut): Unit = serializer.writeElement(element, wire)
-    })
-  }
+  def enqueue(element: T): Unit =
+    appender.writeDocument((wire: WireOut) => serializer.writeElement(element, wire))
 
   /**
     * Fetches the first element from the queue and removes it from the queue.
@@ -126,14 +118,13 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
     */
   def dequeue(outputPortId: Int = 0): Option[Event[T]] = {
     var output: Option[Event[T]] = None
-    if (reader(outputPortId).readDocument(new ReadMarshallable {
-      override def readMarshallable(wire: WireIn): Unit =
-        output = {
-          val element = serializer.readElement(wire)
-          val index = reader(outputPortId).index
-          element map { e => Event[T](outputPortId, index, e) }
-        }
-    })) output else None
+    if (reader(outputPortId).readDocument(
+      (wire: WireIn) => output = {
+        val element = serializer.readElement(wire)
+        val index = reader(outputPortId).index
+        element map { e => Event[T](outputPortId, index, e) }
+      }
+    )) output else None
   }
 
   /**

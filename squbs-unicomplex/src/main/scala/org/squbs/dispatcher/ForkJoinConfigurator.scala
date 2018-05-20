@@ -103,8 +103,7 @@ case class AdaptedThreadFactory(delegateFactory: MonitorableThreadFactory)
 }
 
 object AdaptedThreadFactory {
-  val doNothing: Thread.UncaughtExceptionHandler =
-    new Thread.UncaughtExceptionHandler() { def uncaughtException(thread: Thread, cause: Throwable) = () }
+  val doNothing: Thread.UncaughtExceptionHandler = (_: Thread, _: Throwable) => ()
 
   private[squbs] class AkkaForkJoinWorkerThread(_pool: ForkJoinPool)
     extends ForkJoinWorkerThread(_pool) with BlockContext {
