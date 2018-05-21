@@ -49,7 +49,6 @@ case class RequestContext private (request: sm.HttpRequest,
   def withAttribute(name: String, value: Any): RequestContext =
     this.copy(attributes = this.attributes + (name -> value))
 
-  @varargs
   def withAttributes(attributes: (String, Any)*): RequestContext = withAttributes(attributes.toMap)
 
   /**
