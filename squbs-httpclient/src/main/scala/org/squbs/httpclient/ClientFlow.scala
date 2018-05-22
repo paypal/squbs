@@ -127,11 +127,10 @@ object ClientFlow {
               circuitBreakerSettings: Option[CircuitBreakerSettings[HttpRequest, HttpResponse, T]] = None,
               env: Environment = Default)(implicit system: ActorSystem, fm: Materializer): ClientConnectionFlow[T] = {
 
-    defaultResolverRegistrationRecord.computeIfAbsent(system.name,
-      new java.util.function.Function[String, Unit] {
-        override def apply(t: String): Unit =
-          ResolverRegistry(system).register[HttpEndpoint](new DefaultHttpEndpointResolver)
-      })
+    defaultResolverRegistrationRecord.computeIfAbsent(
+      system.name,
+      (_: String) => ResolverRegistry(system).register[HttpEndpoint](new DefaultHttpEndpointResolver)
+      )
 
     val environment = env match {
       case Default => EnvironmentResolverRegistry(system).resolve

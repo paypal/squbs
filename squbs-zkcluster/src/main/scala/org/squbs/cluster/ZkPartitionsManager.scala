@@ -66,38 +66,36 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
   private def watchOverSegment(segment:String)(implicit curatorFwk: CuratorFramework) = {
     val segmentZkPath = s"/segments/${keyToPath(segment)}"
     //watch over changes of creation/removal of any partition (watcher over /partitions)
-    lazy val segmentWatcher: CuratorWatcher = new CuratorWatcher {
-      override def process(event: WatchedEvent): Unit = {
-        event.getType match {
+    lazy val segmentWatcher: CuratorWatcher = {
+      event: WatchedEvent => event.getType match {
           case EventType.NodeChildrenChanged if !stopped.get =>
             self ! ZkSegmentChanged(
               segment,
               curatorFwk.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath)
                 .asScala
-                .map { p => ByteString(pathToKey(p))}.toSet
+                .map { p => ByteString(pathToKey(p)) }.toSet
             )
           case _ =>
         }
-      }
     }
+
     //watch over changes of members of a partition (watcher over /partitions/some-partition)
-    lazy val partitionWatcher: CuratorWatcher = new CuratorWatcher {
-      override def process(event: WatchedEvent): Unit = {
-        event.getType match {
+    lazy val partitionWatcher: CuratorWatcher = {
+      event: WatchedEvent => event.getType match {
           case EventType.NodeDataChanged if !stopped.get =>
             val sectors = event.getPath.split("[/]")
             val partitionKey = ByteString(pathToKey(sectors(sectors.length - 2)))
             sectors(sectors.length - 1) match {
               case "servants" | "$size" =>
-                watchOverPartition(segment, partitionKey, this) foreach {partitionData =>
+                watchOverPartition(segment, partitionKey, partitionWatcher) foreach { partitionData =>
                   whenPartitionChanged(segment, partitionData)
                 }
               case _ =>
             }
           case _ =>
         }
-      }
     }
+
     partitionWatchers += segment -> partitionWatcher
     //initialize with the current set of partitions
     curatorFwk.getChildren.usingWatcher(segmentWatcher).forPath(segmentZkPath).asScala.map{p =>

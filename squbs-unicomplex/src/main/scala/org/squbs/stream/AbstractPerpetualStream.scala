@@ -48,32 +48,26 @@ abstract class AbstractPerpetualStream[T] extends AbstractActor with PerpetualSt
   /**
    * The decider to use. Override if not resumingDecider.
    */
-  def decider: akka.japi.function.Function[Throwable, Directive] =
-      new akka.japi.function.Function[Throwable, Directive]() {
-        def apply(t: Throwable): Directive = {
-          log.error("Uncaught error {} from stream", t)
-          t.printStackTrace()
-          Resume
-        }
-      }
+  def decider: akka.japi.function.Function[Throwable, Directive] = {
+    t: Throwable =>
+      log.error("Uncaught error {} from stream", t)
+      t.printStackTrace()
+      Resume
+  }
 
   implicit val materializer: ActorMaterializer =
     ActorMaterializer(ActorMaterializerSettings(context.system).withSupervisionStrategy(decider))
 
   override private[stream] final def runGraph(): T = streamGraph.run(materializer)
 
-  override private[stream] final def shutdownAndNotify(): Unit = shutdown().thenAccept(new Consumer[Done] {
-    override def accept(t: Done): Unit = self ! Done
-  })
+  override private[stream] final def shutdownAndNotify(): Unit = shutdown().thenAccept((_: Done) => self ! Done)
 
   override def createReceive(): AbstractActor.Receive = {
     new AbstractActor.Receive(PartialFunction.empty[Any, BoxedUnit])
   }
 
   private def stageToDone(stage: CompletionStage[_]): CompletionStage[Done] =
-    stage.thenApply(new java.util.function.Function[Any, Done.type]() {
-      override def apply(t: Any): Done.type = Done
-    })
+    stage.thenApply((_: Any) => Done)
 
 
   /**

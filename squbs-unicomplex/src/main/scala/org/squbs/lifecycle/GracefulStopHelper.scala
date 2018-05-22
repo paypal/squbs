@@ -140,11 +140,8 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    */
   protected def gracefulStop(target: ActorRef, timeout: Long, unit: TimeUnit, stopMessage: Any):
   java.util.concurrent.CompletionStage[java.lang.Boolean] =
-    gracefulStop(target, FiniteDuration(timeout, unit), stopMessage).toJava.thenApply(
-      new java.util.function.Function[Boolean, java.lang.Boolean]() {
-        override def apply(t: Boolean): java.lang.Boolean = t.asInstanceOf[java.lang.Boolean]
-      }
-    )
+    gracefulStop(target, FiniteDuration(timeout, unit), stopMessage).toJava
+      .thenApply((t: Boolean) => t:java.lang.Boolean)
 
   /**
    * Java API for gracefulStop using the default message - PoisonPill.
