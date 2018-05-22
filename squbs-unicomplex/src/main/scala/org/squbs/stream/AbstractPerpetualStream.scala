@@ -48,12 +48,12 @@ abstract class AbstractPerpetualStream[T] extends AbstractActor with PerpetualSt
   /**
    * The decider to use. Override if not resumingDecider.
    */
-  def decider: akka.japi.function.Function[Throwable, Directive] =
-    (t: Throwable) => {
+  def decider: akka.japi.function.Function[Throwable, Directive] = {
+    t: Throwable =>
       log.error("Uncaught error {} from stream", t)
       t.printStackTrace()
       Resume
-    }
+  }
 
   implicit val materializer: ActorMaterializer =
     ActorMaterializer(ActorMaterializerSettings(context.system).withSupervisionStrategy(decider))

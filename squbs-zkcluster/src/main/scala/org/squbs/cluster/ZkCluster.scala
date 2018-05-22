@@ -57,8 +57,8 @@ case class ZkCluster(zkAddress: Address,
   private[this] val stopped = new AtomicBoolean(false)
   private[this] val shutdownListeners = new ConcurrentLinkedQueue[(CuratorFramework => Unit)]()
 
-  private[this] val connectionStateListener: ConnectionStateListener =
-    (client: CuratorFramework, newState: ConnectionState) => {
+  private[this] val connectionStateListener: ConnectionStateListener = {
+    (client: CuratorFramework, newState: ConnectionState) =>
       newState match {
         case ConnectionState.LOST if !stopped.get =>
           logger.error("[zkCluster] connection lost!")
@@ -78,7 +78,7 @@ case class ZkCluster(zkAddress: Address,
         case otherState =>
           logger.warn(s"[zkCluster] connection state changed $otherState. What shall I do?")
       }
-    }
+  }
 
 
   private[this] def znodesSetup()(implicit curatorFwk: CuratorFramework) = {
