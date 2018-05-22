@@ -16,24 +16,56 @@
 
 package org.squbs.pipeline
 
-import java.util
-
 import akka.actor.ActorSystem
+import akka.http.javadsl.{model => jm}
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.testkit.TestKit
 import org.scalatest.OptionValues._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
-
 import scala.util.Try
 
-class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) with FlatSpecLike with Matchers with BeforeAndAfterAll {
+class RequestContextSpec
+  extends TestKit(ActorSystem("RequestContextSpecSys"))
+    with FlatSpecLike
+    with Matchers
+    with BeforeAndAfterAll {
 
   override def afterAll(): Unit = {
     system.terminate()
   }
 
-  it should "handle attributes correctly" in {
+  it should "handle attributes correctly (withAttributes/removeAttributes/expanded variable args)" in {
+    val attributeAdditions =
+      List(
+        "key1" -> "val1",
+        "key2" -> 1,
+        "key3" -> new Exception("Bad Val")
+      )
+
+    val rc1 = RequestContext(HttpRequest(), 0)
+    val rc2 = rc1.withAttributes(attributeAdditions:_*)
+    rc1.attributes should have size 0
+    rc2.attributes should equal(attributeAdditions.toMap)
+
+    val addedKeys = attributeAdditions.map(_._1).toSet
+    val removeKeys = Set(addedKeys.head, addedKeys.last)
+    val rc3 = rc2.removeAttributes("ibetternotexist" +: removeKeys.toList:_*)
+    rc3.attributes.keys.toSet should equal(addedKeys -- removeKeys)
+  }
+
+  it should "handle attributes correctly (withAttributes/variable args)" in {
+    val rc = RequestContext(HttpRequest(), 0)
+
+    rc.withAttributes(
+      "key1" -> "val1",
+      "key2" -> 1
+    ).attributes should equal(Map("key1" -> "val1", "key2" -> 1))
+
+    rc.attributes should have size 0
+  }
+
+  it should "handle attributes correctly (withAttribute/removeAttribute)" in {
     val rc1 = RequestContext(HttpRequest(), 0)
 
     rc1.attributes should have size 0
@@ -77,4 +109,5 @@ class RequestContextSpec extends TestKit(ActorSystem("RequestContextSpecSys")) w
     rc7.response.value.get.headers should have size 4
     rc7.response.value.get.headers should contain(RawHeader("key4", "val4"))
   }
+
 }
