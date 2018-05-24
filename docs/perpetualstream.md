@@ -289,6 +289,29 @@ public akka.japi.function.Function<Throwable, Supervision.Directive> decider() {
 
 `Restart` will restart the stage that has an error without shutting down the stream. Please see [Supervision Strategies](http://doc.akka.io/docs/akka/current/scala/stream/stream-error.html#Supervision_Strategies) for possible strategies.
 
+#### Obtaining the Materialized Value of a PerpetualStream
+
+To interact with a `PerpetualStream` from outside the stream, it is necessary to obtain the stream's materialized value.
+A different `Actor`, `PerpetualStream`, `Route`, or `Flow` can obtain the materialized value of the stream as in the
+following examples. Note that the expected materialized value blow is of type `Long`:
+
+##### Scala
+
+```scala
+class MyActor extends Actor with PerpetualStreamMatValue[Long] {
+
+  val streamMatValue = matValue("/user/mycube/perpetualStreamWithMergeHub")
+
+}
+```
+
+##### Java
+
+```java
+long matValue = AbstractPerpetualStream.getMatValue[Long]("/user/mycube/perpetualStreamWithMergeHub", refFactory);
+// refFactory can by your ActorContext or ActorSystem.
+```
+
 #### Connecting a Perpetual Stream with an HTTP Flow
 
 Akka HTTP allows defining a `Flow[HttpRequest, HttpResponse, NotUsed]`, which gets materialized for each http connection.  There are scenarios where an app needs to connect the http flow to a long running stream that needs to be materialized only once (e.g., publishing to Kafka).  Akka HTTP enables end-to-end streaming in such scenarios with [`MergeHub`](http://doc.akka.io/docs/akka/current/scala/stream/stream-dynamic.html#dynamic-fan-in-and-fan-out-with-mergehub-broadcasthub-and-partitionhub).  squbs provides utilities to connect an http flow with a `PerpetualStream` that uses `MergeHub`.  
@@ -480,11 +503,12 @@ squbs-actors = [
 ##### Scala
 
 The HTTP `FlowDefinition` can be connected to the `PerpetualStream` as follows by extending `PerpetualStreamMatValue` and using `matValue` method.
-Type parameter for the `PerpetualStreamMatValue` describes the data type flowing between the HTTP flow and the `MergeHub`.
+The type parameter for the `PerpetualStreamMatValue` describes the data type of the materialized value of the perpetual stream. This is generally
+itself a `Sink` or a tuple having the `Sink` as the first element.
 (both versions of `PerpetualStreamWithMergeHub` above expect to receive `MyMessage`, i.e. both have inlet of a type `Sink[MyMessage, NotUsed]`).
 
 ```scala
-class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[MyMessage] {
+class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[Sink[MyMessage]] {
 
   override val flow: Flow[HttpRequest, HttpResponse, NotUsed] =
     Flow[HttpRequest]
