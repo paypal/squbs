@@ -293,7 +293,7 @@ public akka.japi.function.Function<Throwable, Supervision.Directive> decider() {
 
 To interact with a `PerpetualStream` from outside the stream, it is necessary to obtain the stream's materialized value.
 A different `Actor`, `PerpetualStream`, `Route`, or `Flow` can obtain the materialized value of the stream as in the
-following examples. Note that the expected materialized value blow is of type `Long`:
+following example. Note that the expected materialized value below is of type `Long`:
 
 ##### Scala
 
@@ -504,8 +504,8 @@ squbs-actors = [
 
 The HTTP `FlowDefinition` can be connected to the `PerpetualStream` as follows by extending `PerpetualStreamMatValue` and using `matValue` method.
 The type parameter for the `PerpetualStreamMatValue` describes the data type of the materialized value of the perpetual stream. This is generally
-itself a `Sink` or a tuple having the `Sink` as the first element.
-(both versions of `PerpetualStreamWithMergeHub` above expect to receive `MyMessage`, i.e. both have inlet of a type `Sink[MyMessage, NotUsed]`).
+a `Sink` or a tuple having the `Sink` as the first element (both versions of `PerpetualStreamWithMergeHub` above expect to receive `MyMessage`,
+i.e. both have inlet of a type `Sink[MyMessage, NotUsed]`).
 
 ```scala
 class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[Sink[MyMessage]] {
