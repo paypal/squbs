@@ -100,7 +100,9 @@ trait PerpetualStreamBase[T] extends Actor with ActorLogging with Stash with Gra
   }
 }
 
-case object MatValueRequest
+case object MatValueRequest {
+  def instance: MatValueRequest.type = this
+}
 
 object SafeSelect {
   def apply(path: String)(implicit refFactory: ActorRefFactory, timeout: Timeout): ActorRef =
