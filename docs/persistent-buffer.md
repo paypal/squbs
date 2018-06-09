@@ -234,4 +234,4 @@ val countFuture = streamGraph.run()
 ```
 ## Credits
 
-`PersistentBuffer` utilizes [Chronicle-Queue](https://github.com/OpenHFT/Chronicle-Queue) 5.x as high-performance memory-mapped queue persistence.
+`PersistentBuffer` utilizes [Chronicle-Queue](https://github.com/OpenHFT/Chronicle-Queue) 4.x as high-performance memory-mapped queue persistence.
