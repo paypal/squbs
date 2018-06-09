@@ -201,7 +201,8 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
 
     // deletes old files whose long value (based on epoch) is < released file's long value.
     private def deleteOlderFiles(cycle: Int, releasedFile: File): Unit = {
-      val files = Option(persistDir.listFiles).toArray.flatten.filterNot(_.getName == Tailer).toSeq
+      val files = Option(persistDir.listFiles)
+        .toArray.flatten.filterNot(file => file.getName == Tailer || file.getName == "directory-listing.cq4t").toSeq
       if (files.nonEmpty) {
         val releasedFileLong = fileIdParser.toLong(releasedFile)
         files.filter { file =>

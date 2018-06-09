@@ -27,7 +27,7 @@ object Versions {
   val junitV = "4.12"
   val testngV = "6.14.3"
   val accordV = "0.7.2"
-  val chronicleQueueV = "4.5.27"
+  val chronicleQueueV = "4.16.3"
   val logbackInTestV = "1.2.3"
   val curatorV = "4.0.1"
 }

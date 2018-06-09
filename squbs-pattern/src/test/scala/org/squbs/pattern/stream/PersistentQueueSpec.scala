@@ -153,7 +153,8 @@ class PersistentQueueSpec extends FlatSpec with Matchers with PrivateMethodTeste
     val tempPath = Files.createTempDirectory("persistent_queue")
     val queue = new PersistentQueue[ByteString](QueueConfig(tempPath.toFile, rollCycle = RollCycles.TEST_SECONDLY))
 
-    def dataFiles = tempPath.toFile.listFiles().toList.filterNot(_.getName == "tailer.idx")
+    def dataFiles = tempPath.toFile.listFiles()
+      .toList.filterNot(file => file.getName == "tailer.idx" || file.getName == "directory-listing.cq4t")
 
     addToQueue(0, 0)
 

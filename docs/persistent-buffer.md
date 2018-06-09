@@ -8,7 +8,7 @@ The following dependencies are required for Persistent Buffer to work:
 
 ```scala
 "org.squbs" %% "squbs-pattern" % squbsVersion,
-"net.openhft" % "chronicle-queue" % "4.6.70"
+"net.openhft" % "chronicle-queue" % "4.16.3"
 ```
 
 ## Examples
@@ -234,4 +234,4 @@ val countFuture = streamGraph.run()
 ```
 ## Credits
 
-`PersistentBuffer` utilizes [Chronicle-Queue](https://github.com/OpenHFT/Chronicle-Queue) 4.x as high-performance memory-mapped queue persistence.
+`PersistentBuffer` utilizes [Chronicle-Queue](https://github.com/OpenHFT/Chronicle-Queue) 5.x as high-performance memory-mapped queue persistence.
