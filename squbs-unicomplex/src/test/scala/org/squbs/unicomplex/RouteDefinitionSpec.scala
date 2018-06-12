@@ -77,7 +77,7 @@ class TestRouteDefinition extends RouteDefinition {
       }
     } ~ path("illegalrequest") {
       get {
-        throw new IllegalRequestException(ErrorInfo("Test illegal request", "This is a test"), StatusCodes.Locked)
+        throw new IllegalRequestException(new ErrorInfo("Test illegal request", "This is a test"), StatusCodes.Locked)
       }
     } ~ path("exception") {
       get {
