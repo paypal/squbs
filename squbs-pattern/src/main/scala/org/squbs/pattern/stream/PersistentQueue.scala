@@ -22,7 +22,7 @@ import com.typesafe.scalalogging.Logger
 import net.openhft.chronicle.bytes.MappedBytesStore
 import net.openhft.chronicle.core.OS
 import net.openhft.chronicle.queue.ChronicleQueueBuilder
-import net.openhft.chronicle.queue.impl.single.SingleChronicleQueue
+import net.openhft.chronicle.queue.impl.single.{DirectoryListing, SingleChronicleQueue}
 import net.openhft.chronicle.queue.impl.{RollingResourcesCache, StoreFileListener}
 import net.openhft.chronicle.wire.{WireIn, WireOut}
 import org.slf4j.LoggerFactory
@@ -205,7 +205,7 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
       for {
         allFiles <- Option(persistDir.listFiles).toSeq
         file <- allFiles
-        if (!(file.getName == Tailer) || !(file.getName == "directory-listing.cq4t"))
+        if (!(file.getName == Tailer) || !(file.getName == DirectoryListing.DIRECTORY_LISTING_FILE))
         if (file.getName.endsWith(SUFFIX) && (fileIdParser.toLong(file) < releasedFileLong))
       } yield {
         logger.info("File released {} - {}", cycle.toString, file.getPath)

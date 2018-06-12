@@ -20,6 +20,7 @@ import java.nio.file.Files
 
 import akka.util.ByteString
 import net.openhft.chronicle.queue.RollCycles
+import net.openhft.chronicle.queue.impl.single.DirectoryListing
 import org.scalatest.OptionValues._
 import org.scalatest._
 
@@ -154,7 +155,7 @@ class PersistentQueueSpec extends FlatSpec with Matchers with PrivateMethodTeste
     val queue = new PersistentQueue[ByteString](QueueConfig(tempPath.toFile, rollCycle = RollCycles.TEST_SECONDLY))
 
     def dataFiles = tempPath.toFile.listFiles()
-      .toList.filterNot(file => file.getName == "tailer.idx" || file.getName == "directory-listing.cq4t")
+      .toList.filterNot(file => file.getName == "tailer.idx" || file.getName == DirectoryListing.DIRECTORY_LISTING_FILE)
 
     addToQueue(0, 0)
 
