@@ -207,7 +207,9 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
         if (file.getName.endsWith(SUFFIX) &&  fileIdParser.toLong(releasedFile) > (fileIdParser.toLong(file)))
       } {
         logger.info("File released {} - {}", cycle.toString, file.getPath)
-        file.delete()
+        if (!file.delete()) {
+          logger.error("Failed to DELETE {}", file.getPath)
+        }
       }
     }
   }
