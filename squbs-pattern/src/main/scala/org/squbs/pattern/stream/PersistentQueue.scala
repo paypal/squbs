@@ -79,7 +79,7 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
 
   // `fileIdParser` will parse a given filename to its long value.
   // The value is based on epoch time and grows incrementally.
-  // https://github.com/OpenHFT/Chronicle-Queue/blob/chronicle-queue-4.5.13/src/main/java/net/openhft/chronicle/queue/RollCycle.java#L35
+  // https://github.com/OpenHFT/Chronicle-Queue/blob/chronicle-queue-4.16.4/src/main/java/net/openhft/chronicle/queue/RollCycles.java#L85
   private[stream] val fileIdParser = new RollingResourcesCache(queue.rollCycle(), queue.epoch(),
     (name: String) => new File(builder.path(), name + SUFFIX),
     (file: File) => file.getName.stripSuffix(SUFFIX)
