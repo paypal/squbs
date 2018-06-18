@@ -205,7 +205,6 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
       for {
         allFiles <- Option(persistDir.listFiles).toSeq
         file <- allFiles
-        if (!(file.getName == Tailer) || !(file.getName == DirectoryListing.DIRECTORY_LISTING_FILE))
         if (file.getName.endsWith(SUFFIX) && (fileIdParser.toLong(file) < releasedFileLong))
       } yield {
         logger.info("File released {} - {}", cycle.toString, file.getPath)
