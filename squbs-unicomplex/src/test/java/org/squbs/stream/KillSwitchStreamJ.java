@@ -1,6 +1,7 @@
 package org.squbs.stream;
 
 import akka.actor.AbstractActor;
+import akka.actor.ActorRefFactory;
 import akka.japi.Pair;
 import akka.stream.ClosedShape;
 import akka.stream.FlowShape;
@@ -61,5 +62,15 @@ public class KillSwitchStreamJ extends AbstractPerpetualStream<CompletionStage<L
         return receiveBuilder()
                 .matchEquals(NotifyWhenDone.getInstance(), n -> getSender().tell(matValue(), getSelf()))
                 .build();
+    }
+
+    /**
+     * Static method for testing the Java API for obtaining the materialized value of a Perpetual Stream
+     * @param path The actor path of the PerpetualStream
+     * @param refFactory The actor ref factory
+     * @return The materialized value
+     */
+    public static Object getMatValue(String path, ActorRefFactory refFactory) {
+        return AbstractPerpetualStream.getMatValue(path, refFactory);
     }
 }

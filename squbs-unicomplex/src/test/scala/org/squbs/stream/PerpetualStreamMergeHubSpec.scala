@@ -80,7 +80,7 @@ class PerpetualStreamMergeHubSpec extends TestKit(PerpetualStreamMergeHubSpec.bo
 
 case class MyMessage(id: Int)
 
-class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[MyMessage] {
+class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[Sink[MyMessage, NotUsed]] {
 
   import context.dispatcher
 

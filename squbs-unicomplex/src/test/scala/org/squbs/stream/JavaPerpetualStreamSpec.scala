@@ -154,6 +154,9 @@ class JavaPerpetualStreamSpec extends FlatSpec with Matchers {
     import Timeouts._
     implicit def actorSystem = boot.actorSystem
 
+    val matValue = KillSwitchStreamJ.getMatValue("/user/JavaKillSwitchStream/KillSwitchStreamJ", actorSystem)
+    matValue shouldBe a[CompletionStage[_]]
+
     // To avoid map at shutdown so the NotifyWhenDone obtains a Future[Long] right away.
     // Combined with "ask", we now have a Future[Future[Long]] in countFF. Then we have to do the very short await
     // to obtain the Future[Long] that will complete at or after shutdown.

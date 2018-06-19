@@ -18,7 +18,7 @@ package org.squbs.stream
 import java.util.concurrent.{CompletableFuture, CompletionStage}
 import java.util.function.Consumer
 
-import akka.actor.AbstractActor
+import akka.actor.{AbstractActor, ActorRefFactory}
 import akka.stream.Supervision.{Directive, Resume}
 import akka.stream._
 import akka.stream.javadsl.{RunnableGraph, Sink}
@@ -122,18 +122,38 @@ abstract class AbstractPerpetualStream[T] extends AbstractActor with PerpetualSt
   override final def stopTimeout: FiniteDuration = getStopTimeout.millis
 }
 
+object AbstractPerpetualStream {
+
+  /**
+    * Java API for accessing the materialized value of a PerpetualStream by path
+    * @param path The actor path.
+    * @param refFactory The actor ref factory.
+    * @tparam T The type of the materialized value.
+    * @return The materialized value, when it becomes available.
+    */
+  def getMatValue[T](path: String, refFactory: ActorRefFactory): T = {
+    implicit val _ = refFactory
+    implicit val timeout: Timeout = Timeout(10.seconds)
+    import akka.pattern.ask
+    val responseF = SafeSelect(path) ? MatValueRequest
+
+    // Exception! This code is executed only at startup. We really need a better API, though.
+    Await.result(responseF, timeout.duration).asInstanceOf[T]
+  }
+}
+
 /**
  * Java API for creating an HTTP FlowDefinition connecting to a PerpetualStream.
  */
 abstract class FlowToPerpetualStream extends AbstractFlowDefinition {
 
-  def matValue[T](perpetualStreamName: String): Sink[T, NotUsed] = {
+  def matValue[T](perpetualStreamName: String): T = {
     implicit val _ = context.system
     implicit val timeout: Timeout = Timeout(10.seconds)
     import akka.pattern.ask
     val responseF = SafeSelect(perpetualStreamName) ? MatValueRequest
 
     // Exception! This code is executed only at startup. We really need a better API, though.
-    Await.result(responseF, timeout.duration).asInstanceOf[Sink[T, NotUsed]]
+    Await.result(responseF, timeout.duration).asInstanceOf[T]
   }
 }

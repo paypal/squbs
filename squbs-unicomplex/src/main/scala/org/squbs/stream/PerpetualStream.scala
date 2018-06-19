@@ -100,12 +100,12 @@ trait PerpetualStream[T] extends PerpetualStreamBase[T] {
 trait PerpetualStreamMatValue[T] {
   protected val context: ActorContext
 
-  def matValue(perpetualStreamName: String)(implicit classTag: ClassTag[T]): Sink[T, NotUsed] = {
+  def matValue(perpetualStreamName: String)(implicit classTag: ClassTag[T]): T = {
     implicit val _ = context.system
     implicit val timeout: Timeout = Timeout(10.seconds)
     import akka.pattern.ask
 
-    val responseF = (SafeSelect(perpetualStreamName) ? MatValueRequest).mapTo[Sink[T, NotUsed]]
+    val responseF = (SafeSelect(perpetualStreamName) ? MatValueRequest).mapTo[T]
 
     // Exception! This code is executed only at startup. We really need a better API, though.
     Await.result(responseF, timeout.duration)
