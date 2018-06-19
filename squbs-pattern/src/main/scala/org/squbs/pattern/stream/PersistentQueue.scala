@@ -22,7 +22,7 @@ import com.typesafe.scalalogging.Logger
 import net.openhft.chronicle.bytes.MappedBytesStore
 import net.openhft.chronicle.core.OS
 import net.openhft.chronicle.queue.ChronicleQueueBuilder
-import net.openhft.chronicle.queue.impl.single.SingleChronicleQueue
+import net.openhft.chronicle.queue.impl.single.{DirectoryListing, SingleChronicleQueue}
 import net.openhft.chronicle.queue.impl.{RollingResourcesCache, StoreFileListener}
 import net.openhft.chronicle.wire.{WireIn, WireOut}
 import org.slf4j.LoggerFactory
@@ -79,7 +79,7 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
 
   // `fileIdParser` will parse a given filename to its long value.
   // The value is based on epoch time and grows incrementally.
-  // https://github.com/OpenHFT/Chronicle-Queue/blob/chronicle-queue-4.5.13/src/main/java/net/openhft/chronicle/queue/RollCycle.java#L35
+  // https://github.com/OpenHFT/Chronicle-Queue/blob/chronicle-queue-4.16.4/src/main/java/net/openhft/chronicle/queue/RollCycles.java#L85
   private[stream] val fileIdParser = new RollingResourcesCache(queue.rollCycle(), queue.epoch(),
     (name: String) => new File(builder.path(), name + SUFFIX),
     (file: File) => file.getName.stripSuffix(SUFFIX)
@@ -201,14 +201,14 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
 
     // deletes old files whose long value (based on epoch) is < released file's long value.
     private def deleteOlderFiles(cycle: Int, releasedFile: File): Unit = {
-      val files = Option(persistDir.listFiles).toArray.flatten.filterNot(_.getName == Tailer).toSeq
-      if (files.nonEmpty) {
-        val releasedFileLong = fileIdParser.toLong(releasedFile)
-        files.filter { file =>
-          file.getName.endsWith(SUFFIX) && (fileIdParser.toLong(file) < releasedFileLong)
-        } foreach { file =>
-          logger.info("File released {} - {}", cycle.toString, file.getPath)
-          file.delete()
+      for {
+        allFiles <- Option(persistDir.listFiles).toSeq
+        file <- allFiles
+        if (file.getName.endsWith(SUFFIX) &&  fileIdParser.toLong(releasedFile) > (fileIdParser.toLong(file)))
+      } {
+        logger.info("File released {} - {}", cycle.toString, file.getPath)
+        if (!file.delete()) {
+          logger.error("Failed to DELETE {}", file.getPath)
         }
       }
     }
