@@ -17,17 +17,18 @@
 package org.squbs.httpclient
 
 import java.lang.management.ManagementFactory
+import java.net.InetSocketAddress
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
-import javax.management.ObjectName
 
+import javax.management.ObjectName
 import akka.actor.ActorSystem
 import akka.http.javadsl.{model => jm}
 import akka.http.org.squbs.util.JavaConverters._
 import akka.http.scaladsl.Http.HostConnectionPool
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.http.scaladsl.settings.ConnectionPoolSettings
-import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
+import akka.http.scaladsl.settings.{ConnectionPoolSettings, HttpsProxySettings}
+import akka.http.scaladsl.{ClientTransport, ConnectionContext, Http, HttpsConnectionContext}
 import akka.http.{javadsl => jd}
 import akka.japi.Pair
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep}
@@ -147,7 +148,15 @@ object ClientFlow {
       _.getOption[String]("type") contains "squbs.httpclient"
     }
     val clientConfigWithDefaults = clientSpecificConfig.map(_.withFallback(config)).getOrElse(config)
-    val cps = settings.getOrElse(ConnectionPoolSettings(clientConfigWithDefaults))
+    val cps = settings.getOrElse {
+      Try { HttpsProxySettings(clientConfigWithDefaults) } match {
+        case Success(proxySettings) =>
+          ConnectionPoolSettings(clientConfigWithDefaults).withTransport(ClientTransport.httpsProxy(
+            InetSocketAddress.createUnresolved(proxySettings.host, proxySettings.port)))
+        case _ =>
+          ConnectionPoolSettings(clientConfigWithDefaults)
+      }
+    }
 
     val endpointPort = endpoint.uri.effectivePort
     val clientConnectionFlow =

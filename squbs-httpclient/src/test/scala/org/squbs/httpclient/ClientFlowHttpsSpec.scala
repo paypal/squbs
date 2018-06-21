@@ -68,26 +68,6 @@ object ClientFlowHttpsSpec {
   val serverBinding = Await.result(Http().bindAndHandle(route, "localhost", 0,
     ConnectionContext.https(sslContext("example.com.jks", "changeit"))), awaitMax)
   val port = serverBinding.localAddress.getPort
-
-  def sslContext(store: String, pw: String) = {
-    val password: Array[Char] = pw.toCharArray // do not store passwords in code, read them from somewhere safe!
-
-    val ks: KeyStore = KeyStore.getInstance("JKS")
-    val keystore: InputStream = getClass.getClassLoader.getResourceAsStream("ClientFlowHttpsSpec/" + store)
-
-    require(keystore != null, "Keystore required!")
-    ks.load(keystore, password)
-
-    val keyManagerFactory: KeyManagerFactory = KeyManagerFactory.getInstance("SunX509")
-    keyManagerFactory.init(ks, password)
-
-    val tmf: TrustManagerFactory = TrustManagerFactory.getInstance("SunX509")
-    tmf.init(ks)
-
-    val sslContext: SSLContext = SSLContext.getInstance("TLS")
-    sslContext.init(keyManagerFactory.getKeyManagers, tmf.getTrustManagers, new SecureRandom)
-    sslContext
-  }
 }
 
 class ClientFlowHttpsSpec  extends AsyncFlatSpec with Matchers with BeforeAndAfterAll {

@@ -18,7 +18,8 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonV % "test",
   "junit" % "junit" % junitV % "test",
   "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
-  "ch.qos.logback" % "logback-classic" % logbackInTestV % "test"
+  "ch.qos.logback" % "logback-classic" % logbackInTestV % "test",
+  "org.littleshoot" % "littleproxy" % "1.1.2" % "test"
 )
 
 javacOptions += "-parameters"
