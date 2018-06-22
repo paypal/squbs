@@ -238,7 +238,7 @@ CircuitBreakerSettings settings =
 
 #### Notifications
 
-An `ActorRef` can be subscribed to receive all `TransitionEvents` or any transition event that it is intered in, e.g., `Closed`, `Open`, `HalfOpen`.
+An `ActorRef` can be subscribed to receive all `TransitionEvents` or any transition event that it is interested in, e.g., `Closed`, `Open`, `HalfOpen`.
 
 ##### Scala
 
