@@ -25,28 +25,48 @@ If all the retried attempts fail then the last failure for that request is emitt
 ##### Scala
 
 ```scala
-val retry = Retry[String, Long](max = 10)
-val flow = Flow[Try[String], Long].map(s => findAnEnglishWordThatStartWith(s))
+implicit val system = ActorSystem()
+implicit val mat = ActorMaterializer()
 
-Source("a" :: "b" :: "c" :: Nil)
+val dict = List("albatross", "cow")
+def findAnEnglishWordThatStartWith(prefix: String): Try[String] =
+  Try { dict.find(_.startsWith(prefix)).get }
+
+val retry = Retry[String, String, Long](max = 10)
+val flow = Flow[(String, Long)].map { case (s, ctx) => (findAnEnglishWordThatStartWith(s), ctx) }
+
+val words = Source("a" :: "b" :: "c" :: Nil)
+  .zipWithIndex
   .via(retry.join(flow))
-  .runWith(Sink.seq)
+  .runWith(Sink.foreach(println))
 ```
 
 ##### Java
 
 ```java
-final BidiFlow<Pair<String, Long>,
-               Pair<String, Long>,
-               Pair<Try<String>, Long>,
-               Pair<Try<String>, Long>, NotUsed> retry = Retry.create(2);
+ActorSystem system = ActorSystem.create();
+Materializer mat = ActorMaterializer.create(system);
 
-final Flow<String, String, NotUsed> flow =
-    Flow.<String>create().map(s -> findAnEnglishWordThatStartWith(s));
+final BidiFlow<Pair<String, Long>,
+                Pair<String, Long>,
+                Pair<Try<String>, Long>,
+                Pair<Try<String>, Long>, NotUsed> retry = Retry.create(2);
+
+List<String> dictionary = Arrays.asList("albatross", "cow");
+
+Function<String, Try<String>> findAnEnglishWordThatStartsWith = prefix -> {
+    Optional<String> wordOpt = dictionary.stream().filter(w -> w.startsWith(prefix)).findFirst();
+    return Try.apply(() -> wordOpt.get());
+};
+
+final Flow<Pair<String, Long>, Pair<Try<String>, Long>, NotUsed> flow =
+        Flow.<Pair<String, Long>>create()
+                .map(p -> Pair.create(findAnEnglishWordThatStartsWith.apply(p.first()), p.second()));
 
 Source.from(Arrays.asList("a", "b", "c"))
-    .via(retry.join(flow))
-    .runWith(Sink.seq(), mat);
+        .zipWithIndex()
+        .via(retry.join(flow))
+        .runWith(Sink.foreach(System.out::println), mat);
 ```
 
 #### Context to Unique Id Mapping
@@ -94,7 +114,7 @@ class MyContext {
 
 final RetrySettings settings =
         RetrySettings.<String, String, MyContext>create(3)
-                .withUniqueIdMapper(context -> context.id());
+                .withUniqueIdMapper(ctx -> ctx.id());
                 
 final BidiFlow<Pair<String, MyContext>,
                Pair<String, MyContext>,
@@ -113,7 +133,7 @@ A function of type `Try[Out] => Boolean` can be provided to `RetrySettings` via 
 a response with failing http status code is also considered a failure:
 
 ```scala
-val failureDecider = (tryResponse: Try[HttpResponse]) => tryResponse.isFailure || tryResponse.get().status().isFailure()
+val failureDecider = (tryResponse: Try[HttpResponse]) => tryResponse.isFailure || tryResponse.get.status.isFailure()
 
 val settings =
   RetrySettings[HttpRequest, HttpResponse, MyContext](max = 3)
@@ -130,7 +150,7 @@ along with any `Failure` message, a `Success` of `HttpResponse` with status code
 
 ```java
 final Function<Try<HttpResponse>, Boolean> failureDecider =
-        tryResponse -> tryResponse.isFailure() || tryResponse.get().status().isFailure());
+        tryResponse -> tryResponse.isFailure() || tryResponse.get().status().isFailure();
 
 final RetrySettings settings =
         RetrySettings.<HttpRequest, HttpResponse, MyContext>create(1)
