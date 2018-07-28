@@ -25,17 +25,10 @@ If all the retried attempts fail then the last failure for that request is emitt
 ##### Scala
 
 ```scala
-implicit val system = ActorSystem()
-implicit val mat = ActorMaterializer()
-
-val dict = List("albatross", "cow")
-def findAnEnglishWordThatStartWith(prefix: String): Try[String] =
-  Try { dict.find(_.startsWith(prefix)).get }
-
 val retry = Retry[String, String, Long](max = 10)
 val flow = Flow[(String, Long)].map { case (s, ctx) => (findAnEnglishWordThatStartWith(s), ctx) }
 
-val words = Source("a" :: "b" :: "c" :: Nil)
+Source("a" :: "b" :: "c" :: Nil)
   .zipWithIndex
   .via(retry.join(flow))
   .runWith(Sink.foreach(println))
@@ -44,20 +37,10 @@ val words = Source("a" :: "b" :: "c" :: Nil)
 ##### Java
 
 ```java
-ActorSystem system = ActorSystem.create();
-Materializer mat = ActorMaterializer.create(system);
-
 final BidiFlow<Pair<String, Long>,
                 Pair<String, Long>,
                 Pair<Try<String>, Long>,
                 Pair<Try<String>, Long>, NotUsed> retry = Retry.create(2);
-
-List<String> dictionary = Arrays.asList("albatross", "cow");
-
-Function<String, Try<String>> findAnEnglishWordThatStartsWith = prefix -> {
-    Optional<String> wordOpt = dictionary.stream().filter(w -> w.startsWith(prefix)).findFirst();
-    return Try.apply(() -> wordOpt.get());
-};
 
 final Flow<Pair<String, Long>, Pair<Try<String>, Long>, NotUsed> flow =
         Flow.<Pair<String, Long>>create()
