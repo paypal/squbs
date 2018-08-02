@@ -104,7 +104,7 @@ public class SampleTest extends CustomTestKit {
 }
 ```
 
-The following sections show customizations only in ScalaTest; however, all these customizations are supported for TestNG and JUnit as well.  For customizations, provide a `public` constructor in your TestNG/JUnit tests and call `super` with custom parameters.  Check [squbs-testkit/src/test/java/org/squbs/testkit/japi](../squbs-testkit/src/test/java/org/squbs/testkit/japi) for more TestNG and JUnit samples.
+The following sections show customizations only in ScalaTest; however, all these customizations are supported for TestNG and JUnit as well.  For customizations, provide a `public` constructor in your TestNG/JUnit tests and call `super` with custom parameters.  Check [squbs-testkit/src/test/java/org/squbs/testkit/japi](https://github.com/paypal/squbs/tree/RELEASE-0.11.0/squbs-testkit/src/test/java/org/squbs/testkit/japi) for more TestNG and JUnit samples.
 
 Specifically for JUnit, avoid setting actor system name in your tests (letting `CustomTestKit` set the actor system name is in general a good practice though).  JUnit creates a new fixture instance for each `@Test` method which potentially causes actor system conflicts.  `AbstractCustomTestKit` avoids this by appending an incremented integer to each actor system name.
 
