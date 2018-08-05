@@ -116,7 +116,7 @@ A function of type `Try[Out] => Boolean` can be provided to `RetrySettings` via 
 a response with failing http status code is also considered a failure:
 
 ```scala
-val failureDecider = (tryResponse: Try[HttpResponse]) => tryResponse.isFailure || tryResponse.get.status.isFailure()
+val failureDecider = (tryResponse: Try[HttpResponse]) => tryResponse.isFailure || tryResponse.get.status.isFailure
 
 val settings =
   RetrySettings[HttpRequest, HttpResponse, MyContext](max = 3)
