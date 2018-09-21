@@ -472,7 +472,10 @@ class Unicomplex extends Actor with Stash with ActorLogging {
           },
             discardOld = false)
 
-        case Failure(t) => updateSystemState(checkInitState())
+        case Failure(t) => {
+          sender ! StartFailure(t)
+          updateSystemState(checkInitState())
+        }
       }
 
     case Started => // Bootstrap startup and extension init done
