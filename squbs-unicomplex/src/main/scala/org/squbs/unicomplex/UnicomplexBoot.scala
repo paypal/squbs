@@ -466,11 +466,10 @@ object UnicomplexBoot extends LazyLogging {
     val ackFutures =
       for ((listenerName, config) <- boot.listeners) yield {
         val responseFuture = Unicomplex(actorSystem).uniActor ? StartListener(listenerName, config)
-        def log(t: Throwable): Unit = logger.error(s"Failed to start the listener, $listenerName.", t)
         responseFuture.onComplete {
-          case Failure(t)               => log(t)
-          case Success(StartFailure(t)) => log(t)
-          case _                        =>
+          case Failure(t) => logger.error(s"Failed to start the listener, $listenerName.", t)
+          case Success(StartFailure(t)) => logger.error(s"Failed to start the listener, $listenerName.", t)
+          case _ =>
         }
         responseFuture
       }
