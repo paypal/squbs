@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor._
 import akka.util.ByteString
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.api.CuratorWatcher
 import org.apache.zookeeper.Watcher.Event.EventType
@@ -27,7 +27,7 @@ private[cluster] case class ZkDropOffPartitions(dropOffs: Set[ByteString])
 /**
  * The major responsibility of ZkPartitionsManager is to maintain partitions
  */
-private[cluster] class ZkPartitionsManager extends Actor with Logging {
+private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLogging {
 
   import org.squbs.cluster.ZkPartitionsManager._
   private[this] val zkCluster = ZkCluster(context.system)

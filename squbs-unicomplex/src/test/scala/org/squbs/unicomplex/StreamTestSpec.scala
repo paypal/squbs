@@ -1,46 +1,58 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.unicomplex
 
-import com.typesafe.config.ConfigFactory
-import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
-import org.scalatest.concurrent.AsyncAssertions
-import scala.util.Try
 import java.util.concurrent.TimeUnit
-import org.squbs._
-import spray.client.HttpDialog
-import scala.Some
+
+import akka.actor._
+import akka.event.Logging
+import akka.io.IO
 import akka.pattern._
-import scala.concurrent.duration._
+import akka.testkit.{ImplicitSender, TestKit}
+import com.typesafe.config.ConfigFactory
+import org.scalatest.concurrent.AsyncAssertions
+import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+import org.squbs._
 import org.squbs.lifecycle.GracefulStop
-import spray.json._
+import org.squbs.unicomplex.streamSvc.ChunkedRequestHandler
+import spray.can.Http
+import spray.client.HttpDialog
 import spray.client.pipelining._
 import spray.http._
 import spray.util._
-import spray.can.Http
-import akka.actor._
-import akka.io.IO
-import akka.event.Logging
-import org.squbs.unicomplex.streamSvc.ChunkedRequestHandler
 
+import scala.concurrent.duration._
+import scala.util.Try
 
-/**
- * Created by junjshi on 14-7-18.
- */
 object StreamTestSpec {
-  val dummyJarsDir = "squbs-unicomplex/src/test/resources/classpaths"
+  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
   val classPaths = Array(
     "StreamCube",
     "StreamSvc"
   ) map (dummyJarsDir + "/" + _)
 
-  import collection.JavaConversions._
+  import scala.collection.JavaConversions._
 
   val mapConfig = ConfigFactory.parseMap(
     Map(
       "squbs.actorsystem-name"    -> "StreamTest",
       "squbs." + JMX.prefixConfig -> Boolean.box(true),
-      "default-listener.bind-service" -> Boolean.box(true),
       "default-listener.bind-port" -> nextPort.toString
     )
   )
@@ -85,6 +97,9 @@ with AsyncAssertions {
       //val actor_jar_path = System.getProperty("java.class.path").split(java.io.File.pathSeparator).filter(p => p.indexOf("akka-actor") != -1)(0)
       val actor_jar_path = StreamTestSpec.getClass.getResource("/classpaths/StreamSvc/akka-actor_2.10-2.3.2.jar1").getPath
       val actorFile = new java.io.File (actor_jar_path)
+      println("stream file path:"+actor_jar_path)
+      println("Exists:"+actorFile.exists())
+      println("Can Read:"+actorFile.canRead)
       require(actorFile.exists() && actorFile.canRead)
       val fileLength = actorFile.length()
       log.debug (s"akka-actor file=$actorFile size=$fileLength")

@@ -3,7 +3,7 @@ package org.squbs.cluster
 import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor.{Actor, Address, AddressFromURIString}
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.api.CuratorWatcher
 import org.apache.curator.framework.recipes.leader.LeaderLatch
 import org.apache.zookeeper.Watcher.Event.EventType
@@ -25,7 +25,7 @@ private[cluster] case class ZkMembersChanged(members: Set[Address])
  * most importantly to enroll the leadership competition and get membership,
  * leadership information immediately after change
  */
-private[cluster] class ZkMembershipMonitor extends Actor with Logging {
+private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
 
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._
@@ -50,6 +50,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with Logging {
         }
       }
     }).forPath("/leader")
+
     //watch over my self
     val me = guarantee(s"/members/${keyToPath(zkAddress.toString)}", Some(Array[Byte]()), CreateMode.EPHEMERAL)
     // Watch and recreate member node because it's possible for ephemeral node to be deleted while session is
@@ -69,6 +70,7 @@ private[cluster] class ZkMembershipMonitor extends Actor with Logging {
         }
       }
     }).forPath(me)
+
     //watch over members changes
     lazy val members = zkClientWithNs.getChildren.usingWatcher(new CuratorWatcher {
       override def process(event: WatchedEvent): Unit = {
@@ -82,12 +84,14 @@ private[cluster] class ZkMembershipMonitor extends Actor with Logging {
         }
       }
     }).forPath("/members")
+
     def refresh(members: Seq[String]) = {
       // tell the zkClusterActor to update the memory snapshot
       zkClusterActor ! ZkMembersChanged(members.map(m => AddressFromURIString(pathToKey(m))).toSet)
       // member changed, try to acquire the leadership
       self ! ZkAcquireLeadership
     }
+
     refresh(members)
     if (leader != null) zkClusterActor ! ZkLeaderElected(leader)
   }

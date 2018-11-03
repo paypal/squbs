@@ -1,3 +1,20 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.httpclient.dummy
 
 import spray.routing.SimpleRoutingApp
@@ -6,23 +23,22 @@ import scala.util.{Failure, Success}
 import scala.concurrent.duration._
 import spray.http._
 import spray.http.HttpHeaders.RawHeader
-import java.net.InetAddress
-import org.squbs.testkit.util.Ports
-
-/**
-* Created by hakuang on 7/10/2014.
-*/
+import spray.util.Utils._
 
 case class Employee(id: Long, firstName: String, lastName: String, age: Int, male: Boolean)
 
 case class Team(description: String, members: List[Employee])
 
 object DummyService {
-  val dummyServiceIpAddress = InetAddress.getLocalHost.getHostAddress
 
-  val dummyServicePort = Ports.available(8888, 9999)
+  val (dummyServiceIpAddress, dummyServicePort) = temporaryServerHostnameAndPort()
 
   val dummyServiceEndpoint = s"http://$dummyServiceIpAddress:$dummyServicePort"
+}
+
+object DummyServiceMain extends App with DummyService {
+  implicit val actorSystem = ActorSystem("DummyServiceMain")
+  startDummyService(actorSystem, address = "localhost", port = 8888)
 }
 
 trait DummyService extends SimpleRoutingApp {
@@ -35,7 +51,7 @@ trait DummyService extends SimpleRoutingApp {
   ))
 
   val newTeamMember = Employee(5, "Leon", "Ma", 35, true)
-  
+
   val fullTeamJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Dennis\",\"lastName\":\"Kuang\",\"age\":35,\"male\":false}]}"
   val fullTeamWithDelJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false}]}"
   val fullTeamWithAddJson = "{\"description\":\"Scala Team\",\"members\":[{\"id\":1,\"firstName\":\"Zhuchen\",\"lastName\":\"Wang\",\"age\":20,\"male\":true},{\"id\":2,\"firstName\":\"Roy\",\"lastName\":\"Zhou\",\"age\":25,\"male\":true},{\"id\":3,\"firstName\":\"Ping\",\"lastName\":\"Zhao\",\"age\":30,\"male\":false},{\"id\":4,\"firstName\":\"Dennis\",\"lastName\":\"Kuang\",\"age\":35,\"male\":false},{\"id\":5,\"firstName\":\"Leon\",\"lastName\":\"Ma\",\"age\":35,\"male\":true}]}"
@@ -55,31 +71,35 @@ trait DummyService extends SimpleRoutingApp {
   ))
 
   import org.squbs.httpclient.json.Json4sJacksonNoTypeHintsProtocol._
-  import scala.concurrent.ExecutionContext.Implicits.global
+  //  import scala.concurrent.ExecutionContext.Implicits.global
   import DummyService._
 
-  def startDummyService(implicit system: ActorSystem, port: Int = dummyServicePort) {
-    startServer(dummyServiceIpAddress, port = port) {
+  def startDummyService(implicit system: ActorSystem, address: String = dummyServiceIpAddress, port: Int = dummyServicePort) {
+    implicit val ec = system.dispatcher
+    startServer(address, port = port) {
       pathSingleSlash {
         redirect("/view", StatusCodes.Found)
       } ~
-      //get, head, options
+        //get, head, options
         path("view") {
-          (get | head | options) {
+          (get | head | options | post) {
             respondWithMediaType(MediaTypes.`application/json`)
             headerValueByName("req1-name") {
               value =>
-                respondWithHeader(RawHeader("res-req1-name", "res-" + value))
-                complete {
-                  fullTeam
+                respondWithHeader(RawHeader("res-req1-name", "res-" + value)) {
+                  complete {
+                    fullTeam
+                  }
                 }
             } ~
               headerValueByName("req2-name") {
                 value =>
-                  respondWithHeader(RawHeader("res-req2-name", "res-" + value))
-                  complete {
-                    fullTeam
+                  respondWithHeader(RawHeader("res-req2-name", "res-" + value)){
+                    complete {
+                      fullTeam
+                    }
                   }
+
               } ~
               complete {
                 fullTeam
@@ -91,6 +111,14 @@ trait DummyService extends SimpleRoutingApp {
             complete {
               system.scheduler.scheduleOnce(1.second)(system.shutdown())(system.dispatcher)
               "Shutting down in 1 second..."
+            }
+          }
+        } ~
+        path("timeout") {
+          (get | head | options) {
+            complete {
+              Thread.sleep(3000)
+              "Thread 3 seconds, then return!"
             }
           }
         } ~

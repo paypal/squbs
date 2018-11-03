@@ -1,13 +1,34 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.unicomplex.dummysvcactor
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{ActorRef, Props, ActorLogging, Actor}
+import org.squbs.unicomplex.WebContext
 import spray.can.Http.RegisterChunkHandler
 import spray.http.StatusCodes._
 import spray.http._
 
+
 case object RegisterTimeoutHandler
 
-class DummySvcActor extends Actor with ActorLogging {
+case object GetWebContext
+
+class DummySvcActor extends Actor with WebContext with ActorLogging {
 
   var timeoutListeners = Seq.empty[ActorRef]
 
@@ -33,6 +54,8 @@ class DummySvcActor extends Actor with ActorLogging {
 
     case RegisterTimeoutHandler =>
       timeoutListeners = timeoutListeners :+ sender()
+
+    case GetWebContext => sender() ! webContext
   }
 }
 

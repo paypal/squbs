@@ -1,10 +1,15 @@
 package org.squbs.cluster
 
+import java.util.concurrent.TimeUnit
+
 import akka.testkit.ImplicitSender
 import akka.util.ByteString
-import org.scalatest.{BeforeAndAfterEach, BeforeAndAfterAll, Matchers, FlatSpecLike}
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.duration._
+import org.apache.curator.framework.CuratorFrameworkFactory
+import org.apache.curator.retry.ExponentialBackoffRetry
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpecLike, Matchers}
+import org.squbs.cluster.ZkClusterMultiActorSystemTestKit._
+
+import scala.concurrent.duration.{FiniteDuration, _}
 /**
  * Created by zhuwang on 1/28/15.
  */
@@ -19,9 +24,17 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
     println("------------------------------------------------------------------------------------------")
     Thread.sleep(timeout.toMillis / 10)
   }
-  
-  override def beforeAll = startCluster
-  
+
+  override def beforeAll = {
+    val zkClient = CuratorFrameworkFactory.newClient(
+      zkConfig.getString("zkCluster.connectionString"),
+      new ExponentialBackoffRetry(1000, 3))
+    zkClient.start
+    zkClient.blockUntilConnected(30, TimeUnit.SECONDS) shouldBe true
+    zkClient.close
+    startCluster
+  }
+
   override def afterAll = shutdownCluster
   
   "ZkCluster" should "respond to partition creation query whose size is larger than the cluster" in {
@@ -59,6 +72,7 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
         expectMsgType[ZkPartition](timeout).members.map(_.system).toSet should be ((0 until clusterSize) map int2SystemName toSet)
     }
   }
+  
   "ZkCluster" should "be able to resize a partition from the size larger than cluster size to the cluster size" in {
     val parKey = ByteString("myPar")
     zkClusterExts(pickASystemRandomly()) tell (ZkQueryPartition(parKey, expectedSize = Some(clusterSize)), self)
@@ -81,6 +95,7 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
         expectMsgType[ZkPartition](timeout).members.size should be (clusterSize - 1)
     }
   }
+
   "ZkCluster" should "rebalance if the partition size increased" in {
     val parKey = ByteString("myPar")
     zkClusterExts(pickASystemRandomly()) tell (ZkQueryPartition(parKey, expectedSize = Some(clusterSize)), self)
@@ -110,6 +125,7 @@ class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterE
         members.map(_.system) should not contain(unluckyGuy)
     }
   }
+
   "ZkCluster" should "rebalance the full member partition if leader dies" in {
     // query the leader
     zkClusterExts(pickASystemRandomly()) tell (ZkQueryLeadership, self)

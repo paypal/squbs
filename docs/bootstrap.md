@@ -142,7 +142,7 @@ Router concepts, examples, and configuration, are documented in the
 
 ##Services
 
-Each service entry point is bound to a unique web context which is the first path segment separated by `/` characters. For instance, the url `http://mysite.com/my-context/index` would match the context `"my-context"`, if registered. It can also match the root context if `"my-context"` is not registered.
+Each service entry point is bound to a unique web context which is the leading path segments separated by the `/` character. For instance, the url `http://mysite.com/my-context/index` would match the context `"my-context"`, if registered. It can also match the root context if `"my-context"` is not registered. Web contexts are not necessarily the first slash-separated segment of the path. Dependent on the context registration, it may match multiple such segments. A concrete example would be a URL with service versioning. The URL `http://mysite.com/my-context/v2/index` may have either `my-context` or `my-context/v2` as the web context, depending on what contexts are registered. If both `my-context` and `my-context/v2` are registered, the longest match - in this case `my-context/v2` will apply.
 
 Service implementations can have two flavors:
 
@@ -159,7 +159,7 @@ cube-version = "0.0.2-SNAPSHOT"
 squbs-services = [
   {
     class-name = org.squbs.bottlesvc.BottleSvc
-    web-context = bottles
+    web-context = bottles # You can also specify bottles/v1, for instance.
     
     # The listeners entry is optional, and defaults to 'default-listener'
     listeners = [ default-listener, my-listener ]
@@ -172,7 +172,7 @@ squbs-services = [
 
 The class-name parameter identifies either the actor or route class.
 
-The web-context is a string that uniquely identifies the web context of a request to be dispatched to this service. It **MUST NOT** start with a `/` character. It is allowed to be `""` for root context.
+The web-context is a string that uniquely identifies the web context of a request to be dispatched to this service. It **MUST NOT** start with a `/` character. It can have `/` characters inside as segment separators in case of multi-segment contexts. And it is allowed to be `""` for root context. If multiple services match the request, the longest context match takes precedence.
 
 Optionally, the listeners parameter declares a list of listeners to bind this service. Listener binding is discussed in the following section, below.
 
@@ -190,6 +190,27 @@ The wildcard value `"*"` (note, it has to be quoted or will not be properly be i
 ```
     listeners = [ default-listener, "*" ]
 ```
+
+### Runtime Access to Web Context
+While the web context is configured in metadata, both the route and the actor will sometimes need to know what web context it is serving. To do so, any service class (route or actor) may want to mix in the `org.squbs.unicomplex.WebContext` trait. Doing so will add the following field to your object
+
+```
+    val webContext: String
+```
+
+The webContext field is initialized to the value of the configured web context as set in Metadata upon construction of the object as shown below:
+
+```
+class MySvcActor extends Actor with WebContext {
+  def receive = {
+    case HttpRequest(HttpMethods.GET, Uri.Path(p), _, _, _)
+        if p.startsWith(s"/$webContext") =>
+      // handle request...
+  }
+}
+```
+
+The `webContext` field will automatically be made available to the logic in this class
 
 ##Extensions
 

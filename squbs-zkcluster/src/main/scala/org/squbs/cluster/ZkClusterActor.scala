@@ -2,7 +2,7 @@ package org.squbs.cluster
 
 import akka.actor._
 import akka.util.ByteString
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.LazyLogging
 import org.squbs.cluster.JMX._
 
 import java.util
@@ -29,7 +29,7 @@ private[cluster] case class ZkClusterData(leader: Option[Address],
 /**
  * The main Actor of ZkCluster
  */
-class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with Logging {
+class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with LazyLogging {
 
   private[this] val zkCluster = ZkCluster(context.system)
   import zkCluster._
@@ -43,7 +43,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
   
   //begin the process of electing a leader
   private val zkMembershipMonitor =
-    context.actorOf(Props[ZkMembershipMonitor].withDispatcher("pinned-dispatcher"), "zkMembership")
+    context.actorOf(Props[ZkMembershipMonitor].withDispatcher("ZkMembershipMonitor-dispatcher"), "zkMembership")
   
   //begin the process of partitioning management
   private val zkPartitionsManager = context.actorOf(Props[ZkPartitionsManager], "zkPartitions")

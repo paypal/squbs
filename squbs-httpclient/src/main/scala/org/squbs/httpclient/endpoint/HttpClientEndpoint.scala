@@ -1,13 +1,28 @@
+/*
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.squbs.httpclient.endpoint
 
-import scala.collection.mutable.ListBuffer
-import org.slf4j.LoggerFactory
-import org.squbs.httpclient.env.{Default, Environment}
-import org.squbs.httpclient.{Configuration}
+import akka.actor.{ExtensionId, Extension, ExtendedActorSystem}
 
-/**
- * Created by hakuang on 5/9/2014.
- */
+import scala.collection.mutable.ListBuffer
+import org.squbs.httpclient.env.{Default, Environment}
+import org.squbs.httpclient.Configuration
+import com.typesafe.scalalogging.LazyLogging
 
 case class Endpoint(uri: String, config: Configuration = Configuration())
 
@@ -25,18 +40,15 @@ trait EndpointResolver {
   def resolve(svcName: String, env: Environment = Default): Option[Endpoint]
 }
 
-object EndpointRegistry {
-
+class EndpointRegistryExtension(system: ExtendedActorSystem) extends Extension with LazyLogging {
   val endpointResolvers = ListBuffer[EndpointResolver]()
-
-  val logger = LoggerFactory.getLogger(EndpointRegistry.getClass)
 
   def register(resolver: EndpointResolver) = {
     endpointResolvers.find(_.name == resolver.name) match {
       case None =>
         endpointResolvers.prepend(resolver)
       case Some(routing) =>
-        logger.info("Endpoint Resolver:" + resolver.name + " has been registry, skip current endpoint resolver registry!")
+        logger.warn("Endpoint Resolver:" + resolver.name + " has been registry, skip current endpoint resolver registry!")
     }
   }
 
@@ -46,7 +58,7 @@ object EndpointRegistry {
         logger.warn("Endpoint Resolver:" + name + " cannot be found, skip current endpoint resolver unregistry!")
       case Some(resolver) =>
         endpointResolvers.remove(endpointResolvers.indexOf(resolver))
-    }                                      
+    }
   }
 
   def route(svcName: String, env: Environment = Default): Option[EndpointResolver] = {
@@ -63,12 +75,20 @@ object EndpointRegistry {
       }
     }
     resolvedEndpoint match {
-      case Some(_) => resolvedEndpoint
+      case Some(ep) =>
+        logger.debug(s"Endpoint can be resolved by ($svcName, $env), the endpoint uri is:" + ep.uri)
+        resolvedEndpoint
       case None if (svcName != null && (svcName.startsWith("http://") || svcName.startsWith("https://"))) =>
+        logger.debug(s"Endpoint can be resolved with service name match http:// or https:// pattern by ($svcName, $env), the endpoint uri is:" + svcName)
         Some(Endpoint(svcName))
       case _ =>
+        logger.warn(s"Endpoint can not be resolved by ($svcName, $env)!")
         None
     }
   }
 }
 
+object EndpointRegistry extends ExtensionId[EndpointRegistryExtension]{
+
+  override def createExtension(system: ExtendedActorSystem): EndpointRegistryExtension = new EndpointRegistryExtension(system)
+}

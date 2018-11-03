@@ -1,10 +1,11 @@
 package org.squbs.cluster
 
+import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor._
 import com.typesafe.config.ConfigFactory
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.RetryPolicy
 import org.apache.curator.framework.state.{ConnectionState, ConnectionStateListener}
 import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
@@ -22,7 +23,7 @@ case class ZkCluster(zkAddress: Address,
                      segmentationLogic: SegmentationLogic,
                      retryPolicy: RetryPolicy = new ExponentialBackoffRetry(1000, 3),
                      rebalanceLogic: RebalanceLogic = DataCenterAwareRebalanceLogic(spareLeader = false))
-                    (implicit system: ActorSystem) extends Extension with Logging {
+                    (implicit system: ActorSystem) extends Extension with LazyLogging {
 
   private[this] implicit val log = logger
   private[this] var zkClient = CuratorFrameworkFactory.newClient(zkConnectionString, retryPolicy)
@@ -104,7 +105,7 @@ case class ZkCluster(zkAddress: Address,
   }
 }
 
-object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Logging {
+object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with LazyLogging {
 
   override def lookup(): ExtensionId[_ <: Extension] = ZkCluster
 
@@ -128,5 +129,5 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with Lo
     )(system)
   }
   private[cluster] def external(system:ExtendedActorSystem):Address =
-    Address("akka.tcp", system.name, ConfigUtil.ipv4, system.provider.getDefaultAddress.port.getOrElse(8086))
+    Address("akka.tcp", system.name, InetAddress.getLocalHost.getHostAddress, system.provider.getDefaultAddress.port.getOrElse(8086))
 }

@@ -47,6 +47,6 @@ Akka itself is a great system that enforces loose coupling. squbs is an attempt 
 
 [rocksqubs](https://github.corp.ebay.com/Squbs/rocksqubs): The eBay operationalization layer, hardening squbs for handling billions of service requests a day
 
-[squbsamples](https://github.corp.ebay.com/Squbs/squbs/samples): Service and application sample cubes, messages, and services
+[samples](https://github.corp.ebay.com/Squbs/squbs/tree/master/samples): Service and application sample cubes, messages, and services
 
 [sbt-ebay](https://github.corp.ebay.com/Squbs/sbt-ebay): SBT plugin for ebay PaaS integration and operationalization.

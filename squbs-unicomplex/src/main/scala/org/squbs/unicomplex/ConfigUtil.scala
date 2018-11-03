@@ -1,19 +1,31 @@
 /*
- * Copyright (c) 2014 eBay, Inc.
- * All rights reserved.
+ * Licensed to Typesafe under one or more contributor license agreements.
+ * See the AUTHORS file distributed with this work for
+ * additional information regarding copyright ownership.
+ * This file is licensed to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Contributors:
- * asucharitakul
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.squbs.unicomplex
 
-import scala.collection.JavaConversions._
-import com.typesafe.config.{ConfigException, Config}
-import scala.collection.mutable
 import java.net.NetworkInterface
 
-import scala.concurrent.duration.{FiniteDuration, TimeUnit, Duration}
+import com.typesafe.config.{Config, ConfigException}
+
+import scala.collection.JavaConversions._
+import scala.collection.mutable
+import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
+import scala.util.matching.Regex
 
 object ConfigUtil {
 
@@ -77,6 +89,10 @@ object ConfigUtil {
       import scala.concurrent.duration._
       Try(Duration.create(underlying.getDuration(path, MILLISECONDS), MILLISECONDS)).toOption
     }
+
+		def getOptionalPattern(path: String): Option[Regex] = {
+			Try(new Regex(underlying.getString(path))).toOption
+		}
   }
 
   def ipv4 = {

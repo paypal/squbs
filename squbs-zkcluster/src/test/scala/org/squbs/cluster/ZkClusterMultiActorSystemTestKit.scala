@@ -1,6 +1,6 @@
 package org.squbs.cluster
 
-import java.net.ServerSocket
+import java.net.{InetAddress, ServerSocket}
 
 import akka.actor.{PoisonPill, Terminated, ActorSelection, ActorSystem}
 import akka.testkit.TestKit
@@ -114,7 +114,7 @@ object ZkClusterMultiActorSystemTestKit {
        |    enabled-transports = ["akka.remote.netty.tcp"]
        |    netty.tcp {
        |      port = $nextPort
-       |      hostname = ${ConfigUtil.ipv4}
+       |      hostname = ${InetAddress.getLocalHost.getHostAddress}
        |      server-socket-worker-pool {
        |        pool-size-min = 2
        |        pool-size-max = 4
@@ -146,8 +146,8 @@ object ZkClusterMultiActorSystemTestKit {
   lazy val zkConfig = ConfigFactory.parseString(
     s"""
       |zkCluster {
-      |  connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-596c.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
-      |  //"127.0.0.1:2181"
+      |  //connectionString = "phx5qa01c-fb23.stratus.phx.qa.ebay.com:8085,phx5qa01c-596c.stratus.phx.qa.ebay.com:8085,phx5qa01c-e59d.stratus.phx.qa.ebay.com:8085"
+      |  connectionString = "stage2p2084.qa.paypal.com:2181"
       |  namespace = "zkclustersystest-$now"
       |  segments = 1
       |}

@@ -16,6 +16,11 @@ squbs {
   # An external configuration directory to supply external application.conf. The location of this directory
   # is relative to the working directory of the squbs process.
   external-config-dir = squbsconfig
+
+  # An external configuration file name list. Any file with the name in the list under the external-confi-dir will bes
+  # loaded during squbs initialization for Actor System settings. Implicit "application.conf" will be loaded
+  # besides this file name list
+  external-config-files = []
 }
 
 default-listener {
@@ -36,10 +41,6 @@ default-listener {
 
   # Service bind to particular port. 8080 is the default.
   bind-port = 8080
-
-  # Binding the service with address & port, by default is true.
-  # There is one use cases for Higgins, start the service, but not bind-service since Higgins will take care of binding.
-  bind-service = true
 
   # Listener uses HTTPS?
   secure = false
