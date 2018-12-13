@@ -465,8 +465,15 @@ object UnicomplexBoot extends LazyLogging {
     implicit val timeout = Timeout((boot.listeners.size * 10).seconds)
     val ackFutures =
       for ((listenerName, config) <- boot.listeners) yield {
-        Unicomplex(actorSystem).uniActor ? StartListener(listenerName, config)
+        val responseFuture = Unicomplex(actorSystem).uniActor ? StartListener(listenerName, config)
+        responseFuture.onComplete {
+          case Failure(t) => logger.error(s"Failed to start the listener $listenerName.", t)
+          case Success(StartFailure(t)) => logger.error(s"Failed to start the listener $listenerName.", t)
+          case _ =>
+        }
+        responseFuture
       }
+
     // Block for the web service to be started.
     Await.ready(Future.sequence(ackFutures), timeout.duration)
 
