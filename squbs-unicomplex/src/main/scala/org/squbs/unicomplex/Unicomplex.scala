@@ -473,7 +473,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
             discardOld = false)
 
         case Failure(t) => {
-          sender ! StartFailure(t)
+          sender() ! StartFailure(t)
           updateSystemState(checkInitState())
         }
       }
