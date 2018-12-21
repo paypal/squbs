@@ -15,7 +15,7 @@
  */
 package org.squbs.stream
 
-import akka.actor.ActorContext
+import akka.actor.{ActorContext, ActorRefFactory}
 import akka.stream.Supervision._
 import akka.stream._
 import akka.stream.scaladsl.{RunnableGraph, Sink}
@@ -98,16 +98,30 @@ trait PerpetualStream[T] extends PerpetualStreamBase[T] {
 }
 
 trait PerpetualStreamMatValue[T] {
+
   protected val context: ActorContext
 
+  def actorLookup(name: String)(implicit refFactory: ActorRefFactory, timeout: Timeout) =
+    SafeSelect(name)
+
   def matValue(perpetualStreamName: String)(implicit classTag: ClassTag[T]): Sink[T, NotUsed] = {
-    implicit val _ = context.system
+    implicit val sys = context.system
     implicit val timeout: Timeout = Timeout(10.seconds)
     import akka.pattern.ask
 
-    val responseF = (SafeSelect(perpetualStreamName) ? MatValueRequest).mapTo[Sink[T, NotUsed]]
+    val responseF = actorLookup(perpetualStreamName) ? MatValueRequest
 
     // Exception! This code is executed only at startup. We really need a better API, though.
-    Await.result(responseF, timeout.duration)
+    Await.result(responseF, timeout.duration) match {
+      case sink: Sink[T, NotUsed] => sink
+      case p: Product =>
+        p.productElement(0) match {
+          case sink: Sink[T, NotUsed] => sink
+          case other => throw new ClassCastException(
+            s"Materialized value mismatch. First element should be a Sink. Found ${other.getClass.getName}.")
+        }
+      case other =>
+        throw new ClassCastException(s"Materialized value mismatch. Should be a Sink. Found ${other.getClass.getName}.")
+    }
   }
 }
