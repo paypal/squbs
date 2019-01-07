@@ -16,6 +16,7 @@
 package org.squbs.stream
 
 import akka.actor.{ActorContext, ActorRefFactory}
+import akka.japi.Pair
 import akka.stream.Supervision._
 import akka.stream._
 import akka.stream.scaladsl.{RunnableGraph, Sink}
@@ -101,7 +102,7 @@ trait PerpetualStreamMatValue[T] {
 
   protected val context: ActorContext
 
-  def actorLookup(name: String)(implicit refFactory: ActorRefFactory, timeout: Timeout) =
+  private[stream] def actorLookup(name: String)(implicit refFactory: ActorRefFactory, timeout: Timeout) =
     SafeSelect(name)
 
   def matValue(perpetualStreamName: String)(implicit classTag: ClassTag[T]): Sink[T, NotUsed] = {
@@ -114,14 +115,26 @@ trait PerpetualStreamMatValue[T] {
     // Exception! This code is executed only at startup. We really need a better API, though.
     Await.result(responseF, timeout.duration) match {
       case sink: Sink[T, NotUsed] => sink
-      case p: Product =>
-        p.productElement(0) match {
-          case sink: Sink[T, NotUsed] => sink
-          case other => throw new ClassCastException(
-            s"Materialized value mismatch. First element should be a Sink. Found ${other.getClass.getName}.")
+      case p: akka.japi.Pair[_, _] => sinkCast(p.first)
+      case l: java.util.List[_] =>
+        if (l.isEmpty) {
+          throw new ClassCastException(
+            "Materialized value mismatch. First element should be a Sink. Found an empty java.util.List."
+          )
         }
+        sinkCast(l.get(0))
+      case p: Product => sinkCast(p.productElement(0))
       case other =>
-        throw new ClassCastException(s"Materialized value mismatch. Should be a Sink or a Product with a Sink as its first element. Found ${other.getClass.getName}.")
+        throw new ClassCastException("Materialized value mismatch. Should be a Sink or a " +
+          s"Product/akka.japi.Pair/java.util.List with a Sink as its first element. Found ${other.getClass.getName}.")
+    }
+  }
+
+  private def sinkCast(a: Any): Sink[T, NotUsed] = {
+    a match {
+      case sink: Sink[T, NotUsed] => sink
+      case other => throw new ClassCastException(
+        s"Materialized value mismatch. First element should be a Sink. Found ${other.getClass.getName}.")
     }
   }
 }
