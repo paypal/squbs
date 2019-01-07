@@ -121,7 +121,7 @@ trait PerpetualStreamMatValue[T] {
             s"Materialized value mismatch. First element should be a Sink. Found ${other.getClass.getName}.")
         }
       case other =>
-        throw new ClassCastException(s"Materialized value mismatch. Should be a Sink. Found ${other.getClass.getName}.")
+        throw new ClassCastException(s"Materialized value mismatch. Should be a Sink or a Product with a Sink as its first element. Found ${other.getClass.getName}.")
     }
   }
 }
