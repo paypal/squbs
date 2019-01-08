@@ -42,12 +42,9 @@ with Inside {
   describe("PerpetualStreamMatValue matValue") {
     describe("Successful cases") {
 
-      List(
-        classOf[SinkMaterializingStream],
-        classOf[GoodProductSinkMaterializingStream]
-      ).foreach { clz =>
+      it("Sink[T, NotUsed]") {
         val to = FiniteDuration(1, TimeUnit.SECONDS)
-        useSystem(classOf[PerpStreamActors.SinkMaterializingStream]) {
+        useSystem(classOf[SinkMaterializingStream]) {
           case Success(actor) =>
             implicit val timeout = Timeout(to)
             val queue = Await.result((actor ? Queue).mapTo[LinkedBlockingQueue[Long]], to)
@@ -55,11 +52,31 @@ with Inside {
           case _ => fail("Expected a success")
         }
       }
+
+      describe("Cases where we examine the 'first' element, and it is a Sink[T, NotUsed]") {
+
+        List(
+          ("Product"       , classOf[GoodProductSinkMaterializingStream]),
+          ("akka.japi.Pair", classOf[GoodJapiPairSinkMaterializingStream]),
+          ("java.util.List", classOf[GoodJavaListSinkMaterializingStream])
+        ).foreach { case (testName, clz) =>
+          it(testName) {
+            val to = FiniteDuration(1, TimeUnit.SECONDS)
+            useSystem(clz) {
+              case Success(actor) =>
+                implicit val timeout = Timeout(to)
+                val queue = Await.result((actor ? Queue).mapTo[LinkedBlockingQueue[Long]], to)
+                queue.poll(1, TimeUnit.SECONDS) should be(PerpetualStreamMatValueSpecHelper.payload)
+              case Failure(e) => fail("Expected a success", e)
+            }
+          }
+        }
+      }
     }
 
     describe("Error cases that throw ClassCastException") {
 
-      describe("Cases where we examine the 'first' element, and it is NOT a sink") {
+      describe("Cases where we examine the 'first' element, and it is NOT a Sink[T, NotUsed]") {
         List(
           ("Products"      , classOf[BadProductSinkMaterializingStream]),
           ("akka.japi.Pair", classOf[BadJapiPairSinkMaterializingStream]),
@@ -163,6 +180,31 @@ object PerpetualStreamMatValueSpecHelper {
     }
 
     /**
+      * This has Sink[T, NotUsed] as the materialized value's first element of a [[akka.japi.Pair]].
+      */
+    class GoodJapiPairSinkMaterializingStream
+    extends PerpStream[akka.japi.Pair[Sink[Long, NotUsed], _]] {
+      self ! Active
+      override def streamGraph = {
+        // an alternative to all the effort it took to do GoodProduct above..
+        val sink: Sink[Long, NotUsed] = Flow[Long].via(addToBatch).to(Sink.ignore)
+        Source.single(1).toMat(Sink.ignore)((_, _) => akka.japi.Pair(sink, 1))
+      }
+    }
+
+    /**
+      * This has Sink[T, NotUsed] as the materialized value's first element of a [[java.util.List]].
+      */
+    class GoodJavaListSinkMaterializingStream
+    extends PerpStream[java.util.List[_]] {
+      self ! Active
+      override def streamGraph = {
+        val sink: Sink[Long, NotUsed] = Flow[Long].via(addToBatch).to(Sink.ignore)
+        Source.single(1).toMat(Sink.ignore)((_, _) => java.util.Arrays.asList(sink, 1))
+      }
+    }
+
+    /**
       * This materializes a product that does NOT have Sink[T, NotUsed] as its first element.
       */
     class BadProductSinkMaterializingStream extends PerpStream[(Int, Any)] {
@@ -176,7 +218,7 @@ object PerpetualStreamMatValueSpecHelper {
     class BadJapiPairSinkMaterializingStream extends PerpStream[akka.japi.Pair[Int, Any]] {
       self ! Active
       override def streamGraph =
-        Source.single(1).toMat(Sink.ignore)((_, _) => akka.japi.Pair.apply(1, 2))
+        Source.single(1).toMat(Sink.ignore)((_, _) => akka.japi.Pair(1, 2))
     }
 
     /**
