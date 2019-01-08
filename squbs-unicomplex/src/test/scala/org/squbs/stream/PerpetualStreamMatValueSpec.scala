@@ -15,19 +15,18 @@
  */
 package org.squbs.stream
 
-import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
+import java.util.concurrent.LinkedBlockingQueue
 
 import akka.NotUsed
-import akka.actor.{Actor, ActorRef, ActorRefFactory, ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, ActorRefFactory, ActorSystem, Props, Status}
 import akka.pattern._
 import akka.stream.{ActorMaterializer, ClosedShape}
-import akka.stream.scaladsl.{Flow, GraphDSL, MergeHub, RunnableGraph, Sink, Source}
+import akka.stream.scaladsl.{Flow, GraphDSL, Keep, MergeHub, RunnableGraph, Sink, Source}
 import akka.util.Timeout
 import org.scalatest.{FunSpec, Inside, Matchers}
 import org.squbs.stream.PerpetualStreamMatValueSpecHelper.PerpStreamActors
 import org.squbs.unicomplex._
 
-import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 
@@ -39,16 +38,17 @@ with Inside {
   import PerpStreamActors._
   import PerpetualStreamMatValueSpecHelper._
 
+  private val timeout = Timeout(PerpetualStreamMatValueSpecHelper.timeoutDuration)
+
   describe("PerpetualStreamMatValue matValue") {
     describe("Successful cases") {
 
       it("Sink[T, NotUsed]") {
-        val to = FiniteDuration(1, TimeUnit.SECONDS)
+        implicit val to = timeout
         useSystem(classOf[SinkMaterializingStream]) {
           case Success(actor) =>
-            implicit val timeout = Timeout(to)
-            val queue = Await.result((actor ? Queue).mapTo[LinkedBlockingQueue[Long]], to)
-            queue.poll(1, TimeUnit.SECONDS) should be(PerpetualStreamMatValueSpecHelper.payload)
+            val actorState = Await.result((actor ? StateRequest).mapTo[List[Long]], timeoutDuration)
+            actorState.last should be(PerpetualStreamMatValueSpecHelper.payload)
           case _ => fail("Expected a success")
         }
       }
@@ -60,13 +60,12 @@ with Inside {
           ("akka.japi.Pair", classOf[GoodJapiPairSinkMaterializingStream]),
           ("java.util.List", classOf[GoodJavaListSinkMaterializingStream])
         ).foreach { case (testName, clz) =>
+          implicit val to = timeout
           it(testName) {
-            val to = FiniteDuration(1, TimeUnit.SECONDS)
             useSystem(clz) {
               case Success(actor) =>
-                implicit val timeout = Timeout(to)
-                val queue = Await.result((actor ? Queue).mapTo[LinkedBlockingQueue[Long]], to)
-                queue.poll(1, TimeUnit.SECONDS) should be(PerpetualStreamMatValueSpecHelper.payload)
+                val actorState = Await.result((actor ? StateRequest).mapTo[List[Long]], timeoutDuration)
+                actorState.last should be(PerpetualStreamMatValueSpecHelper.payload)
               case Failure(e) => fail("Expected a success", e)
             }
           }
@@ -126,32 +125,36 @@ object PerpetualStreamMatValueSpecHelper {
 
   import scala.concurrent.duration._
   val payload = 1L
-  case object Queue
-  implicit val timeout = Timeout(1.second)
+  case object StateRequest
+
+  val timeoutDuration = 1.second
+  implicit val timeout = Timeout(timeoutDuration)
 
   def useSystem[PC <: PerpStream[_]](perpStream: Class[PC])(fn: Try[ActorRef] => Unit): Unit = {
     implicit val actorSystem = ActorSystem()
     implicit val materializer = ActorMaterializer()
 
-    // TODO Is it ok to violate actor creation guidelines here?
-    val perpRef = actorSystem.actorOf(Props(perpStream), "act1")
-    val someRef = actorSystem.actorOf(Props(new SomeActor(perpRef)), "act2")
+    val perpRef = actorSystem.actorOf(Props(perpStream))
+    val someRef = actorSystem.actorOf(Props(new SomeActor(perpRef)))
 
-    Await.result(someRef ? payload, 1.second) match {
-      case Success(_) => fn(Success(perpRef))
+    Try(Await.result(someRef ? payload, timeoutDuration)) match {
+      case Success(l) => fn(Success(perpRef))
       case Failure(e) => fn(Failure(e))
     }
     actorSystem.terminate()
   }
 
   trait PerpStream[T] extends PerpetualStream[T] {
-    val batchQueue = new LinkedBlockingQueue[Long]()
+
+    private val stateQueue = new LinkedBlockingQueue[Long]()
+
     // https://stackoverflow.com/a/18469420
     override def receive= ({
-      case Queue => sender() ! batchQueue
+      case StateRequest => sender() ! stateQueue.toArray.toList
     }: Receive) orElse super.receive
 
-    def addToBatch: Flow[Long, Long, NotUsed] = Flow[Long].map { l => batchQueue.add(l); l }
+    def addToBatch: Flow[Long, Long, NotUsed] = Flow[Long].map { l => stateQueue.add(l); l }
+
   }
 
   object PerpStreamActors {
@@ -250,12 +253,22 @@ object PerpetualStreamMatValueSpecHelper {
 
   class SomeActor(perpStream: ActorRef) extends Actor with PerpetualStreamMatValue[Long] {
     implicit val mat = ActorMaterializer()
+    import context.dispatcher
 
     override def actorLookup(name: String)(implicit refFactory: ActorRefFactory, timeout: Timeout) =
       perpStream
 
     override def receive: Receive = {
-      case l: Long => sender() ! Try { Source.single(l).to(matValue("any-name-works-see-impl")).run() }
+      case l: Long =>
+        Try {
+          Source.single(l)
+            .alsoTo(matValue("any-name-works-see-impl"))
+            .toMat(Sink.ignore)(Keep.right)
+            .run()
+        } match {
+          case Success(f) => f pipeTo sender()
+          case Failure(t) => sender() ! Status.Failure(t)
+        }
     }
   }
 }
