@@ -29,3 +29,12 @@ Thank you very much for contributing to squbs. Please read the [contribution gui
 ## License
 
 squbs is licensed under the [Apache License, v2.0](LICENSE.txt)
+
+### Code Visualization:
+
+Here is a cool visualization of the code evolution
+
+ [![Watch the video](https://img.youtube.com/vi/bXLbIrBqlds/0.jpg)](https://www.youtube.com/watch?v=bXLbIrBqlds)
+
+ [https://www.youtube.com/watch?v=bXLbIrBqlds](https://www.youtube.com/watch?v=bXLbIrBqlds)
+
