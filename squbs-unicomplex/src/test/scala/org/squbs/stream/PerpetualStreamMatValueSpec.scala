@@ -23,17 +23,14 @@ import akka.pattern._
 import akka.stream.{ActorMaterializer, ClosedShape}
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, MergeHub, RunnableGraph, Sink, Source}
 import akka.util.Timeout
-import org.scalatest.{FunSpec, Inside, Matchers}
+import org.scalatest.{FunSpec, Matchers}
 import org.squbs.stream.PerpetualStreamMatValueSpecHelper.PerpStreamActors
 import org.squbs.unicomplex._
 
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 
-class PerpetualStreamMatValueSpec
-extends FunSpec
-with Matchers
-with Inside {
+class PerpetualStreamMatValueSpec extends FunSpec with Matchers {
 
   import PerpStreamActors._
   import PerpetualStreamMatValueSpecHelper._
