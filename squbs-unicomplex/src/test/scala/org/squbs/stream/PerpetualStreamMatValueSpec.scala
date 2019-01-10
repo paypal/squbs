@@ -20,29 +20,40 @@ import java.util.concurrent.LinkedBlockingQueue
 import akka.NotUsed
 import akka.actor.{Actor, ActorRef, ActorRefFactory, ActorSystem, Props, Status}
 import akka.pattern._
-import akka.stream.{ActorMaterializer, ClosedShape}
+import akka.stream.{ActorMaterializer, ClosedShape, Materializer}
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, MergeHub, RunnableGraph, Sink, Source}
 import akka.util.Timeout
-import org.scalatest.{FunSpec, Matchers}
+import org.scalatest.{BeforeAndAfterAll, FunSpec, Matchers}
 import org.squbs.stream.PerpetualStreamMatValueSpecHelper.PerpStreamActors
 import org.squbs.unicomplex._
 
 import scala.concurrent.{Await, Future}
+import scala.reflect.{ClassTag, classTag}
 import scala.util.{Failure, Success, Try}
 
-class PerpetualStreamMatValueSpec extends FunSpec with Matchers {
+class PerpetualStreamMatValueSpec
+extends FunSpec
+with Matchers
+with BeforeAndAfterAll {
 
   import PerpStreamActors._
   import PerpetualStreamMatValueSpecHelper._
 
+  implicit val system = ActorSystem(this.getClass.getSimpleName)
+  implicit val mat = ActorMaterializer()
+
   private val timeout = Timeout(PerpetualStreamMatValueSpecHelper.timeoutDuration)
+
+  override def afterAll(): Unit = {
+    system.terminate()
+  }
 
   describe("PerpetualStreamMatValue matValue") {
     describe("Successful cases") {
 
       it("Sink[T, NotUsed]") {
         implicit val to = timeout
-        useSystem(classOf[SinkMaterializingStream]) {
+        useSystem[SinkMaterializingStream] {
           case Success(actor) =>
             val actorState = Await.result((actor ? StateRequest).mapTo[List[Long]], timeoutDuration)
             actorState.last should be(PerpetualStreamMatValueSpecHelper.payload)
@@ -53,13 +64,14 @@ class PerpetualStreamMatValueSpec extends FunSpec with Matchers {
       describe("Cases where we examine the 'first' element, and it is a Sink[T, NotUsed]") {
 
         List(
-          ("Product"       , classOf[GoodProductSinkMaterializingStream]),
-          ("akka.japi.Pair", classOf[GoodJapiPairSinkMaterializingStream]),
-          ("java.util.List", classOf[GoodJavaListSinkMaterializingStream])
-        ).foreach { case (testName, clz) =>
+          "Product"        -> classTag[GoodProductSinkMaterializingStream],
+          "akka.japi.Pair" -> classTag[GoodJapiPairSinkMaterializingStream],
+          "java.util.List" -> classTag[GoodJavaListSinkMaterializingStream]
+        ).foreach { case (testName, ct) =>
           implicit val to = timeout
+          implicit val _ = ct
           it(testName) {
-            useSystem(clz) {
+            useSystem {
               case Success(actor) =>
                 val actorState = Await.result((actor ? StateRequest).mapTo[List[Long]], timeoutDuration)
                 actorState.last should be(PerpetualStreamMatValueSpecHelper.payload)
@@ -74,13 +86,13 @@ class PerpetualStreamMatValueSpec extends FunSpec with Matchers {
 
       describe("Cases where we examine the 'first' element, and it is NOT a Sink[T, NotUsed]") {
         List(
-          ("Products"      , classOf[BadProductSinkMaterializingStream]),
-          ("akka.japi.Pair", classOf[BadJapiPairSinkMaterializingStream]),
-          ("java.util.List", classOf[BadJavaListSinkMaterializingStream])
-        ).foreach { case (testName, clz) =>
-
+          "Products"       -> classTag[BadProductSinkMaterializingStream],
+          "akka.japi.Pair" -> classTag[BadJapiPairSinkMaterializingStream],
+          "java.util.List" -> classTag[BadJavaListSinkMaterializingStream]
+        ).foreach { case (testName, ct) =>
+          implicit val _ = ct
           it (testName) {
-            useSystem(clz) {
+            useSystem {
               case Failure(e) =>
                 e shouldBe a[ClassCastException]
                 e.getMessage should be(
@@ -93,7 +105,7 @@ class PerpetualStreamMatValueSpec extends FunSpec with Matchers {
       }
 
       it("Empty java.util.List") {
-        useSystem(classOf[EmptyJavaListSinkMaterializingStream]) {
+        useSystem[EmptyJavaListSinkMaterializingStream] {
           case Failure(e) =>
             e shouldBe a[ClassCastException]
             e.getMessage should be(
@@ -104,7 +116,7 @@ class PerpetualStreamMatValueSpec extends FunSpec with Matchers {
       }
 
       it("All other cases") {
-        useSystem(classOf[IntProducingStream]) {
+        useSystem[IntProducingStream] {
           case Failure(e) =>
             e shouldBe a[ClassCastException]
             e.getMessage should be(
@@ -127,18 +139,18 @@ object PerpetualStreamMatValueSpecHelper {
   val timeoutDuration = 1.second
   implicit val timeout = Timeout(timeoutDuration)
 
-  def useSystem[PC <: PerpStream[_]](perpStream: Class[PC])(fn: Try[ActorRef] => Unit): Unit = {
-    implicit val actorSystem = ActorSystem()
-    implicit val materializer = ActorMaterializer()
+  def useSystem[PC <: PerpStream[_] : ClassTag](fn: Try[ActorRef] => Unit)
+    (implicit system: ActorSystem, mat: Materializer): Unit = {
 
-    val perpRef = actorSystem.actorOf(Props(perpStream))
-    val someRef = actorSystem.actorOf(Props(new SomeActor(perpRef)))
+    val perpRef = system.actorOf(Props[PC])
+    val someRef = system.actorOf(Props(new SomeActor(perpRef)))
 
     Try(Await.result(someRef ? payload, timeoutDuration)) match {
       case Success(l) => fn(Success(perpRef))
       case Failure(e) => fn(Failure(e))
     }
-    actorSystem.terminate()
+    system.stop(someRef)
+    system.stop(perpRef)
   }
 
   trait PerpStream[T] extends PerpetualStream[T] {
@@ -183,7 +195,7 @@ object PerpetualStreamMatValueSpecHelper {
       * This has Sink[T, NotUsed] as the materialized value's first element of a [[akka.japi.Pair]].
       */
     class GoodJapiPairSinkMaterializingStream
-    extends PerpStream[akka.japi.Pair[Sink[Long, NotUsed], _]] {
+      extends PerpStream[akka.japi.Pair[Sink[Long, NotUsed], _]] {
       self ! Active
       override def streamGraph = {
         // an alternative to all the effort it took to do GoodProduct above..
@@ -196,7 +208,7 @@ object PerpetualStreamMatValueSpecHelper {
       * This has Sink[T, NotUsed] as the materialized value's first element of a [[java.util.List]].
       */
     class GoodJavaListSinkMaterializingStream
-    extends PerpStream[java.util.List[_]] {
+      extends PerpStream[java.util.List[_]] {
       self ! Active
       override def streamGraph = {
         val sink: Sink[Long, NotUsed] = Flow[Long].via(addToBatch).to(Sink.ignore)
@@ -248,8 +260,10 @@ object PerpetualStreamMatValueSpecHelper {
     }
   }
 
-  class SomeActor(perpStream: ActorRef) extends Actor with PerpetualStreamMatValue[Long] {
-    implicit val mat = ActorMaterializer()
+  class SomeActor(perpStream: ActorRef)(implicit mat: Materializer)
+  extends Actor
+  with PerpetualStreamMatValue[Long] {
+
     import context.dispatcher
 
     override def actorLookup(name: String)(implicit refFactory: ActorRefFactory, timeout: Timeout) =
