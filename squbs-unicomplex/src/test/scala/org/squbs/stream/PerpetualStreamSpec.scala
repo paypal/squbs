@@ -15,7 +15,7 @@
  */
 package org.squbs.stream
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem}
 import akka.pattern._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
@@ -27,27 +27,32 @@ import scala.concurrent.{Await, Future}
 
 class PerpetualStreamSpec extends FlatSpec with Matchers {
 
-  val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
+  private val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 
-  it should "throw an IllegalStateException when accessing matValue before stream starts" in {
-
-    val classPaths = Array("IllegalStateStream") map (dummyJarsDir + "/" + _)
-
+  private def startUnicomplex(
+    systemName: String
+  ): UnicomplexBoot = {
+    val classPaths: Set[String] = Set(systemName).map(dummyJarsDir + "/" + _)
     val config = ConfigFactory.parseString(
       s"""
          |squbs {
-         |  actorsystem-name = IllegalStateStream
+         |  actorsystem-name = $systemName
          |  ${JMX.prefixConfig} = true
          |}
       """.stripMargin
     )
 
-    val boot = UnicomplexBoot(config)
+    UnicomplexBoot(config)
       .createUsing {
         (name, config) => ActorSystem(name, config)
       }
-      .scanComponents(classPaths)
+      .scanComponents(classPaths.toSeq)
       .start()
+  }
+
+  it should "throw an IllegalStateException when accessing matValue before stream starts" in {
+
+    val boot = startUnicomplex("IllegalStateStream")
 
     import Timeouts._
 
@@ -63,23 +68,7 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
   }
 
   it should "recover from upstream failure" in {
-    val classPaths = Array("ThrowExceptionStream") map (dummyJarsDir + "/" + _)
-
-    val config = ConfigFactory.parseString(
-      s"""
-         |squbs {
-         |  actorsystem-name = ThrowExceptionStream
-         |  ${JMX.prefixConfig} = true
-         |}
-      """.stripMargin
-    )
-
-    val boot = UnicomplexBoot(config)
-      .createUsing {
-        (name, config) => ActorSystem(name, config)
-      }
-      .scanComponents(classPaths)
-      .start()
+    val boot = startUnicomplex("ThrowExceptionStream")
 
     import ThrowExceptionStream._
     import Timeouts._
@@ -94,23 +83,7 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
   }
 
   it should "properly drain the stream on shutdown" in {
-    val classPaths = Array("ProperShutdownStream") map (dummyJarsDir + "/" + _)
-
-    val config = ConfigFactory.parseString(
-      s"""
-         |squbs {
-         |  actorsystem-name = ProperShutdownStream
-         |  ${JMX.prefixConfig} = true
-         |}
-      """.stripMargin
-    )
-
-    val boot = UnicomplexBoot(config)
-      .createUsing {
-        (name, config) => ActorSystem(name, config)
-      }
-      .scanComponents(classPaths)
-      .start()
+    val boot = startUnicomplex("ProperShutdownStream")
 
     import ProperShutdownStream._
     import Timeouts._
@@ -129,23 +102,7 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
   }
 
   it should "properly drain the stream with KillSwitch shutdown" in {
-    val classPaths = Array("KillSwitchStream") map (dummyJarsDir + "/" + _)
-
-    val config = ConfigFactory.parseString(
-      s"""
-         |squbs {
-         |  actorsystem-name = KillSwitchStream
-         |  ${JMX.prefixConfig} = true
-         |}
-      """.stripMargin
-    )
-
-    val boot = UnicomplexBoot(config)
-      .createUsing {
-        (name, config) => ActorSystem(name, config)
-      }
-      .scanComponents(classPaths)
-      .start()
+    val boot = startUnicomplex("KillSwitchStream")
 
     import KillSwitchStream._
     import Timeouts._
@@ -164,23 +121,7 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
   }
 
   it should "properly drain the stream materializing to KillSwitch at shutdown" in {
-    val classPaths = Array("KillSwitchMatStream") map (dummyJarsDir + "/" + _)
-
-    val config = ConfigFactory.parseString(
-      s"""
-         |squbs {
-         |  actorsystem-name = KillSwitchMatStream
-         |  ${JMX.prefixConfig} = true
-         |}
-      """.stripMargin
-    )
-
-    val boot = UnicomplexBoot(config)
-      .createUsing {
-        (name, config) => ActorSystem(name, config)
-      }
-      .scanComponents(classPaths)
-      .start()
+    val boot = startUnicomplex("KillSwitchMatStream")
 
     import KillSwitchMatStream._
     import Timeouts._
@@ -199,23 +140,7 @@ class PerpetualStreamSpec extends FlatSpec with Matchers {
   }
 
   it should "properly drain the stream with KillSwitch shutdown having other child actor" in {
-    val classPaths = Array("KillSwitchWithChildActorStream") map (dummyJarsDir + "/" + _)
-
-    val config = ConfigFactory.parseString(
-      s"""
-         |squbs {
-         |  actorsystem-name = KillSwitchWithChildActorStream
-         |  ${JMX.prefixConfig} = true
-         |}
-      """.stripMargin
-    )
-
-    val boot = UnicomplexBoot(config)
-      .createUsing {
-        (name, config) => ActorSystem(name, config)
-      }
-      .scanComponents(classPaths)
-      .start()
+    val boot = startUnicomplex("KillSwitchWithChildActorStream")
 
     import KillSwitchWithChildActorStream._
     import Timeouts._

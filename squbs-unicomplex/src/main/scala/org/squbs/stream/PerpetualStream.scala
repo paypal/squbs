@@ -15,7 +15,8 @@
  */
 package org.squbs.stream
 
-import akka.actor.ActorContext
+import akka.actor.{ActorContext, ActorRefFactory}
+import akka.japi.Pair
 import akka.stream.Supervision._
 import akka.stream._
 import akka.stream.scaladsl.{RunnableGraph, Sink}
@@ -98,16 +99,42 @@ trait PerpetualStream[T] extends PerpetualStreamBase[T] {
 }
 
 trait PerpetualStreamMatValue[T] {
+
   protected val context: ActorContext
 
+  private[stream] def actorLookup(name: String)(implicit refFactory: ActorRefFactory, timeout: Timeout) =
+    SafeSelect(name)
+
   def matValue(perpetualStreamName: String)(implicit classTag: ClassTag[T]): Sink[T, NotUsed] = {
-    implicit val _ = context.system
+    implicit val sys = context.system
     implicit val timeout: Timeout = Timeout(10.seconds)
     import akka.pattern.ask
 
-    val responseF = (SafeSelect(perpetualStreamName) ? MatValueRequest).mapTo[Sink[T, NotUsed]]
+    val responseF = actorLookup(perpetualStreamName) ? MatValueRequest
 
     // Exception! This code is executed only at startup. We really need a better API, though.
-    Await.result(responseF, timeout.duration)
+    Await.result(responseF, timeout.duration) match {
+      case sink: Sink[T, NotUsed] => sink
+      case p: akka.japi.Pair[_, _] => sinkCast(p.first)
+      case l: java.util.List[_] =>
+        if (l.isEmpty) {
+          throw new ClassCastException(
+            "Materialized value mismatch. First element should be a Sink. Found an empty java.util.List."
+          )
+        }
+        sinkCast(l.get(0))
+      case p: Product => sinkCast(p.productElement(0))
+      case other =>
+        throw new ClassCastException("Materialized value mismatch. Should be a Sink or a " +
+          s"Product/akka.japi.Pair/java.util.List with a Sink as its first element. Found ${other.getClass.getName}.")
+    }
+  }
+
+  private def sinkCast(a: Any): Sink[T, NotUsed] = {
+    a match {
+      case sink: Sink[T, NotUsed] => sink
+      case other => throw new ClassCastException(
+        s"Materialized value mismatch. First element should be a Sink. Found ${other.getClass.getName}.")
+    }
   }
 }
