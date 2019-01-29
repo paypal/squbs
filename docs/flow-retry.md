@@ -20,8 +20,9 @@ retry `BidiFlow` will perform some specified maximum number of retries of any fa
 determined by either a passed in failure decider function or a Failure, if a failure decider function is not supplied.
 
 If all the retried attempts fail then the last failure for that request is emitted.  The retry stage requires a
-`Context` to be carried around for each element.  This is needed to uniquely identify each element (see [Context to
-Unique Id Mapping](#context-to-unique-id-mapping) section for more details).
+`Context` to be carried around for each element.  This is needed to _uniquely
+identify_ each element.  Please see [Context to Unique Id
+Mapping](#context-to-unique-id-mapping) section for more details.
 
 ##### Scala
 
@@ -68,6 +69,7 @@ With the first three options, a unique id can be retrieved directly through the 
 
 For the last option, `Retry` allows a function to be passed in through `RetrySettings`.
 
+
 ###### Scala
 
 ```scala
@@ -106,6 +108,14 @@ final BidiFlow<Pair<String, MyContext>,
                Pair<Try<String>, MyContext>,
                Pair<Try<String>, MyContext>, NotUsed> retry = Retry.create(settings);
 ```
+
+##### Important note
+
+As mentioned earlier, a `RetryStage` uses the `Context` to identify elements that should be retried.  If the downstream
+modifies the `Context` such that it can no longer be used to uniquely identify elements, the tracked elements will never
+be removed, essentially becoming a memory leak.  Furthermore, those elements will never be retried, and it is likely the
+flow will unable to materialize a value.  Consequently, it is **very** important to understand the concepts above and to
+make sure the downstream does not adversely affect them.
 
 #### Failure decider
 
