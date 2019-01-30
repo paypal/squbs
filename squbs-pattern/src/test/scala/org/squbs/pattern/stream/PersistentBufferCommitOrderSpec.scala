@@ -28,7 +28,7 @@ import scala.concurrent.Await
 
 class PersistentBufferCommitOrderSpec extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
-  implicit val system = ActorSystem("PersistentBufferCommitOrderSpec")
+  implicit val system = ActorSystem("PersistentBufferCommitOrderSpec", PersistentBufferSpec.testConfig)
   implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[Int]()
   import StreamSpecUtil._

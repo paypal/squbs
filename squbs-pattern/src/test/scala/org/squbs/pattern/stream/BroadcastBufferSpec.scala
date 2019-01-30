@@ -22,6 +22,7 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape, ThrottleMode}
 import akka.util.ByteString
+import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.testkit.Timeouts._
@@ -32,7 +33,7 @@ import scala.reflect._
 abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manifest]
    (typeName: String) extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
-  implicit val system = ActorSystem(s"Broadcast${typeName}BufferSpec")
+  implicit val system = ActorSystem(s"Broadcast${typeName}BufferSpec", PersistentBufferSpec.testConfig)
   implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[T]()
   import StreamSpecUtil._
