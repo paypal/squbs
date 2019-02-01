@@ -22,7 +22,6 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape, ThrottleMode}
 import akka.util.ByteString
-import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.testkit.Timeouts._
@@ -127,12 +126,14 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
       Sink.ignore, Sink.ignore, fireFinished())((_,_,_)) { implicit builder =>
       (sink1, sink2, sink3) =>
         import GraphDSL.Implicits._
-        val buffer = new BroadcastBuffer[T](config).withOnPushCallback(() => bBufferInCount.incrementAndGet()).withOnCommitCallback(i => commitCounter(i))
+        val buffer = new BroadcastBuffer[T](config)
+          .withOnPushCallback(() => bBufferInCount.incrementAndGet())
+          .withOnCommitCallback(i => commitCounter(i))
         val bcBuffer = builder.add(buffer.async)
         val bc = builder.add(Broadcast[T](2))
 
         in ~> transform ~> bc ~> bcBuffer ~> throttle ~> sink1
-                                 bcBuffer ~> throttle ~> sink2
+                                 bcBuffer ~> throttleMore ~> sink2
                            bc ~> sink3
 
         ClosedShape
@@ -221,7 +222,8 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
 
   case class SinkCounts(sink1: Long, sink2: Long)
 
-  private def resumeGraphAndDoAssertion(beforeShutDown: SinkCounts, restartFrom: Int)(implicit util: StreamSpecUtil[T, T]) = {
+  private def resumeGraphAndDoAssertion(beforeShutDown: SinkCounts, restartFrom: Int)
+                                       (implicit util: StreamSpecUtil[T, T]) = {
     import util._
     val buffer = new BroadcastBuffer[T](config)
     val graph = RunnableGraph.fromGraph(
@@ -242,6 +244,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     val (head1F, head2F, last1F, last2F) = graph.run()(ActorMaterializer())
     val head1 = Await.result(head1F, awaitMax)
     val head2 = Await.result(head2F, awaitMax)
+    println(s"Last record processed before shutdown => $beforeShutDown")
     println(s"First record processed after shutdown => ${(format(head1), format(head2))}")
     val last1 = Await.result(last1F, awaitMax)
     val last2 = Await.result(last2F, awaitMax)

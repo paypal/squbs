@@ -147,7 +147,9 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val graph = RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val buffer = PersistentBuffer[T](config).withOnPushCallback(() => pBufferInCount.incrementAndGet()).withOnCommitCallback(() =>  commitCount.incrementAndGet())
+        val buffer = PersistentBuffer[T](config)
+          .withOnPushCallback(() => pBufferInCount.incrementAndGet())
+          .withOnCommitCallback(() => commitCount.incrementAndGet())
         val bc = builder.add(Broadcast[T](2))
 
         in ~> transform ~> bc ~> buffer.async ~> throttle ~> sink

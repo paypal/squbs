@@ -99,6 +99,7 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
       reader(outputPortId).moveToIndex(startIdx)
       dequeue(outputPortId) // dequeue the first read element
       lastCommitIndex(outputPortId) = startIdx
+      println(s"Last committed index form port $outputPortId => $startIdx") // TODO: Remove this debug line.
       cycle(outputPortId) = queue.rollCycle().toCycle(startIdx)
     }
   }
