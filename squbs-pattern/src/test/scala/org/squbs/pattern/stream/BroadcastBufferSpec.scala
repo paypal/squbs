@@ -143,10 +143,24 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     Await.result(sink1F.failed, awaitMax) shouldBe an[AbruptTerminationException]
     Await.result(sink2F.failed, awaitMax) shouldBe an[AbruptTerminationException]
 
-    val restartFrom = bBufferInCount.get()
+    var restartFrom = bBufferInCount.get
     println(s"Restart from count $restartFrom")
 
-    val beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
+    var beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
+
+    Thread.sleep(30)
+
+    // Ensure our counter readings are stable.
+    // The `AbruptTerminationException` may not signal the stream is totally stopped.
+    eventually {
+      val prevRestartFrom = restartFrom
+      val prevBeforeShutDown = beforeShutDown
+      restartFrom = bBufferInCount.get
+      beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
+      restartFrom shouldBe prevRestartFrom
+      beforeShutDown shouldBe prevBeforeShutDown
+    }
+
     resumeGraphAndDoAssertion(beforeShutDown, restartFrom)
     clean()
   }
