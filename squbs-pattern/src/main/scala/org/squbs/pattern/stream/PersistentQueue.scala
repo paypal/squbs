@@ -22,7 +22,7 @@ import com.typesafe.scalalogging.Logger
 import net.openhft.chronicle.bytes.MappedBytesStore
 import net.openhft.chronicle.core.OS
 import net.openhft.chronicle.queue.ChronicleQueueBuilder
-import net.openhft.chronicle.queue.impl.single.{DirectoryListing, SingleChronicleQueue}
+import net.openhft.chronicle.queue.impl.single.SingleChronicleQueue
 import net.openhft.chronicle.queue.impl.{RollingResourcesCache, StoreFileListener}
 import net.openhft.chronicle.wire.{WireIn, WireOut}
 import org.slf4j.LoggerFactory

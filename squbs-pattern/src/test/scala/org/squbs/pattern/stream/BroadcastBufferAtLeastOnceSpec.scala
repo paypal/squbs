@@ -33,7 +33,7 @@ import scala.reflect._
 abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[T] : Manifest]
 (typeName: String) extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
-  implicit val system = ActorSystem(s"Broadcast${typeName}BufferAtLeastOnceSpec")
+  implicit val system = ActorSystem(s"Broadcast${typeName}BufferAtLeastOnceSpec", PersistentBufferSpec.testConfig)
   implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[T]()
   import StreamSpecUtil._

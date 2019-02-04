@@ -33,7 +33,7 @@ import scala.reflect._
 abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[T]: Manifest]
 (typeName: String) extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
-  implicit val system = ActorSystem(s"Persistent${typeName}BufferAtLeastOnceSpec")
+  implicit val system = ActorSystem(s"Persistent${typeName}BufferAtLeastOnceSpec", PersistentBufferSpec.testConfig)
   implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[T]()
   implicit override val patienceConfig = PatienceConfig(timeout = Span(3, Seconds)) // extend eventually timeout for CI

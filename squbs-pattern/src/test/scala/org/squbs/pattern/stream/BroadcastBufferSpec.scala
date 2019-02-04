@@ -32,7 +32,7 @@ import scala.reflect._
 abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manifest]
    (typeName: String) extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
-  implicit val system = ActorSystem(s"Broadcast${typeName}BufferSpec")
+  implicit val system = ActorSystem(s"Broadcast${typeName}BufferSpec", PersistentBufferSpec.testConfig)
   implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[T]()
   import StreamSpecUtil._
@@ -126,12 +126,14 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
       Sink.ignore, Sink.ignore, fireFinished())((_,_,_)) { implicit builder =>
       (sink1, sink2, sink3) =>
         import GraphDSL.Implicits._
-        val buffer = new BroadcastBuffer[T](config).withOnPushCallback(() => bBufferInCount.incrementAndGet()).withOnCommitCallback(i => commitCounter(i))
+        val buffer = new BroadcastBuffer[T](config)
+          .withOnPushCallback(() => bBufferInCount.incrementAndGet())
+          .withOnCommitCallback(i => commitCounter(i))
         val bcBuffer = builder.add(buffer.async)
         val bc = builder.add(Broadcast[T](2))
 
         in ~> transform ~> bc ~> bcBuffer ~> throttle ~> sink1
-                                 bcBuffer ~> throttle ~> sink2
+                                 bcBuffer ~> throttleMore ~> sink2
                            bc ~> sink3
 
         ClosedShape
@@ -141,10 +143,24 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     Await.result(sink1F.failed, awaitMax) shouldBe an[AbruptTerminationException]
     Await.result(sink2F.failed, awaitMax) shouldBe an[AbruptTerminationException]
 
-    val restartFrom = bBufferInCount.get()
+    var restartFrom = bBufferInCount.get
     println(s"Restart from count $restartFrom")
 
-    val beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
+    var beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
+
+    Thread.sleep(30)
+
+    // Ensure our counter readings are stable.
+    // The `AbruptTerminationException` may not signal the stream is totally stopped.
+    eventually {
+      val prevRestartFrom = restartFrom
+      val prevBeforeShutDown = beforeShutDown
+      restartFrom = bBufferInCount.get
+      beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
+      restartFrom shouldBe prevRestartFrom
+      beforeShutDown shouldBe prevBeforeShutDown
+    }
+
     resumeGraphAndDoAssertion(beforeShutDown, restartFrom)
     clean()
   }
@@ -220,7 +236,8 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
 
   case class SinkCounts(sink1: Long, sink2: Long)
 
-  private def resumeGraphAndDoAssertion(beforeShutDown: SinkCounts, restartFrom: Int)(implicit util: StreamSpecUtil[T, T]) = {
+  private def resumeGraphAndDoAssertion(beforeShutDown: SinkCounts, restartFrom: Int)
+                                       (implicit util: StreamSpecUtil[T, T]) = {
     import util._
     val buffer = new BroadcastBuffer[T](config)
     val graph = RunnableGraph.fromGraph(

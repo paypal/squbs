@@ -22,6 +22,7 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape}
 import akka.util.ByteString
+import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
@@ -30,10 +31,23 @@ import org.squbs.testkit.Timeouts._
 import scala.concurrent.{Await, Promise}
 import scala.reflect._
 
+object PersistentBufferSpec {
+  val testConfig = ConfigFactory.parseString(
+    """
+      |akka.actor.default-dispatcher {
+      |  executor = "affinity-pool-executor"
+      |  affinity-pool-executor {
+      |    parallelism-min = 1
+      |    parallelism-max = 2
+      |  }
+      |}
+    """.stripMargin)
+}
+
 abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manifest]
 (typeName: String) extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
-  implicit val system = ActorSystem(s"Persistent${typeName}BufferSpec")
+  implicit val system = ActorSystem(s"Persistent${typeName}BufferSpec", PersistentBufferSpec.testConfig)
   implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[T]()
   implicit override val patienceConfig = PatienceConfig(timeout = Span(3, Seconds)) // extend eventually timeout for CI
@@ -133,7 +147,9 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val graph = RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
-        val buffer = PersistentBuffer[T](config).withOnPushCallback(() => pBufferInCount.incrementAndGet()).withOnCommitCallback(() =>  commitCount.incrementAndGet())
+        val buffer = PersistentBuffer[T](config)
+          .withOnPushCallback(() => pBufferInCount.incrementAndGet())
+          .withOnCommitCallback(() => commitCount.incrementAndGet())
         val bc = builder.add(Broadcast[T](2))
 
         in ~> transform ~> bc ~> buffer.async ~> throttle ~> sink

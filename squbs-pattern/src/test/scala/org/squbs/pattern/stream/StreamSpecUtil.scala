@@ -58,6 +58,7 @@ class StreamSpecUtil[T, S](outputPort: Int = 1) {
   lazy val flowCounter = Flow[Any].map(_ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
   lazy val merge = Merge[S](outputPorts)
   lazy val throttle = Flow[S].throttle(flowRate, flowUnit, burstSize, ThrottleMode.shaping)
+  lazy val throttleMore = Flow[S].throttle(flowRate * 9 / 10, flowUnit, burstSize, ThrottleMode.shaping)
   lazy val head = Sink.head[S]
   lazy val last = Sink.last[S]
   val minRandom = 100

@@ -7,7 +7,7 @@ testOptions in Test ++= Seq(
   Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 )
 
-javaOptions in Test += "-Xmx512m"
+javaOptions in Test ++= Seq("-Xmx512m", "-ea")
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
