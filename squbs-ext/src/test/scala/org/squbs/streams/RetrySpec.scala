@@ -20,22 +20,28 @@ import java.util.concurrent.atomic.AtomicLong
 
 import akka.NotUsed
 import akka.actor.{Actor, ActorSystem, Props}
+import akka.event.LoggingAdapter
 import akka.stream.Attributes.inputBuffer
 import akka.stream.{ActorMaterializer, OverflowStrategy, ThrottleMode}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
+import akka.stream.stage.{GraphStageLogic, StageLogging}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestKit
 import org.scalatest.{AsyncFlatSpecLike, Matchers}
 
-import scala.concurrent.Await
+import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.{Await, TimeoutException}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpecLike with Matchers {
+class RetrySpec
+  extends TestKit(ActorSystem("RetryBidiSpec"))
+    with AsyncFlatSpecLike
+    with Matchers {
 
   implicit val materializer = ActorMaterializer()
-  val failure = Failure(new Exception("failed"))
+  val failure = createFail("failed")
 
   it should "require failure retryCount > 0" in {
     an[IllegalArgumentException] should be thrownBy
@@ -651,6 +657,58 @@ class RetrySpec extends TestKit(ActorSystem("RetryBidiSpec")) with AsyncFlatSpec
     result should contain theSameElementsAs (1L to 500 map(elem => (Success(elem), elem)))
   }
 
+  it should "propagate the downstream's OUT if the Context returned from downstream cannot be used " +
+    "to find something that should be retried" in {
+
+    // This is the operation that the downstream performs on the context such that
+    // RetryStage can no longer lookup a value that it has stored for retry purposes.
+    def contextChange(ctx: Long) = ctx + 1
+
+    // Since the Retry stage will not be able to match the context, we expect that downstream
+    // results will be propagated.  This is used to store that state for assertions.  However,
+    // using equality tests with java.lang.Exception doesn't work so well, so I'll just store
+    // the error message
+    type ErrMsg = String
+    val expected = new ArrayBuffer[(ErrMsg, Long)]
+
+    // Downstream should only be called as many times as the Source has elements.
+    var downstreamCalled = 0
+
+    val flow = Flow[(String, Long)].map {
+      case (elem, ctx) =>
+        val failure = createFail(elem)
+        val changedCtx = contextChange(ctx)
+        val result = (failure, changedCtx)
+        expected += ((failure.exception.getMessage, changedCtx))
+        result
+    }
+
+    val retryBidi = Retry[String, String, Long](1)
+
+    // Since we will timeout materializing a Seq, we use some state that
+    // we can assert against.
+    val streamValues = new ArrayBuffer[(Try[String], Long)]()
+
+    val startingElements = List("a", "b", "c")
+
+    val fut =
+      Source(startingElements)
+        .zipWithIndex
+        .map { case (s, idx) => (s, contextChange(idx)) }
+        .via(retryBidi.join(flow))
+        .map { r =>
+          downstreamCalled += 1
+          streamValues += r
+        }.runWith(Sink.seq)
+
+    // Brittle test depending on timeouts.  Let's see if that bites us:(:(
+    a [TimeoutException] should be thrownBy Await.result(fut, 500.millis)
+
+    streamValues.collect { case (Failure(e), ctx) => (e.getMessage, ctx) } should
+      contain theSameElementsInOrderAs expected
+  }
+
+  private def createFail(elem: String) = Failure(new Exception(s"oh nos, I could not process '$elem'"))
 }
 
 class RetryDelayActor extends Actor {

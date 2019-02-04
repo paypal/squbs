@@ -2,8 +2,8 @@
 
 ### Overview
 
-Some stream use cases may require retrying of requests after a failure response.  squbs provides a `Retry` Akka Streams stage to add a retry capability to
- streams that need to add retries for any failing requests.
+Some stream use cases may require retrying of requests after a failure response.  squbs provides a `Retry` Akka Streams
+stage to add a retry capability to streams that need to add retries for any failing requests.
 
 ### Dependency
 
@@ -15,12 +15,14 @@ Add the following dependency to your `build.sbt` or scala build file:
 
 ### Usage
 
-The retry stage functionality is provided via a `BidiFlow` that can be connected to flows via the `join` operator.  The retry `BidiFlow` will perform some
- specified maximum number of retries of any failures from downstream. A failure is determined by either a passed in failure decider function or a Failure,
- if a failure decider function is not supplied.
+The retry stage functionality is provided via a `BidiFlow` that can be connected to flows via the `join` operator.  The
+retry `BidiFlow` will perform some specified maximum number of retries of any failures from downstream. A failure is
+determined by either a passed in failure decider function or a Failure, if a failure decider function is not supplied.
 
-If all the retried attempts fail then the last failure for that request is emitted.  The retry stage requires a `Context` to be carried around for each
- element.  This is needed to uniquely identify each element (see [Context to Unique Id Mapping](#context-to-unique-id-mapping) section for more details).
+If all the retried attempts fail then the last failure for that request is emitted.  The retry stage requires a
+`Context` to be carried around for each element.  This is needed to _uniquely
+identify_ each element.  Please see [Context to Unique Id
+Mapping](#context-to-unique-id-mapping) section for more details.
 
 ##### Scala
 
@@ -54,8 +56,9 @@ Source.from(Arrays.asList("a", "b", "c"))
 
 #### Context to Unique Id Mapping
 
-The `Context` type itself might be used as a unique id.  However, in many scenarios, `Context` contains more than the unique id itself or the unique id might
- be retrieved as a mapping from the `Context`.  squbs allows different options to provide a unique id:
+The `Context` type itself might be used as a unique id.  However, in many scenarios, `Context` contains more than the
+unique id itself or the unique id might be retrieved as a mapping from the `Context`.  squbs allows different options to
+provide a unique id:
 
    * `Context` itself is a type that can be used as a unique id, e.g., `Int`, `Long`, `java.util.UUID`
    * `Context` extends `UniqueId.Provider` and implements `def uniqueId`
@@ -65,6 +68,7 @@ The `Context` type itself might be used as a unique id.  However, in many scenar
 With the first three options, a unique id can be retrieved directly through the context.
 
 For the last option, `Retry` allows a function to be passed in through `RetrySettings`.
+
 
 ###### Scala
 
@@ -105,15 +109,25 @@ final BidiFlow<Pair<String, MyContext>,
                Pair<Try<String>, MyContext>, NotUsed> retry = Retry.create(settings);
 ```
 
+##### Important note
+
+As mentioned earlier, a `RetryStage` uses the `Context` to identify elements that should be retried.  If the downstream
+modifies the `Context` such that it can no longer be used to uniquely identify elements, the tracked elements will never
+be removed, essentially becoming a memory leak.  Furthermore, those elements will never be retried, and it is likely the
+flow will unable to materialize a value.  Consequently, it is **very** important to understand the concepts above and to
+make sure the downstream does not adversely affect them.
+
 #### Failure decider
 
-By default, any `Failure` from the joined `Flow` is considered a failure for retry purposes.  However, the `Retry` stage also accepts an optional
- `failureDecider` parameter, via `RetrySettings`, to more finely control what elements from the joined `Flow` should actually be treated as failures that should be retried.
+By default, any `Failure` from the joined `Flow` is considered a failure for retry purposes.  However, the `Retry` stage
+also accepts an optional `failureDecider` parameter, via `RetrySettings`, to more finely control what elements from the
+joined `Flow` should actually be treated as failures that should be retried.
 
 ##### Scala
 
-A function of type `Try[Out] => Boolean` can be provided to `RetrySettings` via the `withFailureDecider` call. Below is an example where, along with any `Failure` message,
-a response with failing http status code is also considered a failure:
+A function of type `Try[Out] => Boolean` can be provided to `RetrySettings` via the `withFailureDecider` call. Below is
+an example where, along with any `Failure` message, a response with failing http status code is also considered a
+failure:
 
 ```scala
 val failureDecider = (tryResponse: Try[HttpResponse]) => tryResponse.isFailure || tryResponse.get.status.isFailure
@@ -128,8 +142,9 @@ val retry = Retry(settings)
 
 ##### Java
 
-A `Function<Try<Out>, Boolean>` can be provided to `RetrySettings` via the `withFailureDecider` call.  Below is an example where,
-along with any `Failure` message, a `Success` of `HttpResponse` with status code `400` and above is also considered a failure:
+A `Function<Try<Out>, Boolean>` can be provided to `RetrySettings` via the `withFailureDecider` call.  Below is an
+example where, along with any `Failure` message, a `Success` of `HttpResponse` with status code `400` and above is also
+considered a failure:
 
 ```java
 final Function<Try<HttpResponse>, Boolean> failureDecider =
@@ -148,10 +163,11 @@ final BidiFlow<Pair<HttpRequest, MyContext>,
 
 #### Retries with a delay duration
 
-By default, any failures pulled from the joined `Flow` are immediately attempted to be retried.  However, the `Retry` stage also accepts an optional
- delay `Duration` parameter to add a timed delay between each subsequent retry attempt.  This duration is the minimum delay
- duration from when a failure is pulled from the joined flow to when it is re-attempted (pushed) again to the joined flow.
-For example, to create a `Retry` stage that delays 200 milliseconds during retries:
+By default, any failures pulled from the joined `Flow` are immediately attempted to be retried.  However, the `Retry`
+stage also accepts an optional delay `Duration` parameter to add a timed delay between each subsequent retry attempt.
+This duration is the minimum delay duration from when a failure is pulled from the joined flow to when it is
+re-attempted (pushed) again to the joined flow.  For example, to create a `Retry` stage that delays 200 milliseconds
+during retries:
 
 ##### Scala
 
@@ -176,9 +192,10 @@ final BidiFlow<Pair<String, Context>,
 ```
 
 ##### Exponential backoff
-An optional exponential backoff factor can also be specified to increase the delay duration on each subsequent retry attempt (up to a maximum delay duration).
-In the following examples, the first failure of any element will be retried after a delay of 200ms, and then any second attempt will be retried after 800ms.
-  In general the retry delay duration will continue to increase using the formula `delay * N ^ exponentialBackOff` (where N is the retry number).
+An optional exponential backoff factor can also be specified to increase the delay duration on each subsequent retry
+attempt (up to a maximum delay duration).  In the following examples, the first failure of any element will be retried
+after a delay of 200ms, and then any second attempt will be retried after 800ms.  In general the retry delay duration
+will continue to increase using the formula `delay * N ^ exponentialBackOff` (where N is the retry number).
 
 ###### Scala
 
@@ -209,7 +226,8 @@ final BidiFlow<Pair<String, Context>,
 
 ##### Maximum delay
 An optional maximum delay duration can also be specified to provide an upper bound on the exponential backoff delay
-duration.  If no maximum delay is specified the exponential backoff will continue to increase the retry delay duration until the number of maxRetries.
+duration.  If no maximum delay is specified the exponential backoff will continue to increase the retry delay duration
+until the number of maxRetries.
 
 ###### Scala
 
@@ -240,7 +258,11 @@ final BidiFlow<Pair<String, Context>,
 
 ##### Configuring the threshold for backpressure
 
-If the joined flow keeps returning failures, `Retry` starts back pressuring when the elements waiting to be retried reaches to a certain threshold.  By default, the threshold is equal to the internal buffer size of `Retry` Akka Stream `GraphStage` (please see [Akka Stream Attributes](https://doc.akka.io/docs/akka/current/stream/stream-composition.html#attributes)).  The threshold can be made independent of internal buffer size by calling `withMaxWaitingRetries`:
+If the joined flow keeps returning failures, `Retry` starts back pressuring when the elements waiting to be retried
+reaches to a certain threshold.  By default, the threshold is equal to the internal buffer size of `Retry` Akka Stream
+`GraphStage` (please see [Akka Stream
+Attributes](https://doc.akka.io/docs/akka/current/stream/stream-composition.html#attributes)).  The threshold can be
+made independent of internal buffer size by calling `withMaxWaitingRetries`:
 
 
 ##### Scala
@@ -266,7 +288,8 @@ final BidiFlow<Pair<String, Context>,
 
 #### Metrics
 
-`Retry` supports Codahale counters for state and failure/success rate of elements passing through it.  Metrics can be enabled by calling `withMetrics` with a name and an actor system.
+`Retry` supports Codahale counters for state and failure/success rate of elements passing through it.  Metrics can be
+enabled by calling `withMetrics` with a name and an actor system.
 
 The following counters are provided:
 

@@ -24,6 +24,7 @@ import java.util.function.{Function => JFunction}
 import javax.management.{MXBean, ObjectName}
 import akka.NotUsed
 import akka.actor.ActorSystem
+import akka.event.LoggingAdapter
 import akka.http.org.squbs.util.JavaConverters
 import akka.japi.Pair
 import akka.stream.Attributes.InputBuffer
@@ -193,6 +194,7 @@ final class Retry[In, Out, Context] private[streams](settings: RetrySettings[In,
 
     private def shouldPullIn1 = !hasBeenPulled(in1) && retryQ.size < retryQMaxSize && !upstreamFinished
     private def hasBackpressuredIn1 = isAvailable(out1) && !hasBeenPulled(in1) && !upstreamFinished
+
     private def completeStageIfFinished() = if (retryRegistry.isEmpty && upstreamFinished) completeStage()
 
     private def isHeadReady: Boolean = noDelay || retryQ.head._1 <= System.nanoTime()
@@ -241,22 +243,9 @@ final class Retry[In, Out, Context] private[streams](settings: RetrySettings[In,
         val (elem, context) = grab(in2)
         val key = uniqueId(context)
 
-        if (isFailure(elem)) {
-          if (retryRegistry(key)._3 >= max) {
-            retryRegistry -= key
-
-            // If a demand from out1 was not propagated to in1 because of retryQ size earlier
-            if (hasBackpressuredIn1) pull(in1)
-
-            if (isAvailable(out2)) {
-              retryMetrics.markFailure()
-              push(out2, (elem, context))
-              completeStageIfFinished()
-            } else {
-              // This branch should never get executed unless there is a bug.
-              log.error("out2 is not available for push.  Dropping exhausted element")
-            }
-          } else {
+        // Only the first case triggers a retry.  Everything else is a push upstream.
+        retryRegistry.get(key) match {
+          case Some(retryEntry) if isFailure(elem) && retryEntry._3 < max =>
             retryMetrics.markRetry()
             val retryTime = System.nanoTime + delayTime(incrementAndGetRetryCount(key))
             val shouldRetryBeforeTheHeadOfQueue = retryQ.headOption.exists(_._1 - retryTime >= precisionAsNanos)
@@ -276,23 +265,26 @@ final class Retry[In, Out, Context] private[streams](settings: RetrySettings[In,
                 scheduleOnce(timerName, remainingDelay)
               }
             }
-
             pull(in2)
-          }
-        } else {
-          retryMetrics.markSuccess()
-          retryRegistry -= key
+          case _ =>
+            if (elem.isSuccess) retryMetrics.markSuccess() else retryMetrics.markFailure()
+            if (retryRegistry.remove(key).isEmpty) {
+              log.error("The Context returned from downstream could not be matched to a Context that this Retry Stage " +
+                "is tracking. At least 1 element may not be retried, and a memory leak is possible. Please see " +
+                "section of Squbs Retry Stage documentation on Context to Unique Id Mapping.")
+            }
 
-          // If a demand from out1 was not propagated to in1 because of retryQ size earlier
-          if (hasBackpressuredIn1) pull(in1)
+            // If a demand from out1 was not propagated to in1 because of retryQ size earlier
+            if (hasBackpressuredIn1) pull(in1)
 
-          if (isAvailable(out2)) {
-            push(out2, (elem, context))
-            completeStageIfFinished()
-          } else {
-            // This branch should never get executed unless there is a bug.
-            log.error("out2 is not available for push.  Dropping successful element")
-          }
+            if (isAvailable(out2)) {
+              push(out2, (elem, context))
+              completeStageIfFinished()
+            } else {
+              // This branch should never get executed unless there is a bug.
+              val elemDesc = elem.map(_ => "successful").getOrElse("exhausted")  // sucks to do this twice:(
+              log.error(s"out2 is not available for push.  Dropping $elemDesc element")
+            }
         }
       }
 
