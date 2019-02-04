@@ -182,7 +182,9 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     val graph = RunnableGraph.fromGraph(
       GraphDSL.create(Sink.ignore, Sink.ignore)((_, _)) { implicit builder => (sink1, sink2) =>
           import GraphDSL.Implicits._
-          val buffer = new BroadcastBuffer[T](config).withOnPushCallback(() => inCounter.incrementAndGet()).withOnCommitCallback(i => commitCounter(i))
+          val buffer = new BroadcastBuffer[T](config)
+            .withOnPushCallback(() => inCounter.incrementAndGet())
+            .withOnCommitCallback(i => commitCounter(i))
           val bcBuffer = builder.add(buffer.async)
 
           in ~> transform ~> bcBuffer ~> throttle ~> injectError ~> sink1

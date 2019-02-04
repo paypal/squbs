@@ -110,6 +110,7 @@ object MaterializerSpec {
       |  buffer-capacity = 32
       |  demand-redelivery-interval = 1 second
       |  subscription-timeout = 30 seconds
+      |  final-termination-signal-deadline = 2 seconds
       |}
       |blocking-io-dispatcher = "akka.stream.default-blocking-io-dispatcher"
     """.stripMargin)
