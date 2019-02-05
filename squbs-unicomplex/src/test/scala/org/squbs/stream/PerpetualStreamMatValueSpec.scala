@@ -23,6 +23,8 @@ import akka.pattern._
 import akka.stream.{ActorMaterializer, ClosedShape, Materializer}
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, MergeHub, RunnableGraph, Sink, Source}
 import akka.util.Timeout
+import org.scalatest.concurrent.Eventually
+import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, FunSpec, Matchers}
 import org.squbs.stream.PerpetualStreamMatValueSpecHelper.PerpStreamActors
 import org.squbs.unicomplex._
@@ -34,15 +36,18 @@ import scala.util.{Failure, Success, Try}
 class PerpetualStreamMatValueSpec
 extends FunSpec
 with Matchers
-with BeforeAndAfterAll {
+with BeforeAndAfterAll
+with Eventually {
 
   import PerpStreamActors._
   import PerpetualStreamMatValueSpecHelper._
+
 
   implicit val system = ActorSystem(this.getClass.getSimpleName)
   implicit val mat = ActorMaterializer()
 
   private val timeout = Timeout(PerpetualStreamMatValueSpecHelper.timeoutDuration)
+  implicit override val patienceConfig = PatienceConfig(timeout = Span(3, Seconds))
 
   override def afterAll(): Unit = {
     system.terminate()
@@ -55,9 +60,11 @@ with BeforeAndAfterAll {
         implicit val to = timeout
         useSystem[SinkMaterializingStream] {
           case Success(actor) =>
-            val actorState = Await.result((actor ? StateRequest).mapTo[List[Long]], timeoutDuration)
-            actorState.last should be(PerpetualStreamMatValueSpecHelper.payload)
-          case _ => fail("Expected a success")
+            eventually {
+              val actorState = Await.result((actor ? StateRequest).mapTo[List[Long]], timeoutDuration)
+              actorState.last should be(PerpetualStreamMatValueSpecHelper.payload)
+            }
+          case Failure(e) => fail("Expected a Success", e)
         }
       }
 
@@ -73,8 +80,10 @@ with BeforeAndAfterAll {
           it(testName) {
             useSystem {
               case Success(actor) =>
-                val actorState = Await.result((actor ? StateRequest).mapTo[List[Long]], timeoutDuration)
-                actorState.last should be(PerpetualStreamMatValueSpecHelper.payload)
+                eventually {
+                  val actorState = Await.result((actor ? StateRequest).mapTo[List[Long]], timeoutDuration)
+                  actorState.last should be(PerpetualStreamMatValueSpecHelper.payload)
+                }
               case Failure(e) => fail("Expected a success", e)
             }
           }
