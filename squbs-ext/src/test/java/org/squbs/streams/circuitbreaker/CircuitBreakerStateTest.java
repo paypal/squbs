@@ -24,7 +24,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState;
 import scala.concurrent.duration.Duration;
-import scala.concurrent.duration.FiniteDuration;
 
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
