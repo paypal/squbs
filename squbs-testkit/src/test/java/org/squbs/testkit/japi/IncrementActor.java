@@ -16,7 +16,6 @@
 package org.squbs.testkit.japi;
 
 import akka.actor.AbstractActor;
-import akka.japi.pf.ReceiveBuilder;
 
 public class IncrementActor extends AbstractActor {
 
