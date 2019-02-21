@@ -11,6 +11,13 @@ The actor registry provides squbs applications an easy way to send/receive messa
 * `ActorLookup` API for Scala and `japi.ActorLookup` API for Java is used to send/receive message to well-known actors.
 * `ActorRegistry` is the common façade actor holding all well-known actor information. 
 
+## Dependencies
+
+To use the actor registry, add the following dependency to your build.sbt or scala build file:
+
+```
+"org.squbs" %% "squbs-actorregistry" % squbsVersion
+```
 
 ## Well-Known Actor
 
@@ -166,7 +173,7 @@ squbs-actors = [
 
 ## Response Types
 
-The response type of an actor discovered by ActorLookup response type discovery (when the response type is provided) is maintained across the result of the lookup. While the programmatic response type is less significant on `tell` or `!`, it becomes significant on `ask` or `?`. The return type of an `ask` is generally `Future[Any]` in Scala or `Future<Object>` in Java. However the return type from an `ask` or `?` on ActorLookup carries the response type when looked up with it. So you'll get a `Future[T]` or `Future<T>` if you lookup with response type `T` as can be demonstrated in the examples below. No further MapTo is needed:
+The response type of an actor discovered by ActorLookup response type discovery (when the response type is provided) is maintained across the result of the lookup. While the programmatic response type is less significant on `tell` or `!`, it becomes significant on `ask` or `?`. The return type of an `ask` is generally `Future[Any]` in Scala or `CompletionStage<Object>` in Java. However the return type from an `ask` or `?` on ActorLookup carries the response type when looked up with it. So you'll get a `Future[T]` or `CompletionStage<T>` if you lookup with response type `T` as can be demonstrated in the examples below. No further MapTo is needed:
 
 ### Scala
 
@@ -181,23 +188,13 @@ val f: Future[TestResponse] = ActorLookup[TestResponse] ? TestRequest(...)
 ### Java
 
 ```java
-Future<TestResponse> f = lookup.lookup(TestResponse.class).ask(new TestRequest(...), timeout)
+CompletionStage<TestResponse> f = lookup.lookup(TestResponse.class).ask(new TestRequest(...), timeout)
 ```
 
 ## Error Handling
 
-Unlike with `actorSelection` which will send a message to dead letters, ActorLookup will respond with `ActorNotFound` if the wanted actor is not in the system or not registered.
+Unlike with `actorSelection` which will send a message to dead letters, ActorLookup will respond with `ActorNotFound` if the wanted actor is not in the system or not registered. In the Java API, the `ActorNotFound` is usually wrapped in a `java.util.concurrent.ExecutionException` and accessible by `getCause()` on the `ExecutionException`.
 
 ## Monitoring
 
 There is JMX Bean created for each well-known actor. It is named `org.squbs.unicomplex:type=ActorRegistry,name=${actorPath}`
-
-
-
-## Dependencies
-
-To use the actor registry, add the following dependency to your build.sbt or scala build file:
-
-```
-"org.squbs" %% "squbs-actorregistry" % squbsVersion
-```

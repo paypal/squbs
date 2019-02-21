@@ -32,8 +32,6 @@ import org.squbs.testkit.japi.CustomTestKit;
 import org.squbs.testkit.japi.DebugTimingTestKit;
 import org.squbs.unicomplex.JMX;
 import org.squbs.unicomplex.UnicomplexBoot;
-import scala.concurrent.Await;
-import scala.concurrent.Future;
 
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
@@ -42,6 +40,7 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.*;
 import static org.squbs.testkit.Timeouts.askTimeout;
@@ -120,20 +119,26 @@ public class ActorRegistryTest extends CustomTestKit {
         }};
     }
 
-    @Test(expected = ActorNotFound.class)
-    public void testResolveOne() throws Exception {
+    @Test
+    public void testResolveOne() {
         new DebugTimingTestKit(system()) {{
-            Future<ActorRef> future = lookup.resolveOne(askTimeout().duration());
-            Await.result(future, awaitMax());
+            try {
+                CompletionStage<ActorRef> future = lookup.resolveOne(askTimeout().duration());
+                future.toCompletableFuture().get();
+                fail("Expecting an ExecutionException");
+            } catch (Exception e) {
+                assertEquals(ExecutionException.class, e.getClass());
+                assertEquals(ActorNotFound.class, e.getCause().getClass());
+            }
         }};
     }
 
     @Test
     public void testResolveOneByName() {
         new DebugTimingTestKit(system()) {{
-            Future<ActorRef> future = lookup.lookup("TestActor").resolveOne(askTimeout().duration());
+            CompletionStage<ActorRef> future = lookup.lookup("TestActor").resolveOne(askTimeout().duration());
             try {
-                ActorRef actorRef = Await.result(future, awaitMax());
+                ActorRef actorRef = future.toCompletableFuture().get();
                 assertEquals("TestActor", actorRef.path().name());
             } catch (Exception e) {
                 fail("Awaiting for response");
@@ -144,10 +149,10 @@ public class ActorRegistryTest extends CustomTestKit {
     @Test
     public void testResolveOneByRequestType() {
         new DebugTimingTestKit(system()) {{
-            Future<ActorRef> future = lookup.lookup(Optional.empty(), Optional.of(TestRequest.class),
+            CompletionStage<ActorRef> future = lookup.lookup(Optional.empty(), Optional.of(TestRequest.class),
                     Object.class).resolveOne(askTimeout().duration());
             try {
-                ActorRef actorRef = Await.result(future, awaitMax());
+                ActorRef actorRef = future.toCompletableFuture().get();
                 assertEquals("TestActor", actorRef.path().name());
             } catch (Exception e) {
                 fail("Awaiting for response");
@@ -158,9 +163,9 @@ public class ActorRegistryTest extends CustomTestKit {
     @Test
     public void testResolveOneByType() {
         new DebugTimingTestKit(system()) {{
-            Future<ActorRef> future = lookup.lookup(TestResponse.class).resolveOne(askTimeout().duration());
+            CompletionStage<ActorRef> future = lookup.lookup(TestResponse.class).resolveOne(askTimeout().duration());
             try {
-                ActorRef actorRef = Await.result(future, awaitMax());
+                ActorRef actorRef = future.toCompletableFuture().get();
                 assertEquals("TestActor", actorRef.path().name());
             } catch (Exception e) {
                 fail("Awaiting for response");
