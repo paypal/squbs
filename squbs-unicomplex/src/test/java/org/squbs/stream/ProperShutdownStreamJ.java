@@ -11,6 +11,7 @@ import akka.stream.javadsl.*;
 import org.squbs.unicomplex.Timeouts;
 import scala.concurrent.duration.FiniteDuration;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
@@ -75,7 +76,7 @@ public class ProperShutdownStreamJ extends AbstractPerpetualStream<Pair<ActorRef
         ActorRef actorRef = matValue().first();
         CompletionStage<Long> fCount = matValue().second();
         CompletionStage<Boolean> fStopped =
-                gracefulStop(actorRef, Timeouts.awaitMax().toMillis(), TimeUnit.MILLISECONDS);
+                gracefulStop(actorRef, Duration.ofMinutes(Timeouts.awaitMax().toMinutes()));
         return fCount.thenCombine(fStopped, (count, stopped) -> Done.getInstance());
     }
 }

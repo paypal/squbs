@@ -8,6 +8,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -60,7 +61,7 @@ public class GracefulStopHelperTest {
         }
 
         @Override
-        public CompletionStage<Boolean> gracefulStop(ActorRef target, long timeout, TimeUnit unit, Object stopMessage) {
+        public CompletionStage<Boolean> gracefulStop(ActorRef target, Duration duration, Object stopMessage) {
             return CompletableFuture.supplyAsync(() -> { throw new RuntimeException("BadMan"); });
         }
     }
@@ -78,7 +79,7 @@ public class GracefulStopHelperTest {
         }
 
         @Override
-        public CompletionStage<Boolean> gracefulStop(ActorRef target, long timeout, TimeUnit unit, Object stopMessage) {
+        public CompletionStage<Boolean> gracefulStop(ActorRef target, Duration duration, Object stopMessage) {
             return CompletableFuture.supplyAsync(() -> true);
         }
     }
