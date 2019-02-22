@@ -16,8 +16,9 @@
 
 package org.squbs.streams
 
+import java.time.{Duration => JDuration}
 import java.util.concurrent.TimeUnit.NANOSECONDS
-import java.util.concurrent.TimeoutException
+import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.function.Consumer
 
 import akka.NotUsed
@@ -191,9 +192,9 @@ object Timeout {
   /**
     * Java API
     */
-  def create[In, Out, Context](timeout: FiniteDuration):
+  def create[In, Out, Context](timeout: JDuration):
   javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] =
-    toJava(apply[In, Out, Context](timeout))
+    toJava(apply[In, Out, Context](FiniteDuration(timeout.toMillis, TimeUnit.MICROSECONDS)))
 
 }
 
@@ -233,7 +234,8 @@ object TimeoutSettings {
   /**
     * Java API
     */
-  def create[In, Out, Context](timeout: FiniteDuration): TimeoutSettings[In, Out, Context] = apply(timeout)
+  def create[In, Out, Context](timeout: JDuration): TimeoutSettings[In, Out, Context] =
+    apply(FiniteDuration(timeout.toMillis, TimeUnit.MILLISECONDS))
 }
 
 /**
@@ -351,15 +353,22 @@ object TimeoutOrdered {
   /**
     * Java API
     */
-  def create[In, Out](timeout: FiniteDuration,
+  def create[In, Out](timeout: JDuration,
                       cleanUp: Consumer[Out]):
   akka.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] = {
-    apply(timeout, out => cleanUp.accept(out)).asJava
+    apply(FiniteDuration(timeout.toMillis, TimeUnit.MILLISECONDS), out => cleanUp.accept(out)).asJava
   }
 
-  def create[In, Out](timeout: FiniteDuration):
+  /**
+    * Java API
+    * @param timeout
+    * @tparam In
+    * @tparam Out
+    * @return
+    */
+  def create[In, Out](timeout: JDuration):
   akka.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] = {
-    apply(timeout, (_: Out) => ()).asJava
+    apply(FiniteDuration(timeout.toMillis, TimeUnit.MILLISECONDS), (_: Out) => ()).asJava
   }
 }
 
