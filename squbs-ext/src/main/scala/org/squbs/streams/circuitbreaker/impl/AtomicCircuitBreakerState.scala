@@ -20,6 +20,8 @@
 package org.squbs.streams.circuitbreaker.impl
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong}
+import java.time.{Duration => JDuration}
+import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, Scheduler}
 import akka.util.Unsafe
@@ -87,11 +89,15 @@ object AtomicCircuitBreakerState {
     */
   def create(name: String,
              maxFailures: Int,
-             callTimeout: FiniteDuration,
-             resetTimeout: FiniteDuration,
+             callTimeout: JDuration,
+             resetTimeout: JDuration,
              executor: ExecutionContext,
              scheduler: Scheduler): CircuitBreakerState =
-    apply(name, maxFailures, callTimeout, resetTimeout)(executor, scheduler)
+    apply(name,
+      maxFailures,
+      FiniteDuration(callTimeout.toMillis, TimeUnit.MILLISECONDS),
+      FiniteDuration(resetTimeout.toMillis, TimeUnit.MILLISECONDS)
+    )(executor, scheduler)
 
   /**
     * Java API
@@ -108,13 +114,19 @@ object AtomicCircuitBreakerState {
     */
   def create(name: String,
              maxFailures: Int,
-             callTimeout: FiniteDuration,
-             resetTimeout: FiniteDuration,
-             maxResetTimeout: FiniteDuration,
+             callTimeout: JDuration,
+             resetTimeout: JDuration,
+             maxResetTimeout: JDuration,
              exponentialBackoffFactor: Double,
              executor: ExecutionContext,
              scheduler: Scheduler): CircuitBreakerState =
-    apply(name, maxFailures, callTimeout, resetTimeout, maxResetTimeout, exponentialBackoffFactor)(executor, scheduler)
+    apply(name,
+      maxFailures,
+      FiniteDuration(callTimeout.toMillis, TimeUnit.MILLISECONDS),
+      FiniteDuration(resetTimeout.toMillis, TimeUnit.MILLISECONDS),
+      FiniteDuration(maxResetTimeout.toMillis, TimeUnit.MILLISECONDS),
+      exponentialBackoffFactor
+    )(executor, scheduler)
 
   /**
     * Java API

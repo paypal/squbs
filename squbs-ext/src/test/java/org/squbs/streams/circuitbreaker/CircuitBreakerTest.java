@@ -37,7 +37,7 @@ import org.squbs.streams.FlowTimeoutException;
 import org.squbs.streams.Timing;
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState;
 import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
-import scala.concurrent.duration.Duration;
+//import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
 import scala.util.Failure;
 import scala.util.Success;
@@ -51,6 +51,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.time.Duration;
 
 import static akka.pattern.PatternsCS.ask;
 
@@ -58,7 +59,7 @@ public class CircuitBreakerTest {
 
     private static final ActorSystem system = ActorSystem.create("CircuitBreakerTest");
     private static final Materializer mat = ActorMaterializer.create(system);
-    private static final FiniteDuration timeout = Duration.create(300, TimeUnit.MILLISECONDS);
+    private static final Duration timeout = Duration.ofMillis(300);
     private static final Try<String> timeoutFailure = Failure.apply(new FlowTimeoutException("Flow timed out!"));
 
     @AfterClass
@@ -80,7 +81,7 @@ public class CircuitBreakerTest {
                         "JavaIncFailCount",
                         2,
                         timeout,
-                        Duration.create(10, TimeUnit.MILLISECONDS),
+                        Duration.ofMillis(10),
                         system.dispatcher(),
                         system.scheduler());
 
@@ -114,8 +115,8 @@ public class CircuitBreakerTest {
                 AtomicCircuitBreakerState.create(
                         "JavaFailureDecider",
                         2,
-                        Duration.create(10, TimeUnit.SECONDS),
-                        Duration.create(10, TimeUnit.MILLISECONDS),
+                        Duration.ofSeconds(10),
+                        Duration.ofMillis(10),
                         system.dispatcher(),
                         system.scheduler());
 
@@ -165,8 +166,8 @@ public class CircuitBreakerTest {
                 AtomicCircuitBreakerState.create(
                         "JavaFallback",
                         2,
-                        Duration.create(10, TimeUnit.MILLISECONDS),
-                        Duration.create(10, TimeUnit.SECONDS),
+                        Duration.ofMillis(10),
+                        Duration.ofSeconds(10),
                         system.dispatcher(),
                         system.scheduler());
 
@@ -247,7 +248,7 @@ public class CircuitBreakerTest {
                         "JavaUniqueId",
                         2,
                         timeout,
-                        Duration.create(10, TimeUnit.MILLISECONDS),
+                        Duration.ofMillis(10),
                         system.dispatcher(),
                         system.scheduler());
 
@@ -323,8 +324,8 @@ public class CircuitBreakerTest {
                 AtomicCircuitBreakerState.create(
                         "JavaUniqueId",
                         2,
-                        Timing.timeout(),
-                        Duration.create(10, TimeUnit.MILLISECONDS),
+                        Duration.ofSeconds(Timing.timeout().toSeconds()),
+                        Duration.ofMillis(10),
                         system.dispatcher(),
                         system.scheduler());
 
@@ -363,7 +364,7 @@ public class CircuitBreakerTest {
                         "JavaFailureDecider",
                         2,
                         timeout,
-                        Duration.create(10, TimeUnit.MILLISECONDS),
+                        Duration.ofMillis(10),
                         system.dispatcher(),
                         system.scheduler());
 

@@ -34,15 +34,14 @@ import org.squbs.resolver.ResolverRegistry;
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState;
 import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
 import org.squbs.testkit.Timeouts;
-import scala.concurrent.duration.FiniteDuration;
 import scala.util.Try;
 
 import javax.management.ObjectName;
 import javax.net.ssl.SSLContext;
 import java.lang.management.ManagementFactory;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 
@@ -119,9 +118,9 @@ public class ClientFlowTest {
                         AtomicCircuitBreakerState.create(
                                 "javaBuilderClient",
                                 11,
-                                FiniteDuration.apply(12, TimeUnit.SECONDS),
-                                FiniteDuration.apply(13, TimeUnit.MINUTES),
-                                FiniteDuration.apply(14, TimeUnit.DAYS),
+                                Duration.ofSeconds(12),
+                                Duration.ofMinutes(13),
+                                Duration.ofDays(14),
                                 16.0,
                                 system.dispatcher(),
                                 system.scheduler()));
@@ -157,9 +156,9 @@ public class ClientFlowTest {
                         AtomicCircuitBreakerState.create(
                                 "javaAllInputsClient",
                                 11,
-                                FiniteDuration.apply(12, TimeUnit.SECONDS),
-                                FiniteDuration.apply(13, TimeUnit.MINUTES),
-                                FiniteDuration.apply(14, TimeUnit.DAYS),
+                                Duration.ofSeconds(12),
+                                Duration.ofMinutes(13),
+                                Duration.ofDays(14),
                                 16.0,
                                 system.dispatcher(),
                                 system.scheduler()));

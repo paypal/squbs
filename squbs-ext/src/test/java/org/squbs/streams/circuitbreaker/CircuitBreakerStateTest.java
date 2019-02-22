@@ -23,11 +23,10 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState;
-import scala.concurrent.duration.Duration;
 
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
 
 public class CircuitBreakerStateTest {
 
@@ -43,8 +42,8 @@ public class CircuitBreakerStateTest {
         AtomicCircuitBreakerState.create(
                 "java-params-with-default-exponential-backoff",
                 1,
-                Duration.create(50, TimeUnit.MILLISECONDS),
-                Duration.create(20, TimeUnit.MILLISECONDS),
+                Duration.ofMillis(50),
+                Duration.ofMillis(20),
                 system.dispatcher(),
                 system.scheduler());
         assertJmxValue("java-params-with-default-exponential-backoff", "MaxFailures", 1);
@@ -58,16 +57,16 @@ public class CircuitBreakerStateTest {
     public void testCreateCircuitBreakerStateWithExponentialBackoff() throws Exception {
         AtomicCircuitBreakerState.create(
                 "java-params-with-custom-exponential-backoff", 1,
-                Duration.create(50, TimeUnit.MILLISECONDS),
-                Duration.create(20, TimeUnit.MILLISECONDS),
-                Duration.create(2, TimeUnit.MINUTES),
+                Duration.ofMillis(50),
+                Duration.ofMillis(20),
+                Duration.ofMinutes(2),
                 16.0,
                 system.dispatcher(),
                 system.scheduler());
         assertJmxValue("java-params-with-custom-exponential-backoff", "MaxFailures", 1);
         assertJmxValue("java-params-with-custom-exponential-backoff", "CallTimeout", "50 milliseconds");
         assertJmxValue("java-params-with-custom-exponential-backoff", "ResetTimeout", "20 milliseconds");
-        assertJmxValue("java-params-with-custom-exponential-backoff", "MaxResetTimeout", "2 minutes");
+        assertJmxValue("java-params-with-custom-exponential-backoff", "MaxResetTimeout", "120000 milliseconds");
         assertJmxValue("java-params-with-custom-exponential-backoff", "ExponentialBackoffFactor", 16.0);
     }
 
