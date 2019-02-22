@@ -24,7 +24,6 @@ import org.squbs.actorregistry.{ActorLookup => SActorLookup}
 
 import scala.compat.java8.FutureConverters._
 import scala.compat.java8.OptionConverters._
-import scala.concurrent.Future
 import scala.concurrent.duration._
 
 /**
@@ -80,8 +79,8 @@ class ActorLookup[T <: AnyRef] private[japi] (private[japi] val name: Option[Str
     */
   def ask(msg: Any, timeout: Timeout): CompletionStage[T] = getLookup(msg).ask(msg)(timeout, refFactory).toJava
 
-  def resolveOne(timeout: FiniteDuration): Future[ActorRef] =
-    new SActorLookup(responseType, requestType, name, responseType != classOf[AnyRef]).resolveOne(timeout)
+  def resolveOne(timeout: FiniteDuration): CompletionStage[ActorRef] =
+    new SActorLookup(responseType, requestType, name, responseType != classOf[AnyRef]).resolveOne(timeout).toJava
 
   /**
     * Creates an ActorLookup based on a response type
