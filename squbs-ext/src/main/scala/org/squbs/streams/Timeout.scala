@@ -194,7 +194,7 @@ object Timeout {
     */
   def create[In, Out, Context](timeout: JDuration):
   javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] =
-    toJava(apply[In, Out, Context](FiniteDuration(timeout.toMillis, TimeUnit.MICROSECONDS)))
+    toJava(apply[In, Out, Context](FiniteDuration(timeout.toMillis, TimeUnit.MILLISECONDS)))
 
 }
 
