@@ -37,21 +37,18 @@ import org.squbs.streams.FlowTimeoutException;
 import org.squbs.streams.Timing;
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState;
 import org.squbs.streams.circuitbreaker.japi.CircuitBreakerSettings;
-//import scala.concurrent.duration.Duration;
-import scala.concurrent.duration.FiniteDuration;
 import scala.util.Failure;
 import scala.util.Success;
 import scala.util.Try;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.time.Duration;
 
 import static akka.pattern.PatternsCS.ask;
 
