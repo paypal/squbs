@@ -85,7 +85,7 @@ public class TimeoutTest {
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
 
         final BidiFlow<String, String, String, Try<String>, NotUsed> timeoutBidiFlow =
-                TimeoutOrdered.create(Duration.ofMinutes(Timing.timeout().toMinutes()), cleanUp);
+                TimeoutOrdered.create(Duration.ofSeconds(Timing.timeout().toSeconds()), cleanUp);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -254,7 +254,7 @@ public class TimeoutTest {
                         .map(elem -> (Pair<String, UUID>)elem);
 
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
-        TimeoutSettings settings = TimeoutSettings.<String, String, UUID>create(Duration.ofMinutes(Timing.timeout().toMinutes())).withCleanUp(cleanUp);
+        TimeoutSettings settings = TimeoutSettings.<String, String, UUID>create(Duration.ofSeconds(Timing.timeout().toSeconds())).withCleanUp(cleanUp);
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> timeoutBidiFlow =
                 Timeout.create(settings);
 
@@ -293,7 +293,7 @@ public class TimeoutTest {
                         .map(elem -> (Pair<String, MyContext>)elem);
 
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
-        TimeoutSettings settings = TimeoutSettings.<String, String, MyContext>create(Duration.ofMinutes(Timing.timeout().toMinutes()))
+        TimeoutSettings settings = TimeoutSettings.<String, String, MyContext>create(Duration.ofSeconds(Timing.timeout().toSeconds()))
                 .withUniqueIdMapper(context -> context.uuid)
                 .withCleanUp(cleanUp);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> timeoutBidiFlow =
