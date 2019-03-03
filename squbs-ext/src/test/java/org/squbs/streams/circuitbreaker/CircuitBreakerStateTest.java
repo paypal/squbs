@@ -66,7 +66,7 @@ public class CircuitBreakerStateTest {
         assertJmxValue("java-params-with-custom-exponential-backoff", "MaxFailures", 1);
         assertJmxValue("java-params-with-custom-exponential-backoff", "CallTimeout", "50 milliseconds");
         assertJmxValue("java-params-with-custom-exponential-backoff", "ResetTimeout", "20 milliseconds");
-        assertJmxValue("java-params-with-custom-exponential-backoff", "MaxResetTimeout", "120000 milliseconds");
+        assertJmxValue("java-params-with-custom-exponential-backoff", "MaxResetTimeout", "120000 milliseconds"); // 2 minutes
         assertJmxValue("java-params-with-custom-exponential-backoff", "ExponentialBackoffFactor", 16.0);
     }
 
