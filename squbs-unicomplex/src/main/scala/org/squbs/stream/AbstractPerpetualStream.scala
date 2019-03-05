@@ -19,6 +19,7 @@ import java.util.concurrent.{CompletableFuture, CompletionStage}
 import java.util.function.Consumer
 
 import akka.actor.AbstractActor
+import akka.japi.function
 import akka.stream.Supervision.{Directive, Resume}
 import akka.stream._
 import akka.stream.javadsl.{RunnableGraph, Sink}
@@ -30,6 +31,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.runtime.BoxedUnit
+import scala.compat.java8.FunctionConverters._
 
 /**
  * Java API for perpetual stream that starts and stops with the server.
@@ -48,26 +50,29 @@ abstract class AbstractPerpetualStream[T] extends AbstractActor with PerpetualSt
   /**
    * The decider to use. Override if not resumingDecider.
    */
-  def decider: akka.japi.function.Function[Throwable, Directive] = {
-    t: Throwable =>
-      log.error("Uncaught error {} from stream", t)
-      t.printStackTrace()
-      Resume
-  }
+  def decider: akka.japi.function.Function[Throwable, Directive] =
+    new function.Function[Throwable, Directive] {
+      override def apply(t: Throwable): Directive = {
+        log.error("Uncaught error {} from stream", t)
+        t.printStackTrace()
+        Resume
+      }
+    }
 
   implicit val materializer: ActorMaterializer =
     ActorMaterializer(ActorMaterializerSettings(context.system).withSupervisionStrategy(decider))
 
   override private[stream] final def runGraph(): T = streamGraph.run(materializer)
 
-  override private[stream] final def shutdownAndNotify(): Unit = shutdown().thenAccept((_: Done) => self ! Done)
+  override private[stream] final def shutdownAndNotify(): Unit = shutdown()
+    .thenAccept(asJavaConsumer((_: Done) => self ! Done))
 
   override def createReceive(): AbstractActor.Receive = {
     new AbstractActor.Receive(PartialFunction.empty[Any, BoxedUnit])
   }
 
   private def stageToDone(stage: CompletionStage[_]): CompletionStage[Done] =
-    stage.thenApply((_: Any) => Done)
+    stage.thenApply(asJavaFunction((_: Any) => Done))
 
 
   /**
