@@ -71,7 +71,9 @@ object BoundedOrdering {
   def create[A, B <: Comparable[B]](maxBounded: Int, initialId: B, nextId: JFunc[B, B], getId: JFunc[A, B]):
   JFlow[A, A, NotUsed] =
     JFlow.fromGraph(new BoundedOrdering(maxBounded, initialId, nextId.apply, getId.apply)
-    ((x: B, y: B) => x.compareTo(y)))
+    (new Ordering[B] {
+      override def compare(x: B, y: B): Int = x.compareTo(y)
+    }))
 
   /**
    * Java API
