@@ -38,9 +38,9 @@ before_install:
 
 script:
   - sbt ++$TRAVIS_SCALA_VERSION -jvm-opts jvmopts clean coverage test
-  - sbt coverageReport
-  - sbt coverageAggregate
-  - sbt codacyCoverage
+  - sbt ++$TRAVIS_SCALA_VERSION coverageReport
+  - sbt ++$TRAVIS_SCALA_VERSION coverageAggregate
+  - sbt ++$TRAVIS_SCALA_VERSION codacyCoverage
 
 # Undo _JAVA_OPTIONS environment variable
 before_script:
