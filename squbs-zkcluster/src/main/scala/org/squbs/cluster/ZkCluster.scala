@@ -57,28 +57,30 @@ case class ZkCluster(zkAddress: Address,
   private[this] val stopped = new AtomicBoolean(false)
   private[this] val shutdownListeners = new ConcurrentLinkedQueue[(CuratorFramework => Unit)]()
 
-  private[this] val connectionStateListener: ConnectionStateListener = {
-    (client: CuratorFramework, newState: ConnectionState) =>
-      newState match {
-        case ConnectionState.LOST if !stopped.get =>
-          logger.error("[zkCluster] connection lost!")
-          system.eventStream.publish(ZkLost)
-          initialize()
-        case ConnectionState.CONNECTED if !stopped.get =>
-          logger.info("[zkCluster] connected send out the notification")
-          system.eventStream.publish(ZkConnected)
-          znodesSetup()(curatorFwkWithNs())
-          zkClusterActor ! ZkClientUpdated(curatorFwkWithNs())
-        case ConnectionState.SUSPENDED if !stopped.get =>
-          logger.info("[zkCluster] connection suspended suspended")
-          system.eventStream.publish(ZkSuspended)
-        case ConnectionState.RECONNECTED if !stopped.get =>
-          logger.info("[zkCluster] reconnected")
-          system.eventStream.publish(ZkReconnected)
-        case otherState =>
-          logger.warn(s"[zkCluster] connection state changed $otherState. What shall I do?")
+  private[this] val connectionStateListener: ConnectionStateListener =
+    new ConnectionStateListener {
+      override def stateChanged(client: CuratorFramework, newState: ConnectionState): Unit = {
+        newState match {
+          case ConnectionState.LOST if !stopped.get =>
+            logger.error("[zkCluster] connection lost!")
+            system.eventStream.publish(ZkLost)
+            initialize()
+          case ConnectionState.CONNECTED if !stopped.get =>
+            logger.info("[zkCluster] connected send out the notification")
+            system.eventStream.publish(ZkConnected)
+            znodesSetup()(curatorFwkWithNs())
+            zkClusterActor ! ZkClientUpdated(curatorFwkWithNs())
+          case ConnectionState.SUSPENDED if !stopped.get =>
+            logger.info("[zkCluster] connection suspended suspended")
+            system.eventStream.publish(ZkSuspended)
+          case ConnectionState.RECONNECTED if !stopped.get =>
+            logger.info("[zkCluster] reconnected")
+            system.eventStream.publish(ZkReconnected)
+          case otherState =>
+            logger.warn(s"[zkCluster] connection state changed $otherState. What shall I do?")
+        }
       }
-  }
+    }
 
 
   private[this] def znodesSetup()(implicit curatorFwk: CuratorFramework) = {
