@@ -29,7 +29,7 @@ import org.squbs.pipeline.RequestContext;
 import org.squbs.pipeline.japi.PipelineFlowFactory;
 
 //#create-pipelineflowfactory-java
-public class DummyFlowJ implements PipelineFlowFactory {
+public class DummyFlowJ extends PipelineFlowFactory {
 
     final private BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed> dummyBidi =
       BidiFlow.fromGraph(GraphDSL.create(b -> {

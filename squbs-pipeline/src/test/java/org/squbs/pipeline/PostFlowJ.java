@@ -26,7 +26,7 @@ import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.GraphDSL;
 import org.squbs.pipeline.japi.PipelineFlowFactory;
 
-public class PostFlowJ implements PipelineFlowFactory {
+public class PostFlowJ extends PipelineFlowFactory {
     @Override
     public BidiFlow<RequestContext, RequestContext, RequestContext, RequestContext, NotUsed>
     create(Context context, ActorSystem system) {
