@@ -1,6 +1,6 @@
 import Shared._
 
-scalaVersion in ThisBuild := "2.12.8"
+crossScalaVersions in ThisBuild := Seq("2.11.8", "2.12.8")
 
 organization in ThisBuild := "org.squbs"
 
