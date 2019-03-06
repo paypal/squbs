@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 //#create-abortable-pipelineflowfactory-java
-public class DummyFlow2J implements PipelineFlowFactory {
+public class DummyFlow2J extends PipelineFlowFactory {
 
     final private Flow<RequestContext, RequestContext, NotUsed> dummyAborterFlow = Flow.<RequestContext>create().map(rc ->
         rc.getRequest().getHeader("abort").map(x -> rc.abortWith(

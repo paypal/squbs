@@ -37,7 +37,7 @@ package japi {
   /**
     * Java API
     */
-  trait PipelineFlowFactory {
+  abstract class PipelineFlowFactory {
 
     def create(context: Context, system: ActorSystem):
     javadsl.BidiFlow[RequestContext, RequestContext, RequestContext, RequestContext, NotUsed]
