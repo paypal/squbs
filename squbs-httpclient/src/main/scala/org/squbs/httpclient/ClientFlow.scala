@@ -43,6 +43,7 @@ import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 import org.squbs.streams.circuitbreaker.{CircuitBreaker, CircuitBreakerSettings, japi}
 import org.squbs.util.ConfigUtil._
 
+import scala.compat.java8.FunctionConverters._
 import scala.compat.java8.OptionConverters
 import scala.util.{Failure, Success, Try}
 
@@ -130,7 +131,7 @@ object ClientFlow {
 
     defaultResolverRegistrationRecord.computeIfAbsent(
       system.name,
-      (_: String) => ResolverRegistry(system).register[HttpEndpoint](new DefaultHttpEndpointResolver)
+      asJavaFunction((_: String) => ResolverRegistry(system).register[HttpEndpoint](new DefaultHttpEndpointResolver))
       )
 
     val environment = env match {
