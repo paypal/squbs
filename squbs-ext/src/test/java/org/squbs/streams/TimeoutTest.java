@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static akka.pattern.PatternsCS.ask;
+import static scala.compat.java8.JFunction.*;
 
 public class TimeoutTest {
 
@@ -145,7 +146,7 @@ public class TimeoutTest {
                         .map(elem -> (Pair<String, MyContext>)elem);
 
         TimeoutSettings settings = TimeoutSettings.<String, String, MyContext>create(timeout)
-                .withUniqueIdMapper(context -> context.uuid);
+                .withUniqueIdMapper(func(context -> context.uuid));
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> timeoutBidiFlow =
                 Timeout.create(settings);
 
@@ -296,7 +297,7 @@ public class TimeoutTest {
 
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
         TimeoutSettings settings = TimeoutSettings.<String, String, MyContext>create(Timing.timeout())
-                .withUniqueIdMapper(context -> context.uuid)
+                .withUniqueIdMapper(func(context -> context.uuid))
                 .withCleanUp(cleanUp);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> timeoutBidiFlow =
                 Timeout.create(settings);

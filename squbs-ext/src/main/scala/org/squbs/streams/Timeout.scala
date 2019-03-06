@@ -354,7 +354,7 @@ object TimeoutOrdered {
   def create[In, Out](timeout: FiniteDuration,
                       cleanUp: Consumer[Out]):
   akka.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] = {
-    apply(timeout, out => cleanUp.accept(out)).asJava
+    apply(timeout, (out: Out) => cleanUp.accept(out)).asJava
   }
 
   def create[In, Out](timeout: FiniteDuration):

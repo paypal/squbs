@@ -21,6 +21,7 @@ import akka.stream.ActorAttributes.SupervisionStrategy
 import akka.stream._
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 
+import scala.compat.java8.FunctionConverters._
 import scala.util.control.NonFatal
 
 object Deduplicate {
@@ -66,10 +67,10 @@ final class Deduplicate[T, U](key: T => U, duplicateCount: Long = Long.MaxValue,
       override def onPush(): Unit = {
         try {
           val elem = grab(in)
-          val counter = registry.merge(key(elem), MutableLong(1), (old, _) => {
+          val counter = registry.merge(key(elem), MutableLong(1), asJavaBiFunction((old, _) => {
             pull(in)
             if(old.increment() == duplicateCount) null else old
-          })
+          }))
           if(counter != null && counter.value == 1) {
             push(out, elem)
           }
