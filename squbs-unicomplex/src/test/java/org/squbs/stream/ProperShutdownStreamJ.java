@@ -76,7 +76,7 @@ public class ProperShutdownStreamJ extends AbstractPerpetualStream<Pair<ActorRef
         ActorRef actorRef = matValue().first();
         CompletionStage<Long> fCount = matValue().second();
         CompletionStage<Boolean> fStopped =
-                gracefulStop(actorRef, Duration.ofMinutes(Timeouts.awaitMax().toMinutes()));
+                gracefulStop(actorRef, Duration.ofSeconds(Timeouts.awaitMax().toSeconds()));
         return fCount.thenCombine(fStopped, (count, stopped) -> Done.getInstance());
     }
 }
