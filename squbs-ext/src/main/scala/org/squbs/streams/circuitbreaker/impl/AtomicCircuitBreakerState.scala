@@ -20,7 +20,6 @@
 package org.squbs.streams.circuitbreaker.impl
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong}
-import java.time.{Duration => JDuration}
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, Scheduler}
@@ -89,8 +88,8 @@ object AtomicCircuitBreakerState {
     */
   def create(name: String,
              maxFailures: Int,
-             callTimeout: JDuration,
-             resetTimeout: JDuration,
+             callTimeout: java.time.Duration,
+             resetTimeout: java.time.Duration,
              executor: ExecutionContext,
              scheduler: Scheduler): CircuitBreakerState =
     apply(name,
@@ -114,9 +113,9 @@ object AtomicCircuitBreakerState {
     */
   def create(name: String,
              maxFailures: Int,
-             callTimeout: JDuration,
-             resetTimeout: JDuration,
-             maxResetTimeout: JDuration,
+             callTimeout: java.time.Duration,
+             resetTimeout: java.time.Duration,
+             maxResetTimeout: java.time.Duration,
              exponentialBackoffFactor: Double,
              executor: ExecutionContext,
              scheduler: Scheduler): CircuitBreakerState =

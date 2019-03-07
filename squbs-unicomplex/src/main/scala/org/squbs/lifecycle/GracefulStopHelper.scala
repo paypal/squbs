@@ -17,7 +17,6 @@
 package org.squbs.lifecycle
 
 import java.util.concurrent.TimeUnit
-import java.time.{Duration => JDuration}
 
 import akka.actor._
 import akka.pattern.GracefulStopSupport
@@ -96,7 +95,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
     def stopDependencies(msg: Any) = {
       // Note: We need to call the Java API as that will again call the Scala API.
       // Any overrides will now come into picture.
-      Future.sequence(dependencies.map(gracefulStop(_, JDuration.ofMillis(timeout.toMillis), msg).toScala))
+      Future.sequence(dependencies.map(gracefulStop(_, java.time.Duration.ofMillis(timeout.toMillis), msg).toScala))
     }
 
     stopDependencies(GracefulStop).onComplete({
@@ -121,7 +120,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * @param timeout The timeout.
    * @param unit The time unit of the timeout.
    */
-  protected final def defaultMidActorStop(dependencies: java.util.List[ActorRef], duration: JDuration): Unit =
+  protected final def defaultMidActorStop(dependencies: java.util.List[ActorRef], duration: java.time.Duration): Unit =
     defaultMidActorStop(dependencies.asScala, Duration.fromNanos(duration.toNanos))
 
   /**
@@ -139,7 +138,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * @param stopMessage The message to send to the actor for stopping.
    * @return A CompletionStage carrying `true` for success stopping the target.
    */
-  protected def gracefulStop(target: ActorRef, duration: JDuration, stopMessage: Any):
+  protected def gracefulStop(target: ActorRef, duration: java.time.Duration, stopMessage: Any):
   java.util.concurrent.CompletionStage[java.lang.Boolean] =
     gracefulStop(target, Duration.fromNanos(duration.toNanos), stopMessage).toJava
       .thenApply((t: Boolean) => t:java.lang.Boolean)
@@ -151,7 +150,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * @param unit The time unit of the timeout.
    * @return A CompletionStage carrying `true` for success stopping the target.
    */
-  protected final def gracefulStop(target: ActorRef, duration: JDuration):
+  protected final def gracefulStop(target: ActorRef, duration: java.time.Duration):
       java.util.concurrent.CompletionStage[java.lang.Boolean] =
     gracefulStop(target, duration, PoisonPill)
 }

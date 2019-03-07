@@ -17,7 +17,6 @@
 package org.squbs.pattern.timeoutpolicy
 
 import java.lang.management.ManagementFactory
-import java.time.{Duration => JDuration}
 import java.util.concurrent.TimeUnit
 
 import akka.agent.Agent
@@ -94,7 +93,7 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
 
   // API for java
   def execute[T](f: TimedFn[T]): T = {
-    execute((t: FiniteDuration) => f.get(JDuration.ofNanos(t.toNanos)))
+    execute((t: FiniteDuration) => f.get(java.time.Duration.ofNanos(t.toNanos)))
   }
 
   /**
@@ -278,7 +277,7 @@ object TimeoutPolicy extends LazyLogging {
  * Java API
  */
 object TimeoutPolicyBuilder {
-  def create(initial: JDuration, ec: ExecutionContext) =
+  def create(initial: java.time.Duration, ec: ExecutionContext) =
     TimeoutPolicyBuilder(initial = FiniteDuration(initial.getNano, TimeUnit.NANOSECONDS))(ec)
 }
 
