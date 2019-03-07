@@ -43,7 +43,7 @@ Source("a" :: "b" :: "c" :: Nil)
 ##### Java
 
 ```java
-final FiniteDuration duration = Duration.create(1, TimeUnit.SECONDS);
+final Duration duration = Duration.ofSeconds(1);
 
 final BidiFlow<String, String, String, Try<String>, NotUsed> timeout = TimeoutOrdered.create(duration);
 
@@ -93,7 +93,7 @@ public class Timeout {
 This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair<In, Context>` and outputs a `akka.japi.Pair<Out, Context>`.
 
 ```java
-final FiniteDuration duration = Duration.create(1, TimeUnit.SECONDS);
+final Duration duration = Duration.ofSeconds(1);
 
 final BidiFlow<Pair<String, UUID>,
                Pair<String, UUID>,
@@ -164,7 +164,7 @@ class MyContext {
     }
 }
 
-final FiniteDuration duration = Duration.create(1, TimeUnit.SECONDS);
+final Duration duration = Duration.ofSeconds(1);
 
 final TimeoutSettings settings =
     TimeoutSettings.<String, String, Context>create(duration)
@@ -206,7 +206,7 @@ val timeout = Timeout(settings)
 
 ###### Java
 ```java
-final FiniteDuration duration = Duration.create(20, TimeUnit.MILLISECONDS);
+final Duration duration = Duration.ofMillis(20);
 
 final TimeoutSettings settings =
     TimeoutSettings.<HttpRequest, HttpResponse, Context>create(duration)
