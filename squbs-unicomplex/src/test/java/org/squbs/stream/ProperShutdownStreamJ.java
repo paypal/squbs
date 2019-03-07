@@ -9,12 +9,10 @@ import akka.stream.FlowShape;
 import akka.stream.ThrottleMode;
 import akka.stream.javadsl.*;
 import org.squbs.unicomplex.Timeouts;
-import scala.concurrent.duration.FiniteDuration;
 
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ProperShutdownStreamJ extends AbstractPerpetualStream<Pair<ActorRef, CompletionStage<Long>>> {
@@ -52,8 +50,7 @@ public class ProperShutdownStreamJ extends AbstractPerpetualStream<Pair<ActorRef
     public RunnableGraph<Pair<ActorRef, CompletionStage<Long>>> streamGraph() {
         return RunnableGraph.fromGraph(GraphDSL.create(managedSource, counter, (a, b) -> Pair.create(a.second(), b),
                 (builder, source, sink) -> {
-                    FlowShape<Integer, Integer> throttle = builder.add(Flow.<Integer>create().throttle(5000,
-                            FiniteDuration.create(1, TimeUnit.SECONDS), 1000,
+                    FlowShape<Integer, Integer> throttle = builder.add(Flow.<Integer>create().throttle(5000, Duration.ofSeconds(1), 1000,
                             ThrottleMode.shaping()));
                     builder.from(source).via(throttle).to(sink);
                     return ClosedShape.getInstance();

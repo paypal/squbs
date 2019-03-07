@@ -11,15 +11,14 @@ import akka.stream.SourceShape;
 import akka.stream.ThrottleMode;
 import akka.stream.javadsl.*;
 import org.squbs.unicomplex.Timeouts;
-import scala.concurrent.duration.FiniteDuration;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class KillSwitchWithChildActorStreamJ  extends AbstractPerpetualStream<CompletionStage<Long>> {
+public class KillSwitchWithChildActorStreamJ extends AbstractPerpetualStream<CompletionStage<Long>> {
 
     static final AtomicLong genCount = new AtomicLong(0L);
 
@@ -52,7 +51,7 @@ public class KillSwitchWithChildActorStreamJ  extends AbstractPerpetualStream<Co
             );
 
             FlowShape<Integer, Integer> throttle = builder.add(Flow.<Integer>create().throttle(5000,
-                    FiniteDuration.create(1, TimeUnit.SECONDS), 1000,
+                    Duration.ofSeconds(1), 1000,
                     ThrottleMode.shaping()));
 
             FlowShape<Integer, Integer> killSwitch = builder.add(killSwitch().<Integer>flow());
