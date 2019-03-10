@@ -26,6 +26,7 @@ import akka.testkit.TestKit
 import org.scalatest.{AsyncFlatSpecLike, Matchers}
 import org.squbs.streams.UniqueId.{Envelope, Provider}
 
+import scala.compat.java8.FunctionConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
@@ -220,7 +221,7 @@ class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with Async
     }
 
     val settings = TimeoutSettings[String, String, UUID](timeout)
-      .withCleanUp((s: String) => promiseMap.get(s).foreach(_.success(true)))
+      .withCleanUp(asJavaConsumer((s: String) => promiseMap.get(s).foreach(_.success(true))))
     val timeoutBidiFlow = Timeout(settings)
     val result = Source("a" :: "b" :: "c" :: Nil)
       .map { s => (s, UUID.randomUUID()) }

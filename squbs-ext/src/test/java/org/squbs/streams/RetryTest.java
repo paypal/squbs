@@ -45,6 +45,7 @@ import java.util.function.Function;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
+import static scala.compat.java8.JFunction.*;
 
 public class RetryTest {
 
@@ -147,7 +148,7 @@ public class RetryTest {
             });
 
         RetrySettings settings = RetrySettings.<String, String, MyContext>create(3)
-                .withUniqueIdMapper(context -> context.uuid);
+                .withUniqueIdMapper(func(context -> context.uuid));
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =
                 Retry.create(settings);
@@ -259,7 +260,7 @@ public class RetryTest {
                 out -> out.isFailure() || out.equals(Success.apply("a")); // treat "a" as a failure for retry
 
         RetrySettings settings = RetrySettings.<String, String, MyContext>create(3)
-                .withUniqueIdMapper(context -> context.uuid)
+                .withUniqueIdMapper(func(context -> context.uuid))
                 .withFailureDecider(failureDecider);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow = Retry.create(settings);
@@ -293,7 +294,7 @@ public class RetryTest {
         final RetrySettings<String, String, MyContext> retrySettings =
                 RetrySettings.<String, String, MyContext>create(3)
                     .withFailureDecider(failureDecider)
-                    .withUniqueIdMapper(context -> context.uuid);
+                    .withUniqueIdMapper(func(context -> context.uuid));
 
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>,
                 Pair<Try<String>, MyContext>, NotUsed> retryFlow =

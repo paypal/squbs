@@ -7,7 +7,7 @@ scalacOptions in ThisBuild ++= Seq(    // Copied from https://tpolecat.github.io
   "-deprecation",                      // Emit warning and location for usages of deprecated APIs.
   "-encoding", "utf-8",                // Specify character encoding used by source files.
 //  "-explaintypes",                     // Explain type errors in more detail.
-  "-feature",                          // Emit warning and location for usages of features that should be imported explicitly.
+  "-feature"                          // Emit warning and location for usages of features that should be imported explicitly.
 /*  "-language:existentials",            // Existential types (besides wildcard types) can be written and inferred
   "-language:experimental.macros",     // Allow macro definition (besides implementation and application)
   "-language:higherKinds",             // Allow higher-kinded types
@@ -50,8 +50,14 @@ scalacOptions in ThisBuild ++= Seq(    // Copied from https://tpolecat.github.io
   //  "-Ypartial-unification",             // Enable partial unification in type constructor inference
   //  "-Xfatal-warnings",                  // Fail the compilation if there are any warnings.
 */
-  "-Ybackend-parallelism", par.toString
 )
+
+scalacOptions in ThisBuild ++= {
+  CrossVersion.binaryScalaVersion(scalaVersion.value) match {
+    case "2.12" => Seq("-Ybackend-parallelism", par.toString)
+    case _ => Nil
+  }
+}
 
 javacOptions in Compile ++= Seq(
   "-source", javaVersion,
