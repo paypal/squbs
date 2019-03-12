@@ -295,7 +295,7 @@ public class TimeoutTest {
 
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
         TimeoutSettings settings = TimeoutSettings.<String, String, MyContext>create(Duration.ofSeconds(Timing.timeout().toSeconds()))
-                .withUniqueIdMapper(context -> context.uuid)
+                .withUniqueIdMapper(func(context -> context.uuid))
                 .withCleanUp(cleanUp);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> timeoutBidiFlow =
                 Timeout.create(settings);
