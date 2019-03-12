@@ -29,8 +29,6 @@ import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import org.junit.Assert;
 import org.junit.Test;
-import scala.concurrent.duration.Duration;
-import scala.concurrent.duration.FiniteDuration;
 import scala.util.Failure;
 import scala.util.Success;
 import scala.util.Try;
@@ -40,9 +38,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.time.Duration;
 
 import static akka.pattern.PatternsCS.ask;
 import static scala.compat.java8.JFunction.*;
@@ -51,7 +49,7 @@ public class TimeoutTest {
 
     final ActorSystem system = ActorSystem.create("TimeoutBidiFlowTest");
     final Materializer mat = ActorMaterializer.create(system);
-    final FiniteDuration timeout = Duration.create(300, TimeUnit.MILLISECONDS);
+    final Duration timeout = Duration.ofMillis(300);
     final Try<String> timeoutFailure = Failure.apply(new FlowTimeoutException("Flow timed out!"));
 
     @Test
@@ -88,7 +86,7 @@ public class TimeoutTest {
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
 
         final BidiFlow<String, String, String, Try<String>, NotUsed> timeoutBidiFlow =
-                TimeoutOrdered.create(Timing.timeout(), cleanUp);
+                TimeoutOrdered.create(Duration.ofSeconds(Timing.timeout().toSeconds()), cleanUp);
 
         final CompletionStage<List<Try<String>>> result =
                 Source.from(Arrays.asList("a", "b", "c"))
@@ -257,7 +255,7 @@ public class TimeoutTest {
                         .map(elem -> (Pair<String, UUID>)elem);
 
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
-        TimeoutSettings settings = TimeoutSettings.<String, String, UUID>create(Timing.timeout()).withCleanUp(cleanUp);
+        TimeoutSettings settings = TimeoutSettings.<String, String, UUID>create(Duration.ofSeconds(Timing.timeout().toSeconds())).withCleanUp(cleanUp);
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> timeoutBidiFlow =
                 Timeout.create(settings);
 
@@ -296,7 +294,7 @@ public class TimeoutTest {
                         .map(elem -> (Pair<String, MyContext>)elem);
 
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
-        TimeoutSettings settings = TimeoutSettings.<String, String, MyContext>create(Timing.timeout())
+        TimeoutSettings settings = TimeoutSettings.<String, String, MyContext>create(Duration.ofSeconds(Timing.timeout().toSeconds()))
                 .withUniqueIdMapper(func(context -> context.uuid))
                 .withCleanUp(cleanUp);
         final BidiFlow<Pair<String, MyContext>, Pair<String, MyContext>, Pair<String, MyContext>, Pair<Try<String>, MyContext>, NotUsed> timeoutBidiFlow =

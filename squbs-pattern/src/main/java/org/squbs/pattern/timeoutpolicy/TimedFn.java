@@ -16,9 +16,9 @@
 
 package org.squbs.pattern.timeoutpolicy;
 
-import scala.concurrent.duration.FiniteDuration;
+import java.time.Duration;
 
 @FunctionalInterface
 public interface TimedFn<T> {
-    T get(FiniteDuration t) throws Exception;
+    T get(Duration t) throws Exception;
 }
