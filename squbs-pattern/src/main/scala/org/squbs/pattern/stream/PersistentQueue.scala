@@ -24,8 +24,10 @@ import net.openhft.chronicle.core.OS
 import net.openhft.chronicle.queue.ChronicleQueueBuilder
 import net.openhft.chronicle.queue.impl.single.SingleChronicleQueue
 import net.openhft.chronicle.queue.impl.{RollingResourcesCache, StoreFileListener}
-import net.openhft.chronicle.wire.{WireIn, WireOut}
+import net.openhft.chronicle.wire.{ReadMarshallable, WireIn, WireOut, WriteMarshallable}
 import org.slf4j.LoggerFactory
+
+import scala.compat.java8.FunctionConverters._
 
 case class Event[T](outputPortId: Int, index: Long, entry: T)
 /**
@@ -81,8 +83,8 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
   // The value is based on epoch time and grows incrementally.
   // https://github.com/OpenHFT/Chronicle-Queue/blob/chronicle-queue-4.16.5/src/main/java/net/openhft/chronicle/queue/RollCycles.java#L85
   private[stream] val fileIdParser = new RollingResourcesCache(queue.rollCycle(), queue.epoch(),
-    (name: String) => new File(builder.path(), name + SUFFIX),
-    (file: File) => file.getName.stripSuffix(SUFFIX)
+    asJavaFunction((name: String) => new File(builder.path(), name + SUFFIX)),
+    asJavaFunction((file: File) => file.getName.stripSuffix(SUFFIX))
   )
 
   private def mountIndexFile(): Unit = {
@@ -109,7 +111,9 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
     * @param element The element to be added.
     */
   def enqueue(element: T): Unit =
-    appender.writeDocument((wire: WireOut) => serializer.writeElement(element, wire))
+    appender.writeDocument(new WriteMarshallable {
+      override def writeMarshallable(wire: WireOut): Unit = serializer.writeElement(element, wire)
+    })
 
   /**
     * Fetches the first element from the queue and removes it from the queue.
@@ -119,10 +123,15 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
   def dequeue(outputPortId: Int = 0): Option[Event[T]] = {
     var output: Option[Event[T]] = None
     if (reader(outputPortId).readDocument(
-      (wire: WireIn) => output = {
-        val element = serializer.readElement(wire)
-        val index = reader(outputPortId).index
-        element map { e => Event[T](outputPortId, index, e) }
+      new ReadMarshallable {
+        override def readMarshallable(wire: WireIn): Unit = {
+          output = {
+            val element = serializer.readElement(wire)
+            val index = reader(outputPortId).index
+            element map { e => Event[T](outputPortId, index, e) }
+          }
+
+        }
       }
     )) output else None
   }

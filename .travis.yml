@@ -1,5 +1,6 @@
 language: scala
 scala:
+ - 2.11.12
  - 2.12.8
 jdk:
  - oraclejdk8
@@ -36,10 +37,10 @@ before_install:
   fi
 
 script:
-  - sbt -jvm-opts jvmopts clean coverage test
-  - sbt coverageReport
-  - sbt coverageAggregate
-  - sbt codacyCoverage
+  - sbt ++$TRAVIS_SCALA_VERSION -jvm-opts jvmopts clean coverage test
+  - sbt ++$TRAVIS_SCALA_VERSION coverageReport
+  - sbt ++$TRAVIS_SCALA_VERSION coverageAggregate
+  - sbt ++$TRAVIS_SCALA_VERSION codacyCoverage
 
 # Undo _JAVA_OPTIONS environment variable
 before_script:
@@ -49,7 +50,7 @@ after_success:
  - >
   test "${TRAVIS_PULL_REQUEST}" = 'false' &&
   test "${TRAVIS_JDK_VERSION}" = 'oraclejdk8' &&
-  sbt 'set credentials += Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", System.getenv("SONATYPE_USER"), System.getenv("SONATYPE_PASS"))' clean publishSigned
+  sbt ++$TRAVIS_SCALA_VERSION 'set credentials += Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", System.getenv("SONATYPE_USER"), System.getenv("SONATYPE_PASS"))' clean publishSigned
 
 notifications:
   webhooks:

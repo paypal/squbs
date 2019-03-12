@@ -23,6 +23,7 @@ import akka.pattern.GracefulStopSupport
 import org.squbs.unicomplex.{StopTimeout, Unicomplex}
 
 import scala.compat.java8.FutureConverters._
+import scala.compat.java8.FunctionConverters._
 import scala.collection.JavaConverters._
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -140,8 +141,8 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    */
   protected def gracefulStop(target: ActorRef, duration: java.time.Duration, stopMessage: Any):
   java.util.concurrent.CompletionStage[java.lang.Boolean] =
-    gracefulStop(target, Duration.fromNanos(duration.toNanos), stopMessage).toJava
-      .thenApply((t: Boolean) => t:java.lang.Boolean)
+  gracefulStop(target, Duration.fromNanos(duration.toNanos), stopMessage).toJava
+    .thenApply((t: Boolean) => t:java.lang.Boolean)
 
   /**
    * Java API for gracefulStop using the default message - PoisonPill.
