@@ -142,9 +142,9 @@ public class ClientFlowTest {
         assertJmxValue(oNameHC, "MaxConnections", 41);
         assertJmxValue(oNameHC, "Environment", "PROD");
         assertJmxValue(oNameCB, "MaxFailures", 11);
-        assertJmxValue(oNameCB, "CallTimeout", "12000 milliseconds"); // 12 seconds
-        assertJmxValue(oNameCB, "ResetTimeout", "780000 milliseconds"); // 13 minutes
-        assertJmxValue(oNameCB, "MaxResetTimeout", "1209600000 milliseconds"); // 14 days
+        assertJmxValue(oNameCB, "CallTimeout", "12 seconds");
+        assertJmxValue(oNameCB, "ResetTimeout", "13 minutes");
+        assertJmxValue(oNameCB, "MaxResetTimeout", "14 days");
         assertJmxValue(oNameCB, "ExponentialBackoffFactor", 16.0);
     }
 
@@ -189,9 +189,9 @@ public class ClientFlowTest {
         assertJmxValue(oNameHC, "MaxConnections", 41);
         assertJmxValue(oNameHC, "Environment", "PROD");
         assertJmxValue(oNameCB, "MaxFailures", 11);
-        assertJmxValue(oNameCB, "CallTimeout", "12000 milliseconds"); // 12 seconds
-        assertJmxValue(oNameCB, "ResetTimeout", "780000 milliseconds"); // 13 minutes
-        assertJmxValue(oNameCB, "MaxResetTimeout", "1209600000 milliseconds"); // 14 days
+        assertJmxValue(oNameCB, "CallTimeout", "12 seconds");
+        assertJmxValue(oNameCB, "ResetTimeout", "13 minutes");
+        assertJmxValue(oNameCB, "MaxResetTimeout", "14 days");
         assertJmxValue(oNameCB, "ExponentialBackoffFactor", 16.0);
     }
 

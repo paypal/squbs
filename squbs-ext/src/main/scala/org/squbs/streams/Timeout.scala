@@ -27,6 +27,7 @@ import akka.stream._
 import akka.stream.scaladsl.{BidiFlow, Flow}
 import akka.stream.stage.{GraphStage, _}
 import com.typesafe.scalalogging.LazyLogging
+import org.squbs.util.DurationConverters
 import org.squbs.streams.TimeoutBidi._
 
 import scala.collection.mutable
@@ -193,7 +194,7 @@ object Timeout {
     */
   def create[In, Out, Context](timeout: java.time.Duration):
   javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] =
-    toJava(apply[In, Out, Context](FiniteDuration(timeout.toMillis, TimeUnit.MILLISECONDS)))
+    toJava(apply[In, Out, Context](DurationConverters.toScala(timeout)))
 
 }
 
@@ -355,7 +356,7 @@ object TimeoutOrdered {
   def create[In, Out](timeout: java.time.Duration,
                       cleanUp: Consumer[Out]):
   akka.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] = {
-    apply(FiniteDuration(timeout.toMillis, TimeUnit.MILLISECONDS), (out: Out) => cleanUp.accept(out)).asJava
+    apply(DurationConverters.toScala(timeout), (out: Out) => cleanUp.accept(out)).asJava
   }
 
   /**
@@ -367,7 +368,7 @@ object TimeoutOrdered {
     */
   def create[In, Out](timeout: java.time.Duration):
   akka.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] = {
-    apply(FiniteDuration(timeout.toMillis, TimeUnit.MILLISECONDS), (_: Out) => ()).asJava
+    apply(DurationConverters.toScala(timeout), (_: Out) => ()).asJava
   }
 }
 
