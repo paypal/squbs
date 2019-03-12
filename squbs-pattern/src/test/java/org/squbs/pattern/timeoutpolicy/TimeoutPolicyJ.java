@@ -17,6 +17,7 @@
 package org.squbs.pattern.timeoutpolicy;
 
 import akka.actor.ActorSystem;
+import org.squbs.util.DurationConverters;
 
 import java.time.Duration;
 import java.util.concurrent.Callable;
@@ -73,7 +74,7 @@ public class TimeoutPolicyJ {
         } catch (Exception e) {
             System.out.println(e);
         }
-        return Duration.ofMillis(policy.waitTime().toMillis());
+        return DurationConverters.toJava(policy.waitTime());
     }
 
     public Duration invokeExecuteClosure(TimeoutPolicy policy) {
@@ -85,20 +86,20 @@ public class TimeoutPolicyJ {
         } catch (Exception e) {
             System.out.println(e);
         }
-        return Duration.ofMillis(policy.waitTime().toMillis());
+        return DurationConverters.toJava(policy.waitTime());
     }
 
     public Duration invokeInline(TimeoutPolicy policy) {
         TimeoutPolicy.TimeoutTransaction tx = policy.transaction();
         try {
-            return timedFn.get(Duration.ofMillis(tx.waitTime().toMillis()));
+            return timedFn.get(DurationConverters.toJava(tx.waitTime()));
         } catch (Exception e) {
             System.out.println(e);
         } finally {
             tx.end();
         }
-        return Duration.ofMillis(policy.waitTime().toMillis());
-    }
+        return DurationConverters.toJava(policy.waitTime());
+   }
 
     public TimeoutPolicy getFixedTimeoutPolicy() {
         return fixedTimeoutPolicy;
