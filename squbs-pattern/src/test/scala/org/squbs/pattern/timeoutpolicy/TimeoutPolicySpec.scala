@@ -42,8 +42,8 @@ class TimeoutPolicySpec extends FlatSpecLike with Matchers{
   "Run FixedTimeoutPolicy in function" should "work" in {
     val policy = TimeoutPolicy(name = Some("test"), initial = 1.second, fixedRule, minSamples = 1)
 
-    for(i <- 0 until 10) {
-      policy.execute(timeout => {
+    for(_ <- 0 until 10) {
+      policy.execute((timeout: FiniteDuration) => {
         timeout should be(1.second)
         Thread.sleep(10)
       })

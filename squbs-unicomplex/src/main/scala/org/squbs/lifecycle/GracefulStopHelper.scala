@@ -96,7 +96,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
     def stopDependencies(msg: Any) = {
       // Note: We need to call the Java API as that will again call the Scala API.
       // Any overrides will now come into picture.
-      Future.sequence(dependencies.map(gracefulStop(_, timeout.toMillis, TimeUnit.MILLISECONDS, msg).toScala))
+      Future.sequence(dependencies.map(gracefulStop(_, java.time.Duration.ofMillis(timeout.toMillis), msg).toScala))
     }
 
     stopDependencies(GracefulStop).onComplete({
@@ -121,8 +121,8 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * @param timeout The timeout.
    * @param unit The time unit of the timeout.
    */
-  protected final def defaultMidActorStop(dependencies: java.util.List[ActorRef], timeout: Long, unit: TimeUnit): Unit =
-    defaultMidActorStop(dependencies.asScala, FiniteDuration(timeout, unit))
+  protected final def defaultMidActorStop(dependencies: java.util.List[ActorRef], duration: java.time.Duration): Unit =
+    defaultMidActorStop(dependencies.asScala, Duration.fromNanos(duration.toNanos))
 
   /**
    * Java API stopping non-leaf actors with default timeout.
@@ -139,10 +139,10 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * @param stopMessage The message to send to the actor for stopping.
    * @return A CompletionStage carrying `true` for success stopping the target.
    */
-  protected def gracefulStop(target: ActorRef, timeout: Long, unit: TimeUnit, stopMessage: Any):
+  protected def gracefulStop(target: ActorRef, duration: java.time.Duration, stopMessage: Any):
   java.util.concurrent.CompletionStage[java.lang.Boolean] =
-    gracefulStop(target, FiniteDuration(timeout, unit), stopMessage).toJava
-      .thenApply(asJavaFunction((t: Boolean) => t:java.lang.Boolean))
+  gracefulStop(target, Duration.fromNanos(duration.toNanos), stopMessage).toJava
+    .thenApply(asJavaFunction((t: Boolean) => t:java.lang.Boolean))
 
   /**
    * Java API for gracefulStop using the default message - PoisonPill.
@@ -151,9 +151,9 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * @param unit The time unit of the timeout.
    * @return A CompletionStage carrying `true` for success stopping the target.
    */
-  protected final def gracefulStop(target: ActorRef, timeout: Long, unit: TimeUnit):
+  protected final def gracefulStop(target: ActorRef, duration: java.time.Duration):
       java.util.concurrent.CompletionStage[java.lang.Boolean] =
-    gracefulStop(target, timeout, unit, PoisonPill)
+    gracefulStop(target, duration, PoisonPill)
 }
 
 /**

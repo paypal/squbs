@@ -77,7 +77,7 @@ In the Java API, we create the timeout policy using a policy builder, as can be 
 
    ```java
    TimeoutPolicy fixedTimeoutPolicy = TimeoutPolicyBuilder
-       .create(new FiniteDuration(INITIAL_TIMEOUT, MILLISECONDS), fromExecutorService(es))
+       .create(Duration.ofMillis(INITIAL_TIMEOUT), fromExecutorService(es))
        .minSamples(1)
        .rule(TimeoutPolicyType.FIXED)
        .build();
@@ -87,7 +87,7 @@ In the Java API, we create the timeout policy using a policy builder, as can be 
  
    ```java
    TimeoutPolicy sigmaTimeoutPolicy = TimeoutPolicyBuilder
-       .create(new FiniteDuration(INITIAL_TIMEOUT, MILLISECONDS), system.dispatcher())
+       .create(Duration.ofMillis(INITIAL_TIMEOUT), system.dispatcher())
        .minSamples(1)
        .name("MySigmaPolicy")
        .rule(3.0, TimeoutPolicyType.SIGMA)
@@ -98,7 +98,7 @@ In the Java API, we create the timeout policy using a policy builder, as can be 
 
    ```java
    TimeoutPolicy percentileTimeoutPolicy = TimeoutPolicyBuilder
-       .create(new FiniteDuration(INITIAL_TIMEOUT, MILLISECONDS), system.dispatcher())
+       .create(Duration.ofMillis(INITIAL_TIMEOUT),, system.dispatcher())
        .minSamples(1)
        .name("PERCENTILE")
        .rule(95, TimeoutPolicyType.PERCENTILE)
@@ -108,7 +108,7 @@ In the Java API, we create the timeout policy using a policy builder, as can be 
 Then, to use the timeout policy, just execute your timed call inside the closure as follows:
 
 ```java
-policy.execute((FiniteDuration t) -> {
+policy.execute((Duration t) -> {
     return es.submit(timedCall).get(t.toMillis() + 20, MILLISECONDS);
 });
 ```
@@ -118,7 +118,7 @@ Or, you can use the non-closure version of the call as follows:
 ```java
 TimeoutPolicy.TimeoutTransaction tx = policy.transaction();
 try {
-  return timedFn.get(tx.waitTime());
+  return timedFn.get(Duration.ofMillis(tx.waitTime().toMillis()));
 } catch (Exception e) {
   System.out.println(e);
 } finally {
