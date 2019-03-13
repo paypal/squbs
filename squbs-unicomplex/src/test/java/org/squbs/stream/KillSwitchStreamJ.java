@@ -8,12 +8,10 @@ import akka.stream.SourceShape;
 import akka.stream.ThrottleMode;
 import akka.stream.javadsl.*;
 import org.squbs.unicomplex.Timeouts;
-import scala.concurrent.duration.FiniteDuration;
 
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class KillSwitchStreamJ extends AbstractPerpetualStream<CompletionStage<Long>> {
