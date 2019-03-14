@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor._
 import akka.pattern.GracefulStopSupport
 import org.squbs.unicomplex.{StopTimeout, Unicomplex}
+import org.squbs.util.DurationConverters
 
 import scala.compat.java8.FutureConverters._
 import scala.compat.java8.FunctionConverters._
@@ -96,7 +97,7 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
     def stopDependencies(msg: Any) = {
       // Note: We need to call the Java API as that will again call the Scala API.
       // Any overrides will now come into picture.
-      Future.sequence(dependencies.map(gracefulStop(_, java.time.Duration.ofMillis(timeout.toMillis), msg).toScala))
+      Future.sequence(dependencies.map(gracefulStop(_, DurationConverters.toJava(timeout), msg).toScala))
     }
 
     stopDependencies(GracefulStop).onComplete({
@@ -119,10 +120,9 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * Java API stopping non-leaf actors.
    * @param dependencies All non-leaf actors to be stopped.
    * @param timeout The timeout.
-   * @param unit The time unit of the timeout.
    */
-  protected final def defaultMidActorStop(dependencies: java.util.List[ActorRef], duration: java.time.Duration): Unit =
-    defaultMidActorStop(dependencies.asScala, Duration.fromNanos(duration.toNanos))
+  protected final def defaultMidActorStop(dependencies: java.util.List[ActorRef], timeout: java.time.Duration): Unit =
+    defaultMidActorStop(dependencies.asScala, DurationConverters.toScala(timeout))
 
   /**
    * Java API stopping non-leaf actors with default timeout.
@@ -135,25 +135,23 @@ trait GracefulStopHelper extends GracefulStopSupport with ActorLogging{this: Act
    * Java API for gracefulStop.
    * @param target The target actor to stop.
    * @param timeout The timeout.
-   * @param unit The time unit of the timeout.
    * @param stopMessage The message to send to the actor for stopping.
    * @return A CompletionStage carrying `true` for success stopping the target.
    */
-  protected def gracefulStop(target: ActorRef, duration: java.time.Duration, stopMessage: Any):
-  java.util.concurrent.CompletionStage[java.lang.Boolean] =
-  gracefulStop(target, Duration.fromNanos(duration.toNanos), stopMessage).toJava
-    .thenApply(asJavaFunction((t: Boolean) => t:java.lang.Boolean))
+  protected def gracefulStop(target: ActorRef, timeout: java.time.Duration, stopMessage: Any):
+      java.util.concurrent.CompletionStage[java.lang.Boolean] =
+    gracefulStop(target, DurationConverters.toScala(timeout), stopMessage).toJava
+      .thenApply(asJavaFunction((t: Boolean) => t:java.lang.Boolean))
 
   /**
    * Java API for gracefulStop using the default message - PoisonPill.
    * @param target The target actor to stop.
    * @param timeout The timeout.
-   * @param unit The time unit of the timeout.
    * @return A CompletionStage carrying `true` for success stopping the target.
    */
-  protected final def gracefulStop(target: ActorRef, duration: java.time.Duration):
+  protected final def gracefulStop(target: ActorRef, timeout: java.time.Duration):
       java.util.concurrent.CompletionStage[java.lang.Boolean] =
-    gracefulStop(target, duration, PoisonPill)
+    gracefulStop(target, timeout, PoisonPill)
 }
 
 /**

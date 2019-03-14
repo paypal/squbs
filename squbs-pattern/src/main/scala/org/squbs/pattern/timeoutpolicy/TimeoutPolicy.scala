@@ -25,6 +25,7 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import org.squbs.util.DurationConverters._
 
 /**
  *
@@ -93,7 +94,7 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
 
   // API for java
   def execute[T](f: TimedFn[T]): T = {
-    execute((t: FiniteDuration) => f.get(java.time.Duration.ofNanos(t.toNanos)))
+    execute((t: FiniteDuration) => f.get(toJava(t)))
   }
 
   /**
@@ -278,7 +279,7 @@ object TimeoutPolicy extends LazyLogging {
  */
 object TimeoutPolicyBuilder {
   def create(initial: java.time.Duration, ec: ExecutionContext) =
-    TimeoutPolicyBuilder(initial = FiniteDuration(initial.getNano, TimeUnit.NANOSECONDS))(ec)
+    TimeoutPolicyBuilder(initial = toScala(initial))(ec)
 }
 
 case class TimeoutPolicyBuilder(name: Option[String] = None,

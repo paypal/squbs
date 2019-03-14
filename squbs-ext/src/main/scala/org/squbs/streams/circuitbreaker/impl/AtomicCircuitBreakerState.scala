@@ -32,6 +32,8 @@ import org.squbs.metrics.MetricsExtension
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
+import org.squbs.util.DurationConverters._
+
 object AtomicCircuitBreakerState {
 
   /**
@@ -92,11 +94,7 @@ object AtomicCircuitBreakerState {
              resetTimeout: java.time.Duration,
              executor: ExecutionContext,
              scheduler: Scheduler): CircuitBreakerState =
-    apply(name,
-      maxFailures,
-      FiniteDuration(callTimeout.toMillis, TimeUnit.MILLISECONDS),
-      FiniteDuration(resetTimeout.toMillis, TimeUnit.MILLISECONDS)
-    )(executor, scheduler)
+    apply(name, maxFailures, toScala(callTimeout), toScala(resetTimeout))(executor, scheduler)
 
   /**
     * Java API
@@ -119,13 +117,8 @@ object AtomicCircuitBreakerState {
              exponentialBackoffFactor: Double,
              executor: ExecutionContext,
              scheduler: Scheduler): CircuitBreakerState =
-    apply(name,
-      maxFailures,
-      FiniteDuration(callTimeout.toMillis, TimeUnit.MILLISECONDS),
-      FiniteDuration(resetTimeout.toMillis, TimeUnit.MILLISECONDS),
-      FiniteDuration(maxResetTimeout.toMillis, TimeUnit.MILLISECONDS),
-      exponentialBackoffFactor
-    )(executor, scheduler)
+    apply(name, maxFailures, toScala(callTimeout), toScala(resetTimeout), toScala(maxResetTimeout),
+      exponentialBackoffFactor)(executor, scheduler)
 
   /**
     * Java API
