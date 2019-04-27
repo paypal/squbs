@@ -1,6 +1,6 @@
 # Unicomplex & Cube Bootstrapping
 
-squbs comes with a default bootstrap class `org.squbs.unicomplex.Bootstrap`. This can be started from IDEs, command line, sbt, or even Maven. Bootstrap scans the class loader and finds META-INF/squbs-meta.&lt;ext&gt; in each loaded jar resource.
+squbs comes with a default bootstrap class `org.squbs.unicomplex.Bootstrap`. This can be started from IDEs, command line, sbt, or even Maven. Bootstrap scans the class path and finds META-INF/squbs-meta.&lt;ext&gt; in each loaded jar resource.
 If squbs metadata is available, the jar resource is treated as squbs cube or extension and initialized according to the metadata declarations. The bootstrap then first initializes extensions, cubes, then service handlers last regardless of
 their sequence in the classpath.
 
