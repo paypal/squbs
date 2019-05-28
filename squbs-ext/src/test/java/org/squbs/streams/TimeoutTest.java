@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.time.Duration;
 
-import static akka.pattern.PatternsCS.ask;
+import static akka.pattern.Patterns.ask;
 import static scala.compat.java8.JFunction.*;
 
 public class TimeoutTest {
@@ -57,7 +57,7 @@ public class TimeoutTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<String, String, NotUsed> flow =
                 Flow.<String>create()
-                        .mapAsync(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsync(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (String)elem);
 
 
@@ -80,7 +80,7 @@ public class TimeoutTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<String, String, NotUsed> flow =
                 Flow.<String>create()
-                        .mapAsync(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsync(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (String)elem);
 
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
@@ -103,7 +103,7 @@ public class TimeoutTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, UUID>, Pair<String, UUID>, NotUsed> flow =
                 Flow.<Pair<String, UUID>>create()
-                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (Pair<String, UUID>)elem);
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> timeoutBidiFlow =
@@ -140,7 +140,7 @@ public class TimeoutTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
                 Flow.<Pair<String, MyContext>>create()
-                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (Pair<String, MyContext>)elem);
 
         TimeoutSettings settings = TimeoutSettings.<String, String, MyContext>create(timeout)
@@ -186,7 +186,7 @@ public class TimeoutTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
                 Flow.<Pair<String, MyContext>>create()
-                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (Pair<String, MyContext>)elem);
 
 
@@ -224,7 +224,7 @@ public class TimeoutTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, UniqueId.Envelope>, Pair<String, UniqueId.Envelope>, NotUsed> flow =
                 Flow.<Pair<String, UniqueId.Envelope>>create()
-                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (Pair<String, UniqueId.Envelope>)elem);
 
 
@@ -251,7 +251,7 @@ public class TimeoutTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, UUID>, Pair<String, UUID>, NotUsed> flow =
                 Flow.<Pair<String, UUID>>create()
-                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (Pair<String, UUID>)elem);
 
         Consumer<String> cleanUp = s -> counter.incrementAndGet();
@@ -290,7 +290,7 @@ public class TimeoutTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
                 Flow.<Pair<String, MyContext>>create()
-                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (Pair<String, MyContext>)elem);
 
         Consumer<String> cleanUp = s -> counter.incrementAndGet();

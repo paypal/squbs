@@ -50,7 +50,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import static akka.pattern.PatternsCS.ask;
+import static akka.pattern.Patterns.ask;
 
 public class CircuitBreakerTest {
 
@@ -69,7 +69,7 @@ public class CircuitBreakerTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, UUID>, Pair<String, UUID>, NotUsed> flow =
                 Flow.<Pair<String, UUID>>create()
-                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (Pair<String, UUID>)elem);
 
 
@@ -105,7 +105,7 @@ public class CircuitBreakerTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, UUID>, Pair<String, UUID>, NotUsed> flow =
                 Flow.<Pair<String, UUID>>create()
-                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (Pair<String, UUID>)elem);
 
         final CircuitBreakerState circuitBreakerState =
@@ -156,7 +156,7 @@ public class CircuitBreakerTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, Integer>, Pair<String, Integer>, NotUsed> flow =
                 Flow.<Pair<String, Integer>>create()
-                        .mapAsyncUnordered(2, elem -> ask(delayActor, elem, 5000))
+                        .mapAsyncUnordered(2, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (Pair<String, Integer>)elem);
 
         final CircuitBreakerState circuitBreakerState =
@@ -237,7 +237,7 @@ public class CircuitBreakerTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
                 Flow.<Pair<String, MyContext>>create()
-                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (Pair<String, MyContext>)elem);
 
         final CircuitBreakerState circuitBreakerState =
@@ -314,7 +314,7 @@ public class CircuitBreakerTest {
         final ActorRef delayActor = system.actorOf(Props.create(DelayActor.class));
         final Flow<Pair<String, MyContext>, Pair<String, MyContext>, NotUsed> flow =
                 Flow.<Pair<String, MyContext>>create()
-                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, 5000))
+                        .mapAsyncUnordered(3, elem -> ask(delayActor, elem, Duration.ofSeconds(5)))
                         .map(elem -> (Pair<String, MyContext>)elem);
 
         final CircuitBreakerState circuitBreakerState =
