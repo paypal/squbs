@@ -463,10 +463,10 @@ object UnicomplexBoot extends LazyLogging {
     val specifiedServiceBootTimeout =
       actorSystem.settings.config.getOptionalDuration("squbs.service-infra-timeout")
 
-    implicit val actualTimeout: Timeout =
+    implicit val actualTimeout: FiniteDuration =
       specifiedServiceBootTimeout.getOrElse((boot.listeners.size * 10).seconds)
 
-    startServiceInfra(boot, actualTimeout)
+    startServiceInfra(boot, Timeout(actualTimeout))
   }
 
   def startServiceInfra(boot: UnicomplexBoot, timeout: Timeout)(implicit actorSystem: ActorSystem): Unit = {
