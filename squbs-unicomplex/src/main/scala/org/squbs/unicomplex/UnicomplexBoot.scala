@@ -474,7 +474,7 @@ object UnicomplexBoot extends LazyLogging {
 
     val listenerTimeout =
       getTimeout("listener-timeout")
-        .getOrElse(Timeout((boot.listeners.size * 10).seconds))
+        .getOrElse(Timeout(10.seconds))
 
     startServiceInfra(boot, overallTimeout, listenerTimeout)
   }
