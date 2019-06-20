@@ -464,10 +464,10 @@ object UnicomplexBoot extends LazyLogging {
     def getTimeout(keyRelPath: String): Option[Timeout] = {
       val key = s"squbs.service-infra.$keyRelPath"
       val timeoutDuration = actorSystem.settings.config.getOptionalDuration(key)
-      timeoutDuration.foreach { to =>
-        require(to.toMillis > 0, s"The config property, $key, must be greater than 0 milliseconds.")
+      timeoutDuration.map { d => 
+        require(d.toMillis > 0, s"The config property, $key, must be greater than 0 milliseconds.")
+        Timeout(d)
       }
-      timeoutDuration.map { d => Timeout(d) }
     }
 
     val overallTimeout = getTimeout("timeout").getOrElse(Timeout(60.seconds))
