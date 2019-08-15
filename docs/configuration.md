@@ -21,6 +21,14 @@ squbs {
   # loaded during squbs initialization for Actor System settings. Implicit "application.conf" will be loaded
   # besides this file name list
   external-config-files = []
+
+  # Service infra configuration.
+  service-infra {
+    # Maximum amount of time to wait for all listeners to be started.
+    timeout = 60s
+    # Maximum amount of time each listener is given to start.
+    listener-timeout = 10s
+  }
 }
 
 default-listener {
