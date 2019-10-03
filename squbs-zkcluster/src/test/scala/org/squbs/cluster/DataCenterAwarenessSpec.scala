@@ -15,13 +15,13 @@
  */
 package org.squbs.cluster
 
-import org.scalatest.{Matchers, FlatSpec}
-import org.scalatest.mockito.MockitoSugar
+import org.scalatest.{FlatSpec, Matchers}
 import org.mockito.Mockito._
 import akka.actor._
 import akka.routing.ActorSelectionRoutee
 import akka.util.ByteString
-import org.squbs.cluster.rebalance.{DataCenterAwareRebalanceLogic, CorrelateRoundRobinRoutingLogic, DefaultCorrelation}
+import org.scalatestplus.mockito.MockitoSugar
+import org.squbs.cluster.rebalance.{CorrelateRoundRobinRoutingLogic, DataCenterAwareRebalanceLogic, DefaultCorrelation}
 
 class DataCenterAwarenessSpec extends FlatSpec with Matchers with MockitoSugar {
 

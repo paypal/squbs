@@ -17,7 +17,6 @@
 package org.squbs.pipeline
 
 import akka.actor.ActorSystem
-import akka.http.javadsl.{model => jm}
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.testkit.TestKit

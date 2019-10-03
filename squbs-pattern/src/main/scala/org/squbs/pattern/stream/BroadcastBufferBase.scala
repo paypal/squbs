@@ -19,7 +19,6 @@ package org.squbs.pattern.stream
 import java.io.File
 
 import akka.actor.{Props, ActorSystem}
-import akka.stream.scaladsl.Flow
 import akka.stream.{Attributes, Outlet, Inlet, UniformFanOutShape}
 import akka.stream.stage.{InHandler, OutHandler, GraphStageLogic, GraphStage}
 import com.typesafe.config.Config

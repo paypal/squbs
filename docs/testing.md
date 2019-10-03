@@ -20,7 +20,7 @@ Optionally, you should also include the following dependencies based upon whethe
 "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
 
 // Using TestNG
-"org.testng" % "testng" % testngV % "test",
+"org.testng" % "testng" % testngV % Test,
 ```
 
 ## CustomTestKit

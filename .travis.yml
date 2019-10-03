@@ -1,7 +1,7 @@
 language: scala
 scala:
  - 2.11.12
- - 2.12.8
+ - 2.12.10
 jdk:
  - openjdk8
 
@@ -36,6 +36,8 @@ script:
   - sbt ++$TRAVIS_SCALA_VERSION coverageReport
   - sbt ++$TRAVIS_SCALA_VERSION coverageAggregate
   - sbt ++$TRAVIS_SCALA_VERSION codacyCoverage
+
+sbt_args: -no-colors
 
 # Undo _JAVA_OPTIONS environment variable
 before_script:

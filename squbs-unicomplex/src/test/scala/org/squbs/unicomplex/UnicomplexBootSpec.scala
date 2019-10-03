@@ -23,7 +23,7 @@ import java.io.{File, PrintWriter}
 import java.util.UUID
 
 import akka.actor.ActorSystem
-import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar
 import org.squbs.lifecycle.GracefulStop
 
 import scala.util.{Failure, Success, Try}
