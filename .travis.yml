@@ -37,8 +37,6 @@ script:
   - sbt ++$TRAVIS_SCALA_VERSION coverageAggregate
   - sbt ++$TRAVIS_SCALA_VERSION codacyCoverage
 
-sbt_args: -no-colors
-
 # Undo _JAVA_OPTIONS environment variable
 before_script:
   - _JAVA_OPTIONS=
