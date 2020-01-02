@@ -16,7 +16,7 @@
 
 package org.squbs.pattern.timeoutpolicy
 
-import org.scalactic.{TolerantNumerics, Equality}
+import org.scalactic.TolerantNumerics
 import org.scalatest.{Matchers, FlatSpecLike}
 import org.apache.commons.math3.special.Erf
 

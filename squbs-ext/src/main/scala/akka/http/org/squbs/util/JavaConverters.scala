@@ -28,7 +28,7 @@ import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.http.{javadsl => jd}
 import akka.japi.Pair
 import akka.stream.scaladsl.{BidiFlow, Flow}
-import akka.stream.{scaladsl, javadsl => js}
+import akka.stream.{javadsl => js}
 
 import scala.util.Try
 

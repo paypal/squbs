@@ -9,11 +9,14 @@ libraryDependencies ++= Seq(
   "org.apache.curator" % "curator-recipes" % curatorV,
   "org.apache.curator" % "curator-framework" % curatorV exclude("org.jboss.netty", "netty"),
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
-  "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
-  "org.scalatest" %% "scalatest" % scalatestV % "test->*",
-  "org.mockito" % "mockito-core" % "2.23.4" % "test",
-  "org.apache.curator" % "curator-test" % curatorV % "test",
-  "ch.qos.logback" % "logback-classic" % logbackInTestV % "test"
+  "com.typesafe.akka" %% "akka-testkit" % akkaV % Test,
+  "org.scalatest" %% "scalatest" % scalatestV % Test,
+  "org.mockito" % "mockito-core" % mockitoV % Test,
+  "org.apache.curator" % "curator-test" % curatorV % Test,
+  "ch.qos.logback" % "logback-classic" % logbackInTestV % Test,
+  "commons-io" % "commons-io" % "2.6" % Test,
+  // This is added so that ScalaTest can produce an HTML report. Should be removed with scalatest 3.1.x
+  "org.pegdown" % "pegdown" % pegdownV % Test
 )
 
 (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-zkcluster")

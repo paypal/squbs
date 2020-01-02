@@ -6,21 +6,23 @@ javaOptions in Test += "-Xmx512m"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  "org.scalatest" %% "scalatest" % scalatestV % "test->*",
+  "org.scalatest" %% "scalatest" % scalatestV % Test,
+  "org.mockito" % "mockito-core" % mockitoV % Test,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
-  "ch.qos.logback" % "logback-classic" % logbackInTestV % "test",
-  "com.wix" %% "accord-core" % accordV % "test",
-  "junit" % "junit" % junitV % "test",
-  "com.novocode" % "junit-interface" % junitInterfaceV % "test->default",
-  "org.scalatest" %% "scalatest" % scalatestV % "test->*"
+  "ch.qos.logback" % "logback-classic" % logbackInTestV % Test,
+  "com.wix" %% "accord-core" % accordV % Test,
+  "junit" % "junit" % junitV % Test,
+  "com.novocode" % "junit-interface" % junitInterfaceV % Test,
+  // This is added so that ScalaTest can produce an HTML report. Should be removed with scalatest 3.1.x
+  "org.pegdown" % "pegdown" % pegdownV % Test
 ) ++ akka
 
 def akka = Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-agent" % akkaV,
   "com.typesafe.akka" %% "akka-http" % akkaHttpV,
-  "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
-  "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % "test"
+  "com.typesafe.akka" %% "akka-testkit" % akkaV % Test,
+  "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % Test
 )
 
 testOptions in Test ++= Seq(

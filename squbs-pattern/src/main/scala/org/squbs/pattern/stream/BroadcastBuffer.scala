@@ -17,13 +17,9 @@ package org.squbs.pattern.stream
 
 import java.io.File
 
-import akka.actor.{Props, ActorSystem}
-import akka.stream._
+import akka.actor.ActorSystem
 import akka.stream.scaladsl.Flow
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.Logger
-import org.slf4j.LoggerFactory
 
 /**
   * Fan-out the stream to several streams emitting each incoming upstream element to all downstream consumers.
