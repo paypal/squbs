@@ -8,6 +8,10 @@ organization in ThisBuild := "org.squbs"
 
 publishArtifact := false
 
+// TODO: Remove the overwrite flag once https://github.com/sbt/sbt/issues/3725 is fixed.
+import com.typesafe.sbt.pgp.PgpKeys.publishSignedConfiguration
+publishSignedConfiguration := publishSignedConfiguration.value.withOverwrite(isSnapshot.value)
+
 coverageEnabled in(Test, compile) := true
 
 coverageEnabled in(Compile, compile) := false
