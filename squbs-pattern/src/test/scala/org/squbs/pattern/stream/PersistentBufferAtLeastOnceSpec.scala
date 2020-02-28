@@ -217,6 +217,59 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
     clean()
   }
 
+  it should "not lose elements" in {
+    implicit val util = new StreamSpecUtil[T, Event[T]]
+    import util._
+
+    val mat = ActorMaterializer()
+    val firstGroup = List(createElement(0), createElement(1), createElement(2))
+    val secondGroup = List(createElement(3), createElement(4), createElement(5))
+
+    {
+      // first, run some elements through the buffer, but ensure none are committed
+      val (collector, collectorSink) = Sink.seq[Event[T]].preMaterialize()(mat)
+      val buffer = PersistentBufferAtLeastOnce[T](config)
+
+      Source(firstGroup)
+        .via(buffer)
+        .filter(_ => false)
+        .via(buffer.commit)
+        .runWith(collectorSink)(mat)
+
+      Await.result(collector, awaitMax) shouldBe Seq.empty
+    }
+
+    {
+      // next, run some more elements, and ensure that all six are properly read
+      val (collector, collectorSink) = Sink.seq[Event[T]].preMaterialize()(mat)
+      val buffer = PersistentBufferAtLeastOnce[T](config)
+
+      Source(secondGroup)
+        .via(buffer)
+        .via(buffer.commit)
+        .runWith(collectorSink)(mat)
+
+      Await.result(collector, awaitMax).map(_.entry) shouldBe firstGroup ++ secondGroup
+    }
+
+    {
+      // finally, read from the buffer again, and ensure none are read given all committed
+
+      val (collector, collectorSink) = Sink.seq[Event[T]].preMaterialize()(mat)
+      val buffer = PersistentBufferAtLeastOnce[T](config)
+
+      Source
+        .empty
+        .via(buffer)
+        .via(buffer.commit)
+        .runWith(collectorSink)(mat)
+
+      Await.result(collector, awaitMax).map(_.entry) shouldBe Seq.empty
+    }
+
+    clean()
+  }
+
   private def resumeGraphAndDoAssertion(beforeShutDown: Long, restartFrom: Int)(implicit util: StreamSpecUtil[T, Event[T]]) = {
     import util._
     val buffer = PersistentBufferAtLeastOnce[T](config)
