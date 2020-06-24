@@ -98,8 +98,9 @@ class PersistentQueue[T](config: QueueConfig, onCommitCallback: Int => Unit = _ 
     0 until outputPorts foreach { outputPortId =>
       val startIdx = read(outputPortId)
       logger.info("Setting idx for outputPort {} - {}", outputPortId.toString, startIdx.toString)
-      reader(outputPortId).moveToIndex(startIdx)
-      dequeue(outputPortId) // dequeue the first read element
+      if (reader(outputPortId).moveToIndex(startIdx)) {
+        dequeue(outputPortId) // dequeue the first read element if resumed from index
+      }
       lastCommitIndex(outputPortId) = startIdx
       cycle(outputPortId) = queue.rollCycle().toCycle(startIdx)
     }
