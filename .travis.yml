@@ -1,14 +1,9 @@
 language: scala
 scala:
  - 2.11.12
- - 2.12.8
+ - 2.12.10
 jdk:
- - oraclejdk8
-
-addons:
-  apt:
-    packages:
-      - oracle-java8-installer
+ - openjdk8
 
 cache:
   directories:
@@ -22,7 +17,7 @@ before_cache:
 
 env:
  global:
-  - TRAVIS_JDK_VERSION=oraclejdk8
+  - TRAVIS_JDK_VERSION=openjdk8
   - secure: Hjba3GX9/l9cfTdB6kq3rwNz28/VCOjDKeGR29k6KCazSxx+owIXVBD267QDCJDeyuHKNf0Nx3usFHIeUYsRtOk4n421T2Yu52ovtuUGIsgD6DeW1uTvv7bdpFKlyfEZIDtRNNkT8GFYvhJe7tBgmpWWXZi1A2iY5EpIG9YaSWizHIp6OK8XayaZkQBsmPDjHO3Do0kAuDzUu1E/Tm+Cq0EvEZi4NfVqHS4gcP61qrt8978q75PsxZ3Ai8a8aVLuQnGjF7O42JscLDb5k8K6faLn+Eb6l4YCMz/cn4LD7l/4HcaCxuVkYp9d2NaZKXDWE3t3gHtORRKZ4DUzHSVrK8KtRSst0OuKABFh2iF/JsxjBYUekypStp5TaKZEUU/nBKiFjH903YJUSKfzJj2OGWk4SR0yu3Gy5wjQKsc8t0+AUw+W729EoaC2aLpg65wgIjEB9qZVGiyM7lX6Phc6WWxTjN4BMBny4m7xx7GMbAMi9cUKuokADj60AceopfUlL2SWLGa8ht05dNNTcbVff3ndVwtgbBNy+LVTzOdKaX/b4oXbuNAWtAMGpPKx8/iSsHUVqtf05WbuWMyBsyNw4ODm7AGyKVwX13066Yagd4HBNTWWalwzddhZBQLKzfbakOg4yeNfSX5XvLZTVhLZdEQkAgVQfbJSAmhVTlwHTo8=
   - secure: cA9hORM/lgmEnoueBGPwcb6zfi8/nuJJ2eDhaAxfmHaeysfJL6s2UwveK5cG46oAN8jueh3afA8b2XbE5i+fspa6g69t7S9l8LLmFYwCuZ8H+J79X4JJHOZXDhuknLAKT6JCSfITlDAXlfqcw/jNSBcvy6OoOCwrgw/7QNb8ydbHI/2fC/0nkJRf2lohKZI1+h/MTFNww+wEBpMvzLmUKFTfS9PiQTouncvSQAB2N3+A+K1s91B39mXwluKpWnWMWcBhf+KQvpQSo1Lg0n7rh7wetvngrie0+sWbWN75XpCF7Xnqcsi4tjvA01X8RnuWpsItHvF6Zww3PFEaO202pqrAZcxmTbf3k59THu0pbVCBxz9Z/H/0O37YldPK5EKrF9Tk363df9SiSTwGBblfPs5RdysSwrthiCQlVSiJUhWtD0+p/rSaKYJSpDyjv0CyG/f3zWUyYiKjjfgdIKDWTwHbAapm5uNMy5IgRMSE0fzRfFEBPHpCu4y00bXeIMTB6fnnks2ddj6JMBHkY0KKeDiXH4Jyn42lRLPouq2mPAfp2xsTUfVNmvcnOQbc2tRmP9MGO7FM41f1vZFndiV/Ek4uFojdfPJIpHgM1aSWsraJLCmZmDN7r6jEuUxesKJTmWt/6zqKYK5ZmlP835U7bTiE3JDL1vHfdZ/WO1GUKig=
   - secure: BT2qNxTuLhjVXa42En2RzO5xnQ71n4hYX7rnyGhyn6Bz2SYjuFukSY72Q2vqOULziEK8q/ku0+mIFXdP6IPK6mRntx8qpqtD7qRCfJIZgJ2UGZbnVEQOzzpy6+R+gOPic0mwPZx72gESX8uW5Zsj5ro9j3RokFn+vhfw/h+UZJm7z+KiGGWBh5Td07pb2qpL3/H1DleFcFAlvXdLbZcjhNk7Mn3yuJvmktxJUD5ISknCOirEO8t3OT5pLXkq01Z4VazGstvUSn8r9N5qBpn8gSJDpt3I38e5z++PvxnSdLxbBDE3Y2UKEF48QVIO/h3DOx9Hw/bVqdA8TyuA/z2gdS9JEWTjr4QP7ti6bFe8zjCsSgrlSGn+sgriTx5Yny9su++P7+1u6n5JPV9CpDNSC4ZU7plOjTPApSy+TMkVHSqRk0MB8f1Y3oJRKtxDgglx3dJv4plZNd5/EnxwZk2a5+8SB2N0rfaHR2fupqWykr9J2U654pxirc0IPrCc966GhKnPBL7rpoqPO+O5t4W1s+WatIihGDhuYJf9wEhSIBwRdEf5cDOqotMlqYL5H8vhGPBCK3JUmgW/wVJXlRf6Mp+DdwmDDCscJsYAtFDFZU6tuAYyzxXef7XOsuRQ42q+2Rk5yDt5XUt6J3oMmqb6vBude2BpocbGcqP3twNkOCk=
@@ -49,7 +44,7 @@ before_script:
 after_success:
  - >
   test "${TRAVIS_PULL_REQUEST}" = 'false' &&
-  test "${TRAVIS_JDK_VERSION}" = 'oraclejdk8' &&
+  test "${TRAVIS_JDK_VERSION}" = 'openjdk8' &&
   sbt ++$TRAVIS_SCALA_VERSION 'set credentials += Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", System.getenv("SONATYPE_USER"), System.getenv("SONATYPE_PASS"))' clean publishSigned
 
 notifications:

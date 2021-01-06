@@ -1,10 +1,16 @@
 import Shared._
 
-crossScalaVersions in ThisBuild := Seq("2.11.12", "2.12.8")
+crossScalaVersions in ThisBuild := Seq("2.12.10", "2.11.12")
+
+scalaVersion in ThisBuild := crossScalaVersions.value.head
 
 organization in ThisBuild := "org.squbs"
 
 publishArtifact := false
+
+// TODO: Remove the overwrite flag once https://github.com/sbt/sbt/issues/3725 is fixed.
+import com.typesafe.sbt.pgp.PgpKeys.publishSignedConfiguration
+publishSignedConfiguration := publishSignedConfiguration.value.withOverwrite(isSnapshot.value)
 
 coverageEnabled in(Test, compile) := true
 
@@ -28,10 +34,10 @@ lazy val `squbs-unicomplex` = project dependsOn (`squbs-pipeline`, `squbs-ext`)
 
 lazy val `squbs-testkit` = (project dependsOn `squbs-unicomplex`).enablePlugins(de.johoop.testngplugin.TestNGPlugin)
 
-lazy val `squbs-zkcluster` = project dependsOn `squbs-testkit` % "test"
+lazy val `squbs-zkcluster` = project dependsOn `squbs-testkit` % Test
 
 lazy val `squbs-httpclient` = project dependsOn(`squbs-ext` % "compile->compile;test->test",
-  `squbs-pipeline`, `squbs-testkit` % "test")
+  `squbs-pipeline`, `squbs-testkit` % Test)
 
 // Add SlowTest configuration to squbs-pattern to run the long-running tests.
 // To run standard tests> test
@@ -58,11 +64,11 @@ lazy val `squbs-pattern` = (project dependsOn (`squbs-ext`, `squbs-testkit` % "t
 //    definedTests in DebugTest := (definedTests in Test).value
 //  )
 
-lazy val `squbs-actorregistry` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
+lazy val `squbs-actorregistry` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % Test)
 
-lazy val `squbs-actormonitor` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
+lazy val `squbs-actormonitor` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % Test)
 
-lazy val `squbs-admin` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % "test")
+lazy val `squbs-admin` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % Test)
 
 lazy val `squbs-ext` = project dependsOn `squbs-pipeline` % "provided"
 
@@ -77,10 +83,6 @@ publishTo in ThisBuild := {
 publishMavenStyle in ThisBuild := true
 
 publishArtifact in Test := false
-
-// TODO: Remove the overwrite flag once https://github.com/sbt/sbt/issues/3725 is fixed.
-import com.typesafe.sbt.pgp.PgpKeys.publishSignedConfiguration
-publishSignedConfiguration := publishSignedConfiguration.value.withOverwrite(isSnapshot.value)
 
 pomIncludeRepository in ThisBuild := { _ => false }
 

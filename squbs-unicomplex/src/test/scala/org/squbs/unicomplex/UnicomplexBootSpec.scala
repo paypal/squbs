@@ -16,15 +16,26 @@
 
 package org.squbs.unicomplex
 
-import org.scalatest.{Matchers, FunSpecLike}
+import org.scalatest.{FunSpecLike, Matchers}
 import org.squbs.unicomplex.UnicomplexBoot._
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import java.io.{File, PrintWriter}
+import java.util.UUID
 
-import scala.util.Try
+import akka.actor.ActorSystem
+import org.scalatestplus.mockito.MockitoSugar
+import org.squbs.lifecycle.GracefulStop
+
+import scala.util.{Failure, Success, Try}
 import scala.collection.JavaConverters._
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
-class UnicomplexBootSpec extends FunSpecLike with Matchers {
+class UnicomplexBootSpec
+  extends FunSpecLike
+  with Matchers
+  with MockitoSugar
+{
 
   describe ("The UnicomplexBootstrap") {
 
@@ -255,6 +266,92 @@ class UnicomplexBootSpec extends FunSpecLike with Matchers {
     it ("should resolve duplicates") {
       val s1 = Seq(("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k2", "v3"), ("k1", "v3"), ("k1", "v2"))
       resolveDuplicates[String](s1, (k, ass, v) => ()) shouldBe Map("k1" -> "v1", "k2" -> "v2", "k3" -> "v3")
+    }
+  }
+
+  describe("Service infra startup timeout") {
+
+    def useUnicomplex(
+      infraStartTime: Duration,
+      overallTimeout: Duration,
+      listenerTimeout: Duration
+    )(useFn: PartialFunction[Try[UnicomplexBoot], Unit]): Unit = {
+
+      val serviceInfraTimeouts = Map(
+        "timeout" -> overallTimeout.toString,
+        "listener-timeout" -> listenerTimeout.toString
+      )
+
+      val props = Map(
+        "squbs" -> Map(
+          "actorsystem-name"     -> s"unicomplexbootspec-${UUID.randomUUID().toString}",
+          JMX.prefixConfig       -> "true",
+          "test.actor-init-time" -> infraStartTime.toString,
+          "service-infra"        -> serviceInfraTimeouts.asJava
+        ).asJava
+      )
+
+      val config = ConfigFactory.parseMap(props.asJava)
+
+      val boot = Try {
+        UnicomplexBoot(config)
+          .createUsing {(name, config) => ActorSystem(name, config)}
+          .scanComponents(List(classpath))
+          .initExtensions.start()
+      }
+
+      try {
+        useFn(boot)
+      } finally {
+        boot match {
+          case Success(b) =>
+            val system = b.actorSystem
+            Unicomplex(system).uniActor ! GracefulStop
+            val wait = 15.seconds
+            Await.ready(system.whenTerminated, atMost = 15.seconds)
+          case _ =>
+        }
+      }
+    }
+
+    lazy val classpath =
+      s"${getClass.getClassLoader.getResource("classpaths").getPath}/UnicomplexBootTimeouts"
+
+    describe("Setting the timeout in configuration") {
+      it("boot success if listeners start up in less than the configured timeout") {
+        useUnicomplex(infraStartTime = 1.nano, overallTimeout = 5.seconds, listenerTimeout = 5.seconds) {
+          case Success(boot) => boot.started should be(true)
+        }
+      }
+
+      it("fail if listeners do not start up in less than the configured timeout") {
+        useUnicomplex(infraStartTime = 5.seconds, overallTimeout = 10.millis, listenerTimeout = 10.seconds) {
+          case Failure(e) => e.getMessage should be("Futures timed out after [10 milliseconds]")
+        }
+      }
+    }
+
+    /**
+      * The following are 'pretty quick', but I still don't want to run these unless we
+      * need them.  In fact, if this comment stays a while, we can just blow this away..
+      */
+    describe("Error conditions") {
+
+      describe("These values are not allowed for the service infra timeout") {
+        List(
+          -1.millis,
+          0.millis,
+          1.nano
+        ).foreach { to =>
+          it(to.toString) {
+            useUnicomplex(infraStartTime = 15.seconds, overallTimeout = to, listenerTimeout = 5.seconds) {
+              case Failure(e) => e.getMessage should be(
+                s"requirement failed: The config property, squbs.service-infra.timeout, must be " +
+                  "greater than 0 milliseconds.")
+            }
+          }
+        }
+      }
     }
   }
 }

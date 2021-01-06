@@ -460,15 +460,43 @@ object UnicomplexBoot extends LazyLogging {
   }
 
   def startServiceInfra(boot: UnicomplexBoot)(implicit actorSystem: ActorSystem): Unit = {
+
+    def getTimeout(keyRelPath: String): Option[Timeout] = {
+      val key = s"squbs.service-infra.$keyRelPath"
+      val timeoutDuration = actorSystem.settings.config.getOptionalDuration(key)
+      timeoutDuration.map { d => 
+        require(d.toMillis > 0, s"The config property, $key, must be greater than 0 milliseconds.")
+        Timeout(d)
+      }
+    }
+
+    val overallTimeout = getTimeout("timeout").getOrElse(Timeout(60.seconds))
+
+    val listenerTimeout =
+      getTimeout("listener-timeout")
+        .getOrElse(Timeout(10.seconds))
+
+    startServiceInfra(boot, overallTimeout, listenerTimeout)
+  }
+
+  def startServiceInfra(
+    boot: UnicomplexBoot,
+    timeout: Timeout,
+    listenerTimeout: Timeout
+  )(implicit actorSystem: ActorSystem): Unit = {
     import actorSystem.dispatcher
     val startTime = System.nanoTime
-    implicit val timeout = Timeout((boot.listeners.size * 10).seconds)
+    implicit val to = listenerTimeout
     val ackFutures =
       for ((listenerName, config) <- boot.listeners) yield {
         val responseFuture = Unicomplex(actorSystem).uniActor ? StartListener(listenerName, config)
         responseFuture.onComplete {
-          case Failure(t) => logger.error(s"Failed to start the listener $listenerName.", t)
-          case Success(StartFailure(t)) => logger.error(s"Failed to start the listener $listenerName.", t)
+          case Failure(t) if (t.isInstanceOf[TimeoutException]) =>
+            logger.error(s"The Unicomplex could not start the listener, $listenerName, within $to.", t)
+          case Failure(t) =>
+            logger.error(s"The Unicomplex failed to start the listener, $listenerName.", t)
+          case Success(StartFailure(t)) =>
+            logger.error(s"The Unicomplex reported a start failure for the listener, $listenerName.", t)
           case _ =>
         }
         responseFuture

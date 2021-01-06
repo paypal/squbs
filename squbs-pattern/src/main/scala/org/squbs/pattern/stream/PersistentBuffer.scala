@@ -17,13 +17,9 @@ package org.squbs.pattern.stream
 
 import java.io.File
 
-import akka.actor.{Props, ActorSystem}
+import akka.actor.ActorSystem
 import akka.stream.scaladsl.Flow
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.Logger
-import org.slf4j.LoggerFactory
 
 /**
   * Persists all incoming upstream element to a memory mapped queue before publishing it to downstream consumer.

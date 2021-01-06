@@ -22,8 +22,11 @@ import akka.http.javadsl.model.headers.RawHeader;
 import akka.http.javadsl.server.Route;
 import org.squbs.unicomplex.AbstractRouteDefinition;
 
-import static akka.pattern.PatternsCS.*;
-import static akka.http.javadsl.server.PathMatchers.*;
+import java.time.Duration;
+
+import static akka.http.javadsl.server.PathMatchers.integerSegment;
+import static akka.http.javadsl.server.PathMatchers.segment;
+import static akka.pattern.Patterns.ask;
 
 public class InfoRouteWithActor extends AbstractRouteDefinition {
 
@@ -33,7 +36,7 @@ public class InfoRouteWithActor extends AbstractRouteDefinition {
                 path(segment().slash(integerSegment()), (ops, input) ->
                         onSuccess(() ->
                                 ask(context().actorSelection("/user/CustomTestKitDefaultSpec/" + ops + "Actor"),
-                                        input, 30000L), response -> complete(HttpResponse.create()
+                                        input, Duration.ofSeconds(30)), response -> complete(HttpResponse.create()
                                         .addHeader(RawHeader.create("foo", "bar"))
                                         .withEntity(
                                                 HttpEntities.create(ContentTypes.APPLICATION_JSON,

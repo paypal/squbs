@@ -59,7 +59,9 @@ public class CustomTestKitTest extends CustomTestKit {
         final CompletionStage<HttpResponse> responseFuture =
                 Http.get(system())
                         .singleRequest(HttpRequest.create("http://127.0.0.1:" + port() + "/test"), materializer);
-        Assert.assertTrue(responseFuture.toCompletableFuture().get().entity().toString().contains("success"));
+        Assert.assertTrue(responseFuture.toCompletableFuture().get().entity()
+                .toStrict(Timeouts.awaitMax().toMillis(), materializer).toCompletableFuture().get().getData()
+                .utf8String().contains("success"));
     }
 
     @Test
