@@ -29,8 +29,8 @@ class ForkJoinConfigurator(config: Config, prerequisites: DispatcherPrerequisite
   extends ExecutorServiceConfigurator(config, prerequisites) {
 
   def validate(t: ThreadFactory): ForkJoinPool.ForkJoinWorkerThreadFactory = t match {
-    case correct: ForkJoinPool.ForkJoinWorkerThreadFactory ⇒ correct
-    case x ⇒ throw new IllegalStateException(
+    case correct: ForkJoinPool.ForkJoinWorkerThreadFactory => correct
+    case x => throw new IllegalStateException(
       "The prerequisites for the ForkJoinExecutorConfigurator is a ForkJoinPool.ForkJoinWorkerThreadFactory!")
   }
 
@@ -53,11 +53,11 @@ class ForkJoinConfigurator(config: Config, prerequisites: DispatcherPrerequisite
   final def createExecutorServiceFactory(id: String, threadFactory: ThreadFactory): ExecutorServiceFactory = {
 
     val (tf, name) = threadFactory match {
-      case m: MonitorableThreadFactory ⇒
+      case m: MonitorableThreadFactory =>
         // add the dispatcher id to the thread names
         val name = m.name + "-" + id
         (AdaptedThreadFactory(m.withName(name)), name)
-      case other ⇒ (other, id)
+      case other => (other, id)
     }
     val fjConf = config.getConfig("fork-join-executor")
     import org.squbs.util.ConfigUtil._
@@ -109,7 +109,7 @@ object AdaptedThreadFactory {
 
   private[squbs] class AkkaForkJoinWorkerThread(_pool: ForkJoinPool)
     extends ForkJoinWorkerThread(_pool) with BlockContext {
-    override def blockOn[T](thunk: ⇒ T)(implicit permission: CanAwait): T = {
+    override def blockOn[T](thunk: => T)(implicit permission: CanAwait): T = {
       val result = new AtomicReference[Option[T]](None)
       ForkJoinPool.managedBlock(new ForkJoinPool.ManagedBlocker {
         def block(): Boolean = {

@@ -23,7 +23,9 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Flow
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 
@@ -72,7 +74,7 @@ class TestFlowDefinition extends FlowDefinition with WebContext {
 }
 
 class FlowDefinitionSpec extends TestKit(
-  FlowDefinitionSpec.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
+  FlowDefinitionSpec.boot.actorSystem) with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   implicit val am = ActorMaterializer()
 

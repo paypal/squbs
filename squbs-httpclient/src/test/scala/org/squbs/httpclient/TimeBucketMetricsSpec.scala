@@ -16,17 +16,18 @@
 
 package org.squbs.httpclient
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import org.scalatest.{BeforeAndAfterAll, FunSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class TimeBucketMetricsSpec extends TestKit(ActorSystem("CircuitBreakerMetricsSpec")) with FunSpecLike
+class TimeBucketMetricsSpec extends TestKit(ActorSystem("CircuitBreakerMetricsSpec")) with AnyFunSpecLike
   with Matchers with BeforeAndAfterAll {
 
   it ("should index the buckets correctly near and around 0") {

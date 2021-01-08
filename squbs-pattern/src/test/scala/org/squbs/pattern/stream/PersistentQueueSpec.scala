@@ -15,18 +15,19 @@
  */
 package org.squbs.pattern.stream
 
-import java.io.{File, FileNotFoundException}
-import java.nio.file.Files
-
 import akka.util.ByteString
 import net.openhft.chronicle.queue.RollCycles
 import net.openhft.chronicle.queue.impl.single.DirectoryListing
 import org.scalatest.OptionValues._
 import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
+import java.io.{File, FileNotFoundException}
+import java.nio.file.Files
 import scala.annotation.tailrec
 
-class PersistentQueueSpec extends FlatSpec with Matchers with PrivateMethodTester {
+class PersistentQueueSpec extends AnyFlatSpec with Matchers with PrivateMethodTester {
 
   implicit val serializer = QueueSerializer[ByteString]()
 

@@ -17,8 +17,7 @@ package org.squbs.stream
 
 import java.util.concurrent.{CompletableFuture, CompletionStage}
 import java.util.function.Consumer
-
-import akka.actor.AbstractActor
+import akka.actor.{AbstractActor, ActorRefFactory}
 import akka.japi.function
 import akka.stream.Supervision.{Directive, Resume}
 import akka.stream._
@@ -133,7 +132,7 @@ abstract class AbstractPerpetualStream[T] extends AbstractActor with PerpetualSt
 abstract class FlowToPerpetualStream extends AbstractFlowDefinition {
 
   def matValue[T](perpetualStreamName: String): Sink[T, NotUsed] = {
-    implicit val _ = context.system
+    implicit val refFactory: ActorRefFactory = context.system
     implicit val timeout: Timeout = Timeout(10.seconds)
     import akka.pattern.ask
     val responseF = SafeSelect(perpetualStreamName) ? MatValueRequest

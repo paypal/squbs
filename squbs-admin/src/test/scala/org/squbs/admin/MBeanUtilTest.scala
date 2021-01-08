@@ -19,15 +19,16 @@ package org.squbs.admin
 import java.beans.ConstructorProperties
 import java.lang.management.ManagementFactory
 import javax.management.{MXBean, ObjectName}
-
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
-import org.scalatest._
+import org.scalatest.{BeforeAndAfterAll, Inspectors, OptionValues}
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
 
 import scala.beans.{BeanProperty, BooleanBeanProperty}
 import scala.collection.JavaConverters._
 
-class MBeanUtilTest extends FunSpecLike with Matchers with BeforeAndAfterAll with Inspectors with OptionValues {
+class MBeanUtilTest extends AnyFunSpecLike with Matchers with BeforeAndAfterAll with Inspectors with OptionValues {
 
   override def beforeAll(): Unit = {
 

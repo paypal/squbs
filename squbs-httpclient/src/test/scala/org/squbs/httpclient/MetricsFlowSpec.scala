@@ -18,7 +18,6 @@ package org.squbs.httpclient
 
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ws.PeerClosedConnectionException
@@ -27,7 +26,9 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{BidiFlow, Flow, Sink, Source}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
-import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.BeforeAndAfterAll
 import org.squbs.resolver._
 import org.squbs.metrics.{MetricsExtension, MetricsFlow}
 import org.squbs.pipeline.{Context, PipelineFlow, PipelineFlowFactory, RequestContext}

@@ -16,22 +16,20 @@
 
 package org.squbs.streams
 
-import java.util.concurrent.atomic.AtomicLong
-
 import akka.NotUsed
 import akka.actor.{Actor, ActorSystem, Props}
-import akka.event.LoggingAdapter
 import akka.stream.Attributes.inputBuffer
-import akka.stream.{ActorMaterializer, OverflowStrategy, ThrottleMode}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import akka.stream.stage.{GraphStageLogic, StageLogging}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
+import akka.stream.{ActorMaterializer, OverflowStrategy, ThrottleMode}
 import akka.testkit.TestKit
-import org.scalatest.{AsyncFlatSpecLike, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
+import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.{Await, TimeoutException}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, TimeoutException}
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 

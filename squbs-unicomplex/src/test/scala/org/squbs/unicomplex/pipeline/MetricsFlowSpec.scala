@@ -16,9 +16,6 @@
 
 package org.squbs.unicomplex.pipeline
 
-import java.lang.management.ManagementFactory
-import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.Uri.Path
@@ -27,17 +24,19 @@ import akka.http.scaladsl.model.ws.PeerClosedConnectionException
 import akka.http.scaladsl.server._
 import akka.pattern._
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Flow
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
-import org.scalatest.{AsyncFlatSpecLike, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.metrics.{MetricsExtension, MetricsFlow}
 import org.squbs.pipeline.{Context, PipelineFlow, PipelineFlowFactory}
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex._
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import scala.concurrent.{Await, Future}
 
 object MetricsFlowSpec {

@@ -16,17 +16,17 @@
 
 package org.squbs.streams
 
-import java.lang.management.ManagementFactory
-import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.stream.ThrottleMode.Shaping
 import akka.stream.scaladsl._
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.testkit.TestKit
-import org.scalatest.{AsyncFlatSpecLike, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.metrics.MetricsExtension
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import scala.concurrent.duration._
 
 class DemandSupplyMetricsSpec extends TestKit(ActorSystem("DemandSupplyMetricsSpec")) with AsyncFlatSpecLike

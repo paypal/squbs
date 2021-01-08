@@ -16,13 +16,14 @@
 
 package org.squbs.pattern.timeoutpolicy
 
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.Try
-class TimeoutPolicySpec extends FlatSpecLike with Matchers{
+class TimeoutPolicySpec extends AnyFlatSpecLike with Matchers{
 
   "TimeoutPolicy Object" should "works fine" in {
     an [IllegalArgumentException] should be thrownBy TimeoutPolicy(Some(""), null, null)

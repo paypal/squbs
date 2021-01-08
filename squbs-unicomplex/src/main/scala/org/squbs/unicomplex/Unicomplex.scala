@@ -36,6 +36,7 @@ import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
 import org.squbs.pipeline.{PipelineSetting, RequestContext}
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
+import org.squbs.unicomplex.{Extension => SqubsExtension}
 
 import scala.annotation.varargs
 import scala.collection.mutable
@@ -48,7 +49,7 @@ import scala.util.{Failure, Success, Try}
 class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
 
   val log = Logging.getLogger(system, this)
-  val uniActor = system.actorOf(Props[Unicomplex], "unicomplex")
+  val uniActor = system.actorOf(Props[Unicomplex](), "unicomplex")
 
   private var _scannedComponents: Seq[String] = null
 
@@ -151,7 +152,7 @@ case class InitReports(state: LifecycleState, reports: Map[ActorRef, Option[Init
 case class CubeRegistration(info: Cube, cubeSupervisor: ActorRef)
 case class Extension(info: Cube, sequence: Int, extLifecycle: Option[ExtensionLifecycle],
                      exceptions: Seq[(String, Throwable)])
-case class Extensions(extensions: Seq[Extension])
+case class Extensions(extensions: Seq[SqubsExtension])
 
 
 sealed trait LifecycleState {
@@ -196,7 +197,7 @@ object Initialized {
 case object Ack
 case object ReportStatus
 case class StatusReport(state: LifecycleState, cubes: Map[ActorRef, (CubeRegistration, Option[InitReports])],
-                        extensions: Seq[Extension])
+                        extensions: Seq[SqubsExtension])
 case class Timestamp(nanos: Long, millis: Long)
 case object SystemState {
   // for Java
@@ -253,7 +254,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   private var cubes = Map.empty[ActorRef, (CubeRegistration, Option[InitReports])]
 
-  private var extensions = Seq.empty[Extension]
+  private var extensions = Seq.empty[SqubsExtension]
 
   private var lifecycleListeners = Seq.empty[(ActorRef, Seq[LifecycleState], Boolean)] // Last boolean is flag whether to remove
 
@@ -488,7 +489,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
     case ActivateTimedOut =>
       // Deploy failFastStrategy for checking once activate times out.
-      checkInitState = failFastStrategy _
+      checkInitState = () => failFastStrategy
       updateSystemState(checkInitState())
       sender() ! systemState
 
@@ -496,7 +497,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
       updateCubes(ir)
 
     case ReportStatus => // Status report request from admin tooling
-      if (systemState == Active) sender ! StatusReport(systemState, cubes, extensions)
+      if (systemState == Active) sender() ! StatusReport(systemState, cubes, extensions)
       else {
         val requester = sender()
         var pendingCubes = cubes collect {
@@ -580,7 +581,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
 
   def lenientStrategy  = checkStateInitializing orElse checkStateFailed applyOrElse (cubeStates, active)
 
-  var checkInitState = lenientStrategy _
+  var checkInitState = () => lenientStrategy
 
   def pendingServiceStarts = servicesStarted && !serviceRegistry.isListenersBound
 
@@ -699,7 +700,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
       log.info(s"Started actor ${cubeActor.path}")
 
     case StartCubeService(webContext, listeners, props, name, ps, initRequired)
-        if classOf[FlowSupplier].isAssignableFrom(props.actorClass) =>
+        if classOf[FlowSupplier].isAssignableFrom(props.actorClass()) =>
       val hostActor = context.actorOf(props, name)
       initMap += hostActor -> None
       pendingContexts += 1
@@ -752,7 +753,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     case StartFailure(t) =>
       // Register the failure with a bogus noop actor so we have all failures.
       // The real servicing actor was never created.
-      initMap += context.actorOf(Props[NoopActor]) -> Some(Failure(t))
+      initMap += context.actorOf(Props[NoopActor]()) -> Some(Failure(t))
       cubeState = Failed
       Unicomplex() ! InitReports(cubeState, initMap.toMap)
 

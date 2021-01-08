@@ -17,7 +17,8 @@
 package org.squbs.testkit
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.unicomplex.{RouteDefinition, WebContext}
 
 class MyRoute extends RouteDefinition {
@@ -75,7 +76,7 @@ class MyTestRoute2 extends RouteDefinition {
     }
 }
 
-class TestRouteSpec extends FlatSpecLike with Matchers with ScalatestRouteTest {
+class TestRouteSpec extends AnyFlatSpecLike with Matchers with ScalatestRouteTest {
 
   it should "respond to string and int segments" in {
     val route = TestRoute[MyTestRoute2]

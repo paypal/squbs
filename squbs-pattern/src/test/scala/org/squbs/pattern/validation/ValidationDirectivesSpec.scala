@@ -22,7 +22,8 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.MethodDirectives
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import org.scalatest.{FunSpecLike, Matchers}
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.pattern.validation.ValidationDirectives.{validate => _}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
@@ -30,7 +31,7 @@ object MyJsonProtocol extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val PersonFormat: RootJsonFormat[Person] = jsonFormat4(Person)
 }
 
-class ValidationDirectivesSpec extends FunSpecLike with Matchers with ScalatestRouteTest{
+class ValidationDirectivesSpec extends AnyFunSpecLike with Matchers with ScalatestRouteTest{
 
   val ValidationPassed = "Validation Passed"
 

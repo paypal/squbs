@@ -17,12 +17,12 @@ package org.squbs.httpclient
 
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.resolver._
 import org.squbs.env.QA
 import org.squbs.streams.circuitbreaker.CircuitBreakerSettings
@@ -128,7 +128,7 @@ object HttpClientJMXSpec {
     { (_, _) => Some(HttpEndpoint("http://localhost:8080")) }
 }
 
-class HttpClientJMXSpec extends FlatSpecLike with Matchers {
+class HttpClientJMXSpec extends AnyFlatSpecLike with Matchers {
 
   import HttpClientJMXSpec._
 

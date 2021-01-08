@@ -18,7 +18,6 @@ package org.squbs.unicomplex
 import java.lang.management.ManagementFactory
 import java.util.concurrent.atomic.AtomicInteger
 import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
@@ -27,7 +26,9 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 import akka.testkit.{EventFilter, ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{AsyncFlatSpecLike, BeforeAndAfterAll, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.BeforeAndAfterAll
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX.prefix
 

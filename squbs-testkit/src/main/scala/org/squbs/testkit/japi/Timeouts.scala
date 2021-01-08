@@ -14,25 +14,14 @@
  *  limitations under the License.
  */
 
-object Versions {
-  val akkaV = "2.5.32"
-  val akkaHttpV = "10.1.13"
-  val scalaCompatV = "2.3.2"
-  val scalatestV = "3.2.3"
-  val scalatestplusV = "3.2.3.0"
-  val mockitoV = "2.28.2"
-  val scalaLoggingV = "3.9.2"
-  val slf4jV = "1.7.25"
-  val jacksonV = "2.10.4"
-  val json4sV = "3.6.8"
-  val heikoseebergerAkkaHttpJsonV = "1.28.0"
-  val metricsV = "4.0.5"
-  val junitInterfaceV = "0.11"
-  val junitV = "4.12"
-  val testngV = "6.14.3"
-  val accordV = "0.7.4"
-  val chronicleQueueV = "4.16.5"
-  val logbackInTestV = "1.2.3"
-  val curatorV = "4.1.0"
-  val pegdownV = "1.6.0"
+package org.squbs.testkit.japi
+
+import akka.util.Timeout
+import org.squbs.testkit.{Timeouts => STimeouts}
+
+import java.time.Duration
+
+object Timeouts {
+  val askTimeout: Timeout = STimeouts.askTimeout
+  val awaitMax: Duration = Duration.ofNanos(STimeouts.awaitMax.toNanos)
 }

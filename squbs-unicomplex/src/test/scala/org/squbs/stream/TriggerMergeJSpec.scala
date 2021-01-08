@@ -17,11 +17,12 @@ package org.squbs.stream
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
 import scala.language.postfixOps
 
-class TriggerMergeJSpec extends TestKit(ActorSystem.create("TriggerMergeJSpec")) with FlatSpecLike with Matchers {
+class TriggerMergeJSpec extends TestKit(ActorSystem.create("TriggerMergeJSpec")) with AnyFlatSpecLike with Matchers {
 
   // expose probe port(s)
   val mat = new TriggerMergeJ(system).runnableGraph()

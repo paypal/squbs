@@ -21,7 +21,9 @@ import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source, TcpIdleTimeoutException}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.BeforeAndAfterAll
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.testkit.Timeouts.awaitMax
 

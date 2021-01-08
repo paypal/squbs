@@ -19,7 +19,8 @@ package org.squbs.pattern.orchestration
 import akka.actor._
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{FunSpecLike, Matchers}
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.testkit.SlowTest
 import org.squbs.testkit.Timeouts._
 
@@ -28,7 +29,7 @@ import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 
 class OrchestratorSpec extends TestKit(ActorSystem("OrchestrationSpec"))
-with ImplicitSender with FunSpecLike with Matchers {
+with ImplicitSender with AnyFunSpecLike with Matchers {
 
   describe ("The Orchestration DSL") {
 

@@ -16,10 +16,12 @@
 
 package org.squbs.pattern.timeoutpolicy
 
-import org.scalatest.{Matchers, FlatSpecLike}
-import concurrent.duration._
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
-class MetricsSpec extends FlatSpecLike with Matchers{
+import scala.concurrent.duration._
+
+class MetricsSpec extends AnyFlatSpecLike with Matchers{
 
   "Metrics" should "start over on totalCount exceed startOverCount" in {
     val metrics = Metrics(None, 2.seconds, 3)

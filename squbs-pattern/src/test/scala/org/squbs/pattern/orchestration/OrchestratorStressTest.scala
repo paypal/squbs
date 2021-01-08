@@ -18,17 +18,18 @@ package org.squbs.pattern.orchestration
 
 import akka.actor._
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{FunSpecLike, Matchers}
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.testkit.SlowTest
-import org.squbs.testkit.stress._
 import org.squbs.testkit.Timeouts._
+import org.squbs.testkit.stress._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 
 class OrchestratorStressTest extends TestKit(ActorSystem("OrchestrationStressTest"))
-with ImplicitSender with FunSpecLike with Matchers {
+with ImplicitSender with AnyFunSpecLike with Matchers {
 
   val ir = 500
   val warmUp = 2 minutes

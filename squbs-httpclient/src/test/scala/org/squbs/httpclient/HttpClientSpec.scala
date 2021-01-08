@@ -26,7 +26,9 @@ import akka.stream.scaladsl.{Sink, Source}
 import akka.testkit.TestKit
 import org.json4s.{DefaultFormats, MappingException, jackson}
 import org.scalatest.OptionValues._
-import org.scalatest.{AsyncFlatSpecLike, BeforeAndAfterAll, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.BeforeAndAfterAll
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.httpclient.dummy._
 import org.squbs.marshallers.json.TestData._

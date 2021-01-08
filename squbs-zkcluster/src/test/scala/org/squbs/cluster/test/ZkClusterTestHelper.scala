@@ -17,11 +17,13 @@
 package org.squbs.cluster.test
 
 import akka.testkit.ImplicitSender
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import org.squbs.cluster._
 import org.squbs.testkit.Timeouts._
 
-trait ZkClusterTestHelper extends FlatSpecLike with ImplicitSender with Matchers
+trait ZkClusterTestHelper extends AnyFlatSpecLike with ImplicitSender with Matchers
   with BeforeAndAfterAll with BeforeAndAfterEach { me: ZkClusterMultiActorSystemTestKit =>
 
   override def beforeAll(): Unit = startCluster()

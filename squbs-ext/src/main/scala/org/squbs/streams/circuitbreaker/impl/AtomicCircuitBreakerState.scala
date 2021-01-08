@@ -417,8 +417,8 @@ class AtomicCircuitBreakerState(val name: String,
         attemptReset()
       }
       val nextResetTimeout = currentResetTimeout * exponentialBackoffFactor match {
-        case f: FiniteDuration ⇒ f
-        case _                 ⇒ currentResetTimeout
+        case f: FiniteDuration => f
+        case _                 => currentResetTimeout
       }
 
       if (nextResetTimeout < maxResetTimeout)

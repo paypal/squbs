@@ -24,14 +24,15 @@ import akka.stream.{ActorMaterializer, BidiShape}
 import akka.testkit.TestKit
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{FlatSpecLike, Matchers}
-import Timeouts._
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.squbs.pipeline.Timeouts._
 
 import scala.concurrent.{Await, Future}
 import scala.util.{Success, Try}
 
 class AbortableBidiFlowSpec extends TestKit(ActorSystem("AbortableBidiFlowSpec", AbortableBidiFlowSpec.config))
-  with FlatSpecLike with Matchers {
+  with AnyFlatSpecLike with Matchers {
 
   implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)

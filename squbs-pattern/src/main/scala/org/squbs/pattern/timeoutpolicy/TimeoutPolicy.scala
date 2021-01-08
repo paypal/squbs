@@ -71,9 +71,8 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
         logger.warn("call end without call waitTime first, ignore this transaction")
       } else {
         val isTimeout = timeTaken > waitTime.toNanos
-        TimeoutPolicy.this.update(timeTaken, isTimeout)
+        TimeoutPolicy.this.update(timeTaken.toDouble, isTimeout)
       }
-
     }
   }
 

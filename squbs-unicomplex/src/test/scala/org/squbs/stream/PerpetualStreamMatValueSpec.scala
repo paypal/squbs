@@ -15,29 +15,26 @@
  */
 package org.squbs.stream
 
-import java.util.concurrent.LinkedBlockingQueue
-
 import akka.NotUsed
 import akka.actor.{Actor, ActorRef, ActorRefFactory, ActorSystem, Props, Status}
 import akka.pattern._
-import akka.stream.{ActorMaterializer, ClosedShape, Materializer}
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, MergeHub, RunnableGraph, Sink, Source}
+import akka.stream.{ActorMaterializer, ClosedShape, Materializer}
 import akka.util.Timeout
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
+import org.scalatest.funspec.AnyFunSpec
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Seconds, Span}
-import org.scalatest.{BeforeAndAfterAll, FunSpec, Matchers}
 import org.squbs.stream.PerpetualStreamMatValueSpecHelper.PerpStreamActors
 import org.squbs.unicomplex._
 
+import java.util.concurrent.LinkedBlockingQueue
 import scala.concurrent.{Await, Future}
 import scala.reflect.{ClassTag, classTag}
 import scala.util.{Failure, Success, Try}
 
-class PerpetualStreamMatValueSpec
-extends FunSpec
-with Matchers
-with BeforeAndAfterAll
-with Eventually {
+class PerpetualStreamMatValueSpec extends AnyFunSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   import PerpStreamActors._
   import PerpetualStreamMatValueSpecHelper._

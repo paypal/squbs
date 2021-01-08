@@ -16,9 +16,6 @@
 
 package org.squbs.unicomplex
 
-import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
@@ -26,11 +23,15 @@ import akka.pattern._
 import akka.stream.ActorMaterializer
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.metrics.MetricsExtension
 import org.squbs.unicomplex.Timeouts._
 
+import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.Await
 
 object MultiListenerSpecActorSystem {
@@ -83,7 +84,7 @@ object MultiListenerSpecActorSystem {
 }
 
 class MultiListenerSpec extends TestKit(MultiListenerSpecActorSystem.boot.actorSystem)
-    with FlatSpecLike with BeforeAndAfterAll with Matchers {
+    with AnyFlatSpecLike with BeforeAndAfterAll with Matchers {
 
   implicit val am = ActorMaterializer()
 

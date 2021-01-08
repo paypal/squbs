@@ -16,16 +16,16 @@
 
 package org.squbs.pattern.timeoutpolicy
 
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+
 import java.util.concurrent.TimeUnit
-
-import org.scalatest.{FlatSpecLike, Matchers}
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.{Random, Try}
 
-class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
+class TimeoutPolicyFeatureSpec extends AnyFlatSpecLike with Matchers{
 
   "TimeoutPolicy return faster than timeout" should "works fine" in {
     //val policy = TimeoutPolicy(name = Some("test"), initial = 1 second, fixedRule, minSamples = 1)

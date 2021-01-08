@@ -20,7 +20,8 @@ import akka.pattern._
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.Await
 import scala.util.Failure
@@ -51,7 +52,8 @@ object InvalidPipelineFlowSpec {
 }
 
 
-class InvalidPipelineFlowSpec extends TestKit(InvalidPipelineFlowSpec.boot.actorSystem) with FlatSpecLike with Matchers {
+class InvalidPipelineFlowSpec extends TestKit(InvalidPipelineFlowSpec.boot.actorSystem)
+  with AnyFlatSpecLike with Matchers {
 
   "The InvalidPipelineFlowSvc" should "fail" in {
     import Timeouts._

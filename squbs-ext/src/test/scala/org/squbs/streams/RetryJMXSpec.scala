@@ -16,23 +16,23 @@
 
 package org.squbs.streams
 
-import java.lang.management.ManagementFactory
-
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.testkit.scaladsl.TestSink
 import akka.testkit.TestKit
-import javax.management.ObjectName
 import org.scalatest.OptionValues._
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.metrics.MetricsExtension
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-class RetryJMXSpec extends TestKit(ActorSystem("RetryJMXSpec")) with FlatSpecLike with Matchers {
+class RetryJMXSpec extends TestKit(ActorSystem("RetryJMXSpec")) with AnyFlatSpecLike with Matchers {
 
   implicit val materializer = ActorMaterializer()
   val failure = Failure(new Exception("failed"))
@@ -124,7 +124,7 @@ class RetryJMXSpec extends TestKit(ActorSystem("RetryJMXSpec")) with FlatSpecLik
   }
 }
 
-class RetryStateJmxSpec extends TestKit(ActorSystem("RetryStateJmxSpec")) with FlatSpecLike with Matchers {
+class RetryStateJmxSpec extends TestKit(ActorSystem("RetryStateJmxSpec")) with AnyFlatSpecLike with Matchers {
   implicit val materializer = ActorMaterializer()
 
   it should "publish registry and queue size via jmx" in {

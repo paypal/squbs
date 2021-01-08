@@ -22,7 +22,9 @@ import akka.http.scaladsl.model.{HttpEntity, MediaTypes, MessageEntity}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import org.json4s._
-import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.BeforeAndAfterAll
 
 class Json4sJacksonSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll {
 

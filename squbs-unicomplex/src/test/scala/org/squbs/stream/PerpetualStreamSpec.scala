@@ -15,17 +15,18 @@
  */
 package org.squbs.stream
 
-import akka.actor.{ActorSystem}
+import akka.actor.ActorSystem
 import akka.pattern._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex._
 
 import scala.concurrent.{Await, Future}
 
-class PerpetualStreamSpec extends FlatSpec with Matchers {
+class PerpetualStreamSpec extends AnyFlatSpec with Matchers {
 
   private val dummyJarsDir = getClass.getClassLoader.getResource("classpaths").getPath
 

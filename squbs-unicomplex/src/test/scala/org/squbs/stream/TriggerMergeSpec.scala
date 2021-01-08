@@ -21,12 +21,13 @@ import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.testkit.TestKit
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.stream.TriggerEvent._
 
 import scala.language.postfixOps
 
-class TriggerMergeSpec extends TestKit(ActorSystem.create("TriggerMergeSpec")) with FlatSpecLike with Matchers {
+class TriggerMergeSpec extends TestKit(ActorSystem.create("TriggerMergeSpec")) with AnyFlatSpecLike with Matchers {
 
   implicit val materializer = ActorMaterializer()
 

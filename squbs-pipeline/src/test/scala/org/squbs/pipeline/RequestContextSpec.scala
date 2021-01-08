@@ -20,13 +20,16 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.testkit.TestKit
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+
 import scala.util.Try
 
 class RequestContextSpec
   extends TestKit(ActorSystem("RequestContextSpecSys"))
-    with FlatSpecLike
+    with AnyFlatSpecLike
     with Matchers
     with BeforeAndAfterAll {
 

@@ -15,23 +15,24 @@
  */
 package org.squbs.pattern.stream
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape}
 import akka.util.ByteString
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Seconds, Span}
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.testkit.Timeouts._
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.{Await, Promise}
 import scala.reflect._
 
 abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[T]: Manifest]
-(typeName: String) extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
+(typeName: String) extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   implicit val system = ActorSystem(s"Persistent${typeName}BufferAtLeastOnceSpec", PersistentBufferSpec.testConfig)
   implicit val mat = ActorMaterializer()

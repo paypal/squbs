@@ -15,9 +15,6 @@
  */
 package org.squbs.unicomplex
 
-import java.lang.management.ManagementFactory
-import java.net.{HttpURLConnection, URL}
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.Uri.Path
@@ -29,12 +26,15 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import javax.management.ObjectName
 import org.scalatest.OptionValues._
-import org.scalatest.{AsyncFlatSpecLike, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.metrics.MetricsExtension
 import org.squbs.unicomplex.Timeouts.{awaitMax, _}
 
+import java.lang.management.ManagementFactory
+import java.net.{HttpURLConnection, URL}
+import javax.management.ObjectName
 import scala.concurrent.{Await, Promise}
 
 object ConnectionMetricsSpec {

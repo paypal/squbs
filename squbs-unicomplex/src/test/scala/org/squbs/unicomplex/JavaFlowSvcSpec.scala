@@ -24,7 +24,9 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{AsyncFlatSpecLike, BeforeAndAfterAll, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.BeforeAndAfterAll
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 

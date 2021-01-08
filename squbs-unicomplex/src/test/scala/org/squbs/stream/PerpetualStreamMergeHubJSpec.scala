@@ -22,7 +22,8 @@ import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.unicomplex.Timeouts.{awaitMax, _}
 import org.squbs.unicomplex._
 
@@ -52,7 +53,7 @@ object PerpetualStreamMergeHubJSpec {
 }
 
 class PerpetualStreamMergeHubJSpec extends TestKit(PerpetualStreamMergeHubJSpec.boot.actorSystem)
-  with FlatSpecLike with Matchers  {
+  with AnyFlatSpecLike with Matchers  {
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val psActorName = "/user/JavaPerpetualStreamMergeHubSpec/perpetualStreamWithMergeHub"

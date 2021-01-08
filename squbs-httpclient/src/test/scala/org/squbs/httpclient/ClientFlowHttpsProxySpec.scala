@@ -15,9 +15,6 @@
  */
 package org.squbs.httpclient
 
-import java.net.InetSocketAddress
-import java.util.concurrent.atomic.AtomicInteger
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model._
@@ -31,10 +28,14 @@ import io.netty.handler.codec.http.HttpObject
 import org.littleshoot.proxy.impl.DefaultHttpProxyServer
 import org.littleshoot.proxy.{HttpFilters, HttpFiltersAdapter, HttpFiltersSourceAdapter, HttpProxyServer}
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.testkit.Timeouts._
 
+import java.net.InetSocketAddress
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.{Success, Try}
@@ -88,7 +89,7 @@ object ClientFlowHttpsProxySpec {
   }
 }
 
-class ClientFlowHttpsProxySpec  extends FlatSpec with Matchers with BeforeAndAfterAll
+class ClientFlowHttpsProxySpec  extends AnyFlatSpec with Matchers with BeforeAndAfterAll
   with BeforeAndAfterEach with ScalaFutures {
 
   val serverBinding = Await.result(ClientFlowHttpsProxySpec.startServers(), awaitMax)

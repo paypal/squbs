@@ -242,8 +242,8 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
       else {
         val membersLeft = zkClusterData.members.diff(members)
         val partitionWithMemberLost = if(membersLeft.nonEmpty) {
-          zkClusterData.partitions.mapValues { partition =>
-            partition.copy(members = partition.members.diff(membersLeft))
+          zkClusterData.partitions.map { case (name, partition) =>
+            name -> partition.copy(members = partition.members.diff(membersLeft))
           }
         } else {
           zkClusterData.partitions

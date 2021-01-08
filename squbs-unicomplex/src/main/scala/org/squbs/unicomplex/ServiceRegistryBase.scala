@@ -65,7 +65,7 @@ trait ServiceRegistryBase[A] {
         val buffer = ListBuffer[(A, FlowWrapper, PipelineSetting)]()
         val path = pathCompanion(ctx)
         routes.foreach {
-          entry => if (!entry._1.equals(path)) buffer += entry
+          entry => if (entry._1 != path) buffer += entry
         }
         (listener, buffer.toSeq)
       }
@@ -135,7 +135,7 @@ trait ServiceRegistryBase[A] {
         entry =>
           if (added) buffer += entry
           else
-          if (entry._1.equals(newMember._1)) {
+          if (entry._1 == newMember._1) {
             overrideWarning
             buffer += newMember
             added = true
@@ -147,7 +147,7 @@ trait ServiceRegistryBase[A] {
           }
       }
       if (!added) buffer += newMember
-      buffer
+      buffer.toSeq
     }
   }
 }

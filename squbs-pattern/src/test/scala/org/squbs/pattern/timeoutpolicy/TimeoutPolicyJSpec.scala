@@ -16,9 +16,10 @@
 
 package org.squbs.pattern.timeoutpolicy
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class TimeoutPolicyJSpec extends FlatSpec with Matchers {
+class TimeoutPolicyJSpec extends AnyFlatSpec with Matchers {
 
   behavior of "A Java TimeoutPolicyJ"
   val timeoutPolicyJ = new TimeoutPolicyJ

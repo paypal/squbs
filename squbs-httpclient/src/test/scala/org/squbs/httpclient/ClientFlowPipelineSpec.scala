@@ -24,7 +24,9 @@ import akka.stream.scaladsl._
 import akka.stream.{ActorMaterializer, BidiShape}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.BeforeAndAfterAll
 import org.squbs.pipeline.{Context, PipelineFlow, PipelineFlowFactory, RequestContext}
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.testkit.Timeouts._

@@ -16,14 +16,14 @@
 
 package org.squbs.pattern.orchestration
 
+import org.scalatest.funspec.AnyFunSpec
+import org.scalatest.matchers.should.Matchers
+
 import java.util.NoSuchElementException
-
-import org.scalatest.{FunSpec, Matchers}
-
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-class OFutureSpec extends FunSpec with Matchers {
+class OFutureSpec extends AnyFunSpec with Matchers {
 
   //the key test case follows, as `threadless` indicates, the callbacks (success/failure) should be run within the same thread
   //other than common `scala.concurrent.Future`

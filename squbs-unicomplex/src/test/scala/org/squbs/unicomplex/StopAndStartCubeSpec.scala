@@ -16,14 +16,15 @@
 
 package org.squbs.unicomplex
 
-import java.util.concurrent.TimeUnit
-
 import akka.actor.{ActorIdentity, ActorSystem, Identify}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 
+import java.util.concurrent.TimeUnit
 import scala.util.Try
 
 object StopAndStartCubeSpec {
@@ -52,7 +53,7 @@ object StopAndStartCubeSpec {
 }
 
 class StopAndStartCubeSpec extends TestKit(StopAndStartCubeSpec.boot.actorSystem)
-with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
+with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   implicit val timeout: akka.util.Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>

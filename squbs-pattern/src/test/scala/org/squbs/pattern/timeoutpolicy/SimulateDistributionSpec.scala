@@ -16,13 +16,14 @@
 
 package org.squbs.pattern.timeoutpolicy
 
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.{Random, Try}
 
-class SimulateDistributionSpec extends FlatSpecLike with Matchers{
+class SimulateDistributionSpec extends AnyFlatSpecLike with Matchers {
 
   "Random.nextGaussian" should "work as expected" in {
     import scala.concurrent.ExecutionContext.Implicits.global

@@ -59,7 +59,7 @@ object JavaConverters {
 
   private def adaptTupleFlow[T](scalaFlow: Flow[(HttpRequest, T), (Try[HttpResponse], T), HostConnectionPool]):
   js.Flow[Pair[jm.HttpRequest, T], Pair[Try[jm.HttpResponse], T], jd.HostConnectionPool] = {
-    implicit val _ = JavaMapping.identity[T]
+    implicit val jIdentityMapping = JavaMapping.identity[T]
     implicit object HostConnectionPoolMapping extends JavaMapping[jd.HostConnectionPool, HostConnectionPool] {
       def toScala(javaObject: jd.HostConnectionPool): HostConnectionPool =
         throw new UnsupportedOperationException("jd.HostConnectionPool cannot be converted to Scala")

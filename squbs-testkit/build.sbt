@@ -4,6 +4,7 @@ name := "squbs-testkit"
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % scalatestV,
+  "org.scalatestplus" %% "testng-6-7" % scalatestplusV % Optional,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV,
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % Optional,

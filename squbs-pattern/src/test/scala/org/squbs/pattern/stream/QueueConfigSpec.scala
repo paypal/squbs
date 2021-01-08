@@ -18,10 +18,11 @@ package org.squbs.pattern.stream
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import net.openhft.chronicle.queue.RollCycles
 import net.openhft.chronicle.wire.WireType
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 
-class QueueConfigSpec extends FlatSpec with Matchers {
+class QueueConfigSpec extends AnyFlatSpec with Matchers {
 
   it should "properly read the configuration from config" in {
 

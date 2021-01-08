@@ -22,7 +22,7 @@ import akka.http.javadsl.server.RouteResult
 import akka.http.javadsl.testkit.{RouteTest, TestRouteResult}
 import akka.stream.{ActorMaterializer, Materializer}
 import com.typesafe.config.{Config, ConfigFactory}
-import org.scalatest.testng.TestNGSuiteLike
+import org.scalatestplus.testng.TestNGSuiteLike
 import org.testng.Assert
 import org.testng.annotations.{AfterClass, BeforeClass}
 
@@ -39,7 +39,8 @@ trait TestNGRouteTestBase extends RouteTest with RouteDefinitionTest with TestNG
   implicit def system: ActorSystem = systemResource.system
   implicit def materializer: Materializer = systemResource.materializer
 
-  override protected def createTestRouteResultAsync(request: HttpRequest, result: Future[RouteResult]): TestRouteResult =
+  override protected def createTestRouteResultAsync(request: HttpRequest, result: Future[RouteResult]):
+  TestRouteResult =
     new TestRouteResult(result, awaitDuration)(system.dispatcher, materializer) {
       protected def assertEquals(expected: AnyRef, actual: AnyRef, message: String): Unit =
         reportDetails {
@@ -57,9 +58,9 @@ trait TestNGRouteTestBase extends RouteTest with RouteDefinitionTest with TestNG
         throw new IllegalStateException("Assertion should have failed")
       }
 
-      def reportDetails[T](block: ⇒ T): T = {
+      def reportDetails[T](block: => T): T = {
         try block catch {
-          case NonFatal(t) ⇒ throw new AssertionError(t.getMessage + "\n" +
+          case NonFatal(t) => throw new AssertionError(t.getMessage + "\n" +
             "  Request was:      " + request + "\n" +
             "  Route result was: " + result + "\n", t)
         }

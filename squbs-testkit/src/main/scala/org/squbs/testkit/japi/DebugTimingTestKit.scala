@@ -17,13 +17,17 @@
 package org.squbs.testkit.japi
 
 import akka.actor.ActorSystem
-import akka.testkit.JavaTestKit
+import akka.testkit.javadsl
 import org.squbs.testkit.DebugTiming
 
 import scala.concurrent.duration.Duration
 
-class DebugTimingTestKit(actorSystem: ActorSystem) extends JavaTestKit(actorSystem) {
+class DebugTimingTestKit(actorSystem: ActorSystem) extends javadsl.TestKit(actorSystem) {
   override def receiveOne(max: Duration): AnyRef =
-    if (DebugTiming.debugMode) super.receiveOne(DebugTiming.debugTimeout)
+    if (DebugTiming.debugMode) super.receiveOne(java.time.Duration.ofNanos(DebugTiming.debugTimeout.toNanos))
+    else super.receiveOne(java.time.Duration.ofNanos(max.toNanos))
+
+  override def receiveOne(max: java.time.Duration): AnyRef =
+    if (DebugTiming.debugMode) super.receiveOne(java.time.Duration.ofNanos(DebugTiming.debugTimeout.toNanos))
     else super.receiveOne(max)
 }

@@ -124,7 +124,7 @@ object ConfigUtil extends LazyLogging {
 
 
     def getOptionalConfigList(path: String): Option[Seq[Config]] = try {
-          Some(underlying.getConfigList(path).asScala)
+          Some(underlying.getConfigList(path).asScala.toSeq)
         } catch {
           case e: ConfigException.Missing => None
         }

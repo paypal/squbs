@@ -103,7 +103,7 @@ public class AbortableBidiFlowTest {
         assertEquals(respHeaders, expectedHeaders);
 
         final String actualEntity = httpResponse.entity().getDataBytes()
-            .runFold(ByteString.empty(), ByteString::concat, mat).toCompletableFuture().get().utf8String();
+            .runFold(ByteString.emptyByteString(), ByteString::concat, mat).toCompletableFuture().get().utf8String();
         final RawHeader[] entityList = {
             RawHeader.create("keyA", "valA"),
             RawHeader.create("keyB", "valB"),
@@ -147,7 +147,7 @@ public class AbortableBidiFlowTest {
         assertEquals(respHeaders, expectedHeaders);
 
         final String actualEntity = httpResponse.entity().getDataBytes()
-            .runFold(ByteString.empty(), ByteString::concat, mat).toCompletableFuture().get().utf8String();
+            .runFold(ByteString.emptyByteString(), ByteString::concat, mat).toCompletableFuture().get().utf8String();
         final RawHeader[] entityList = {
             RawHeader.create("abort", "dummyValue"),
             RawHeader.create("keyA", "valA"),

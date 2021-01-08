@@ -16,16 +16,16 @@
 
 package org.squbs.streams
 
-import java.util.UUID
-import java.util.concurrent.atomic.AtomicInteger
-
 import akka.actor.{Actor, ActorSystem, Props}
 import akka.stream.scaladsl._
 import akka.stream.{ActorMaterializer, Attributes, FlowShape}
 import akka.testkit.TestKit
-import org.scalatest.{AsyncFlatSpecLike, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.streams.UniqueId.{Envelope, Provider}
 
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 import scala.compat.java8.FunctionConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}

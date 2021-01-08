@@ -16,10 +16,6 @@
 
 package org.squbs.streams.circuitbreaker
 
-import java.lang.management.ManagementFactory
-import java.util.UUID
-import javax.management.ObjectName
-
 import akka.actor.{Actor, ActorSystem, Props}
 import akka.stream.scaladsl.{BidiFlow, Flow, Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
@@ -27,11 +23,15 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.metrics.MetricsExtension
 import org.squbs.streams.FlowTimeoutException
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 
+import java.lang.management.ManagementFactory
+import java.util.UUID
+import javax.management.ObjectName
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
 import scala.language.postfixOps
@@ -39,7 +39,7 @@ import scala.util.{Failure, Success}
 
 class CircuitBreakerSpec
   extends TestKit(ActorSystem("CircuitBreakerBidiFlowSpec", CircuitBreakerSpec.config))
-  with FlatSpecLike with Matchers with ImplicitSender {
+  with AnyFlatSpecLike with Matchers with ImplicitSender {
 
   import Timing._
 

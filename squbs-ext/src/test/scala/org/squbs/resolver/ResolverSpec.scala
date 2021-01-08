@@ -16,19 +16,19 @@
 
 package org.squbs.resolver
 
-import java.net.{URI, URL}
-
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.OptionValues._
-import org.scalatest.{BeforeAndAfterEach, FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.env._
-import scala.language.existentials
 
-import scala.language.postfixOps
+import java.net.{URI, URL}
+import scala.language.{existentials, postfixOps}
 
 class ResolverSpec extends TestKit(ActorSystem("ResolverSpec"))
-    with FlatSpecLike with Matchers with BeforeAndAfterEach {
+    with AnyFlatSpecLike with Matchers with BeforeAndAfterEach {
 
   override def afterEach(): Unit = {
     ResolverTestHelper.clearRegistries(system)

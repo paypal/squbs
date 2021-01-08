@@ -19,18 +19,20 @@ package org.squbs.unicomplex.pipeline
 import akka.actor.{Actor, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpEntity.{Chunk, LastChunk}
-import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server._
 import akka.pattern._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
-import org.squbs.unicomplex._
 import org.squbs.unicomplex.Timeouts._
+import org.squbs.unicomplex._
 
 import scala.concurrent.Await
 
@@ -74,7 +76,7 @@ object PipelineChunkingSpec {
     .initExtensions.start()
 }
 
-class PipelineChunkingSpec extends TestKit(PipelineChunkingSpec.boot.actorSystem) with FlatSpecLike
+class PipelineChunkingSpec extends TestKit(PipelineChunkingSpec.boot.actorSystem) with AnyFlatSpecLike
   with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   implicit val am = ActorMaterializer()

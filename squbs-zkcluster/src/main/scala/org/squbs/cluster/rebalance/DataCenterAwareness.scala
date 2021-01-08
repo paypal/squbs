@@ -65,7 +65,7 @@ class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlat
 
 object CorrelateRoundRobinRoutingLogic {
 
-  def apply[C](zkAddress:Address, correlation:Correlation[C] = DefaultCorrelation()) =
+  def apply[C](zkAddress:Address, correlation:Correlation[C]) =
     new CorrelateRoundRobinRoutingLogic[C](zkAddress, correlation)
 
 }
@@ -73,7 +73,7 @@ object CorrelateRoundRobinRoutingLogic {
 final case class CorrelateRoundRobinGroup[C](val routerPaths: (ActorSystem) => immutable.Iterable[String],
                                              override val routerDispatcher: String = Dispatchers.DefaultDispatcherId,
                                              zkAddress:Address,
-                                             correlation:Correlation[C] = DefaultCorrelation()) extends Group {
+                                             correlation:Correlation[C]) extends Group {
 
   override def createRouter(system: ActorSystem): Router =
     new Router(CorrelateRoundRobinRoutingLogic(zkAddress, correlation))
@@ -109,7 +109,7 @@ class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], val spareLead
     }
 
   def shuffle(members:Seq[Address]):Seq[Address] =
-    rotate(classify(members, Map.empty[C, Seq[Address]]).values.to[Seq], Seq.empty[Address])
+    rotate(classify(members, Map.empty[C, Seq[Address]]).values.toSeq, Seq.empty[Address])
 
   /**
    * @return partitionsToMembers compensated when size in service is short compared with what's required
@@ -167,6 +167,6 @@ class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], val spareLead
 
 object DataCenterAwareRebalanceLogic {
 
-  def apply[C](correlation:Correlation[C] = DefaultCorrelation(), spareLeader:Boolean = false) =
+  def apply[C](correlation:Correlation[C], spareLeader:Boolean = false) =
     new DataCenterAwareRebalanceLogic(correlation, spareLeader)
 }

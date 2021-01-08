@@ -18,12 +18,13 @@ package org.squbs.testkit
 
 import akka.actor.Actor
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.unicomplex.{JMX, RouteDefinition, UnicomplexBoot}
 
 import scala.util.{Failure, Success}
 
-class CustomRouteTestKitSpec extends CustomRouteTestKit with FlatSpecLike with Matchers {
+class CustomRouteTestKitSpec extends CustomRouteTestKit with AnyFlatSpecLike with Matchers {
 
   it should "return pong on a ping" in {
     val route = TestRoute[MyRoute]
@@ -34,7 +35,7 @@ class CustomRouteTestKitSpec extends CustomRouteTestKit with FlatSpecLike with M
 }
 
 class CustomRouteTestKitWithBootSpec extends CustomRouteTestKit(CustomRouteTestKitWithBootSpec.boot)
-with FlatSpecLike with Matchers {
+with AnyFlatSpecLike with Matchers {
 
   it should "return pong on a ping" in {
     val route = TestRoute[MyRoute]
@@ -68,7 +69,7 @@ object CustomRouteTestKitWithBootSpec {
 }
 
 class CustomRouteTestKitWithActorSystemNameSpec extends CustomRouteTestKit("CustomRouteTestKitWithActorSystemNameSpecParam")
-with FlatSpecLike with Matchers {
+with AnyFlatSpecLike with Matchers {
 
   it should "return pong on a ping" in {
     val route = TestRoute[MyRoute]
@@ -83,7 +84,7 @@ with FlatSpecLike with Matchers {
 }
 
 class CustomRouteTestKitWithConfigSpec extends CustomRouteTestKit(CustomRouteTestKitWithConfigSpec.config)
-with FlatSpecLike with Matchers {
+with AnyFlatSpecLike with Matchers {
 
   it should "return pong on a ping" in {
     val route = TestRoute[MyRoute]
@@ -111,7 +112,7 @@ object CustomRouteTestKitWithConfigSpec {
 
 class CustomRouteTestKitWithResourcesSpec extends CustomRouteTestKit(CustomRouteTestKitWithResourcesSpec.resources,
                                                                      withClassPath = false)
-with FlatSpecLike with Matchers {
+with AnyFlatSpecLike with Matchers {
 
   it should "return pong on a ping" in {
     val route = TestRoute[MyRoute]
@@ -135,7 +136,7 @@ object CustomRouteTestKitWithResourcesSpec {
 class CustomRouteTestKitWithActorSystemNameWithResourcesSpec
   extends CustomRouteTestKit("CustomRouteTestKitWithActorSystemNameWithResourcesSpecParam",
                              CustomRouteTestKitWithResourcesSpec.resources, withClassPath = false)
-  with FlatSpecLike with Matchers {
+  with AnyFlatSpecLike with Matchers {
 
   it should "return pong on a ping" in {
     val route = TestRoute[MyRoute]
@@ -160,7 +161,7 @@ class CustomRouteTestKitWithConfigWithResourcesSpec
   extends CustomRouteTestKit(CustomRouteTestKitWithConfigWithResourcesSpec.config,
                              CustomRouteTestKitWithConfigWithResourcesSpec.resources,
                              withClassPath = false)
-  with FlatSpecLike with Matchers {
+  with AnyFlatSpecLike with Matchers {
 
   it should "return pong on a ping" in {
     val route = TestRoute[MyRoute]

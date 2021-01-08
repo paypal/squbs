@@ -38,7 +38,7 @@ abstract class BroadcastBufferBase[T, S] (private[stream] val queue: PersistentQ
 
   private val outputPorts = queue.totalOutputPorts
   private val in = Inlet[T]("BroadcastBuffer.in")
-  private val out = Vector.tabulate(outputPorts)(i ⇒ Outlet[S]("BroadcastBuffer.out" + i))
+  private val out = Vector.tabulate(outputPorts)(i => Outlet[S]("BroadcastBuffer.out" + i))
   private val outWithIndex = out.zipWithIndex
   val shape: UniformFanOutShape[T, S] = UniformFanOutShape(in, out: _*)
   @volatile protected var upstreamFailed = false

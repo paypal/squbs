@@ -18,14 +18,15 @@ package org.squbs.testkit.stress
 
 import akka.actor._
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{FunSpecLike, Matchers}
-import org.squbs.testkit.{Timeouts, TestPong, TestPing}
-import Timeouts._
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.squbs.testkit.Timeouts._
+import org.squbs.testkit.{TestPing, TestPong, Timeouts}
 
 import scala.concurrent.duration._
 
 class LoadActorSpec extends TestKit(ActorSystem("LoadActorSpec"))
-with ImplicitSender with FunSpecLike with Matchers {
+with ImplicitSender with AnyFunSpecLike with Matchers {
 
   val warmUp = 20.seconds
   val steady = 40.seconds

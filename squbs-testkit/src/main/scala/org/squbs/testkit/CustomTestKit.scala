@@ -139,39 +139,26 @@ object CustomTestKit {
 abstract class CustomTestKit(val boot: UnicomplexBoot) extends TestKit(boot.actorSystem)
     with DebugTiming with ImplicitSender with Suite with BeforeAndAfterAll with PortGetter {
 
-  def this() {
-    this(CustomTestKit.boot())
-  }
+  def this() = this(CustomTestKit.boot())
 
-  def this(actorSystemName: String) {
-    this(CustomTestKit.boot(Option(actorSystemName)))
-  }
+  def this(actorSystemName: String) = this(CustomTestKit.boot(Option(actorSystemName)))
 
-  def this(config: Config) {
-    this(CustomTestKit.boot(config = Option(config)))
-  }
+  def this(config: Config) = this(CustomTestKit.boot(config = Option(config)))
 
-  def this(withClassPath: Boolean) {
-    this(CustomTestKit.boot(withClassPath = Option(withClassPath)))
-  }
+  def this(withClassPath: Boolean) = this(CustomTestKit.boot(withClassPath = Option(withClassPath)))
 
-  def this(resources: Seq[String], withClassPath: Boolean) {
+  def this(resources: Seq[String], withClassPath: Boolean) =
     this(CustomTestKit.boot(resources = Option(resources), withClassPath = Option(withClassPath)))
-  }
 
-  def this(actorSystemName: String, resources: Seq[String], withClassPath: Boolean) {
-    this(CustomTestKit.boot(Option(actorSystemName), resources = Option(resources), withClassPath = Option(withClassPath)))
-  }
+  def this(actorSystemName: String, resources: Seq[String], withClassPath: Boolean) =
+    this(CustomTestKit.boot(Option(actorSystemName), resources = Option(resources),
+      withClassPath = Option(withClassPath)))
 
-  def this(config: Config, resources: Seq[String], withClassPath: Boolean) {
-    this(CustomTestKit.boot(config = Option(config), resources = Option(resources), withClassPath = Option(withClassPath)))
-  }
+  def this(config: Config, resources: Seq[String], withClassPath: Boolean) =
+    this(CustomTestKit.boot(config = Option(config), resources = Option(resources),
+      withClassPath = Option(withClassPath)))
 
-  override protected def beforeAll(): Unit = {
-    CustomTestKit.checkInit(system)
-  }
+  override protected def beforeAll(): Unit = CustomTestKit.checkInit(system)
 
-  override protected def afterAll(): Unit = {
-    Unicomplex(system).uniActor ! GracefulStop
-  }
+  override protected def afterAll(): Unit = Unicomplex(system).uniActor ! GracefulStop
 }

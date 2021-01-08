@@ -19,9 +19,10 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class BoundedOrderingSpec extends FlatSpec with Matchers with ScalaFutures {
+class BoundedOrderingSpec extends AnyFlatSpec with Matchers with ScalaFutures {
 
   implicit val system = ActorSystem("OrderingStateSpec")
   implicit val mat = ActorMaterializer()

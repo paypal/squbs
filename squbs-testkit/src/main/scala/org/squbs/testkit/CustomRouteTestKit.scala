@@ -27,35 +27,24 @@ abstract class CustomRouteTestKit(val boot: UnicomplexBoot) extends {
   implicit override val system = boot.actorSystem
 } with TestKitBase with Suite with ScalatestRouteTest with DebugTiming with PortGetter {
 
-  def this() {
-    this(CustomTestKit.boot())
-  }
+  def this() = this(CustomTestKit.boot())
 
-  def this(actorSystemName: String) {
-    this(CustomTestKit.boot(Option(actorSystemName)))
-  }
+  def this(actorSystemName: String) = this(CustomTestKit.boot(Option(actorSystemName)))
 
-  def this(config: Config) {
-    this(CustomTestKit.boot(config = Option(config)))
-  }
+  def this(config: Config) = this(CustomTestKit.boot(config = Option(config)))
 
-  def this(resources: Seq[String], withClassPath: Boolean) {
+  def this(resources: Seq[String], withClassPath: Boolean) =
     this(CustomTestKit.boot(resources = Option(resources), withClassPath = Option(withClassPath)))
-  }
 
-  def this(actorSystemName: String, resources: Seq[String], withClassPath: Boolean) {
-    this(CustomTestKit.boot(Option(actorSystemName), resources = Option(resources), withClassPath = Option(withClassPath)))
-  }
+  def this(actorSystemName: String, resources: Seq[String], withClassPath: Boolean) =
+    this(CustomTestKit.boot(Option(actorSystemName), resources = Option(resources),
+      withClassPath = Option(withClassPath)))
 
-  def this(config: Config, resources: Seq[String], withClassPath: Boolean) {
-    this(CustomTestKit.boot(config = Option(config), resources = Option(resources), withClassPath = Option(withClassPath)))
-  }
+  def this(config: Config, resources: Seq[String], withClassPath: Boolean) =
+    this(CustomTestKit.boot(config = Option(config), resources = Option(resources),
+      withClassPath = Option(withClassPath)))
 
-  override protected def beforeAll(): Unit = {
-    CustomTestKit.checkInit(system)
-  }
+  override protected def beforeAll(): Unit = CustomTestKit.checkInit(system)
 
-  override protected def afterAll(): Unit = {
-    Unicomplex(system).uniActor ! GracefulStop
-  }
+  override protected def afterAll(): Unit = Unicomplex(system).uniActor ! GracefulStop
 }

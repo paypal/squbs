@@ -19,9 +19,11 @@ package org.squbs.unicomplex
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest._
 import org.squbs.lifecycle.GracefulStop
 import Timeouts._
+import org.scalatest.{BeforeAndAfterAll, SequentialNestedSuiteExecution}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.language.postfixOps
 
@@ -70,7 +72,7 @@ object MultipleUnicomplexTest {
 }
 
 class MultipleUnicomplexTest extends TestKit(MultipleUnicomplexTest.boot.actorSystem) with ImplicitSender
-		with WordSpecLike with Matchers with BeforeAndAfterAll with SequentialNestedSuiteExecution {
+		with AnyWordSpecLike with Matchers with BeforeAndAfterAll with SequentialNestedSuiteExecution {
   
   val sys1 = system
   val sys2 = MultipleUnicomplexTest.boot2.actorSystem

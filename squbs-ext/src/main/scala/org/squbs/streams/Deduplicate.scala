@@ -75,9 +75,9 @@ final class Deduplicate[T, U](key: T => U, duplicateCount: Long = Long.MaxValue,
             push(out, elem)
           }
         } catch {
-          case NonFatal(ex) ⇒ decider(ex) match {
-            case Supervision.Stop ⇒ failStage(ex)
-            case _                ⇒ pull(in)
+          case NonFatal(ex) => decider(ex) match {
+            case Supervision.Stop => failStage(ex)
+            case _                => pull(in)
           }
         }
       }

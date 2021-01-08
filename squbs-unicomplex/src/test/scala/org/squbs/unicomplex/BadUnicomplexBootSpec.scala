@@ -18,12 +18,13 @@ package org.squbs.unicomplex
 
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest._
+import org.scalatest.{BeforeAndAfterAll, Inspectors}
 import org.scalatest.concurrent.Waiters
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex.dummyextensions.DummyExtension
@@ -77,7 +78,7 @@ object BadUnicomplexBootSpec {
 }
 
 class BadUnicomplexBootSpec extends TestKit(BadUnicomplexBootSpec.boot.actorSystem) with ImplicitSender
-with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll
+with AnyWordSpecLike with Matchers with Inspectors with BeforeAndAfterAll
 with Waiters {
 
   import BadUnicomplexBootSpec._

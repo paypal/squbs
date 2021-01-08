@@ -16,25 +16,22 @@
 
 package org.squbs.unicomplex
 
-import org.scalatest.{FunSpecLike, Matchers}
-import org.squbs.unicomplex.UnicomplexBoot._
-import com.typesafe.config.{ConfigException, ConfigFactory}
-import java.io.{File, PrintWriter}
-import java.util.UUID
-
 import akka.actor.ActorSystem
+import com.typesafe.config.{ConfigException, ConfigFactory}
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import org.squbs.lifecycle.GracefulStop
+import org.squbs.unicomplex.UnicomplexBoot._
 
-import scala.util.{Failure, Success, Try}
+import java.io.{File, PrintWriter}
+import java.util.UUID
 import scala.collection.JavaConverters._
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.util.{Failure, Success, Try}
 
-class UnicomplexBootSpec
-  extends FunSpecLike
-  with Matchers
-  with MockitoSugar
+class UnicomplexBootSpec extends AnyFunSpecLike with Matchers with MockitoSugar
 {
 
   describe ("The UnicomplexBootstrap") {

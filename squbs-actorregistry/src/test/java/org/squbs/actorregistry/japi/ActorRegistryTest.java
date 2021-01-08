@@ -43,8 +43,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.*;
-import static org.squbs.testkit.Timeouts.askTimeout;
-import static org.squbs.testkit.Timeouts.awaitMax;
+import static org.squbs.testkit.japi.Timeouts.askTimeout;
+import static org.squbs.testkit.japi.Timeouts.awaitMax;
 
 public class ActorRegistryTest extends CustomTestKit {
 
@@ -341,12 +341,11 @@ public class ActorRegistryTest extends CustomTestKit {
 
         new DebugTimingTestKit(system()) {{
             lookup.lookup("TestActor1").tell(PoisonPill.getInstance(), getRef());
-            new AwaitAssert(awaitMax()) {
-                protected void check() {
-                    Optional<Object> after = getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList");
-                    assertFalse(after.isPresent());
-                }
-            };
+            awaitAssert(awaitMax(), () -> {
+                Optional<Object> after = getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList");
+                assertFalse(after.isPresent());
+                return null;
+            });
         }};
     }
 }

@@ -17,15 +17,17 @@
 package org.squbs.httpclient
 
 import java.lang.management.ManagementFactory
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
+
 import javax.management.ObjectName
-import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+import org.scalatest.BeforeAndAfterAll
 import org.squbs.resolver._
 import org.squbs.testkit.Timeouts._
 

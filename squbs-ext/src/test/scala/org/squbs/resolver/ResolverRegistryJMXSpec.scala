@@ -16,18 +16,18 @@
 
 package org.squbs.resolver
 
-import java.lang.management.ManagementFactory
-import javax.management.{InstanceNotFoundException, ObjectName}
-import javax.management.openmbean.CompositeData
-
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
+import java.lang.management.ManagementFactory
+import javax.management.openmbean.CompositeData
+import javax.management.{InstanceNotFoundException, ObjectName}
 import scala.language.postfixOps
 
 class ResolverRegistryJMXSpec extends TestKit(ActorSystem("ResolverRegistryJMXSpec"))
-with FlatSpecLike with Matchers {
+with AnyFlatSpecLike with Matchers {
 
   private val oName = ObjectName.getInstance(s"org.squbs.configuration.${system.name}:type=ResolverRegistry")
 

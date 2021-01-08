@@ -134,7 +134,7 @@ class TeamNonCaseClass(val description: String, val members: List[EmployeeNonCas
 object EmployeeBeanSerializer extends CustomSerializer[EmployeeBean]( _ => (
   { case JObject(JField("id", JInt(i)) :: JField("firstName", JString(f)) :: JField("lastName", JString(l)) :: JField(
   "age", JInt(a)) :: JField("male", JBool(m)) :: Nil) =>
-    new EmployeeBean(i.longValue(), f, l, a.intValue(), m)
+    new EmployeeBean(i.longValue, f, l, a.intValue, m)
   },
   { case x: EmployeeBean =>
     JObject(

@@ -16,19 +16,19 @@
 
 package org.squbs.metrics
 
-import java.lang.management.ManagementFactory
-import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.ws.PeerClosedConnectionException
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.testkit.TestKit
-import org.scalatest.{AsyncFlatSpecLike, Matchers}
 import org.scalatest.OptionValues._
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.pipeline.RequestContext
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import scala.concurrent.Future
 import scala.util.{Failure, Try}
 

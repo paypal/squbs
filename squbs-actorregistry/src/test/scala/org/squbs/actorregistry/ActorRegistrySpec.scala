@@ -17,11 +17,12 @@ package org.squbs.actorregistry
 
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
-
 import akka.actor._
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest._
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 import org.squbs.actorregistry.testcube._
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
@@ -58,7 +59,7 @@ class TestBootstrap(configContent: String, cubeEntries: String*) {
 }
 
 abstract class ActorRegistrySpec(testBootstrap: TestBootstrap) extends TestKit(testBootstrap.boot.actorSystem)
-    with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll {
+    with ImplicitSender with AnyWordSpecLike with Matchers with BeforeAndAfterAll {
 
   import org.squbs.testkit.Timeouts._
 

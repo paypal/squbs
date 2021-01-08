@@ -24,14 +24,15 @@ import akka.stream.{ActorMaterializer, BidiShape}
 import akka.testkit.TestKit
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{FlatSpecLike, Matchers}
-import Timeouts.awaitMax
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.squbs.pipeline.Timeouts.awaitMax
 
 import scala.concurrent.Await
 import scala.util.{Success, Try}
 
 class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec", PipelineExtensionSpec.config))
-  with FlatSpecLike with Matchers {
+  with AnyFlatSpecLike with Matchers {
 
   implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)
@@ -128,7 +129,7 @@ class PipelineExtensionSpec2 extends TestKit(ActorSystem("PipelineExtensionSpec2
      |  type = squbs.pipelineflow
      |  factory = org.squbs.pipeline.NotExists
      |}
-   """.stripMargin))) with FlatSpecLike with Matchers {
+   """.stripMargin))) with AnyFlatSpecLike with Matchers {
 
   it should "throw ClassNotFoundException when a squbs.pipelineflow factory class does not exist." in {
     intercept[ClassNotFoundException] {
@@ -143,7 +144,7 @@ class PipelineExtensionSpec3 extends TestKit(ActorSystem("PipelineExtensionSpec3
      |  type = squbs.pipelineflow
      |  factory = org.squbs.pipeline.DummyFlow1
      |}
-   """.stripMargin))) with FlatSpecLike with Matchers {
+   """.stripMargin))) with AnyFlatSpecLike with Matchers {
 
   implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)

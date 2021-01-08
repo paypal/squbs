@@ -16,11 +16,13 @@
 
 package org.squbs.unicomplex
 
-import com.typesafe.config.{ConfigFactory}
-import org.scalatest.{Matchers, FlatSpecLike}
-import collection.JavaConverters._
+import com.typesafe.config.ConfigFactory
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
-class SystemSettingBeanSpec extends FlatSpecLike with Matchers{
+import scala.collection.JavaConverters._
+
+class SystemSettingBeanSpec extends AnyFlatSpecLike with Matchers{
 
   "SystemSettingBean" should "read config correctly" in {
     val config = ConfigFactory.parseString(

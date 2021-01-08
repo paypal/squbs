@@ -11,6 +11,7 @@ javaOptions in Test ++= Seq("-Xmx512m", "-ea")
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+  "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "org.slf4j" % "slf4j-api" % slf4jV,
   "net.openhft" % "chronicle-queue" % chronicleQueueV % Optional,

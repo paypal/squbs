@@ -18,9 +18,11 @@ package org.squbs.env
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import org.scalatest._
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
-class EnvironmentSpec extends TestKit(ActorSystem("EnvironmentSpec")) with FlatSpecLike
+class EnvironmentSpec extends TestKit(ActorSystem("EnvironmentSpec")) with AnyFlatSpecLike
 with Matchers with BeforeAndAfterEach{
 
   override def beforeEach(): Unit = {
