@@ -37,7 +37,7 @@ class KillSwitchWithChildActorStream extends PerpetualStream[Future[Long]] {
   import KillSwitchWithChildActorStream._
   import org.squbs.unicomplex.Timeouts._
 
-  val dummyChildActor = context.actorOf(Props[DummyChildActor])
+  val dummyChildActor = context.actorOf(Props[DummyChildActor]())
 
   override def stopTimeout = awaitMax
 
@@ -46,7 +46,7 @@ class KillSwitchWithChildActorStream extends PerpetualStream[Future[Long]] {
     v
   }
 
-  val source = Source.fromIterator(generator _)
+  val source = Source.fromIterator(() => generator)
 
   val throttle = Flow[Int].throttle(5000, 1 second, 1000, Shaping)
 

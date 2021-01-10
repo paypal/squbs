@@ -92,7 +92,7 @@ class RouteDefinitionSpec extends TestKit(
   RouteDefinitionSpec.boot.actorSystem) with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll
   with ScalaFutures {
 
-  implicit val _ = PatienceConfig(1.minute)
+  implicit val pc = PatienceConfig(1.minute)
   implicit val am = ActorMaterializer()
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)

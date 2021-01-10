@@ -39,7 +39,7 @@ class KillSwitchStream extends PerpetualStream[Future[Long]] {
     v
   }
 
-  val source = Source.fromIterator(generator _)
+  val source = Source.fromIterator(() => generator)
 
   val throttle = Flow[Int].throttle(5000, 1 second, 1000, Shaping)
 

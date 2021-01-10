@@ -39,7 +39,7 @@ class InitCubeActorA1 extends Actor with ActorLogging with GracefulStopHelper {
   def receive = {
     case GracefulStop => defaultLeafActorStop
 
-    case other => sender ! other
+    case other => sender() ! other
   }
 
 }
@@ -60,7 +60,7 @@ class InitCubeActorA2 extends Actor with ActorLogging with GracefulStopHelper {
   def receive = {
     case GracefulStop => defaultLeafActorStop
 
-    case other => sender ! other
+    case other => sender() ! other
   }
 
 }
@@ -104,7 +104,7 @@ class InitCubeActorA3 extends Actor with ActorLogging with GracefulStopHelper {
 
     case "Boom" => throw new RuntimeException("Boom")
 
-    case other => sender ! other
+    case other => sender() ! other
   }
 
 }

@@ -34,15 +34,15 @@ with ImplicitSender with AnyFunSpecLike with Matchers {
   it ("Shall achieve the requested large TPS and report proper CPU statistics") {
     val ir = 500
     val startTime = System.nanoTime()
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
+    val loadActor = system.actorOf(Props[LoadActor]())
+    val statsActor = system.actorOf(Props[CPUStatsActor]())
     val statLogger = system.actorOf(Props(classOf[StatLogger], startTime, warmUp, steady, loadActor, statsActor))
     loadActor ! StartLoad(startTime, ir, warmUp, steady) {
-      system.actorOf(Props[LoadTestActor]) ! TestPing
+      system.actorOf(Props[LoadTestActor]()) ! TestPing
     }
     statsActor ! StartStats(startTime, warmUp, steady, 1.seconds)
 
-    var responseCount = 0l
+    var responseCount = 0L
 
     for (i <- 0 to 1) {
       fishForMessage(warmUp + steady + awaitMax) {
@@ -74,15 +74,15 @@ with ImplicitSender with AnyFunSpecLike with Matchers {
   it ("Shall achieve the requested small TPS and report proper CPU statistics") {
     val ir = 10
     val startTime = System.nanoTime()
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
+    val loadActor = system.actorOf(Props[LoadActor]())
+    val statsActor = system.actorOf(Props[CPUStatsActor]())
     val statLogger = system.actorOf(Props(classOf[StatLogger], startTime, warmUp, steady, loadActor, statsActor))
     loadActor ! StartLoad(startTime, ir, warmUp, steady) {
-      system.actorOf(Props[LoadTestActor]) ! TestPing
+      system.actorOf(Props[LoadTestActor]()) ! TestPing
     }
     statsActor ! StartStats(startTime, warmUp, steady, 1.seconds)
 
-    var responseCount = 0l
+    var responseCount = 0L
 
     for (i <- 0 to 1) {
       fishForMessage(warmUp + steady + awaitMax) {

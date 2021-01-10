@@ -26,7 +26,7 @@ import akka.stream.Materializer;
 import akka.testkit.javadsl.TestKit;
 import com.typesafe.config.ConfigFactory;
 import org.squbs.testkit.TestActorJ;
-import org.squbs.testkit.Timeouts;
+import org.squbs.testkit.japi.Timeouts;
 import org.squbs.unicomplex.JMX;
 import org.squbs.unicomplex.UnicomplexBoot;
 import org.testng.Assert;
@@ -58,7 +58,7 @@ public class CustomTestKitTest extends CustomTestKit {
 
         final CompletionStage<HttpResponse> responseFuture =
                 Http.get(system())
-                        .singleRequest(HttpRequest.create("http://127.0.0.1:" + port() + "/test"), materializer);
+                        .singleRequest(HttpRequest.create("http://127.0.0.1:" + port() + "/test"));
         Assert.assertTrue(responseFuture.toCompletableFuture().get().entity()
                 .toStrict(Timeouts.awaitMax().toMillis(), materializer).toCompletableFuture().get().getData()
                 .utf8String().contains("success"));
@@ -84,10 +84,12 @@ public class CustomTestKitTest extends CustomTestKit {
             configMap.put("squbs." + JMX.prefixConfig(), true);
         }
 
-        private static List<String> resources = Arrays.asList(
-                TestConfig.class.getClassLoader().getResource("").getPath() + "/CustomTestKitTest/META-INF/squbs-meta.conf");
+        private static final List<String> resources = Arrays.asList(TestConfig.class.getClassLoader()
+                .getResource("").getPath() + "/CustomTestKitTest/META-INF/squbs-meta.conf");
 
-        private static scala.collection.immutable.List resourcesAsScala = scala.collection.JavaConverters.asScalaBuffer(resources).toList();
-        private static UnicomplexBoot boot = UnicomplexBoot.apply(ConfigFactory.parseMap(configMap)).scanResources(resourcesAsScala).start();
+        private static final scala.collection.immutable.List<String> resourcesAsScala =
+                scala.collection.JavaConverters.asScalaBuffer(resources).toList();
+        private static final UnicomplexBoot boot =
+                UnicomplexBoot.apply(ConfigFactory.parseMap(configMap)).scanResources(resourcesAsScala).start();
     }
 }

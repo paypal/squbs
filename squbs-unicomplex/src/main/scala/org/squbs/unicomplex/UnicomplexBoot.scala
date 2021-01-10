@@ -243,11 +243,13 @@ object UnicomplexBoot extends LazyLogging {
   @tailrec
   private[unicomplex] def resolveAliasConflicts(cubeList: Seq[CubeInit]): Seq[CubeInit] = {
 
-    val aliasConflicts = cubeList map { cube =>
-      (cube.info.name, cube.info.fullName)
-    } groupBy (_._1) mapValues { seq =>
-      (seq map (_._2)).toSet
-    } filter { _._2.size > 1 }
+    val aliasConflicts = cubeList
+      .map { cube =>
+        (cube.info.name, cube.info.fullName)
+      }
+      .groupBy (_._1)
+      .map { case (name, seq) => name -> (seq map (_._2)).toSet }
+      .filter { _._2.size > 1 }
 
     if (aliasConflicts.isEmpty) cubeList
     else {
@@ -554,7 +556,7 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
     UnicomplexBoot.scanResources(resources map (new File(_).toURI.toURL))(this)
 
   def scanResources(withClassPath: Boolean, resources: Array[String]): UnicomplexBoot =
-    scanResources(withClassPath, resources: _*)
+    scanResources(withClassPath, resources.toIndexedSeq: _*)
 
   def initExtensions: UnicomplexBoot = {
 

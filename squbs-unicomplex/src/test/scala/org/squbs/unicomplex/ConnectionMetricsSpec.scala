@@ -193,11 +193,11 @@ class ConnectionMetricsFlow extends FlowDefinition with WebContext {
 
   override def flow = Flow[HttpRequest].mapAsync(1) {
     case HttpRequest(_, Uri(_, _, `hello`, _, _), _, _, _) =>
-      val promise = Promise[HttpResponse]
+      val promise = Promise[HttpResponse]()
       import context.dispatcher
 
       import scala.concurrent.duration._
-      context.system.scheduler.scheduleOnce(1 second) {
+      context.system.scheduler.scheduleOnce(1.second) {
         promise.success(HttpResponse(StatusCodes.OK, entity = "Hello World!"))
       }
       promise.future

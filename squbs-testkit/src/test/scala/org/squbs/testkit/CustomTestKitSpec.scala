@@ -37,7 +37,7 @@ class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with AnyFl
   }
 
   it should "return a Pong on a Ping" in {
-    system.actorOf(Props[TestActor]) ! TestPing
+    system.actorOf(Props[TestActor]()) ! TestPing
     receiveOne(awaitMax) should be (TestPong)
   }
 }

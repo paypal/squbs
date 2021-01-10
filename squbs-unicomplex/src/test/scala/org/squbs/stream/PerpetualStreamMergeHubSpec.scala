@@ -89,7 +89,7 @@ class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[M
   implicit val mat = ActorMaterializer()
 
   implicit val myMessageUnmarshaller: FromEntityUnmarshaller[MyMessage] =
-    Unmarshaller { implicit ex ⇒ entity ⇒ entity.toStrict(1.second).map(e => MyMessage(e.data.utf8String.toInt)) }
+    Unmarshaller { implicit ex => entity => entity.toStrict(1.second).map(e => MyMessage(e.data.utf8String.toInt)) }
 
   override val flow: Flow[HttpRequest, HttpResponse, NotUsed] =
     Flow[HttpRequest]
@@ -104,7 +104,7 @@ class PerpetualStreamWithMergeHub extends PerpetualStream[Sink[MyMessage, NotUse
 
   val source = MergeHub.source[MyMessage]
 
-  val myMessageStorageActor = context.actorOf(Props[MyMessageStorageActor])
+  val myMessageStorageActor = context.actorOf(Props[MyMessageStorageActor]())
 
   /**
     * Describe your graph by implementing streamGraph

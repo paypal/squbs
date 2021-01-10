@@ -73,7 +73,7 @@ class PerpetualStreamMatValueSpec extends AnyFunSpec with Matchers with BeforeAn
           "java.util.List" -> classTag[GoodJavaListSinkMaterializingStream]
         ).foreach { case (testName, ct) =>
           implicit val to = timeout
-          implicit val _ = ct
+          implicit val ict = ct
           it(testName) {
             useSystem {
               case Success(actor) =>
@@ -96,7 +96,7 @@ class PerpetualStreamMatValueSpec extends AnyFunSpec with Matchers with BeforeAn
           "akka.japi.Pair" -> classTag[BadJapiPairSinkMaterializingStream],
           "java.util.List" -> classTag[BadJavaListSinkMaterializingStream]
         ).foreach { case (testName, ct) =>
-          implicit val _ = ct
+          implicit val ict = ct
           it (testName) {
             useSystem {
               case Failure(e) =>
@@ -148,7 +148,7 @@ object PerpetualStreamMatValueSpecHelper {
   def useSystem[PC <: PerpStream[_] : ClassTag](fn: Try[ActorRef] => Unit)
     (implicit system: ActorSystem, mat: Materializer): Unit = {
 
-    val perpRef = system.actorOf(Props[PC])
+    val perpRef = system.actorOf(Props[PC]())
     val someRef = system.actorOf(Props(new SomeActor(perpRef)))
 
     Try(Await.result(someRef ? payload, timeoutDuration)) match {
