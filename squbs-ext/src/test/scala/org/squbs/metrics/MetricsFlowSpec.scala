@@ -63,7 +63,7 @@ class MetricsFlowSpec extends TestKit(ActorSystem("MetricsFlowSpec")) with Async
     future map { _ =>
       jmxValue("sample-request-count", "Count").value shouldBe 2
       jmxValue("sample-request-time", "Count").value shouldBe 2
-      jmxValue("sample-request-time", "FifteenMinuteRate") should not be 'empty
+      jmxValue("sample-request-time", "FifteenMinuteRate") should not be empty
     }
   }
 

@@ -101,7 +101,7 @@ class ClientFlowPipelineSpec extends AsyncFlatSpec with Matchers with BeforeAndA
 
   import ClientFlowPipelineSpec._
 
-  override def afterAll: Unit = {
+  override def afterAll(): Unit = {
     serverBinding.unbind() map {_ => system.terminate()}
   }
 

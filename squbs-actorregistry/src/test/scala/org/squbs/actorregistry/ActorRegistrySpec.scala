@@ -219,14 +219,14 @@ abstract class ActorRegistrySpec(testBootstrap: TestBootstrap) extends TestKit(t
       before should not be empty
       ActorLookup("TestActor1") ! PoisonPill
       awaitAssert(
-        testBootstrap.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList") shouldBe 'empty,
+        testBootstrap.getActorRegistryBean("TestCube/TestActor1", "ActorMessageTypeList") shouldBe empty,
         max = awaitMax)
     }
 
     "16) kill ActorRegistry" in {
       system.actorSelection("/user/ActorRegistryCube/ActorRegistry") ! PoisonPill
       awaitAssert(
-        ManagementFactory.getPlatformMBeanServer.queryNames(testBootstrap.getObjName("*"), null) shouldBe 'empty,
+        ManagementFactory.getPlatformMBeanServer.queryNames(testBootstrap.getObjName("*"), null) shouldBe empty,
         max = awaitMax)
     }
   }

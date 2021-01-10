@@ -159,7 +159,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val errResp = Await.result(get(s"http://127.0.0.1:$port/dummyflowsvc/throwit"), awaitMax)
       errResp.status shouldBe StatusCodes.InternalServerError
       val respEntity = Await.result(errResp.entity.toStrict(awaitMax), awaitMax)
-      respEntity.data.utf8String shouldBe 'empty
+      respEntity.data.utf8String shouldBe empty
 
       val response = Await.result(
           post(s"http://127.0.0.1:$port/dummyflowsvc/chunks", Chunked(ContentTypes.`text/plain(UTF-8)`, requestChunks)),

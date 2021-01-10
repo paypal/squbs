@@ -293,7 +293,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
       system.actorSelection("/user/TestCube/TestActor1") ! PoisonPill
       awaitAssert({
-        ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") shouldBe 'empty
+        ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") shouldBe empty
         getActorMonitorConfigBean("Count") should contain (originalNum - 1)
       }, max = awaitMax)
     }

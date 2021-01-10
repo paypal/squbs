@@ -150,7 +150,7 @@ class ClientFlowCircuitBreakerSpec extends AsyncFlatSpec with Matchers with Befo
 
   import ClientFlowCircuitBreakerSpec._
 
-  override def afterAll: Unit = {
+  override def afterAll(): Unit = {
     serverBinding.unbind() map {_ => system.terminate()}
   }
 

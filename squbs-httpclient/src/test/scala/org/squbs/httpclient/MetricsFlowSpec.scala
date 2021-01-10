@@ -100,7 +100,7 @@ class MetricsFlowSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
   import MetricsFlowSpec._
   import system.dispatcher
 
-  override def afterAll: Unit = {
+  override def afterAll(): Unit = {
     serverBinding.unbind() map {_ => system.terminate()}
   }
 
@@ -113,7 +113,7 @@ class MetricsFlowSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
     callServiceTwice("sampleClient", "/hello") flatMap { _ => Future.sequence(f) } map { _ =>
       jmxValue("sampleClient-request-count", "Count").value shouldBe 7
       jmxValue("sampleClient-request-time", "Count").value shouldBe 7
-      jmxValue("sampleClient-request-time", "FifteenMinuteRate") should not be 'empty
+      jmxValue("sampleClient-request-time", "FifteenMinuteRate") should not be empty
     }
   }
 

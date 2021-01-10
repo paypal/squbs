@@ -94,7 +94,7 @@ class JavaFlowSvcSpec extends TestKit(
       respEntity <- errResp.entity.toStrict(awaitMax)
     } yield {
       errResp.status shouldBe StatusCodes.InternalServerError
-      respEntity.data.utf8String shouldBe 'empty
+      respEntity.data.utf8String shouldBe empty
     }
   }
 }

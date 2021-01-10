@@ -24,7 +24,7 @@ import org.squbs.unicomplex.{FlowDefinition, WebContext}
 
 class DummyFlowSvc extends FlowDefinition with WebContext {
 
-  val prefix = if (webContext.isEmpty) "" else '/' + webContext
+  val prefix = if (webContext.isEmpty) "" else s"/$webContext"
   val pingPath = s"$prefix/ping"
   val chunkPath = s"$prefix/chunks"
   val exceptionPath = s"$prefix/throwit"
