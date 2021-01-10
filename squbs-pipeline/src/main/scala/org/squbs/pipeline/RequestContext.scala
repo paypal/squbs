@@ -21,7 +21,7 @@ import java.util.Optional
 import akka.http.javadsl.{model => jm}
 import akka.http.scaladsl.{model => sm}
 import scala.annotation.varargs
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.compat.java8.OptionConverters._
 import scala.util.Try
 

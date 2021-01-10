@@ -216,7 +216,7 @@ trait ResolverRegistryMXBean {
 case class ResolverRegistryMXBeanImpl(system: ActorSystem) extends ResolverRegistryMXBean {
 
   override def getResolverInfo: java.util.List[ResolverInfo] = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     ResolverRegistry(system).resolvers.zipWithIndex.map { case ((tpe, resolver), position) =>
       ResolverInfo(position, tpe.getName, resolver.name, resolver.getClass.getName)
     }.asJava

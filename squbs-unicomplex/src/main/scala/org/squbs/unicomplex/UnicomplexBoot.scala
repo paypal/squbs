@@ -37,7 +37,7 @@ import org.squbs.util.ConfigUtil._
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.{postfixOps, existentials}
@@ -554,6 +554,8 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
 
   def scanResources(resources: String*): UnicomplexBoot =
     UnicomplexBoot.scanResources(resources map (new File(_).toURI.toURL))(this)
+
+  def scanResources(resources: java.util.List[String]): UnicomplexBoot = scanResources(resources.asScala.toSeq: _*)
 
   def scanResources(withClassPath: Boolean, resources: Array[String]): UnicomplexBoot =
     scanResources(withClassPath, resources.toIndexedSeq: _*)

@@ -26,7 +26,7 @@ import org.scalatest.funspec.AnyFunSpecLike
 import org.scalatest.matchers.should.Matchers
 
 import scala.beans.{BeanProperty, BooleanBeanProperty}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class MBeanUtilTest extends AnyFunSpecLike with Matchers with BeforeAndAfterAll with Inspectors with OptionValues {
 

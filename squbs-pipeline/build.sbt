@@ -3,6 +3,7 @@ import Versions._
 name := "squbs-pipeline"
 
 libraryDependencies ++= Seq(
+  "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "org.scalatest" %% "scalatest" % scalatestV % Test,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-agent" % akkaV,

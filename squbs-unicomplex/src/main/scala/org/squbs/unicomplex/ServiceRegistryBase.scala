@@ -28,7 +28,7 @@ import org.squbs.util.ConfigUtil._
 import scala.concurrent.ExecutionContext
 import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait ServiceRegistryBase[A] {
 

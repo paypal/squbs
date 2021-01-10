@@ -26,7 +26,7 @@ import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex.dummyfailedextensions.{DummyFailedExtensionA, DummyFailedExtensionB}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 
 object SystemStatusTest {

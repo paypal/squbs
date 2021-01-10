@@ -26,7 +26,7 @@ import org.squbs.unicomplex.UnicomplexBoot._
 
 import java.io.{File, PrintWriter}
 import java.util.UUID
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}

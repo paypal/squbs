@@ -33,7 +33,7 @@ import org.apache.zookeeper.server.quorum.flexible.QuorumMaj
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
 import org.squbs.cluster.rebalance.{DataCenterAwareRebalanceLogic, DefaultCorrelation, RebalanceLogic}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.util.Try
 import scala.util.control.NonFatal

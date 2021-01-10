@@ -26,7 +26,7 @@ import org.apache.curator.framework.recipes.leader.{LeaderLatch, LeaderLatchList
 import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 private[cluster] case class ZkLeaderElected(address: Option[Address])
 private[cluster] case class ZkMembersChanged(members: Set[Address])

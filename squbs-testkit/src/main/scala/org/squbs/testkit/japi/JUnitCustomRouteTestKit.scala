@@ -24,7 +24,7 @@ import org.junit.Rule
 import org.squbs.testkit.{DebugTiming, PortGetter, CustomTestKit => SCustomTestKit}
 import org.squbs.unicomplex.UnicomplexBoot
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 abstract class JUnitCustomRouteTestKit(val boot: UnicomplexBoot) extends {
   implicit override val system: ActorSystem = boot.actorSystem

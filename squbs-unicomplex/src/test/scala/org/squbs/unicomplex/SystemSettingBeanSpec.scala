@@ -20,7 +20,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class SystemSettingBeanSpec extends AnyFlatSpecLike with Matchers{
 

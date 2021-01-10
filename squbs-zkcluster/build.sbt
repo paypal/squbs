@@ -3,6 +3,7 @@ import Versions._
 name := "squbs-zkcluster"
 
 libraryDependencies ++= Seq(
+  "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-remote" % akkaV,
   "com.typesafe.akka" %% "akka-slf4j" % akkaV,

@@ -26,7 +26,7 @@ import org.squbs.cluster.JMX._
 
 import scala.language.postfixOps
 import scala.util.Try
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 private[cluster] sealed trait ZkClusterState
 

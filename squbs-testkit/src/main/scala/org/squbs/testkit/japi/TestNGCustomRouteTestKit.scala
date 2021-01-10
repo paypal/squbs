@@ -22,7 +22,7 @@ import com.typesafe.config.Config
 import org.squbs.testkit.{DebugTiming, PortGetter, CustomTestKit => SCustomTestKit}
 import org.squbs.unicomplex.UnicomplexBoot
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 abstract class TestNGCustomRouteTestKit(val boot: UnicomplexBoot) extends {
   implicit override val system: ActorSystem = boot.actorSystem

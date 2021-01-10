@@ -3,6 +3,7 @@ import Versions._
 name := "squbs-testkit"
 
 libraryDependencies ++= Seq(
+  "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "org.scalatest" %% "scalatest" % scalatestV,
   "org.scalatestplus" %% "testng-6-7" % scalatestplusV % Optional,
   "com.typesafe.akka" %% "akka-actor" % akkaV,

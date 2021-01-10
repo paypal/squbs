@@ -22,7 +22,7 @@ import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot}
 import org.squbs.testkit.{PortGetter, CustomTestKit => SCustomTestKit}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 abstract class CustomTestKit(val boot: UnicomplexBoot) extends PortGetter {
   val system: ActorSystem = boot.actorSystem

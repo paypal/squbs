@@ -30,7 +30,7 @@ import org.apache.zookeeper.KeeperException.NodeExistsException
 import scala.language.implicitConversions
 import scala.util.Try
 import scala.util.control.NonFatal
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 package object cluster {
 

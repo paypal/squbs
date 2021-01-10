@@ -40,7 +40,7 @@ import org.squbs.unicomplex.{Extension => SqubsExtension}
 
 import scala.annotation.varargs
 import scala.collection.mutable
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.control.NonFatal

@@ -19,7 +19,7 @@ import java.util
 
 import org.json4s.CustomSerializer
 import org.json4s.JsonAST._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object TestData {
   val fullTeamWithPrivateMembers: TeamWithPrivateMembers = {

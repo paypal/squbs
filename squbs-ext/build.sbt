@@ -11,6 +11,7 @@ testOptions in Test ++= Seq(
 )
 
 libraryDependencies ++= Seq(
+  "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "io.dropwizard.metrics" % "metrics-core" % metricsV,
   "io.dropwizard.metrics" % "metrics-jmx" % metricsV,
   "com.typesafe.akka" %% "akka-stream" % akkaV % Optional,

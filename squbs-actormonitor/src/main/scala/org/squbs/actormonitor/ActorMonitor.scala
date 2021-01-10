@@ -21,7 +21,7 @@ import org.squbs.actormonitor.ActorMonitorBean._
 import org.squbs.lifecycle.GracefulStopHelper
 import org.squbs.unicomplex.JMX._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 private[actormonitor] case class ActorMonitorConfig(maxActorCount: Int, maxChildrenDisplay: Int)
 
