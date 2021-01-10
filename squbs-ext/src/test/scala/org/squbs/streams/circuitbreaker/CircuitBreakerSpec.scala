@@ -52,7 +52,7 @@ class CircuitBreakerSpec
   val circuitBreakerOpenFailure = Failure(CircuitBreakerOpenException())
 
   def delayFlow() = {
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     Flow[(String, UUID)].mapAsyncUnordered(5) { elem =>
       (delayActor ? elem).mapTo[(String, UUID)]
@@ -196,7 +196,7 @@ class CircuitBreakerSpec
   it should "allow a uniqueId mapper to be passed in" in {
     case class MyContext(s: String, id: Long)
 
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     val flow = Flow[(String, MyContext)].mapAsyncUnordered(5) { elem =>
       (delayActor ? elem).mapTo[(String, MyContext)]
@@ -239,7 +239,7 @@ class CircuitBreakerSpec
     val cleanUpFunction = (s: String) => promiseMap.get(s).foreach(_.success(true))
     val notCleanedUpFunction = (s: String) => promiseMap.get(s).foreach(_.trySuccess(false))
 
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     val flow = Flow[(String, MyContext)].mapAsyncUnordered(5) { elem =>
       (delayActor ? elem).mapTo[(String, MyContext)]
@@ -320,7 +320,7 @@ class CircuitBreakerSpec
 
     val flow = Source.actorRef[String](25, OverflowStrategy.fail)
       .map(s => (s, UUID.randomUUID()))
-      .via(CircuitBreaker[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow))
+      .via(CircuitBreaker[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow()))
       .map(_._1)
       .toMat(Sink.seq)(Keep.both)
 

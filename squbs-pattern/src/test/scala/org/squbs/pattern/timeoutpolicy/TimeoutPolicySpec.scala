@@ -71,7 +71,7 @@ class TimeoutPolicySpec extends AnyFlatSpecLike with Matchers{
         Await.ready(Future{
           Thread.sleep(100)
           if (i > 2) {
-            tx.waitTime.toMillis should be < 1000l
+            tx.waitTime.toMillis should be < 1000L
           }
         }, tx.waitTime)
       }

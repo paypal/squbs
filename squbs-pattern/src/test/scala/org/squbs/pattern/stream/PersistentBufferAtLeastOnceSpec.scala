@@ -43,7 +43,7 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
 
   val transform = Flow[Int] map createElement
 
-  override def afterAll = {
+  override def afterAll(): Unit = {
     Await.ready(system.terminate(), awaitMax)
   }
 
@@ -126,7 +126,7 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
     var t = Long.MinValue
     val pBufferInCount = new AtomicInteger(0)
     val commitCount = new AtomicInteger(0)
-    val finishedGenerating = Promise[Done]
+    val finishedGenerating = Promise[Done]()
     val counter = new AtomicInteger(0)
 
     def fireFinished() = Flow[T].map { e =>

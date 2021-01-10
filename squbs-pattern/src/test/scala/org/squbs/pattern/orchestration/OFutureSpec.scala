@@ -96,7 +96,7 @@ class OFutureSpec extends AnyFunSpec with Matchers {
       a <- future0.mapTo[Int]
       b <- OFuture.successful((a * 2).toString).mapTo[Int]
       c <- OFuture.successful((7 * 2).toString)
-    } yield b + "-" + c
+    } yield s"$b-$c"
 
     future2 should not be null
     future2.isCompleted should equal(true)
@@ -234,7 +234,7 @@ class OFutureSpec extends AnyFunSpec with Matchers {
       idx => async(idx)
     }
 
-    val folded = OFuture.fold(futures)(0)(_ + _)
+    val folded = OFuture.fold(futures)(0) { _ + _ }
     folded.value should equal(Some(Success(45)))
   }
 

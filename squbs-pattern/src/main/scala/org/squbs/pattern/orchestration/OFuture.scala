@@ -576,8 +576,8 @@ object OFuture {
     *  Useful for reducing many `Future`s into a single `Future`.
     */
   def sequence[A, M[X] <: IterableOnce[X]](in: M[OFuture[A]])
-                                          (implicit cbf: BuildFrom[M[OFuture[A]], A, M[A]]): OFuture[M[A]] = {
-    in.iterator.foldLeft(OPromise.successful(cbf(in)).future) {
+                                          (implicit bf: BuildFrom[M[OFuture[A]], A, M[A]]): OFuture[M[A]] = {
+    in.iterator.foldLeft(OPromise.successful(bf.newBuilder(in)).future) {
       (fr, fa) => for (r <- fr; a <- fa.asInstanceOf[OFuture[A]]) yield r += a
     } map (_.result())
   }
@@ -588,7 +588,7 @@ object OFuture {
     val p = OPromise[T]()
 
     val completeFirst: Try[T] => Unit = p tryComplete _
-    futures.foreach(_ onComplete completeFirst)
+    futures.iterator.foreach(_ onComplete completeFirst)
 
     p.future
   }
@@ -596,7 +596,7 @@ object OFuture {
   /** Returns a `Future` that will hold the optional result of the first `Future` with a result that matches the predicate.
     */
   def find[T](futurestravonce: IterableOnce[OFuture[T]])(predicate: T => Boolean): OFuture[Option[T]] = {
-    val futures = futurestravonce.toBuffer
+    val futures = futurestravonce.iterator.to(ArrayBuffer)
     if (futures.isEmpty) OPromise.successful[Option[T]](None).future
     else {
       val result = OPromise[Option[T]]()
@@ -629,9 +629,9 @@ object OFuture {
     *    val result = Await.result(Future.fold(futures)(0)(_ + _), 5 seconds)
     *  }}}
     */
-  def fold[T, R](futures: IterableOnce[OFuture[T]])(zero: R)(foldFun: (R, T) => R)(): OFuture[R] = {
-    if (futures.isEmpty) OPromise.successful(zero).future
-    else sequence(futures)(ArrayBuffer).map(_.foldLeft(zero)(foldFun))
+  def fold[T, R](futures: IterableOnce[OFuture[T]])(zero: R)(foldFun: (R, T) => R): OFuture[R] = {
+    if (futures.iterator.isEmpty) OPromise.successful(zero).future
+    else sequence(futures)(ArrayBuffer).map(_.iterator.foldLeft(zero)(foldFun))
   }
 
   /** Initiates a fold over the supplied futures where the fold-zero is the result value of the `Future` that's completed first.
@@ -642,7 +642,7 @@ object OFuture {
     *  }}}
     */
   def reduce[T, R >: T](futures: IterableOnce[OFuture[T]])(op: (R, T) => R): OFuture[R] = {
-    if (futures.isEmpty)
+    if (futures.iterator.isEmpty)
       OPromise[R]().failure(new NoSuchElementException("reduce attempted on empty collection")).future
     else
       sequence(futures)(ArrayBuffer).map(a => a.iterator.reduceLeft(op))
@@ -656,8 +656,9 @@ object OFuture {
     *    val myFutureList = Future.traverse(myList)(x => Future(myFunc(x)))
     *  }}}
     */
-  def traverse[A, B, M[_] <: IterableOnce[_]](in: M[A])(fn: A => OFuture[B])(implicit cbf: BuildFrom[M[A], B, M[B]]): OFuture[M[B]] =
-    in.foldLeft(OPromise.successful(cbf(in)).future) { (fr, a) =>
+  def traverse[A, B, M[_] <: IterableOnce[_]](in: M[A])(fn: A => OFuture[B])
+                                             (implicit bf: BuildFrom[M[A], B, M[B]]): OFuture[M[B]] =
+    in.foldLeft(OPromise.successful(bf.newBuilder(in)).future) { (fr, a) =>
       val fb = fn(a.asInstanceOf[A])
       for (r <- fr; b <- fb) yield r += b
     }.map(_.result())

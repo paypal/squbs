@@ -39,7 +39,7 @@ class ResolverSpec extends TestKit(ActorSystem("ResolverSpec"))
     val resolver = new DummyLocalhostResolver
     ResolverRegistry(system).register(resolver)
     ResolverRegistry(system).resolvers should have size 1
-    ResolverRegistry(system).resolvers.head._2 should be (resolver)
+    ResolverRegistry(system).resolvers.head._2 shouldBe resolver
   }
 
   "ResolverRegistry" should "register a resolver lambda" in {
@@ -56,7 +56,7 @@ class ResolverSpec extends TestKit(ActorSystem("ResolverSpec"))
     ResolverRegistry(system).register[URI](resolver)
     ResolverRegistry(system).register[URI](resolver)
     ResolverRegistry(system).resolvers should have size 1
-    ResolverRegistry(system).resolvers.head._2 should be (resolver)
+    ResolverRegistry(system).resolvers.head._2 shouldBe resolver
   }
 
   it should "skip unregistering a non-existing resolver" in {
@@ -64,34 +64,34 @@ class ResolverSpec extends TestKit(ActorSystem("ResolverSpec"))
     ResolverRegistry(system).register[URI](resolver)
     ResolverRegistry(system).unregister("NotExistingResolver")
     ResolverRegistry(system).resolvers should have size 1
-    ResolverRegistry(system).resolvers.head._2 should be (resolver)
+    ResolverRegistry(system).resolvers.head._2 shouldBe resolver
   }
 
   it should "resolve the endpoint" in {
     ResolverRegistry(system).register[URI](new DummyLocalhostResolver)
     val resolverOption = ResolverRegistry(system).findResolver[URI]("abcService")
-    resolverOption shouldBe 'defined
-    resolverOption.value.name should be ("DummyLocalhostResolver")
+    resolverOption shouldBe defined
+    resolverOption.value.name shouldBe "DummyLocalhostResolver"
 
     val endpointOption = resolverOption flatMap { _.resolve("abcService") }
 
-    endpointOption should be (Some(URI.create("http://localhost:8080")))
+    endpointOption shouldBe Some(URI.create("http://localhost:8080"))
   }
 
   it should "resolve the endpoint with resolver lambda" in {
     ResolverRegistry(system).register[URI]("RogueResolver")
       { (_, _) => Some(URI.create("http://myrogueservice.com")) }
     val resolverOption = ResolverRegistry(system).findResolver[URI]("abcService")
-    resolverOption shouldBe 'defined
-    resolverOption.value.name should be ("RogueResolver")
+    resolverOption shouldBe defined
+    resolverOption.value.name shouldBe "RogueResolver"
 
     val endpointOption = resolverOption flatMap { _.resolve("abcService") }
 
-    endpointOption should be (Some(URI.create("http://myrogueservice.com")))
+    endpointOption shouldBe Some(URI.create("http://myrogueservice.com"))
   }
 
   it should "propagate exceptions from EndpointResolvers" in {
-    a[RuntimeException] should be thrownBy {
+    a[RuntimeException] shouldBe thrownBy {
       ResolverRegistry(system).register[URI](new DummyLocalhostResolver)
       ResolverRegistry(system).findResolver[URI]("abcService", QA)
     }
@@ -111,11 +111,9 @@ class ResolverSpec extends TestKit(ActorSystem("ResolverSpec"))
 
   it should "resolve the endpoint when Environment is provided" in {
     ResolverRegistry(system).register[URI](new DummyLocalhostResolver)
-    ResolverRegistry(system).findResolver[URI]("abcService", DEV) should be ('defined)
-    ResolverRegistry(system).findResolver[URI]("abcService", DEV).value.name should
-      be ("DummyLocalhostResolver")
-    ResolverRegistry(system).resolve[URI]("abcService", DEV) should
-      be (Some(URI.create("http://localhost:8080")))
+    ResolverRegistry(system).findResolver[URI]("abcService", DEV) shouldBe defined
+    ResolverRegistry(system).findResolver[URI]("abcService", DEV).value.name shouldBe "DummyLocalhostResolver"
+    ResolverRegistry(system).resolve[URI]("abcService", DEV) shouldBe Some(URI.create("http://localhost:8080"))
   }
 
   it should "should give priority to resolvers in reverse order of registration" in {
@@ -129,10 +127,10 @@ class ResolverSpec extends TestKit(ActorSystem("ResolverSpec"))
     ResolverRegistry(system).resolvers should have size 2
     val (_, resolver) = ResolverRegistry(system).resolvers.head
     resolver should not be a [DummyLocalhostResolver]
-    resolver.name should be ("override")
-    ResolverRegistry(system).findResolver[URI]("abcService") should be ('defined)
-    ResolverRegistry(system).findResolver[URI]("abcService").value.name should be ("override")
-    ResolverRegistry(system).resolve[URI]("abcService") should be (Some(URI.create("http://localhost:9090")))
+    resolver.name shouldBe "override"
+    ResolverRegistry(system).findResolver[URI]("abcService") shouldBe defined
+    ResolverRegistry(system).findResolver[URI]("abcService").value.name shouldBe "override"
+    ResolverRegistry(system).resolve[URI]("abcService") shouldBe Some(URI.create("http://localhost:9090"))
   }
 
   it should "fallback to the previous EndpointResolver if latter one cannot be resolve" in {
@@ -148,12 +146,12 @@ class ResolverSpec extends TestKit(ActorSystem("ResolverSpec"))
       override def name: String = "unique"
     })
     ResolverRegistry(system).resolvers should have size 2
-    ResolverRegistry(system).findResolver[URI]("abcService") should be ('defined)
-    ResolverRegistry(system).findResolver[URI]("abcService").value.name should be ("DummyLocalhostResolver")
-    ResolverRegistry(system).findResolver[URI]("unique") should be ('defined)
-    ResolverRegistry(system).findResolver[URI]("unique").value.name should be ("unique")
-    ResolverRegistry(system).resolve[URI]("abcService") should be (Some(URI.create("http://localhost:8080")))
-    ResolverRegistry(system).resolve[URI]("unique") should be (Some(URI.create("http://www.ebay.com")))
+    ResolverRegistry(system).findResolver[URI]("abcService") shouldBe defined
+    ResolverRegistry(system).findResolver[URI]("abcService").value.name shouldBe "DummyLocalhostResolver"
+    ResolverRegistry(system).findResolver[URI]("unique") shouldBe defined
+    ResolverRegistry(system).findResolver[URI]("unique").value.name shouldBe "unique"
+    ResolverRegistry(system).resolve[URI]("abcService") shouldBe Some(URI.create("http://localhost:8080"))
+    ResolverRegistry(system).resolve[URI]("unique") shouldBe Some(URI.create("http://www.ebay.com"))
   }
 
   it should "unregister a resolver" in {
@@ -171,9 +169,9 @@ class ResolverSpec extends TestKit(ActorSystem("ResolverSpec"))
 
     ResolverRegistry(system).resolvers should have size 2
     ResolverRegistry(system).resolvers.head._2 shouldBe a [DummyLocalhostResolver]
-    ResolverRegistry(system).resolve[URI]("unique") should be (Some(URI.create("http://localhost:8080")))
+    ResolverRegistry(system).resolve[URI]("unique") shouldBe Some(URI.create("http://localhost:8080"))
     ResolverRegistry(system).unregister("DummyLocalhostResolver")
     ResolverRegistry(system).resolvers should have size 1
-    ResolverRegistry(system).resolve[URI]("unique") should be (Some(URI.create("http://www.ebay.com")))
+    ResolverRegistry(system).resolve[URI]("unique") shouldBe Some(URI.create("http://www.ebay.com"))
   }
 }

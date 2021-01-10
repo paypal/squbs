@@ -46,7 +46,7 @@ abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[
 
   val transform = Flow[Int] map createElement
 
-  override def afterAll = {
+  override def afterAll(): Unit = {
     Await.ready(system.terminate(), awaitMax)
   }
 
@@ -115,7 +115,7 @@ abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[
     import util._
 
     val mat = ActorMaterializer()
-    val finishedGenerating = Promise[Done]
+    val finishedGenerating = Promise[Done]()
     val bBufferInCount = new AtomicInteger(0)
     val counter = new AtomicInteger(0)
 

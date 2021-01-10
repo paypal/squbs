@@ -116,7 +116,7 @@ class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with Async
   }
 
   it should "timeout elements for flows that keep the order of messages" in {
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     val flow = Flow[String].mapAsync(3)(elem => (delayActor ? elem).mapTo[String])
 
@@ -129,7 +129,7 @@ class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with Async
   }
 
   it should "let the wrapped ordered flow control the demand" in {
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     val flow = Flow[String]
       .withAttributes(Attributes.inputBuffer(initial = 2, max = 2))
@@ -144,7 +144,7 @@ class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with Async
   }
 
   it should "let the wrapped unordered flow control the demand" in {
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     val flow = Flow[(String, Long)]
       .withAttributes(Attributes.inputBuffer(initial = 1, max = 1))
@@ -186,7 +186,7 @@ class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with Async
   }
 
   it should "timeout elements for flows that do not keep the order of messages" in {
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     val flow = Flow[(String, UUID)].mapAsyncUnordered(3) { elem =>
       (delayActor ? elem).mapTo[(String, UUID)]
@@ -204,7 +204,7 @@ class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with Async
   }
 
   it should "clean up timed out elements for flows that do not keep the order of messages" in {
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     val promiseMap = Map(
       "a" -> Promise[Boolean](),
       "b" -> Promise[Boolean](),
@@ -248,7 +248,7 @@ class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with Async
       override def hashCode(): Int = counter.incrementAndGet() // On purpose, a problematic hashcode
     }
 
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     val flow = Flow[(String, MyContext)].mapAsyncUnordered(3) { elem =>
       (delayActor ? elem).mapTo[(String, MyContext)]
@@ -275,7 +275,7 @@ class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with Async
       override def hashCode(): Int = counter.incrementAndGet() // On purpose, a problematic hashcode
     }
 
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     val flow = Flow[(String, MyContext)].mapAsyncUnordered(3) { elem =>
       (delayActor ? elem).mapTo[(String, MyContext)]
@@ -294,7 +294,7 @@ class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with Async
   }
 
   it should "use the id that is passed with UniqueIdEnvelope" in {
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     val flow = Flow[(String, Envelope)].mapAsyncUnordered(3) { elem =>
       (delayActor ? elem).mapTo[(String, Envelope)]

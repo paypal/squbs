@@ -25,18 +25,18 @@ case class TestResponse(msg: String)
 class TestActor extends Actor {
   def receive = {
     case TestRequest(msg)  =>
-      sender ! TestResponse(msg)
+      sender() ! TestResponse(msg)
     case TestRequest =>
-      sender ! TestResponse
+      sender() ! TestResponse
   }
 }
 
 class TestActor1 extends Actor {
   def receive = {
     case TestRequest1(msg)  =>
-      sender ! TestResponse(msg)
+      sender() ! TestResponse(msg)
     case TestRequest1 =>
-      sender ! TestResponse
+      sender() ! TestResponse
   }
 }
 

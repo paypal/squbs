@@ -35,7 +35,7 @@ class PersistentBufferCommitOrderSpec extends AnyFlatSpec with Matchers with Bef
   implicit val serializer = QueueSerializer[Int]()
   import StreamSpecUtil._
 
-  override def afterAll = {
+  override def afterAll(): Unit = {
     Await.ready(system.terminate(), awaitMax)
   }
 

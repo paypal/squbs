@@ -35,7 +35,7 @@ class BroadcastBufferCommitOrderSpec extends AnyFlatSpec with Matchers with Befo
   implicit val serializer = QueueSerializer[Int]()
   import StreamSpecUtil._
 
-  override def afterAll = {
+  override def afterAll(): Unit = {
     Await.ready(system.terminate(), awaitMax)
   }
 

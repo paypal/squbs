@@ -39,15 +39,15 @@ with ImplicitSender with AnyFunSpecLike with Matchers {
 
     val startTime = System.nanoTime()
 
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
+    val loadActor = system.actorOf(Props[LoadActor]())
+    val statsActor = system.actorOf(Props[CPUStatsActor]())
     loadActor ! StartLoad(startTime, ir, warmUp, steady){
-      system.actorOf(Props[SimpleForComprehensionActor]) ! OrchestrationRequest("SyncLoadTest")
+      system.actorOf(Props[SimpleForComprehensionActor]()) ! OrchestrationRequest("SyncLoadTest")
     }
     statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
 
-    var sumFinishTime = 0l
-    var sumFinishCount = 0l
+    var sumFinishTime = 0L
+    var sumFinishCount = 0L
 
     for (i <- 0 to 1) {
       fishForMessage(warmUp + steady + awaitMax) {
@@ -80,18 +80,18 @@ with ImplicitSender with AnyFunSpecLike with Matchers {
 
     val startTime = System.nanoTime()
 
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
+    val loadActor = system.actorOf(Props[LoadActor]())
+    val statsActor = system.actorOf(Props[CPUStatsActor]())
     loadActor ! StartLoad(startTime, ir, warmUp, steady){
-      system.actorOf(Props[TestOrchestrator]) ! OrchestrationRequest("LoadTest")
+      system.actorOf(Props[TestOrchestrator]()) ! OrchestrationRequest("LoadTest")
     }
     statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
 
-    var sumSubmitTime = 0l
-    var sumSubmitCount = 0l
+    var sumSubmitTime = 0L
+    var sumSubmitCount = 0L
 
-    var sumFinishTime = 0l
-    var sumFinishCount = 0l
+    var sumFinishTime = 0L
+    var sumFinishCount = 0L
 
     for (i <- 0 to 1) {
       fishForMessage(warmUp + steady + awaitMax) {
@@ -131,18 +131,18 @@ with ImplicitSender with AnyFunSpecLike with Matchers {
 
     val startTime = System.nanoTime()
 
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
+    val loadActor = system.actorOf(Props[LoadActor]())
+    val statsActor = system.actorOf(Props[CPUStatsActor]())
     loadActor ! StartLoad(startTime, ir, warmUp, steady){
-      system.actorOf(Props[TestAskOrchestrator]) ! OrchestrationRequest("LoadTest")
+      system.actorOf(Props[TestAskOrchestrator]()) ! OrchestrationRequest("LoadTest")
     }
     statsActor ! StartStats(startTime, warmUp, steady, 5 seconds)
 
-    var sumSubmitTime = 0l
-    var sumSubmitCount = 0l
+    var sumSubmitTime = 0L
+    var sumSubmitCount = 0L
 
-    var sumFinishTime = 0l
-    var sumFinishCount = 0l
+    var sumFinishTime = 0L
+    var sumFinishCount = 0L
 
     for (i <- 0 to 1) {
       fishForMessage(warmUp + steady + awaitMax) {

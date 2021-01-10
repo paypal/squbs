@@ -368,7 +368,7 @@ class RetrySpec
       .via(retry.join(bottom))
       .toMat(TestSink.probe)(Keep.both).run()
     source.sendNext("1").sendNext("2")
-    sink.request(2).expectNext
+    sink.request(2).expectNext()
     source.expectCancellation()
     succeed
   }
@@ -384,9 +384,9 @@ class RetrySpec
       .via(retry.join(bottom))
       .toMat(TestSink.probe)(Keep.both).run()
     source.sendNext("1").sendNext("2")
-    sink.request(2).expectNext
-    sink.expectNext
-    sink.expectComplete
+    sink.request(2).expectNext()
+    sink.expectNext()
+    sink.expectComplete()
     succeed
   }
 
@@ -609,7 +609,7 @@ class RetrySpec
 
   it should "not backpressure if downstream demands more and retryQ is not growing" in {
     // https://github.com/paypal/squbs/issues/623
-    val delayActor = system.actorOf(Props[RetryDelayActor])
+    val delayActor = system.actorOf(Props[RetryDelayActor]())
     import akka.pattern.ask
     implicit val askTimeout = akka.util.Timeout(10 seconds)
 
@@ -633,7 +633,7 @@ class RetrySpec
 
   it should "not backpressure if downstream demands more and retryQ is not growing with larger internal buffer size" in {
     // https://github.com/paypal/squbs/issues/623
-    val delayActor = system.actorOf(Props[RetryDelayActor])
+    val delayActor = system.actorOf(Props[RetryDelayActor]())
     import akka.pattern.ask
     implicit val askTimeout = akka.util.Timeout(10 seconds)
 

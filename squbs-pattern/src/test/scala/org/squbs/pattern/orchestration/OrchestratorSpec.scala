@@ -34,60 +34,60 @@ with ImplicitSender with AnyFunSpecLike with Matchers {
   describe ("The Orchestration DSL") {
 
     it ("Should submit all orchestration asynchronously and return result after finish") {
-      system.actorOf(Props[TestOrchestrator]) ! OrchestrationRequest("test")
+      system.actorOf(Props[TestOrchestrator]()) ! OrchestrationRequest("test")
 
       // Check for the submitted message
       val submitted = expectMsgType[SubmittedOrchestration](awaitMax)
-      val submitTime = submitted.timeNs / 1000l
+      val submitTime = submitted.timeNs / 1000L
       println(s"Submission took $submitTime microseconds.")
-      (submitTime / 1000l) should be < 230000l
+      (submitTime / 1000L) should be < 230000L
       submitted.request should be ("test")
 
       // Check for the finished message
       val finished = expectMsgType[FinishedOrchestration](awaitMax)
-      val finishTime = finished.timeNs / 1000l
+      val finishTime = finished.timeNs / 1000L
       println(s"Orchestration took $finishTime microseconds.")
-      finishTime should be > 230000l // 23 orchestrations with 10 millisecond delay each
+      finishTime should be > 230000L // 23 orchestrations with 10 millisecond delay each
       finished.request should be ("test")
       finished.lastId should be (23)
     }
 
     it ("Should submit all orchestration asynchronously and return a future of result resolved at finish") {
-      system.actorOf(Props[TestAskOrchestrator]) ! OrchestrationRequest("test")
+      system.actorOf(Props[TestAskOrchestrator]()) ! OrchestrationRequest("test")
 
       // Check for the submitted message
       val submitted = expectMsgType[SubmittedOrchestration](awaitMax)
-      val submitTime = submitted.timeNs / 1000l
+      val submitTime = submitted.timeNs / 1000L
       println(s"Submission took $submitTime microseconds.")
-      (submitTime / 1000l) should be < 230000l
+      (submitTime / 1000L) should be < 230000L
       submitted.request should be ("test")
 
       // Check for the future of finish message
       val finishedF = expectMsgType[Future[FinishedOrchestration]](awaitMax)
       val finished = Await.result(finishedF, awaitMax)
-      val finishTime = finished.timeNs / 1000l
+      val finishTime = finished.timeNs / 1000L
       println(s"Orchestration took $finishTime microseconds.")
-      finishTime should be > 230000l // 23 orchestrations with 10 millisecond delay each + 22 Future resolutions
+      finishTime should be > 230000L // 23 orchestrations with 10 millisecond delay each + 22 Future resolutions
       finished.request should be ("test")
       finished.lastId should be (45)
     }
 
     it ("Should have submission time close to 0 on repeat", SlowTest) {
       for (i <- 0 until 100) {
-        system.actorOf(Props[TestOrchestrator]) ! OrchestrationRequest("test")
+        system.actorOf(Props[TestOrchestrator]()) ! OrchestrationRequest("test")
 
         // Check for the submitted message
         val submitted = expectMsgType[SubmittedOrchestration](awaitMax)
-        val submitTime = submitted.timeNs / 1000l
+        val submitTime = submitted.timeNs / 1000L
         println(s"Submission took $submitTime microseconds.")
-        (submitTime / 1000000l) should be < 20000l
+        (submitTime / 1000000L) should be < 20000L
         submitted.request should be("test")
 
         // Check for the finished message
         val finished = expectMsgType[FinishedOrchestration](awaitMax)
-        val finishTime = finished.timeNs / 1000l
+        val finishTime = finished.timeNs / 1000L
         println(s"Orchestration took $finishTime microseconds.")
-        finishTime should be > 230000l // 23 orchestrations with 10 millisecond delay each
+        finishTime should be > 230000L // 23 orchestrations with 10 millisecond delay each
         finished.request should be("test")
         finished.lastId should be(23)
       }
@@ -167,7 +167,7 @@ trait RequestFunctions {
 
   object Requests {
 
-    val service = context.actorOf(Props[ServiceEmulator])
+    val service = context.actorOf(Props[ServiceEmulator]())
 
     def loadResponse(delay: FiniteDuration): OFuture[Long] = {
       val promise = OPromise[Long]()
@@ -340,7 +340,7 @@ class TestAskOrchestrator extends Actor with Orchestrator with ActorLogging {
 
   object Requests {
 
-    val service = context.actorOf(Props[ServiceEmulator])
+    val service = context.actorOf(Props[ServiceEmulator]())
 
     def loadResponse(delay: FiniteDuration): OFuture[Long] = {
       import context.dispatcher

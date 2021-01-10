@@ -38,7 +38,7 @@ class TimeoutPolicyFeatureSpec extends AnyFlatSpecLike with Matchers{
         val s = 100 * i
         Thread.sleep(s)
       }, tx.waitTime)
-      tx.end
+      tx.end()
       val diff = TimeUnit.NANOSECONDS.toMillis(System.nanoTime - start)
       println(diff)
       assert(diff < 100*(i+1))
@@ -59,7 +59,7 @@ class TimeoutPolicyFeatureSpec extends AnyFlatSpecLike with Matchers{
           Thread.sleep(s)
         }, tx.waitTime)
       }
-      tx.end
+      tx.end()
       val diff = TimeUnit.NANOSECONDS.toMillis(System.nanoTime - start)
       println(diff)
       assert(diff < 1100)
@@ -74,7 +74,7 @@ class TimeoutPolicyFeatureSpec extends AnyFlatSpecLike with Matchers{
     val random = new Random(100)
     for (i <- 0 until 55) {
       val tx = timeoutPolicy.transaction
-      println(i+":"+tx.waitTime.toMillis)
+      println(s"$i:${tx.waitTime.toMillis}")
       Try{
         Await.ready(Future{
           val n = random.nextGaussian()
@@ -136,7 +136,7 @@ class TimeoutPolicyFeatureSpec extends AnyFlatSpecLike with Matchers{
     val random = new Random(100)
     for (i <- 0 until 55) {
       val tx = timeoutPolicy.transaction
-      println(i+":"+tx.waitTime.toMillis)
+      println(s"$i:${tx.waitTime.toMillis}")
       Try{
         Await.ready(Future{
           val n = random.nextGaussian()

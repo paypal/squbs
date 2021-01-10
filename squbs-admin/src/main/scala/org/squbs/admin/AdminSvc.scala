@@ -31,11 +31,13 @@ class AdminSvc extends RouteDefinition with WebContext {
   val exclusions = context.system.settings.config.get[Seq[String]]("squbs.admin.exclusions", Seq.empty[String]).toSet
   val (exBeans, exFieldSet) = exclusions partition { !_.contains("::") }
 
-  val exFields = exFieldSet map { fieldSpec =>
-    val fields = fieldSpec split "::"
-    fields(0) -> fields(1)
-  } groupBy (_._1) mapValues { _.map(_._2) }
-
+  val exFields = exFieldSet
+    .map { fieldSpec =>
+      val fields = fieldSpec split "::"
+      fields(0) -> fields(1)
+    }
+    .groupBy(_._1)
+    .map { case (k, v) => k -> v.map(_._2) }
 
   val route =
     get {
