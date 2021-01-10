@@ -173,7 +173,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
     case ZkRemovePartition(partitionKey) =>
       log.debug("[partitions] remove partition {}", keyToPath(partitionKey))
       safelyDiscard(partitionZkPath(partitionKey))
-      sender ! ZkPartitionRemoval(partitionKey)
+      sender() ! ZkPartitionRemoval(partitionKey)
 
     case ZkResizePartition(partitionKey, size) =>
       guarantee(sizeOfParZkPath(partitionKey), Some(size), CreateMode.PERSISTENT)
