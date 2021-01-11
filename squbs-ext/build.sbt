@@ -29,5 +29,6 @@ libraryDependencies ++= Seq(
   "junit" % "junit" % junitV % Test,
   "org.testng" % "testng" % testngV % Test,
   "com.novocode" % "junit-interface" % junitInterfaceV % Test,
-  "org.scalatest" %% "scalatest" % scalatestV % Test
+  "org.scalatest" %% "scalatest" % scalatestV % Test,
+  "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test
 )
