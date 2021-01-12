@@ -57,6 +57,14 @@ case class Metrics(name: Option[String], initial: FiniteDuration, startOverCount
     this.copy(totalTime = time, totalCount = 1, timeoutCount = if (isTimeout) 1 else 0, sumSquares = 0.0)
   }
 
+  /**
+    * update the Metrics
+    * @param time time taken in nano seconds
+    * @param isTimeout true if this transaction is timed out
+    * @return a new Metrics
+    */
+  def update(time: Long, isTimeout: Boolean): Metrics = update(time.toDouble, isTimeout)
+
   def reset(initial: Option[FiniteDuration] = None, newStartOverCount: Int = 0): Metrics = {
     val init = initial.getOrElse(this.initial)
     val slidePoint = if (newStartOverCount > 0) newStartOverCount else this.startOverCount

@@ -22,7 +22,7 @@ import com.typesafe.config.Config
 import org.squbs.testkit.{DebugTiming, PortGetter, CustomTestKit => SCustomTestKit}
 import org.squbs.unicomplex.UnicomplexBoot
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 abstract class TestNGCustomRouteTestKit(val boot: UnicomplexBoot) extends {
   implicit override val system: ActorSystem = boot.actorSystem
@@ -32,26 +32,18 @@ abstract class TestNGCustomRouteTestKit(val boot: UnicomplexBoot) extends {
 
   override protected def systemResource: SystemResource = _systemResource
 
-  def this() {
-    this(SCustomTestKit.boot())
-  }
+  def this() = this(SCustomTestKit.boot())
 
-  def this(config: Config) {
-    this(SCustomTestKit.boot(config = Option(config)))
-  }
+  def this(config: Config) = this(SCustomTestKit.boot(config = Option(config)))
 
-  def this(withClassPath: Boolean) {
-    this(SCustomTestKit.boot(withClassPath = Option(withClassPath)))
-  }
+  def this(withClassPath: Boolean) = this(SCustomTestKit.boot(withClassPath = Option(withClassPath)))
 
-  def this(resources: java.util.List[String], withClassPath: Boolean) {
-    this(SCustomTestKit.boot(resources = Option(resources.asScala), withClassPath = Option(withClassPath)))
-  }
+  def this(resources: java.util.List[String], withClassPath: Boolean) =
+    this(SCustomTestKit.boot(resources = Option(resources.asScala.toSeq), withClassPath = Option(withClassPath)))
 
-  def this(config: Config, resources: java.util.List[String], withClassPath: Boolean) {
-    this(SCustomTestKit.boot(config = Option(config), resources = Option(resources.asScala),
+  def this(config: Config, resources: java.util.List[String], withClassPath: Boolean) =
+    this(SCustomTestKit.boot(config = Option(config), resources = Option(resources.asScala.toSeq),
       withClassPath = Option(withClassPath)))
-  }
 }
 
 class CustomTestKitSystemResource(boot: UnicomplexBoot)

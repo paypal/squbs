@@ -20,20 +20,22 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{GraphDSL, RunnableGraph}
 import akka.stream.{ActorMaterializer, ClosedShape}
 import com.typesafe.config.ConfigFactory
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.squbs.testkit.Timeouts._
 
 import scala.concurrent.Await
 
-class PersistentBufferCommitOrderSpec extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
+class PersistentBufferCommitOrderSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   implicit val system = ActorSystem("PersistentBufferCommitOrderSpec", PersistentBufferSpec.testConfig)
   implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[Int]()
   import StreamSpecUtil._
 
-  override def afterAll = {
+  override def afterAll(): Unit = {
     Await.ready(system.terminate(), awaitMax)
   }
 

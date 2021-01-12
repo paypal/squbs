@@ -69,8 +69,8 @@ class PingPongActor extends Actor with ActorLogging with GracefulStopHelper{
   def receive = {
     case GracefulStop => defaultLeafActorStop
 
-    case Ping => sender ! Pong
+    case Ping => sender() ! Pong
 
-    case Pong => sender ! Ping
+    case Pong => sender() ! Ping
   }
 }

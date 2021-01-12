@@ -21,7 +21,6 @@ import java.net.InetAddress
 import java.util.Properties
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
-
 import akka.actor._
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
@@ -32,9 +31,9 @@ import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.zookeeper.server.quorum.flexible.QuorumMaj
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
-import org.squbs.cluster.rebalance.{DataCenterAwareRebalanceLogic, RebalanceLogic}
+import org.squbs.cluster.rebalance.{DataCenterAwareRebalanceLogic, DefaultCorrelation, RebalanceLogic}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -48,8 +47,8 @@ case class ZkCluster(zkAddress: Address,
                     (implicit system: ActorSystem) extends Extension with LazyLogging {
 
   //all interactions with the zk cluster extension should be through the zkClusterActor below
-  lazy val zkClusterActor = system.actorOf(Props[ZkClusterActor], "zkCluster")
-  val remoteGuardian = system.actorOf(Props[RemoteGuardian], "remoteGuardian")
+  lazy val zkClusterActor = system.actorOf(Props[ZkClusterActor](), "zkCluster")
+  val remoteGuardian = system.actorOf(Props[RemoteGuardian](), "remoteGuardian")
 
   private[this] implicit val log = logger
   private[this] val curatorFwk = new AtomicReference[CuratorFramework]()
@@ -190,7 +189,7 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with La
       zkNamespace,
       DefaultSegmentationLogic(zkSegments),
       new ExponentialBackoffRetry(DEFAULT_BASE_SLEEP_TIME_MS, DEFAULT_MAX_RETRIES),
-      DataCenterAwareRebalanceLogic(spareLeader = zkSpareLeader)
+      DataCenterAwareRebalanceLogic(spareLeader = zkSpareLeader, correlation = DefaultCorrelation())
     )(system)
   }
   private[cluster] def external(system:ExtendedActorSystem):Address =

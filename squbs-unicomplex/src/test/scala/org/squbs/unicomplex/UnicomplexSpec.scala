@@ -19,7 +19,6 @@ package org.squbs.unicomplex
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 import javax.management.openmbean.CompositeData
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpEntity.Chunked
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
@@ -28,8 +27,10 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest._
-import org.scalatest.concurrent.{Waiters, Eventually}
+import org.scalatest.{BeforeAndAfterAll, Inspectors}
+import org.scalatest.concurrent.{Eventually, Waiters}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
@@ -72,7 +73,7 @@ object UnicomplexSpec {
 }
 
 class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with ImplicitSender
-                             with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll
+                             with AnyWordSpecLike with Matchers with Inspectors with BeforeAndAfterAll
                              with Waiters with Eventually {
 
   import UnicomplexSpec._
@@ -158,7 +159,7 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       val errResp = Await.result(get(s"http://127.0.0.1:$port/dummyflowsvc/throwit"), awaitMax)
       errResp.status shouldBe StatusCodes.InternalServerError
       val respEntity = Await.result(errResp.entity.toStrict(awaitMax), awaitMax)
-      respEntity.data.utf8String shouldBe 'empty
+      respEntity.data.utf8String shouldBe empty
 
       val response = Await.result(
           post(s"http://127.0.0.1:$port/dummyflowsvc/chunks", Chunked(ContentTypes.`text/plain(UTF-8)`, requestChunks)),

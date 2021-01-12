@@ -26,7 +26,9 @@ import akka.stream.scaladsl.{Sink, Source}
 import akka.testkit.TestKit
 import org.json4s.{DefaultFormats, MappingException, jackson}
 import org.scalatest.OptionValues._
-import org.scalatest.{AsyncFlatSpecLike, BeforeAndAfterAll, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.BeforeAndAfterAll
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.httpclient.dummy._
 import org.squbs.marshallers.json.TestData._
@@ -73,7 +75,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      entity.data should not be 'empty
+      entity.data should not be empty
       entity.data.utf8String shouldBe fullTeamJson
     }
   }
@@ -85,7 +87,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      entity.data should not be 'empty
+      entity.data should not be empty
       entity.data.utf8String shouldBe fullTeamJson
     }
   }
@@ -97,7 +99,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      entity.data should not be 'empty
+      entity.data should not be empty
       entity.data.utf8String shouldBe fullTeamJson
     }
   }
@@ -109,7 +111,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      entity.data should not be 'empty
+      entity.data should not be empty
       entity.data.utf8String shouldBe fullTeamJson
     }
   }
@@ -122,7 +124,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      entity.data should not be 'empty
+      entity.data should not be empty
       entity.data.utf8String shouldBe fullTeamJson
     }
   }
@@ -136,7 +138,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
       val response = tryResponse.get
       response.status shouldBe StatusCodes.OK
       response.headers should contain (RawHeader("res-req1-name", "res-test123456"))
-      entity.data should not be 'empty
+      entity.data should not be empty
       entity.data.utf8String shouldBe fullTeamJson
     }
   }
@@ -150,7 +152,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
       val response = tryResponse.get
       response.status shouldBe StatusCodes.OK
       response.headers should contain (RawHeader("res-req1-name", "res-test123456"))
-      entity.data should not be 'empty
+      entity.data should not be empty
       entity.data.utf8String shouldBe fullTeamJson
     }
   }
@@ -162,7 +164,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
 //    } yield {
 //      tryResponse shouldBe a [Success[_]]
 //      tryResponse.get.status shouldBe StatusCodes.OK
-//      entity.data should not be 'empty
+//      entity.data should not be empty
 //      entity.data.utf8String shouldBe fullTeamJson
 //    }
 //  }
@@ -174,7 +176,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      entity.data should not be 'empty
+      entity.data should not be empty
       entity.data.utf8String shouldBe newTeamMemberJson
     }
   }
@@ -279,7 +281,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      entity.data shouldBe 'empty
+      entity.data shouldBe empty
     }
   }
 
@@ -290,7 +292,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      entity.data should not be 'empty
+      entity.data should not be empty
     }
   }
 
@@ -319,7 +321,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
     } yield {
       tryResponse shouldBe a [Success[_]]
       tryResponse.get.status shouldBe StatusCodes.OK
-      entity.data should not be 'empty
+      entity.data should not be empty
       entity.data.utf8String shouldBe fullTeamWithDelJson
     }
   }
@@ -355,7 +357,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
       tryResponse shouldBe a [Success[_]]
       val response = tryResponse.get
       response.status shouldBe StatusCodes.OK
-      entity.data should not be 'empty
+      entity.data should not be empty
       entity.data.utf8String shouldBe fullTeamWithAddJson
     }
   }
@@ -403,7 +405,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
       tryResponse shouldBe a [Success[_]]
       val response = tryResponse.get
       response.status shouldBe StatusCodes.OK
-      entity.data should not be 'empty
+      entity.data should not be empty
       entity.data.utf8String shouldBe fullTeamWithAddJson
     }
   }
@@ -433,7 +435,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
 //    } yield {
 //      tryResponse shouldBe a [Success[_]]
 //      tryResponse.get.status shouldBe StatusCodes.OK
-//      entity.data should not be 'empty
+//      entity.data should not be empty
 //      entity.data.utf8String shouldBe fullTeamJson
 //    }
 //  }

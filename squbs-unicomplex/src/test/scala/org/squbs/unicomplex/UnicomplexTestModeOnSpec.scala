@@ -19,7 +19,9 @@ package org.squbs.unicomplex
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest._
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 
@@ -53,7 +55,7 @@ object UnicomplexTestModeOnSpec {
 }
 
 class UnicomplexTestModeOnSpec extends TestKit(UnicomplexTestModeOnSpec.boot.actorSystem) with ImplicitSender
-  with FlatSpecLike with Matchers with BeforeAndAfterAll  {
+  with AnyFlatSpecLike with Matchers with BeforeAndAfterAll  {
 
   import akka.pattern.ask
 

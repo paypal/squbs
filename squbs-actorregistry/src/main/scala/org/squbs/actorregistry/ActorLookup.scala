@@ -152,9 +152,9 @@ case class ActorNotFound(actorLookup: ActorLookup[_]) extends RuntimeException("
    * with an entry at Actor registry
    */
   def resolveOne(timeout: FiniteDuration)(implicit refFactory: ActorRefFactory): Future[ActorRef] =
-    resolveOne()(timeout, refFactory)
+    resolveOne(timeout, refFactory)
 
-  def resolveOne()(implicit timeout: Timeout, refFactory: ActorRefFactory) : Future[ActorRef] = {
+  def resolveOne(implicit timeout: Timeout, refFactory: ActorRefFactory) : Future[ActorRef] = {
     val p = Promise[ActorRef]()
     this match {
       case ActorLookup(_, None, None, false) =>

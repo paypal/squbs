@@ -16,10 +16,6 @@
 
 package org.squbs.streams.circuitbreaker
 
-import java.lang.management.ManagementFactory
-import java.util.UUID
-import javax.management.ObjectName
-
 import akka.actor.{Actor, ActorSystem, Props}
 import akka.stream.scaladsl.{BidiFlow, Flow, Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
@@ -27,11 +23,15 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.metrics.MetricsExtension
 import org.squbs.streams.FlowTimeoutException
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 
+import java.lang.management.ManagementFactory
+import java.util.UUID
+import javax.management.ObjectName
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
 import scala.language.postfixOps
@@ -39,7 +39,7 @@ import scala.util.{Failure, Success}
 
 class CircuitBreakerSpec
   extends TestKit(ActorSystem("CircuitBreakerBidiFlowSpec", CircuitBreakerSpec.config))
-  with FlatSpecLike with Matchers with ImplicitSender {
+  with AnyFlatSpecLike with Matchers with ImplicitSender {
 
   import Timing._
 
@@ -52,7 +52,7 @@ class CircuitBreakerSpec
   val circuitBreakerOpenFailure = Failure(CircuitBreakerOpenException())
 
   def delayFlow() = {
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     Flow[(String, UUID)].mapAsyncUnordered(5) { elem =>
       (delayActor ? elem).mapTo[(String, UUID)]
@@ -196,7 +196,7 @@ class CircuitBreakerSpec
   it should "allow a uniqueId mapper to be passed in" in {
     case class MyContext(s: String, id: Long)
 
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     val flow = Flow[(String, MyContext)].mapAsyncUnordered(5) { elem =>
       (delayActor ? elem).mapTo[(String, MyContext)]
@@ -239,7 +239,7 @@ class CircuitBreakerSpec
     val cleanUpFunction = (s: String) => promiseMap.get(s).foreach(_.success(true))
     val notCleanedUpFunction = (s: String) => promiseMap.get(s).foreach(_.trySuccess(false))
 
-    val delayActor = system.actorOf(Props[DelayActor])
+    val delayActor = system.actorOf(Props[DelayActor]())
     import akka.pattern.ask
     val flow = Flow[(String, MyContext)].mapAsyncUnordered(5) { elem =>
       (delayActor ? elem).mapTo[(String, MyContext)]
@@ -320,7 +320,7 @@ class CircuitBreakerSpec
 
     val flow = Source.actorRef[String](25, OverflowStrategy.fail)
       .map(s => (s, UUID.randomUUID()))
-      .via(CircuitBreaker[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow))
+      .via(CircuitBreaker[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow()))
       .map(_._1)
       .toMat(Sink.seq)(Keep.both)
 

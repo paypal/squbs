@@ -11,6 +11,7 @@ javaOptions in Test ++= Seq("-Xmx512m", "-ea")
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+  "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "org.slf4j" % "slf4j-api" % slf4jV,
   "net.openhft" % "chronicle-queue" % chronicleQueueV % Optional,
@@ -20,6 +21,7 @@ libraryDependencies ++= Seq(
   "com.novocode" % "junit-interface" % junitInterfaceV % Test,
   "com.wix" %% "accord-core" % accordV % Optional,
   "org.json4s" %% "json4s-jackson" % json4sV % Optional,
+  "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test,
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonV % Optional,
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonV % Optional,
   "ch.qos.logback" % "logback-classic" % logbackInTestV % Test

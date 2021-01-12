@@ -19,10 +19,11 @@ package org.squbs.unicomplex
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri.Path
 import akka.testkit.TestKit
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.unicomplex.FlowHandler._
 
-class ServiceRegistrySpec extends TestKit(ActorSystem("ServiceRegistrySpec")) with FlatSpecLike with Matchers {
+class ServiceRegistrySpec extends TestKit(ActorSystem("ServiceRegistrySpec")) with AnyFlatSpecLike with Matchers {
 
   "merge" should "work" in {
 

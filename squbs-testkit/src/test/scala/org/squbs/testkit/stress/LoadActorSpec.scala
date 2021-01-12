@@ -18,14 +18,15 @@ package org.squbs.testkit.stress
 
 import akka.actor._
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{FunSpecLike, Matchers}
-import org.squbs.testkit.{Timeouts, TestPong, TestPing}
-import Timeouts._
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.squbs.testkit.Timeouts._
+import org.squbs.testkit.{TestPing, TestPong, Timeouts}
 
 import scala.concurrent.duration._
 
 class LoadActorSpec extends TestKit(ActorSystem("LoadActorSpec"))
-with ImplicitSender with FunSpecLike with Matchers {
+with ImplicitSender with AnyFunSpecLike with Matchers {
 
   val warmUp = 20.seconds
   val steady = 40.seconds
@@ -33,15 +34,15 @@ with ImplicitSender with FunSpecLike with Matchers {
   it ("Shall achieve the requested large TPS and report proper CPU statistics") {
     val ir = 500
     val startTime = System.nanoTime()
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
+    val loadActor = system.actorOf(Props[LoadActor]())
+    val statsActor = system.actorOf(Props[CPUStatsActor]())
     val statLogger = system.actorOf(Props(classOf[StatLogger], startTime, warmUp, steady, loadActor, statsActor))
     loadActor ! StartLoad(startTime, ir, warmUp, steady) {
-      system.actorOf(Props[LoadTestActor]) ! TestPing
+      system.actorOf(Props[LoadTestActor]()) ! TestPing
     }
     statsActor ! StartStats(startTime, warmUp, steady, 1.seconds)
 
-    var responseCount = 0l
+    var responseCount = 0L
 
     for (i <- 0 to 1) {
       fishForMessage(warmUp + steady + awaitMax) {
@@ -73,15 +74,15 @@ with ImplicitSender with FunSpecLike with Matchers {
   it ("Shall achieve the requested small TPS and report proper CPU statistics") {
     val ir = 10
     val startTime = System.nanoTime()
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
+    val loadActor = system.actorOf(Props[LoadActor]())
+    val statsActor = system.actorOf(Props[CPUStatsActor]())
     val statLogger = system.actorOf(Props(classOf[StatLogger], startTime, warmUp, steady, loadActor, statsActor))
     loadActor ! StartLoad(startTime, ir, warmUp, steady) {
-      system.actorOf(Props[LoadTestActor]) ! TestPing
+      system.actorOf(Props[LoadTestActor]()) ! TestPing
     }
     statsActor ! StartStats(startTime, warmUp, steady, 1.seconds)
 
-    var responseCount = 0l
+    var responseCount = 0L
 
     for (i <- 0 to 1) {
       fishForMessage(warmUp + steady + awaitMax) {

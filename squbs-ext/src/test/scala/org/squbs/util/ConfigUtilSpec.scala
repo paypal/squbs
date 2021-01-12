@@ -16,16 +16,16 @@
 
 package org.squbs.util
 
-import java.util.regex.PatternSyntaxException
-
 import com.typesafe.config.{Config, ConfigException, ConfigFactory, ConfigMemorySize}
-import org.scalatest.{FunSpecLike, Matchers}
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
 
+import java.util.regex.PatternSyntaxException
 import scala.concurrent.duration._
 import scala.util.Success
 import scala.util.matching.Regex
 
-class ConfigUtilSpec extends FunSpecLike with Matchers {
+class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
 
   val testConfig =
     """

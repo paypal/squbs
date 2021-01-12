@@ -68,7 +68,7 @@ public class RetryTest {
 
         final Flow<Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> flow =
                 Flow.<Pair<String, UUID>>create()
-                        .map(elem -> new Pair<Try<String>, UUID>(Success.apply(elem.first()), elem.second()));
+                        .map(elem -> new Pair<>(Success.apply(elem.first()), elem.second()));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, Pair<Try<String>, UUID>,
                 NotUsed> retry = Retry.create(2);
@@ -118,7 +118,7 @@ public class RetryTest {
 
         final Flow<Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> flow =
                 Flow.<Pair<String, UUID>>create()
-                        .map(elem -> new Pair<Try<String>, UUID>(Success.apply(elem.first()), elem.second()));
+                        .map(elem -> new Pair<>(Success.apply(elem.first()), elem.second()));
 
         final BidiFlow<Pair<String, UUID>, Pair<String, UUID>, Pair<Try<String>, UUID>, Pair<Try<String>, UUID>,
                 NotUsed> retry = Retry.create(3);
@@ -169,7 +169,7 @@ public class RetryTest {
     public void testRetryBidiWithFailureDecider() {
         final Flow<Pair<String, UUID>, Pair<Try<String>, UUID>, NotUsed> bottom =
                 Flow.<Pair<String, UUID>>create()
-                        .map(elem -> new Pair<Try<String>, UUID>(Success.apply(elem.first()), elem.second()));
+                        .map(elem -> new Pair<>(Success.apply(elem.first()), elem.second()));
 
         final Function<Try<String>, Boolean> failureDecider =
                 out -> out.isFailure() || out.equals(Success.apply("a")); // treat "a" as a failure for retry

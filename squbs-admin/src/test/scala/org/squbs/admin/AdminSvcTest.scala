@@ -16,18 +16,18 @@
 
 package org.squbs.admin
 
-import java.lang.management.ManagementFactory
-import javax.management.{MXBean, ObjectName}
-
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.json4s.jackson.JsonMethods._
-import org.scalatest.{FunSpecLike, Matchers}
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.testkit.TestRoute
 
+import java.lang.management.ManagementFactory
+import javax.management.{MXBean, ObjectName}
 import scala.beans.BeanProperty
 
-class AdminSvcTest extends FunSpecLike with Matchers with ScalatestRouteTest {
+class AdminSvcTest extends AnyFunSpecLike with Matchers with ScalatestRouteTest {
 
   ManagementFactory.getPlatformMBeanServer.registerMBean(SlashTestBean("foo"),
     new ObjectName("org.squbs.admin.test:type=SlashTestBean/FooBean"))
@@ -108,7 +108,7 @@ class AdminSvcTest extends FunSpecLike with Matchers with ScalatestRouteTest {
   }
 }
 
-class AdminSvcWithExclusionTest extends FunSpecLike with Matchers with ScalatestRouteTest {
+class AdminSvcWithExclusionTest extends AnyFunSpecLike with Matchers with ScalatestRouteTest {
 
   override def testConfigSource = """
       |squbs.admin {

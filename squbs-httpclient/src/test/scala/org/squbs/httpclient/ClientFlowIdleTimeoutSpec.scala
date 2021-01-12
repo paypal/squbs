@@ -21,7 +21,9 @@ import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source, TcpIdleTimeoutException}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.BeforeAndAfterAll
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.testkit.Timeouts.awaitMax
 
@@ -66,7 +68,7 @@ object ClientFlowIdleTimeoutSpec {
   val route =
     path("slow") {
       get {
-        val promise = Promise[String]
+        val promise = Promise[String]()
         // Never completing the promise
         onComplete(promise.future) {
           case Success(value) => complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "Slow...!"))
@@ -83,7 +85,7 @@ class ClientFlowIdleTimeoutSpec  extends AsyncFlatSpec with Matchers with Before
 
   import ClientFlowIdleTimeoutSpec._
 
-  override def afterAll: Unit = {
+  override def afterAll(): Unit = {
     serverBinding.unbind() map {_ => system.terminate()}
   }
 

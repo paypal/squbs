@@ -22,40 +22,31 @@ import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot}
 import org.squbs.testkit.{PortGetter, CustomTestKit => SCustomTestKit}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 abstract class CustomTestKit(val boot: UnicomplexBoot) extends PortGetter {
   val system: ActorSystem = boot.actorSystem
 
   SCustomTestKit.checkInit(system)
 
-  def this() {
-    this(SCustomTestKit.boot())
-  }
+  def this() = this(SCustomTestKit.boot())
 
-  def this(actorSystemName: String) {
-    this(SCustomTestKit.boot(Option(actorSystemName)))
-  }
+  def this(actorSystemName: String) = this(SCustomTestKit.boot(Option(actorSystemName)))
 
-  def this(config: Config) {
-    this(SCustomTestKit.boot(config = Option(config)))
-  }
+  def this(config: Config) = this(SCustomTestKit.boot(config = Option(config)))
 
-  def this(withClassPath: Boolean) {
-    this(SCustomTestKit.boot(withClassPath = Option(withClassPath)))
-  }
+  def this(withClassPath: Boolean) = this(SCustomTestKit.boot(withClassPath = Option(withClassPath)))
 
-  def this(resources: java.util.List[String], withClassPath: Boolean) {
+  def this(resources: java.util.List[String], withClassPath: Boolean) =
     this(SCustomTestKit.boot(resources = Option(resources.asScala.toList), withClassPath = Option(withClassPath)))
-  }
 
-  def this(actorSystemName: String, resources: java.util.List[String], withClassPath: Boolean) {
-    this(SCustomTestKit.boot(Option(actorSystemName), resources = Option(resources.asScala.toList), withClassPath = Option(withClassPath)))
-  }
+  def this(actorSystemName: String, resources: java.util.List[String], withClassPath: Boolean) =
+    this(SCustomTestKit.boot(Option(actorSystemName), resources = Option(resources.asScala.toList),
+      withClassPath = Option(withClassPath)))
 
-  def this(config: Config, resources: java.util.List[String], withClassPath: Boolean) {
-    this(SCustomTestKit.boot(config = Option(config), resources = Option(resources.asScala.toList), withClassPath = Option(withClassPath)))
-  }
+  def this(config: Config, resources: java.util.List[String], withClassPath: Boolean) =
+    this(SCustomTestKit.boot(config = Option(config), resources = Option(resources.asScala.toList),
+      withClassPath = Option(withClassPath)))
 
-  def shutdown() = Unicomplex(system).uniActor ! GracefulStop
+  def shutdown(): Unit = Unicomplex(system).uniActor ! GracefulStop
 }

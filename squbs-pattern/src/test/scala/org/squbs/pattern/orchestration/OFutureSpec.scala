@@ -16,14 +16,14 @@
 
 package org.squbs.pattern.orchestration
 
+import org.scalatest.funspec.AnyFunSpec
+import org.scalatest.matchers.should.Matchers
+
 import java.util.NoSuchElementException
-
-import org.scalatest.{FunSpec, Matchers}
-
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-class OFutureSpec extends FunSpec with Matchers {
+class OFutureSpec extends AnyFunSpec with Matchers {
 
   //the key test case follows, as `threadless` indicates, the callbacks (success/failure) should be run within the same thread
   //other than common `scala.concurrent.Future`
@@ -96,7 +96,7 @@ class OFutureSpec extends FunSpec with Matchers {
       a <- future0.mapTo[Int]
       b <- OFuture.successful((a * 2).toString).mapTo[Int]
       c <- OFuture.successful((7 * 2).toString)
-    } yield b + "-" + c
+    } yield s"$b-$c"
 
     future2 should not be null
     future2.isCompleted should equal(true)
@@ -234,7 +234,7 @@ class OFutureSpec extends FunSpec with Matchers {
       idx => async(idx)
     }
 
-    val folded = OFuture.fold(futures)(0)(_ + _)
+    val folded = OFuture.fold(futures)(0) { _ + _ }
     folded.value should equal(Some(Success(45)))
   }
 

@@ -19,9 +19,12 @@ package org.squbs.testkit
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest._
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex._
+
 import scala.language.postfixOps
 
 object PortGetterSpec {
@@ -61,7 +64,7 @@ object PortGetterSpec {
 }
 
 class PortGetterSpec extends TestKit(PortGetterSpec.boot("portGetterSpec").actorSystem) with ImplicitSender
-  with FlatSpecLike with Matchers with BeforeAndAfterAll with PortGetter {
+  with AnyFlatSpecLike with Matchers with BeforeAndAfterAll with PortGetter {
 
   override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop
@@ -74,7 +77,7 @@ class PortGetterSpec extends TestKit(PortGetterSpec.boot("portGetterSpec").actor
 }
 
 class PortGetterCustomListenerSpec extends TestKit(PortGetterSpec.boot("PortGetterCustomListenerSpec").actorSystem)
-  with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with PortGetter {
+  with ImplicitSender with AnyFlatSpecLike with Matchers with BeforeAndAfterAll with PortGetter {
 
   override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop

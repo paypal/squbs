@@ -18,11 +18,12 @@ package org.squbs.httpclient
 
 import akka.http.scaladsl.model.Uri
 import org.scalatest.OptionValues._
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.testkit.CustomTestKit
 
-class DefaultHttpEndpointResolverSpec extends CustomTestKit with FlatSpecLike with Matchers {
+class DefaultHttpEndpointResolverSpec extends CustomTestKit with AnyFlatSpecLike with Matchers {
 
   ResolverRegistry(system).register(new DefaultHttpEndpointResolver)
 

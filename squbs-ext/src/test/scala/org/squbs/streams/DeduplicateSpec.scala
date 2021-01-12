@@ -16,12 +16,13 @@
 
 package org.squbs.streams
 
-import java.util
-
 import akka.actor.ActorSystem
-import akka.stream.scaladsl._
 import akka.stream.ActorMaterializer
-import org.scalatest.{AsyncFlatSpec, Matchers}
+import akka.stream.scaladsl._
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+import java.util
 
 class DeduplicateSpec extends AsyncFlatSpec with Matchers{
 

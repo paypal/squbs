@@ -26,7 +26,7 @@ import org.apache.curator.framework.api.CuratorWatcher
 import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
@@ -173,7 +173,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
     case ZkRemovePartition(partitionKey) =>
       log.debug("[partitions] remove partition {}", keyToPath(partitionKey))
       safelyDiscard(partitionZkPath(partitionKey))
-      sender ! ZkPartitionRemoval(partitionKey)
+      sender() ! ZkPartitionRemoval(partitionKey)
 
     case ZkResizePartition(partitionKey, size) =>
       guarantee(sizeOfParZkPath(partitionKey), Some(size), CreateMode.PERSISTENT)

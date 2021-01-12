@@ -30,7 +30,7 @@ import com.typesafe.config.Config
 import scala.beans.BeanProperty
 import scala.collection.concurrent.TrieMap
 import scala.language.{implicitConversions, postfixOps}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object JMX {
 

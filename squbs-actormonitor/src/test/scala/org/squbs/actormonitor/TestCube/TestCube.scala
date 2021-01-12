@@ -21,13 +21,13 @@ import akka.actor.Actor
 
 class TestActor extends Actor {
   def receive = {
-    case x => sender ! x
+    case x => sender() ! x
   }
 }
 
 class TestActorWithRoute extends Actor {
   def receive = {
-    case x => sender ! x
+    case x => sender() ! x
   }
 }
 

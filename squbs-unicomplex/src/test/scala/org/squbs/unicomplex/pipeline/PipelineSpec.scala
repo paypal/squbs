@@ -26,7 +26,9 @@ import akka.stream.scaladsl.{BidiFlow, Flow, GraphDSL}
 import akka.stream.{ActorMaterializer, BidiShape}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.pipeline.{Context, PipelineFlow, PipelineFlowFactory, RequestContext}
 import org.squbs.unicomplex.Timeouts._
@@ -75,7 +77,7 @@ object PipelineSpec {
   }
 
   class PipelineSpec extends TestKit(
-    PipelineSpec.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
+    PipelineSpec.boot.actorSystem) with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
     implicit val am = ActorMaterializer()
 

@@ -18,7 +18,6 @@ package org.squbs.pattern.timeoutpolicy
 
 import java.lang.management.ManagementFactory
 import java.util.concurrent.TimeUnit
-
 import akka.agent.Agent
 import com.typesafe.scalalogging.LazyLogging
 
@@ -26,6 +25,8 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import org.squbs.util.DurationConverters._
+
+import scala.collection.mutable
 
 /**
  *
@@ -71,9 +72,8 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
         logger.warn("call end without call waitTime first, ignore this transaction")
       } else {
         val isTimeout = timeTaken > waitTime.toNanos
-        TimeoutPolicy.this.update(timeTaken, isTimeout)
+        TimeoutPolicy.this.update(timeTaken.toDouble, isTimeout)
       }
-
     }
   }
 
@@ -260,7 +260,7 @@ object TimeoutPolicy extends LazyLogging {
    *
    * @return all of the metrics
    */
-  def policyMetrics = policyMap mapValues (_.metrics)
+  def policyMetrics: mutable.Map[String, Metrics] = policyMap.map { case (k, v) => k -> v.metrics }
 
   /**
    * Reset the timeout policy.

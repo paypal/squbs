@@ -16,17 +16,17 @@
 
 package org.squbs.metrics
 
-import java.lang.management.ManagementFactory
-import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink}
 import akka.stream.testkit.scaladsl.TestSource
 import akka.testkit.TestKit
 import org.scalatest.OptionValues._
-import org.scalatest.{AsyncFlatSpecLike, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 

@@ -19,7 +19,8 @@ package org.squbs.pattern.orchestration
 import akka.actor._
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{FunSpecLike, Matchers}
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.testkit.SlowTest
 import org.squbs.testkit.Timeouts._
 import org.squbs.testkit.stress._
@@ -33,7 +34,7 @@ import scala.language.postfixOps
  * callbacks and a large amount of allowed concurrency.
  */
 class OrchestratorStress2Test extends TestKit(ActorSystem("OrchestrationStress2Test"))
-with ImplicitSender with FunSpecLike with Matchers {
+with ImplicitSender with AnyFunSpecLike with Matchers {
 
   val ir = 500
   val warmUp = 2 minutes
@@ -43,15 +44,15 @@ with ImplicitSender with FunSpecLike with Matchers {
 
     val startTime = System.nanoTime()
 
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
+    val loadActor = system.actorOf(Props[LoadActor]())
+    val statsActor = system.actorOf(Props[CPUStatsActor]())
     loadActor ! StartLoad(startTime, ir, warmUp, steady){
-      system.actorOf(Props[SimpleForComprehension2Actor]) ! OrchestrationRequest("SyncLoadTest")
+      system.actorOf(Props[SimpleForComprehension2Actor]()) ! OrchestrationRequest("SyncLoadTest")
     }
     statsActor ! StartStats(startTime, warmUp, steady, 5.seconds)
 
-    var sumFinishTime = 0l
-    var sumFinishCount = 0l
+    var sumFinishTime = 0L
+    var sumFinishCount = 0L
 
     for (i <- 0 to 1) {
       fishForMessage(warmUp + steady + awaitMax) {
@@ -84,18 +85,18 @@ with ImplicitSender with FunSpecLike with Matchers {
 
     val startTime = System.nanoTime()
 
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
+    val loadActor = system.actorOf(Props[LoadActor]())
+    val statsActor = system.actorOf(Props[CPUStatsActor]())
     loadActor ! StartLoad(startTime, ir, warmUp, steady){
-      system.actorOf(Props[Test2Orchestrator]) ! OrchestrationRequest("LoadTest")
+      system.actorOf(Props[Test2Orchestrator]()) ! OrchestrationRequest("LoadTest")
     }
     statsActor ! StartStats(startTime, warmUp, steady, 5.seconds)
 
-    var sumSubmitTime = 0l
-    var sumSubmitCount = 0l
+    var sumSubmitTime = 0L
+    var sumSubmitCount = 0L
 
-    var sumFinishTime = 0l
-    var sumFinishCount = 0l
+    var sumFinishTime = 0L
+    var sumFinishCount = 0L
 
     for (i <- 0 to 1) {
       fishForMessage(warmUp + steady + awaitMax) {
@@ -135,18 +136,18 @@ with ImplicitSender with FunSpecLike with Matchers {
 
     val startTime = System.nanoTime()
 
-    val loadActor = system.actorOf(Props[LoadActor])
-    val statsActor = system.actorOf(Props[CPUStatsActor])
+    val loadActor = system.actorOf(Props[LoadActor]())
+    val statsActor = system.actorOf(Props[CPUStatsActor]())
     loadActor ! StartLoad(startTime, ir, warmUp, steady){
-      system.actorOf(Props[TestAsk2Orchestrator]) ! OrchestrationRequest("LoadTest")
+      system.actorOf(Props[TestAsk2Orchestrator]()) ! OrchestrationRequest("LoadTest")
     }
     statsActor ! StartStats(startTime, warmUp, steady, 5.seconds)
 
-    var sumSubmitTime = 0l
-    var sumSubmitCount = 0l
+    var sumSubmitTime = 0L
+    var sumSubmitCount = 0L
 
-    var sumFinishTime = 0l
-    var sumFinishCount = 0l
+    var sumFinishTime = 0L
+    var sumFinishCount = 0L
 
     for (i <- 0 to 1) {
       fishForMessage(warmUp + steady + awaitMax) {
@@ -365,7 +366,7 @@ class TestAsk2Orchestrator extends Actor with Orchestrator with ActorLogging {
 
   object Requests {
 
-    val service = context.actorOf(Props[ServiceEmulator])
+    val service = context.actorOf(Props[ServiceEmulator]())
 
     def loadResponse(delay: FiniteDuration): OFuture[Long] = {
       import context.dispatcher

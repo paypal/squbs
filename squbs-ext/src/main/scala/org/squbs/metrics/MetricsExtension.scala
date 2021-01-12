@@ -22,7 +22,7 @@ import com.codahale.metrics.jmx.JmxReporter
 
 object MetricsExtension extends ExtensionId[MetricsExtensionImpl] with ExtensionIdProvider {
 
-  override def lookup = MetricsExtension
+  override def lookup(): MetricsExtension.type = MetricsExtension
 
   override def createExtension(system: ExtendedActorSystem) = new MetricsExtensionImpl(system)
 

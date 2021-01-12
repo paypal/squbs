@@ -32,7 +32,7 @@ class RemoteGuardian extends Actor with ActorLogging {
 
   val zkCluster= ZkCluster(context.system)
 
-  override def preStart: Unit = context.system.eventStream.subscribe(self, classOf[QuarantinedEvent])
+  override def preStart(): Unit = context.system.eventStream.subscribe(self, classOf[QuarantinedEvent])
 
   val EXIT_CODE = 99
 

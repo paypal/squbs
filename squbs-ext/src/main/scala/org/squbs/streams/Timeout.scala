@@ -98,7 +98,7 @@ abstract class TimeoutGraphStageLogic[In, FromWrapped, Out](shape: BidiShape[In,
     }
   }
 
-  protected def expirationTime(): Long = System.nanoTime() - timeoutAsNanos - precision
+  protected def expirationTime: Long = System.nanoTime - timeoutAsNanos - precision
 
   protected def firstElemStartTime: Long
 
@@ -278,8 +278,8 @@ final class Timeout[In, Out, Context](settings: TimeoutSettings[In, Out, Context
 
   val uniqueId: Context => Any = settings.uniqueIdMapper.getOrElse{
     context => context match {
-      case uniqueIdProvider: UniqueId.Provider ⇒ uniqueIdProvider.uniqueId
-      case uniqueId ⇒ uniqueId
+      case uniqueIdProvider: UniqueId.Provider => uniqueIdProvider.uniqueId
+      case uniqueId => uniqueId
     }
   }
 

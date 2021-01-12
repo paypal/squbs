@@ -30,13 +30,14 @@ import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.lifecycle.ExtensionLifecycle
 import org.squbs.pipeline.PipelineSetting
+import org.squbs.unicomplex.{Extension => SqubsExtension}
 import org.squbs.unicomplex.UnicomplexBoot.CubeInit
 import org.squbs.util.ConfigUtil._
 
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.{postfixOps, existentials}
@@ -97,7 +98,7 @@ object UnicomplexBoot extends LazyLogging {
           name => ConfigFactory.parseFileAnySyntax(new File(configDir, name), parseOptions)
         }
         if (addConfigs.isEmpty) baseConfig
-        else ConfigFactory.load((addConfigs :\ baseConfig) (_ withFallback _))
+        else ConfigFactory.load(addConfigs.foldRight(baseConfig){ _ withFallback _ })
     }
   }
 
@@ -151,7 +152,7 @@ object UnicomplexBoot extends LazyLogging {
 
   private def getConfigReader(jarName: String): Option[(Option[Reader], String)] = {
     // Make it extra lazy, so that we do not create the next File if the previous one succeeds.
-    val configExtensions = Stream("conf", "json", "properties")
+    val configExtensions = Iterator("conf", "json", "properties")
     val maybeConfFileReader = Option(new File(jarName)) collect {
       case file if file.isDirectory => createReaderFromFS(file)
       case file if file.isFile      => createReaderFromJarFile(file)
@@ -242,11 +243,13 @@ object UnicomplexBoot extends LazyLogging {
   @tailrec
   private[unicomplex] def resolveAliasConflicts(cubeList: Seq[CubeInit]): Seq[CubeInit] = {
 
-    val aliasConflicts = cubeList map { cube =>
-      (cube.info.name, cube.info.fullName)
-    } groupBy (_._1) mapValues { seq =>
-      (seq map (_._2)).toSet
-    } filter { _._2.size > 1 }
+    val aliasConflicts = cubeList
+      .map { cube =>
+        (cube.info.name, cube.info.fullName)
+      }
+      .groupBy (_._1)
+      .map { case (name, seq) => name -> (seq map (_._2)).toSet }
+      .filter { _._2.size > 1 }
 
     if (aliasConflicts.isEmpty) cubeList
     else {
@@ -282,7 +285,7 @@ object UnicomplexBoot extends LazyLogging {
                                           timeout: Timeout = UnicomplexBoot.defaultStartupTimeout) = {
     import cube.components
     import cube.info.{fullName, jarPath, name, version}
-    val cubeSupervisor = actorSystem.actorOf(Props[CubeSupervisor], name)
+    val cubeSupervisor = actorSystem.actorOf(Props[CubeSupervisor](), name)
     Unicomplex(actorSystem).uniActor ! CubeRegistration(cube.info, cubeSupervisor)
 
     def startActor(actorConfig: Config): Option[(String, String, String, Class[_])] = {
@@ -348,7 +351,7 @@ object UnicomplexBoot extends LazyLogging {
       Try {
         val actorClass = clazz asSubclass classOf[Actor]
         def actorCreator: Actor = WithWebContext(webContext) { actorClass.newInstance() }
-        val props = Props(classOf[TypedCreatorFunctionConsumer], clazz, actorCreator _)
+        val props = Props(classOf[TypedCreatorFunctionConsumer], clazz, () => actorCreator)
         val className = clazz.getSimpleName
         val actorName =
           if (webContext.length > 0) s"${webContext.replace('/', '_')}-$className-handler"
@@ -528,7 +531,7 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
                                               jarConfigs: Seq[(String, Config)] = Seq.empty,
                                               jarNames: Seq[String] = Seq.empty,
                                               actors: Seq[(String, String, String, Class[_])] = Seq.empty,
-                                              extensions: Seq[Extension] = Seq.empty,
+                                              extensions: Seq[SqubsExtension] = Seq.empty,
                                               started: Boolean = false,
                                               stopJVM: Boolean = false) extends LazyLogging {
 
@@ -552,8 +555,10 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
   def scanResources(resources: String*): UnicomplexBoot =
     UnicomplexBoot.scanResources(resources map (new File(_).toURI.toURL))(this)
 
+  def scanResources(resources: java.util.List[String]): UnicomplexBoot = scanResources(resources.asScala.toSeq: _*)
+
   def scanResources(withClassPath: Boolean, resources: Array[String]): UnicomplexBoot =
-    scanResources(withClassPath, resources: _*)
+    scanResources(withClassPath, resources.toIndexedSeq: _*)
 
   def initExtensions: UnicomplexBoot = {
 
@@ -694,11 +699,11 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
     }
   }
 
-  def loadExtension(seqNo: Int, className: String, cube: CubeInit): Extension = {
+  def loadExtension(seqNo: Int, className: String, cube: CubeInit): SqubsExtension = {
     try {
       val clazz = Class.forName(className, true, getClass.getClassLoader)
       val extLifecycle = ExtensionLifecycle(this) { clazz.asSubclass(classOf[ExtensionLifecycle]).newInstance }
-      Extension(cube.info, seqNo, Some(extLifecycle), Seq.empty)
+      SqubsExtension(cube.info, seqNo, Some(extLifecycle), Seq.empty)
     } catch {
       case NonFatal(e) =>
         import cube.info._
@@ -708,12 +713,12 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
           s"Path: $jarPath\n" +
           s"${t.getClass.getName}: ${t.getMessage}")
         t.printStackTrace()
-        Extension(cube.info, seqNo, None, Seq("load" -> t))
+        SqubsExtension(cube.info, seqNo, None, Seq("load" -> t))
     }
   }
 
   def extensionOp(opName: String, opFn: ExtensionLifecycle => Unit)
-                 (extension: Extension): Extension = {
+                 (extension: SqubsExtension): SqubsExtension = {
     import extension.info._
 
     extension.extLifecycle match {

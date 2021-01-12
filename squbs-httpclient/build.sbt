@@ -18,6 +18,7 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonV % Test,
   "junit" % "junit" % junitV % Test,
   "com.novocode" % "junit-interface" % junitInterfaceV % Test,
+  "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test,
   "ch.qos.logback" % "logback-classic" % logbackInTestV % Test,
   "org.littleshoot" % "littleproxy" % "1.1.2" % Test,
   // This is added so that ScalaTest can produce an HTML report. Should be removed with scalatest 3.1.x

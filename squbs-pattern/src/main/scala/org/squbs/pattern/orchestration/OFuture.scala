@@ -16,7 +16,8 @@
 
 package org.squbs.pattern.orchestration
 
-import scala.collection.generic.CanBuildFrom
+import scala.collection.compat._
+import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
@@ -571,30 +572,31 @@ object OFuture {
     */
   def successful[T](result: T): OFuture[T] = OPromise.successful(result).future
 
-  /** Simple version of `Futures.traverse`. Transforms a `TraversableOnce[Future[A]]` into a `Future[TraversableOnce[A]]`.
+  /** Simple version of `Futures.traverse`. Transforms a `IterableOnce[Future[A]]` into a `Future[IterableOnce[A]]`.
     *  Useful for reducing many `Future`s into a single `Future`.
     */
-  def sequence[A, M[_] <: TraversableOnce[_]](in: M[OFuture[A]])(implicit cbf: CanBuildFrom[M[OFuture[A]], A, M[A]]): OFuture[M[A]] = {
-    in.foldLeft(OPromise.successful(cbf(in)).future) {
+  def sequence[A, M[X] <: IterableOnce[X]](in: M[OFuture[A]])
+                                          (implicit bf: BuildFrom[M[OFuture[A]], A, M[A]]): OFuture[M[A]] = {
+    in.iterator.foldLeft(OPromise.successful(bf.newBuilder(in)).future) {
       (fr, fa) => for (r <- fr; a <- fa.asInstanceOf[OFuture[A]]) yield r += a
     } map (_.result())
   }
 
   /** Returns a `Future` to the result of the first future in the list that is completed.
     */
-  def firstCompletedOf[T](futures: TraversableOnce[OFuture[T]]): OFuture[T] = {
+  def firstCompletedOf[T](futures: IterableOnce[OFuture[T]]): OFuture[T] = {
     val p = OPromise[T]()
 
     val completeFirst: Try[T] => Unit = p tryComplete _
-    futures.foreach(_ onComplete completeFirst)
+    futures.iterator.foreach(_ onComplete completeFirst)
 
     p.future
   }
 
   /** Returns a `Future` that will hold the optional result of the first `Future` with a result that matches the predicate.
     */
-  def find[T](futurestravonce: TraversableOnce[OFuture[T]])(predicate: T => Boolean): OFuture[Option[T]] = {
-    val futures = futurestravonce.toBuffer
+  def find[T](futurestravonce: IterableOnce[OFuture[T]])(predicate: T => Boolean): OFuture[Option[T]] = {
+    val futures = futurestravonce.iterator.to(ArrayBuffer)
     if (futures.isEmpty) OPromise.successful[Option[T]](None).future
     else {
       val result = OPromise[Option[T]]()
@@ -627,9 +629,9 @@ object OFuture {
     *    val result = Await.result(Future.fold(futures)(0)(_ + _), 5 seconds)
     *  }}}
     */
-  def fold[T, R](futures: TraversableOnce[OFuture[T]])(zero: R)(foldFun: (R, T) => R): OFuture[R] = {
-    if (futures.isEmpty) OPromise.successful(zero).future
-    else sequence(futures).map(_.foldLeft(zero)(foldFun))
+  def fold[T, R](futures: IterableOnce[OFuture[T]])(zero: R)(foldFun: (R, T) => R): OFuture[R] = {
+    if (futures.iterator.isEmpty) OPromise.successful(zero).future
+    else sequence(futures)(ArrayBuffer).map(_.iterator.foldLeft(zero)(foldFun))
   }
 
   /** Initiates a fold over the supplied futures where the fold-zero is the result value of the `Future` that's completed first.
@@ -639,12 +641,14 @@ object OFuture {
     *    val result = Await.result(Future.reduce(futures)(_ + _), 5 seconds)
     *  }}}
     */
-  def reduce[T, R >: T](futures: TraversableOnce[OFuture[T]])(op: (R, T) => R): OFuture[R] = {
-    if (futures.isEmpty) OPromise[R]().failure(new NoSuchElementException("reduce attempted on empty collection")).future
-    else sequence(futures).map(_ reduceLeft op)
+  def reduce[T, R >: T](futures: IterableOnce[OFuture[T]])(op: (R, T) => R): OFuture[R] = {
+    if (futures.iterator.isEmpty)
+      OPromise[R]().failure(new NoSuchElementException("reduce attempted on empty collection")).future
+    else
+      sequence(futures)(ArrayBuffer).map(a => a.iterator.reduceLeft(op))
   }
 
-  /** Transforms a `TraversableOnce[A]` into a `Future[TraversableOnce[B]]` using the provided function `A => Future[B]`.
+  /** Transforms a `IterableOnce[A]` into a `Future[IterableOnce[B]]` using the provided function `A => Future[B]`.
     *  This is useful for performing a parallel map. For example, to apply a function to all items of a list
     *  in parallel:
     *
@@ -652,8 +656,9 @@ object OFuture {
     *    val myFutureList = Future.traverse(myList)(x => Future(myFunc(x)))
     *  }}}
     */
-  def traverse[A, B, M[_] <: TraversableOnce[_]](in: M[A])(fn: A => OFuture[B])(implicit cbf: CanBuildFrom[M[A], B, M[B]]): OFuture[M[B]] =
-    in.foldLeft(OPromise.successful(cbf(in)).future) { (fr, a) =>
+  def traverse[A, B, M[_] <: IterableOnce[_]](in: M[A])(fn: A => OFuture[B])
+                                             (implicit bf: BuildFrom[M[A], B, M[B]]): OFuture[M[B]] =
+    in.foldLeft(OPromise.successful(bf.newBuilder(in)).future) { (fr, a) =>
       val fb = fn(a.asInstanceOf[A])
       for (r <- fr; b <- fb) yield r += b
     }.map(_.result())

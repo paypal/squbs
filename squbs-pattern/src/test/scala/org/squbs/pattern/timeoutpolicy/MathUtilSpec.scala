@@ -16,14 +16,15 @@
 
 package org.squbs.pattern.timeoutpolicy
 
-import org.scalactic.TolerantNumerics
-import org.scalatest.{Matchers, FlatSpecLike}
 import org.apache.commons.math3.special.Erf
+import org.scalactic.TolerantNumerics
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
 /**
  * see https://git-wip-us.apache.org/repos/asf?p=commons-math.git;a=blob_plain;f=src/test/java/org/apache/commons/math3/special/ErfTest.java;h=3e26662bd618d46e95b447ab538f4d45a473805e;hb=HEAD
  */
-class MathUtilSpec extends FlatSpecLike with Matchers{
+class MathUtilSpec extends AnyFlatSpecLike with Matchers{
 
   it should "pass NaN cases" in {
     java.lang.Double.isNaN(MathUtil.erfInv(-1.001)) should be(true)
@@ -36,7 +37,8 @@ class MathUtilSpec extends FlatSpecLike with Matchers{
   }
 
   it should "pass regular case" in {
-    for (x <- (-5.9).until(5.9, 0.01)) {
+    for (bx <- BigDecimal("-5.9") until 5.9 by 0.01) {
+      val x = bx.toDouble
       val y = Erf.erf(x)
       val dydx = 2 * math.exp(-x * x) / math.sqrt(Math.PI)
       implicit val equality = TolerantNumerics.tolerantDoubleEquality(1.0e-15 / dydx)

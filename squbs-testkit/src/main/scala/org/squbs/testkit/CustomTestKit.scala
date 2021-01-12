@@ -29,7 +29,7 @@ import org.squbs.util.ConfigUtil._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 object CustomTestKit {
@@ -47,9 +47,10 @@ object CustomTestKit {
   // JUnit creates a new object for each @Test method.  To prevent actor system name collisions, appending an integer
   // to the actor system name.
   val counter = new AtomicInteger(0)
-  val stackTraceDepth =
-    if (util.Properties.versionNumberString.startsWith("2.12")) 5 // scala 2.12 - CustomTestKit$ x 2 -> Option -> CustomTestKit$ -> CustomTestKit -> Spec
-    else 6 // scala 2.11 - CustomTestKit$ x 3 -> Option -> CustomTestKit$ -> CustomTestKit -> Spec
+
+  // scala 2.12 - CustomTestKit$ x 2 -> Option -> CustomTestKit$ -> CustomTestKit -> Spec
+  // scala 2.11 - CustomTestKit$ x 3 -> Option -> CustomTestKit$ -> CustomTestKit -> Spec
+  val stackTraceDepth: Int = if (util.Properties.versionNumberString.startsWith("2.11")) 6 else 5
   /* Example stack trace:
 
     java.lang.Exception
@@ -139,39 +140,26 @@ object CustomTestKit {
 abstract class CustomTestKit(val boot: UnicomplexBoot) extends TestKit(boot.actorSystem)
     with DebugTiming with ImplicitSender with Suite with BeforeAndAfterAll with PortGetter {
 
-  def this() {
-    this(CustomTestKit.boot())
-  }
+  def this() = this(CustomTestKit.boot())
 
-  def this(actorSystemName: String) {
-    this(CustomTestKit.boot(Option(actorSystemName)))
-  }
+  def this(actorSystemName: String) = this(CustomTestKit.boot(Option(actorSystemName)))
 
-  def this(config: Config) {
-    this(CustomTestKit.boot(config = Option(config)))
-  }
+  def this(config: Config) = this(CustomTestKit.boot(config = Option(config)))
 
-  def this(withClassPath: Boolean) {
-    this(CustomTestKit.boot(withClassPath = Option(withClassPath)))
-  }
+  def this(withClassPath: Boolean) = this(CustomTestKit.boot(withClassPath = Option(withClassPath)))
 
-  def this(resources: Seq[String], withClassPath: Boolean) {
+  def this(resources: Seq[String], withClassPath: Boolean) =
     this(CustomTestKit.boot(resources = Option(resources), withClassPath = Option(withClassPath)))
-  }
 
-  def this(actorSystemName: String, resources: Seq[String], withClassPath: Boolean) {
-    this(CustomTestKit.boot(Option(actorSystemName), resources = Option(resources), withClassPath = Option(withClassPath)))
-  }
+  def this(actorSystemName: String, resources: Seq[String], withClassPath: Boolean) =
+    this(CustomTestKit.boot(Option(actorSystemName), resources = Option(resources),
+      withClassPath = Option(withClassPath)))
 
-  def this(config: Config, resources: Seq[String], withClassPath: Boolean) {
-    this(CustomTestKit.boot(config = Option(config), resources = Option(resources), withClassPath = Option(withClassPath)))
-  }
+  def this(config: Config, resources: Seq[String], withClassPath: Boolean) =
+    this(CustomTestKit.boot(config = Option(config), resources = Option(resources),
+      withClassPath = Option(withClassPath)))
 
-  override protected def beforeAll(): Unit = {
-    CustomTestKit.checkInit(system)
-  }
+  override protected def beforeAll(): Unit = CustomTestKit.checkInit(system)
 
-  override protected def afterAll(): Unit = {
-    Unicomplex(system).uniActor ! GracefulStop
-  }
+  override protected def afterAll(): Unit = Unicomplex(system).uniActor ! GracefulStop
 }

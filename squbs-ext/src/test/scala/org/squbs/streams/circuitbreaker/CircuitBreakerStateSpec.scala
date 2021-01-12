@@ -15,18 +15,19 @@
  */
 package org.squbs.streams.circuitbreaker
 
-import java.lang.management.ManagementFactory
-import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import scala.language.postfixOps
 
-class CircuitBreakerStateSpec extends TestKit(ActorSystem("CircuitBreakerStateSpec")) with FlatSpecLike with Matchers {
+class CircuitBreakerStateSpec extends TestKit(ActorSystem("CircuitBreakerStateSpec"))
+  with AnyFlatSpecLike with Matchers {
 
   implicit val scheduler = system.scheduler
   import system.dispatcher

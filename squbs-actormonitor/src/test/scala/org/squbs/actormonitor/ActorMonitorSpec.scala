@@ -18,14 +18,15 @@ package org.squbs.actormonitor
 
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
-
 import akka.actor._
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import org.scalatest._
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Waiters
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
 import org.squbs.unicomplex.{JMX, Unicomplex, UnicomplexBoot}
@@ -76,7 +77,7 @@ object ActorMonitorSpec extends LazyLogging {
 }
 
 class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with ImplicitSender
-                             with WordSpecLike with Matchers with BeforeAndAfterAll
+                             with AnyWordSpecLike with Matchers with BeforeAndAfterAll
                              with Waiters with LazyLogging {
 
   import org.squbs.testkit.Timeouts._
@@ -292,7 +293,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
       system.actorSelection("/user/TestCube/TestActor1") ! PoisonPill
       awaitAssert({
-        ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") shouldBe 'empty
+        ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor1", "Actor") shouldBe empty
         getActorMonitorConfigBean("Count") should contain (originalNum - 1)
       }, max = awaitMax)
     }

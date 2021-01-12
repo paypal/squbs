@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % Test,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV % Test,
+  "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test,
   "ch.qos.logback" % "logback-classic" % logbackInTestV % Test,
   "org.json4s" %% "json4s-jackson" % json4sV,
   // This is added so that ScalaTest can produce an HTML report. Should be removed with scalatest 3.1.x

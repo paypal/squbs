@@ -16,17 +16,18 @@
 
 package org.squbs.unicomplex
 
-import java.util.concurrent.TimeUnit
-import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Waiters
-import org.scalatest.{BeforeAndAfterAll, Inspectors, Matchers, WordSpecLike}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.{BeforeAndAfterAll, Inspectors}
 import org.squbs.lifecycle.GracefulStop
 
+import java.util.concurrent.TimeUnit
+import javax.management.ObjectName
 import scala.util.Try
 
 object ScanResourceSpec {
@@ -54,7 +55,7 @@ object ScanResourceSpec {
     .initExtensions.start()
 }
 
-class ScanResourceSpec extends TestKit(ScanResourceSpec.boot.actorSystem) with ImplicitSender with WordSpecLike
+class ScanResourceSpec extends TestKit(ScanResourceSpec.boot.actorSystem) with ImplicitSender with AnyWordSpecLike
     with Matchers with Inspectors with BeforeAndAfterAll with Waiters {
 
   import ScanResourceSpec._

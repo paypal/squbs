@@ -16,17 +16,19 @@
 
 package org.squbs.unicomplex
 
-import javax.management.ObjectName
-import javax.management.openmbean.CompositeData
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX._
+
+import javax.management.ObjectName
+import javax.management.openmbean.CompositeData
 
 object ListenerStateSpec{
 
@@ -96,7 +98,7 @@ object ListenerStateSpec{
     .initExtensions.start()
 }
 
-class ListenerStateSpec extends TestKit(ListenerStateSpec.boot.actorSystem) with FlatSpecLike
+class ListenerStateSpec extends TestKit(ListenerStateSpec.boot.actorSystem) with AnyFlatSpecLike
   with Matchers with BeforeAndAfterAll {
 
   override def afterAll(): Unit = {

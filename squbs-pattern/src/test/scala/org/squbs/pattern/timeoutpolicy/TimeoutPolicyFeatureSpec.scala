@@ -16,16 +16,16 @@
 
 package org.squbs.pattern.timeoutpolicy
 
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+
 import java.util.concurrent.TimeUnit
-
-import org.scalatest.{FlatSpecLike, Matchers}
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.{Random, Try}
 
-class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
+class TimeoutPolicyFeatureSpec extends AnyFlatSpecLike with Matchers{
 
   "TimeoutPolicy return faster than timeout" should "works fine" in {
     //val policy = TimeoutPolicy(name = Some("test"), initial = 1 second, fixedRule, minSamples = 1)
@@ -38,7 +38,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
         val s = 100 * i
         Thread.sleep(s)
       }, tx.waitTime)
-      tx.end
+      tx.end()
       val diff = TimeUnit.NANOSECONDS.toMillis(System.nanoTime - start)
       println(diff)
       assert(diff < 100*(i+1))
@@ -59,7 +59,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
           Thread.sleep(s)
         }, tx.waitTime)
       }
-      tx.end
+      tx.end()
       val diff = TimeUnit.NANOSECONDS.toMillis(System.nanoTime - start)
       println(diff)
       assert(diff < 1100)
@@ -74,7 +74,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
     val random = new Random(100)
     for (i <- 0 until 55) {
       val tx = timeoutPolicy.transaction
-      println(i+":"+tx.waitTime.toMillis)
+      println(s"$i:${tx.waitTime.toMillis}")
       Try{
         Await.ready(Future{
           val n = random.nextGaussian()
@@ -136,7 +136,7 @@ class TimeoutPolicyFeatureSpec extends FlatSpecLike with Matchers{
     val random = new Random(100)
     for (i <- 0 until 55) {
       val tx = timeoutPolicy.transaction
-      println(i+":"+tx.waitTime.toMillis)
+      println(s"$i:${tx.waitTime.toMillis}")
       Try{
         Await.ready(Future{
           val n = random.nextGaussian()

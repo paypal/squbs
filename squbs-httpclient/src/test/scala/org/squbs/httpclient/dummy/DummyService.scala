@@ -155,7 +155,7 @@ trait DummyService {
       } ~
       path("viewrange") {
         (get | head | options) {
-          parameters('range) { range =>
+          parameters("range") { range =>
             complete {
               if (range == "new") newTeamMember else fullTeam
             }
@@ -163,7 +163,7 @@ trait DummyService {
         }
       } ~
       path("stop") {
-        (post | parameter('method ! "post")) {
+        (post | parameter("method" ! "post")) {
           complete {
             system.scheduler.scheduleOnce(1.second)(system.terminate())(system.dispatcher)
             "Shutting down in 1 second..."

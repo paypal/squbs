@@ -138,8 +138,8 @@ final class Retry[In, Out, Context] private[streams](settings: RetrySettings[In,
 
   val uniqueId: Context => Any = uniqueIdMapper.getOrElse{
     context => context match {
-      case uniqueIdProvider: UniqueId.Provider ⇒ uniqueIdProvider.uniqueId
-      case uniqueId ⇒ uniqueId
+      case uniqueIdProvider: UniqueId.Provider => uniqueIdProvider.uniqueId
+      case uniqueId => uniqueId
     }
   }
 
@@ -324,7 +324,7 @@ final class Retry[In, Out, Context] private[streams](settings: RetrySettings[In,
       //       3        200 * (3 ^ 1.5) =  1039ms
       //       4        200 * (4 ^ 1.5) =  1600ms
       //     ...                        = <maxDelay if one is specified>
-      val backoffFactor = math.pow(retry, exponentialBackoffFactor)
+      val backoffFactor = math.pow(retry.toDouble, exponentialBackoffFactor)
       val sleepTimeAsNanos = (delayAsNanos * backoffFactor).toLong
       if (maxDelay != Duration.Zero) math.min(sleepTimeAsNanos, maxDelay.toNanos)
       else sleepTimeAsNanos

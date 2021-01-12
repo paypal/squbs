@@ -17,18 +17,19 @@
 
 package org.squbs.unicomplex
 
-import java.util.concurrent.ThreadFactory
-
-import akka.actor.{Cancellable, Scheduler, ActorSystem}
+import akka.actor.{ActorSystem, Cancellable, Scheduler}
 import akka.event.LoggingAdapter
-import akka.testkit.{TestKit, ImplicitSender}
+import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.{Config, ConfigFactory}
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
 
-class ShutdownSpec extends TestKit(ShutdownSpec.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender {
+import java.util.concurrent.ThreadFactory
+import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
+
+class ShutdownSpec extends TestKit(ShutdownSpec.boot.actorSystem) with AnyFlatSpecLike with Matchers with ImplicitSender {
 
   it should "shut the system down immediately" in {
     Unicomplex("ShutdownSpec") ! ObtainLifecycleEvents(Stopping)
@@ -55,7 +56,8 @@ object ShutdownSpec {
   val boot = UnicomplexBoot(testConfig).createUsing((name, config) => ActorSystem(name, config)).start()
 }
 
-class ShutdownSpec2 extends TestKit(ShutdownSpec2.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender {
+class ShutdownSpec2 extends TestKit(ShutdownSpec2.boot.actorSystem)
+  with AnyFlatSpecLike with Matchers with ImplicitSender {
 
   it should "keep the system active for the duration of squbs.shutdown-delay" in {
     Unicomplex("ShutdownSpec2") ! ObtainLifecycleEvents(Stopping)
@@ -83,7 +85,8 @@ object ShutdownSpec2 {
   val boot = UnicomplexBoot(testConfig).createUsing((name, config) => ActorSystem(name, config)).start()
 }
 
-class ShutdownSpec3 extends TestKit(ShutdownSpec3.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender {
+class ShutdownSpec3 extends TestKit(ShutdownSpec3.boot.actorSystem)
+  with AnyFlatSpecLike with Matchers with ImplicitSender {
 
   it should "keep the system active for parametrized duration" in {
     Unicomplex("ShutdownSpec3") ! ObtainLifecycleEvents(Stopping)
@@ -110,7 +113,8 @@ object ShutdownSpec3 {
   val boot = UnicomplexBoot(testConfig).createUsing((name, config) => ActorSystem(name, config)).start()
 }
 
-class ShutdownSpec4 extends TestKit(ShutdownSpec4.boot.actorSystem) with FlatSpecLike with Matchers with ImplicitSender {
+class ShutdownSpec4 extends TestKit(ShutdownSpec4.boot.actorSystem)
+  with AnyFlatSpecLike with Matchers with ImplicitSender {
 
   it should "not trigger shutdown if the shutdown has already been started" in {
     Unicomplex("ShutdownSpec4") ! ObtainLifecycleEvents(Stopping)

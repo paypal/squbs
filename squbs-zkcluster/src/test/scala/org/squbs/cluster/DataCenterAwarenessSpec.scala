@@ -15,15 +15,16 @@
  */
 package org.squbs.cluster
 
-import org.scalatest.{FlatSpec, Matchers}
-import org.mockito.Mockito._
 import akka.actor._
 import akka.routing.ActorSelectionRoutee
 import akka.util.ByteString
+import org.mockito.Mockito._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import org.squbs.cluster.rebalance.{CorrelateRoundRobinRoutingLogic, DataCenterAwareRebalanceLogic, DefaultCorrelation}
 
-class DataCenterAwarenessSpec extends FlatSpec with Matchers with MockitoSugar {
+class DataCenterAwarenessSpec extends AnyFlatSpec with Matchers with MockitoSugar {
 
 
   val myAddress = Address("akka.tcp", "pubsub", "10.100.194.253", 8080)
@@ -48,7 +49,7 @@ class DataCenterAwarenessSpec extends FlatSpec with Matchers with MockitoSugar {
       ActorSelectionRoutee(mockActorSelection)
     }).toIndexedSeq
 
-    val logic = CorrelateRoundRobinRoutingLogic(myAddress)
+    val logic = CorrelateRoundRobinRoutingLogic(myAddress, DefaultCorrelation())
     logic.select("whatever", routees) match {
       case ActorSelectionRoutee(selection) =>
         selection.pathString should equal("akka.tcp://pubsub@10.100.65.147:8080")
@@ -71,16 +72,18 @@ class DataCenterAwarenessSpec extends FlatSpec with Matchers with MockitoSugar {
     val partitionsToMembers = Map(partitionKey -> Set.empty[Address])
     def size(partitionKey:ByteString) = 2
 
-    var compensation = DataCenterAwareRebalanceLogic().compensate(partitionsToMembers, correlates ++ distances, size)
+    var compensation = DataCenterAwareRebalanceLogic(DefaultCorrelation())
+      .compensate(partitionsToMembers, correlates ++ distances, size)
     compensation.getOrElse(partitionKey, Set.empty) should equal(Set(correlates.head, distances.head))
 
     val morePartition = ByteString("another partition")
-    compensation = DataCenterAwareRebalanceLogic().
+    compensation = DataCenterAwareRebalanceLogic(DefaultCorrelation()).
       compensate(compensation.updated(morePartition, Set.empty), correlates ++ distances, size)
     compensation.getOrElse(partitionKey, Set.empty) should equal(Set(correlates.head, distances.head))
     compensation.getOrElse(morePartition, Set.empty) should equal(Set(correlates.head, distances.head))
 
-    val balanced = DataCenterAwareRebalanceLogic().rebalance(compensation, (correlates ++ distances).toSet)
+    val balanced = DataCenterAwareRebalanceLogic(DefaultCorrelation())
+      .rebalance(compensation, (correlates ++ distances).toSet)
     balanced.getOrElse(partitionKey, Set.empty) shouldNot equal(balanced.getOrElse(morePartition, Set.empty))
   }
 
@@ -90,21 +93,24 @@ class DataCenterAwarenessSpec extends FlatSpec with Matchers with MockitoSugar {
     val partitionsToMembers = Map(partitionKey -> Set.empty[Address])
     def size(partitionKey:ByteString) = 2
 
-    var compensation = DataCenterAwareRebalanceLogic().compensate(partitionsToMembers, correlates ++ distances, size)
+    var compensation = DataCenterAwareRebalanceLogic(DefaultCorrelation())
+      .compensate(partitionsToMembers, correlates ++ distances, size)
     compensation.getOrElse(partitionKey, Set.empty) should equal(Set(correlates.head, distances.head))
 
-    val balanced = DataCenterAwareRebalanceLogic().rebalance(compensation, (correlates ++ distances).toSet)
+    val balanced = DataCenterAwareRebalanceLogic(DefaultCorrelation())
+      .rebalance(compensation, (correlates ++ distances).toSet)
     balanced.getOrElse(partitionKey, Set.empty) should have size 2
 
     //unfortunately correlates are gone?!
-    compensation = DataCenterAwareRebalanceLogic().
+    compensation = DataCenterAwareRebalanceLogic(DefaultCorrelation()).
       compensate(partitionsToMembers.updated(partitionKey, Set(distances.head)), distances, size)
     compensation.getOrElse(partitionKey, Set.empty) should equal(distances.toSet)
 
-    val rebalanced = DataCenterAwareRebalanceLogic().rebalance(compensation, distances.toSet)
+    val rebalanced = DataCenterAwareRebalanceLogic(DefaultCorrelation()).rebalance(compensation, distances.toSet)
     rebalanced.getOrElse(partitionKey, Set.empty) should equal(distances.toSet)
 
-    val recovered = DataCenterAwareRebalanceLogic().rebalance(compensation, (correlates ++ distances).toSet)
+    val recovered = DataCenterAwareRebalanceLogic(DefaultCorrelation())
+      .rebalance(compensation, (correlates ++ distances).toSet)
     recovered.getOrElse(partitionKey, Set.empty) should have size 2
     recovered.getOrElse(partitionKey, Set.empty) shouldNot equal(distances.toSet)
     correlates.contains(recovered.getOrElse(partitionKey, Set.empty).diff(distances.toSet).head) should equal(true)

@@ -11,6 +11,7 @@ testOptions in Test ++= Seq(
 )
 
 libraryDependencies ++= Seq(
+  "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "io.dropwizard.metrics" % "metrics-core" % metricsV,
   "io.dropwizard.metrics" % "metrics-jmx" % metricsV,
   "com.typesafe.akka" %% "akka-stream" % akkaV % Optional,
@@ -28,5 +29,6 @@ libraryDependencies ++= Seq(
   "junit" % "junit" % junitV % Test,
   "org.testng" % "testng" % testngV % Test,
   "com.novocode" % "junit-interface" % junitInterfaceV % Test,
-  "org.scalatest" %% "scalatest" % scalatestV % Test
+  "org.scalatest" %% "scalatest" % scalatestV % Test,
+  "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test
 )

@@ -15,19 +15,20 @@
  */
 package org.squbs.pattern.stream
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Seconds, Span}
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.squbs.testkit.Timeouts._
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.{Await, Promise}
 import scala.reflect._
 
@@ -45,7 +46,7 @@ object PersistentBufferSpec {
 }
 
 abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manifest]
-(typeName: String) extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
+(typeName: String) extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   implicit val system = ActorSystem(s"Persistent${typeName}BufferSpec", PersistentBufferSpec.testConfig)
   implicit val mat = ActorMaterializer()
@@ -56,7 +57,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
 
   val transform = Flow[Int] map createElement
 
-  override def afterAll = {
+  override def afterAll(): Unit = {
     Await.ready(system.terminate(), awaitMax)
   }
 
@@ -134,7 +135,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val mat = ActorMaterializer()
     val pBufferInCount = new AtomicInteger(0)
     val commitCount = new AtomicInteger(0)
-    val finishedGenerating = Promise[Done]
+    val finishedGenerating = Promise[Done]()
     val counter = new AtomicInteger(0)
 
     def fireFinished() = Flow[T].map { e =>

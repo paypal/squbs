@@ -19,9 +19,10 @@ package org.squbs.unicomplex
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model.Uri.Path.{Empty, Segment, Slash}
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
-class RegisterContextSpec extends FlatSpecLike with Matchers {
+class RegisterContextSpec extends AnyFlatSpecLike with Matchers {
 
 
   "Path matching" should "work" in {

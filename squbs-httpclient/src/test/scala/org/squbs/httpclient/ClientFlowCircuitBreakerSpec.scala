@@ -18,7 +18,6 @@ package org.squbs.httpclient
 import java.lang.management.ManagementFactory
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpEntity.Chunked
@@ -28,7 +27,9 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.BeforeAndAfterAll
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 import org.squbs.streams.circuitbreaker.{CircuitBreakerOpenException, CircuitBreakerSettings}
@@ -149,7 +150,7 @@ class ClientFlowCircuitBreakerSpec extends AsyncFlatSpec with Matchers with Befo
 
   import ClientFlowCircuitBreakerSpec._
 
-  override def afterAll: Unit = {
+  override def afterAll(): Unit = {
     serverBinding.unbind() map {_ => system.terminate()}
   }
 

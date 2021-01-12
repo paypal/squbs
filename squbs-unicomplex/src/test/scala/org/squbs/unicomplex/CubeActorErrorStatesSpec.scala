@@ -16,9 +16,6 @@
 
 package org.squbs.unicomplex
 
-import javax.management.ObjectName
-import javax.management.openmbean.CompositeData
-
 import akka.actor.{Actor, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, Uri}
@@ -26,11 +23,15 @@ import akka.pattern._
 import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 
+import javax.management.ObjectName
+import javax.management.openmbean.CompositeData
 import scala.concurrent.Await
 
 object CubeActorErrorStatesSpec{
@@ -54,7 +55,7 @@ object CubeActorErrorStatesSpec{
 }
 
 class CubeActorErrorStatesSpec extends TestKit(CubeActorErrorStatesSpec.boot.actorSystem)
-  with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
+  with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val port = portBindings("default-listener")

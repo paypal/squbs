@@ -13,30 +13,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.squbs.actorregistry.testcube
 
-import akka.actor.Actor
+package org.squbs.testkit.japi
 
-case class TestRequest(msg: String)
-case class TestRequest1(msg: String)
-case class TestResponse(msg: String)
+import akka.util.Timeout
+import org.squbs.testkit.{Timeouts => STimeouts}
 
+import java.time.Duration
 
-class TestActor extends Actor {
-  def receive = {
-    case TestRequest(msg)  =>
-      sender() ! TestResponse(msg)
-    case TestRequest =>
-      sender() ! TestResponse
-  }
+object Timeouts {
+  val askTimeout: Timeout = STimeouts.askTimeout
+  val awaitMax: Duration = Duration.ofNanos(STimeouts.awaitMax.toNanos)
 }
-
-class TestActor1 extends Actor {
-  def receive = {
-    case TestRequest1(msg)  =>
-      sender() ! TestResponse(msg)
-    case TestRequest1 =>
-      sender() ! TestResponse
-  }
-}
-

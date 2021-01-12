@@ -22,6 +22,8 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex._
 
@@ -39,7 +41,7 @@ object UnicomplexActorPublisherSpec {
 }
 
 final class UnicomplexActorPublisherSpec extends TestKit(UnicomplexActorPublisherSpec.boot.actorSystem)
-    with FlatSpecLike with Matchers with BeforeAndAfterAll {
+    with AnyFlatSpecLike with Matchers with BeforeAndAfterAll {
 
   implicit val materializer = ActorMaterializer()
   val duration = 10.second

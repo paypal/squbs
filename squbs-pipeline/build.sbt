@@ -3,6 +3,7 @@ import Versions._
 name := "squbs-pipeline"
 
 libraryDependencies ++= Seq(
+  "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "org.scalatest" %% "scalatest" % scalatestV % Test,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-agent" % akkaV,
@@ -10,6 +11,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-core" % akkaHttpV % Provided,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV % Test,
+  "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test,
   "ch.qos.logback" % "logback-classic" % logbackInTestV % Test,
   // This is added so that ScalaTest can produce an HTML report. Should be removed with scalatest 3.1.x
   "org.pegdown" % "pegdown" % pegdownV % Test

@@ -16,14 +16,17 @@
 
 package org.squbs.lifecycle
 
-import akka.testkit.{TestActorRef, ImplicitSender, TestKit}
-import akka.actor.{PoisonPill, ActorRef, Actor, ActorSystem}
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
-import scala.concurrent.duration.FiniteDuration
+import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill}
+import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
+
 import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
 
 class GracefulStopHelperSpec extends TestKit(ActorSystem("testSystem"))
-  with FlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
+  with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   import system.dispatcher
 

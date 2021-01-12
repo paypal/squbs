@@ -16,9 +16,10 @@
 
 package org.squbs.pattern.timeoutpolicy
 
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
-class TimeoutRuleConversionsSpec extends FlatSpecLike with Matchers{
+class TimeoutRuleConversionsSpec extends AnyFlatSpecLike with Matchers{
 
   "Implicit Conversions" should "work" in {
 

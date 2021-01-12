@@ -15,16 +15,18 @@
  */
 package org.squbs.actorregistry
 
-import java.lang.management.ManagementFactory
-import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, FunSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.funspec.AnyFunSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.JMX.prefix
 import org.squbs.unicomplex._
+
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 
 object NoWellKnownActorsSpec {
 
@@ -46,7 +48,7 @@ object NoWellKnownActorsSpec {
 }
 
 class NoWellKnownActorsSpec extends TestKit(NoWellKnownActorsSpec.boot.actorSystem)
-  with ImplicitSender with FunSpecLike with Matchers with BeforeAndAfterAll {
+  with ImplicitSender with AnyFunSpecLike with Matchers with BeforeAndAfterAll {
 
   import NoWellKnownActorsSpec._
 

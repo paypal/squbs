@@ -6,9 +6,12 @@ javaOptions in Test += "-Xmx512m"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+  "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "org.scalatest" %% "scalatest" % scalatestV % Test,
+  "org.scalatestplus" %% "mockito-3-4" % scalatestplusV % Test,
   "org.mockito" % "mockito-core" % mockitoV % Test,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
+  "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test,
   "ch.qos.logback" % "logback-classic" % logbackInTestV % Test,
   "com.wix" %% "accord-core" % accordV % Test,
   "junit" % "junit" % junitV % Test,

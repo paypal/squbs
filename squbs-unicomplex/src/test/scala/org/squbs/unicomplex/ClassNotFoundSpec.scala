@@ -20,7 +20,8 @@ import akka.pattern._
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
-import org.scalatest.{AsyncFlatSpecLike, Matchers}
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
 import scala.util.Failure
 

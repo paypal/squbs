@@ -15,14 +15,15 @@
  */
 package org.squbs.marshallers.json
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.squbs.marshallers.json.TestData._
 
 import scala.collection.immutable
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
 
-class ReflectHelperSpec extends FlatSpec with Matchers{
+class ReflectHelperSpec extends AnyFlatSpec with Matchers {
 
   it should "determine an object is Scala or Java" in {
     ReflectHelper.isJavaClass(fullTeamWithPrivateMembers) shouldBe true

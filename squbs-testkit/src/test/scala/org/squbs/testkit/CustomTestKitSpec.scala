@@ -21,13 +21,14 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.testkit.Timeouts._
 import org.squbs.unicomplex.{JMX, RouteDefinition, UnicomplexBoot}
 
 import scala.concurrent.Await
 
-class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatSpecLike with Matchers {
+class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with AnyFlatSpecLike with Matchers {
 
   it should "return OK with the port from PortGetter" in {
     implicit val materializer = ActorMaterializer()
@@ -36,7 +37,7 @@ class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with FlatS
   }
 
   it should "return a Pong on a Ping" in {
-    system.actorOf(Props[TestActor]) ! TestPing
+    system.actorOf(Props[TestActor]()) ! TestPing
     receiveOne(awaitMax) should be (TestPong)
   }
 }
@@ -57,7 +58,7 @@ object CustomTestKitSpec {
     .start()
 }
 
-class CustomTestKitDefaultSpec extends CustomTestKit with FlatSpecLike with Matchers {
+class CustomTestKitDefaultSpec extends CustomTestKit with AnyFlatSpecLike with Matchers {
 
   it should "start default-listener" in {
     noException should be thrownBy port
@@ -75,7 +76,7 @@ class CustomTestKitDefaultSpec extends CustomTestKit with FlatSpecLike with Matc
 }
 
 class CustomTestKitDefaultWithActorSystemNameSpec extends CustomTestKit("CustomTestKitDefaultWithActorSystemNameSpec")
-with FlatSpecLike with Matchers {
+with AnyFlatSpecLike with Matchers {
 
   it should "start default-listener" in {
     noException should be thrownBy port
@@ -103,7 +104,7 @@ object CustomTestKitConfigSpec {
 }
 
 class CustomTestKitConfigSpec extends CustomTestKit(CustomTestKitConfigSpec.config)
-with FlatSpecLike with Matchers {
+with AnyFlatSpecLike with Matchers {
 
   it should "set actor system name to the value defined in config" in {
     system.name should equal ("CustomTestKitConfigSpecInConfig")
@@ -130,7 +131,7 @@ object CustomTestKitResourcesSpec {
 
 class CustomTestKitResourcesSpec extends CustomTestKit(CustomTestKitResourcesSpec.resources,
                                                        false)
-with FlatSpecLike with Matchers {
+with AnyFlatSpecLike with Matchers {
 
   it should "set actor system name to package-class-integer" in {
     system.name should fullyMatch regex "org-squbs-testkit-CustomTestKitResourcesSpec-\\d+"
@@ -142,10 +143,10 @@ with FlatSpecLike with Matchers {
   }
 }
 
-class CustomTestKitResourcesWithActorSystemNameSpec extends CustomTestKit("CustomTestKitResourcesWithActorSystemNameSpec",
-                                                                          CustomTestKitResourcesSpec.resources,
-                                                                          withClassPath = false)
-with FlatSpecLike with Matchers {
+class CustomTestKitResourcesWithActorSystemNameSpec
+  extends CustomTestKit("CustomTestKitResourcesWithActorSystemNameSpec",
+    CustomTestKitResourcesSpec.resources, withClassPath = false)
+with AnyFlatSpecLike with Matchers {
 
   it should "set actor system name to the value passed in constructor" in {
     system.name should equal ("CustomTestKitResourcesWithActorSystemNameSpec")
@@ -158,7 +159,7 @@ with FlatSpecLike with Matchers {
 }
 
 class CustomTestKitEmptyResourcesSpec extends CustomTestKit(Seq.empty, false)
-with FlatSpecLike with Matchers {
+with AnyFlatSpecLike with Matchers {
 
   it should "not bind to any port when resources is empty" in {
     an [NoSuchElementException] should be thrownBy port
@@ -166,7 +167,7 @@ with FlatSpecLike with Matchers {
 }
 
 class CustomTestKitWithClassPathSpec extends CustomTestKit(Seq.empty, true)
-with FlatSpecLike with Matchers {
+with AnyFlatSpecLike with Matchers {
 
   it should "start default-listener" in {
     noException should be thrownBy port
@@ -175,7 +176,7 @@ with FlatSpecLike with Matchers {
 }
 
 class CustomTestKitWithResourceDetectSpec extends CustomTestKit(false)
-  with FlatSpecLike with Matchers {
+  with AnyFlatSpecLike with Matchers {
 
   it should "start default-listener" in {
     noException should be thrownBy port
@@ -199,7 +200,7 @@ object CustomTestKitConfigAndResourcesSpec {
 class CustomTestKitConfigAndResourcesSpec extends CustomTestKit(CustomTestKitConfigAndResourcesSpec.config,
                                                                 CustomTestKitConfigAndResourcesSpec.resources,
                                                                 false)
-with FlatSpecLike with Matchers {
+with AnyFlatSpecLike with Matchers {
 
   it should "set actor system name to the value defined in config" in {
     system.name should equal ("CustomTestKitConfigAndResourcesSpecInConfig")

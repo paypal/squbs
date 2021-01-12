@@ -25,7 +25,8 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, MergeHub, Sink}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.unicomplex.Timeouts.{awaitMax, _}
 import org.squbs.unicomplex._
 
@@ -55,7 +56,7 @@ object PerpetualStreamMergeHubSpec {
 }
 
 class PerpetualStreamMergeHubSpec extends TestKit(PerpetualStreamMergeHubSpec.boot.actorSystem)
-  with FlatSpecLike with Matchers  {
+  with AnyFlatSpecLike with Matchers  {
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val psActorName = "/user/PerpetualStreamMergeHubSpec/perpetualStreamWithMergeHub"
@@ -88,7 +89,7 @@ class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[M
   implicit val mat = ActorMaterializer()
 
   implicit val myMessageUnmarshaller: FromEntityUnmarshaller[MyMessage] =
-    Unmarshaller { implicit ex ⇒ entity ⇒ entity.toStrict(1.second).map(e => MyMessage(e.data.utf8String.toInt)) }
+    Unmarshaller { implicit ex => entity => entity.toStrict(1.second).map(e => MyMessage(e.data.utf8String.toInt)) }
 
   override val flow: Flow[HttpRequest, HttpResponse, NotUsed] =
     Flow[HttpRequest]
@@ -103,7 +104,7 @@ class PerpetualStreamWithMergeHub extends PerpetualStream[Sink[MyMessage, NotUse
 
   val source = MergeHub.source[MyMessage]
 
-  val myMessageStorageActor = context.actorOf(Props[MyMessageStorageActor])
+  val myMessageStorageActor = context.actorOf(Props[MyMessageStorageActor]())
 
   /**
     * Describe your graph by implementing streamGraph

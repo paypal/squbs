@@ -16,19 +16,20 @@
 
 package org.squbs.dispatcher
 
-import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.pattern._
 import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Waiters
-import org.scalatest.{BeforeAndAfterAll, Inspectors, Matchers, WordSpecLike}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.{BeforeAndAfterAll, Inspectors}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex.{JMX, PortBindings, Unicomplex, UnicomplexBoot}
 
+import javax.management.ObjectName
 import scala.concurrent.Await
 
 object ForkJoinConfiguratorSpec {
@@ -73,7 +74,7 @@ object ForkJoinConfiguratorSpec {
 }
 
 class ForkJoinConfiguratorSpec extends TestKit(ForkJoinConfiguratorSpec.boot.actorSystem) with ImplicitSender
-    with WordSpecLike with Matchers with Inspectors with BeforeAndAfterAll with Waiters {
+    with AnyWordSpecLike with Matchers with Inspectors with BeforeAndAfterAll with Waiters {
 
   import ForkJoinConfiguratorSpec._
   import system.dispatcher

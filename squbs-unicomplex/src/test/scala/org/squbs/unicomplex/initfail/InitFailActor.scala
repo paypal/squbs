@@ -38,7 +38,7 @@ class InitFailActor extends Actor with ActorLogging with GracefulStopHelper {
   def receive = {
     case GracefulStop => defaultLeafActorStop
 
-    case other => sender ! other
+    case other => sender() ! other
   }
 
 }

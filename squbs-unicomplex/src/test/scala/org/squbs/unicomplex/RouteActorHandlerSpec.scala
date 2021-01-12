@@ -22,7 +22,9 @@ import akka.pattern._
 import akka.stream.ActorMaterializer
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 
@@ -49,7 +51,7 @@ object RouteActorHandlerSpec {
 }
 
 class RouteActorHandlerSpec extends TestKit(
-  RouteActorHandlerSpec.boot.actorSystem) with FlatSpecLike with BeforeAndAfterAll with Matchers {
+  RouteActorHandlerSpec.boot.actorSystem) with AnyFlatSpecLike with BeforeAndAfterAll with Matchers {
 
   implicit val am = ActorMaterializer()
 

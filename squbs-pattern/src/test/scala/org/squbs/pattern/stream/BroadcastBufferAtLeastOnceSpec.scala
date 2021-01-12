@@ -16,22 +16,23 @@
 
 package org.squbs.pattern.stream
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape, ThrottleMode}
 import akka.util.ByteString
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.squbs.testkit.Timeouts._
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.{Await, Promise}
 import scala.reflect._
 
 abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[T] : Manifest]
-(typeName: String) extends FlatSpec with Matchers with BeforeAndAfterAll with Eventually {
+(typeName: String) extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   implicit val system = ActorSystem(s"Broadcast${typeName}BufferAtLeastOnceSpec", PersistentBufferSpec.testConfig)
   implicit val mat = ActorMaterializer()
@@ -45,7 +46,7 @@ abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[
 
   val transform = Flow[Int] map createElement
 
-  override def afterAll = {
+  override def afterAll(): Unit = {
     Await.ready(system.terminate(), awaitMax)
   }
 
@@ -114,7 +115,7 @@ abstract class BroadcastBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer[
     import util._
 
     val mat = ActorMaterializer()
-    val finishedGenerating = Promise[Done]
+    val finishedGenerating = Promise[Done]()
     val bBufferInCount = new AtomicInteger(0)
     val counter = new AtomicInteger(0)
 

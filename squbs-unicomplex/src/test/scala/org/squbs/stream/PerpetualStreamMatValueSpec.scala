@@ -15,29 +15,26 @@
  */
 package org.squbs.stream
 
-import java.util.concurrent.LinkedBlockingQueue
-
 import akka.NotUsed
 import akka.actor.{Actor, ActorRef, ActorRefFactory, ActorSystem, Props, Status}
 import akka.pattern._
-import akka.stream.{ActorMaterializer, ClosedShape, Materializer}
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, MergeHub, RunnableGraph, Sink, Source}
+import akka.stream.{ActorMaterializer, ClosedShape, Materializer}
 import akka.util.Timeout
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
+import org.scalatest.funspec.AnyFunSpec
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Seconds, Span}
-import org.scalatest.{BeforeAndAfterAll, FunSpec, Matchers}
 import org.squbs.stream.PerpetualStreamMatValueSpecHelper.PerpStreamActors
 import org.squbs.unicomplex._
 
+import java.util.concurrent.LinkedBlockingQueue
 import scala.concurrent.{Await, Future}
 import scala.reflect.{ClassTag, classTag}
 import scala.util.{Failure, Success, Try}
 
-class PerpetualStreamMatValueSpec
-extends FunSpec
-with Matchers
-with BeforeAndAfterAll
-with Eventually {
+class PerpetualStreamMatValueSpec extends AnyFunSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   import PerpStreamActors._
   import PerpetualStreamMatValueSpecHelper._
@@ -76,7 +73,7 @@ with Eventually {
           "java.util.List" -> classTag[GoodJavaListSinkMaterializingStream]
         ).foreach { case (testName, ct) =>
           implicit val to = timeout
-          implicit val _ = ct
+          implicit val ict = ct
           it(testName) {
             useSystem {
               case Success(actor) =>
@@ -99,7 +96,7 @@ with Eventually {
           "akka.japi.Pair" -> classTag[BadJapiPairSinkMaterializingStream],
           "java.util.List" -> classTag[BadJavaListSinkMaterializingStream]
         ).foreach { case (testName, ct) =>
-          implicit val _ = ct
+          implicit val ict = ct
           it (testName) {
             useSystem {
               case Failure(e) =>
@@ -151,7 +148,7 @@ object PerpetualStreamMatValueSpecHelper {
   def useSystem[PC <: PerpStream[_] : ClassTag](fn: Try[ActorRef] => Unit)
     (implicit system: ActorSystem, mat: Materializer): Unit = {
 
-    val perpRef = system.actorOf(Props[PC])
+    val perpRef = system.actorOf(Props[PC]())
     val someRef = system.actorOf(Props(new SomeActor(perpRef)))
 
     Try(Await.result(someRef ? payload, timeoutDuration)) match {

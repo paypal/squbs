@@ -16,12 +16,14 @@
 
 package org.squbs.pattern.orchestration
 
-import org.scalatest.{FunSpec, Matchers}
+
+import org.scalatest.funspec.AnyFunSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-class OPromiseSpec extends FunSpec with Matchers {
+class OPromiseSpec extends AnyFunSpec with Matchers {
 
   describe("Promise") {
 

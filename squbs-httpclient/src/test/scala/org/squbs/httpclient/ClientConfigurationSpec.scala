@@ -16,18 +16,18 @@
 
 package org.squbs.httpclient
 
-import java.lang.management.ManagementFactory
-import javax.management.ObjectName
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.squbs.resolver._
 import org.squbs.unicomplex.JMX
 import org.squbs.util.ConfigUtil._
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import scala.concurrent.duration.Duration
 
 object ClientConfigurationSpec {
@@ -112,7 +112,7 @@ object ClientConfigurationSpec {
 
 }
 
-class ClientConfigurationSpec extends FlatSpec with Matchers {
+class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
 
   import ClientConfigurationSpec._
 

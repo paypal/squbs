@@ -3,7 +3,9 @@ import Versions._
 name := "squbs-testkit"
 
 libraryDependencies ++= Seq(
+  "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "org.scalatest" %% "scalatest" % scalatestV,
+  "org.scalatestplus" %% "testng-6-7" % scalatestplusV % Optional,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV,
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % Optional,
@@ -11,6 +13,7 @@ libraryDependencies ++= Seq(
   "org.testng" % "testng" % testngV % Optional,
   "de.heikoseeberger" %% "akka-http-jackson" % heikoseebergerAkkaHttpJsonV % Test,
   "com.novocode" % "junit-interface" % junitInterfaceV % Test,
+  "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test,
   "ch.qos.logback" % "logback-classic" % logbackInTestV % Test
 
 )
