@@ -323,7 +323,7 @@ class UnicomplexBootSpec extends AnyFunSpecLike with Matchers with MockitoSugar
 
       it("fail if listeners do not start up in less than the configured timeout") {
         useUnicomplex(infraStartTime = 5.seconds, overallTimeout = 10.millis, listenerTimeout = 10.seconds) {
-          case Failure(e) => e.getMessage should be("Futures timed out after [10 milliseconds]")
+          case Failure(e) => e.getMessage should endWith("timed out after [10 milliseconds]")
         }
       }
     }
