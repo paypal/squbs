@@ -47,9 +47,10 @@ object CustomTestKit {
   // JUnit creates a new object for each @Test method.  To prevent actor system name collisions, appending an integer
   // to the actor system name.
   val counter = new AtomicInteger(0)
-  val stackTraceDepth =
-    if (util.Properties.versionNumberString.startsWith("2.12")) 5 // scala 2.12 - CustomTestKit$ x 2 -> Option -> CustomTestKit$ -> CustomTestKit -> Spec
-    else 6 // scala 2.11 - CustomTestKit$ x 3 -> Option -> CustomTestKit$ -> CustomTestKit -> Spec
+
+  // scala 2.12 - CustomTestKit$ x 2 -> Option -> CustomTestKit$ -> CustomTestKit -> Spec
+  // scala 2.11 - CustomTestKit$ x 3 -> Option -> CustomTestKit$ -> CustomTestKit -> Spec
+  val stackTraceDepth: Int = if (util.Properties.versionNumberString.startsWith("2.11")) 6 else 5
   /* Example stack trace:
 
     java.lang.Exception
