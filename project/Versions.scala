@@ -35,5 +35,4 @@ object Versions {
   val chronicleQueueV = "4.16.5"
   val logbackInTestV = "1.2.3"
   val curatorV = "4.1.0"
-  val pegdownV = "1.6.0"
 }
