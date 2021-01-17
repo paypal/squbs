@@ -12,9 +12,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV % Test,
   "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test,
-  "ch.qos.logback" % "logback-classic" % logbackInTestV % Test,
-  // This is added so that ScalaTest can produce an HTML report. Should be removed with scalatest 3.1.x
-  "org.pegdown" % "pegdown" % pegdownV % Test
+  "ch.qos.logback" % "logback-classic" % logbackInTestV % Test
 )
 
 enablePlugins(de.johoop.testngplugin.TestNGPlugin)

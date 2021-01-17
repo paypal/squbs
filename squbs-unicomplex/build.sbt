@@ -15,9 +15,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % logbackInTestV % Test,
   "com.wix" %% "accord-core" % accordV % Test,
   "junit" % "junit" % junitV % Test,
-  "com.novocode" % "junit-interface" % junitInterfaceV % Test,
-  // This is added so that ScalaTest can produce an HTML report. Should be removed with scalatest 3.1.x
-  "org.pegdown" % "pegdown" % pegdownV % Test
+  "com.novocode" % "junit-interface" % junitInterfaceV % Test
 ) ++ akka
 
 def akka = Seq(

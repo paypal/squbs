@@ -8,6 +8,7 @@ squbsconfig/
 var/
 
 # sbt specific
+.bsp/
 dist/*
 target/
 test-output/
