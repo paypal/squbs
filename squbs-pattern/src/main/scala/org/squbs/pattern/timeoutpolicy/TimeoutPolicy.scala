@@ -16,17 +16,15 @@
 
 package org.squbs.pattern.timeoutpolicy
 
-import java.lang.management.ManagementFactory
-import java.util.concurrent.TimeUnit
-import akka.agent.Agent
 import com.typesafe.scalalogging.LazyLogging
+import org.squbs.util.DurationConverters._
 
+import java.lang.management.ManagementFactory
+import java.util.concurrent.atomic.AtomicReference
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import org.squbs.util.DurationConverters._
-
-import scala.collection.mutable
 
 /**
  *
@@ -40,7 +38,7 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
   require(initial != null, "initial duration is required")
   require(startOverCount > 0, "slidePoint should be positive")
 
-  private val agent = Agent(Metrics(name, initial, startOverCount))
+  private val metricsRef = new AtomicReference(Metrics(name, initial, startOverCount))
 
   private[timeoutpolicy] def waitTime: FiniteDuration
 
@@ -111,8 +109,7 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
    * @return statistics of before the reset operation
    */
   def reset(initial: Option[FiniteDuration] = None, newStartOverCount: Int): Metrics = {
-    val previous = agent()
-    agent send {
+    val previous = metricsRef.getAndUpdate {
       _.reset(initial, newStartOverCount)
     }
     previous
@@ -130,9 +127,9 @@ abstract class TimeoutPolicy(name: Option[String], initial: FiniteDuration, star
    * The metrics reference holding the stats of past transactions.
    * @return
    */
-  def metrics = agent()
+  def metrics = metricsRef.get
 
-  private[timeoutpolicy] def update(time: Double, isTimeout: Boolean): Unit = agent send {
+  private[timeoutpolicy] def update(time: Double, isTimeout: Boolean): Unit = metricsRef.updateAndGet {
     _.update(time, isTimeout)
   }
 }

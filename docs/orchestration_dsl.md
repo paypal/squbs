@@ -4,11 +4,10 @@ Orchestration is one of the major use cases for services, whether you try to orc
 
 ## Dependencies
 
-The Orchestration DSL is part of `squbs-pattern`. To use the Orchestration DSL, please add the following dependencies:
+The Orchestration DSL is part of `squbs-pattern`. To use the Orchestration DSL, please add the following dependency:
 
 ```scala
-"org.squbs" %% "squbs-pattern" % squbsVersion,
-"com.typesafe.akka" %% "akka-contrib" % akkaVersion
+"org.squbs" %% "squbs-pattern" % squbsVersion
 ```
 
 ## Getting Started
