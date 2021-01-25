@@ -19,14 +19,13 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.{HttpEntity, MediaTypes, MessageEntity}
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.ActorMaterializer
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.PropertyAccessor
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterAll
 import org.squbs.marshallers.json.TestData._
 
 class JacksonMapperSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll {
@@ -34,7 +33,6 @@ class JacksonMapperSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterA
   import JacksonMapperSupport._
 
   implicit val system = ActorSystem("JacksonMapperSpec")
-  implicit val mat = ActorMaterializer()
   JacksonMapperSupport.setDefaultMapper(new ObjectMapper().registerModule(DefaultScalaModule))
 
   it should "marshal and unmarshal standard case classes" in {

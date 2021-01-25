@@ -16,9 +16,10 @@
 
 package org.squbs.streams.circuitbreaker
 
+import akka.Done
 import akka.actor.{Actor, ActorSystem, Props}
+import akka.stream.{CompletionStrategy, OverflowStrategy}
 import akka.stream.scaladsl.{BidiFlow, Flow, Keep, Sink, Source}
-import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
@@ -43,13 +44,14 @@ class CircuitBreakerSpec
 
   import Timing._
 
-  implicit val materializer = ActorMaterializer()
   implicit val askTimeout = Timeout(10.seconds)
   import system.dispatcher
   implicit val scheduler = system.scheduler
 
   val timeoutFailure = Failure(FlowTimeoutException())
   val circuitBreakerOpenFailure = Failure(CircuitBreakerOpenException())
+
+  val completionMatcher: PartialFunction[Any, CompletionStrategy] = { case Done => CompletionStrategy.draining }
 
   def delayFlow() = {
     val delayActor = system.actorOf(Props[DelayActor]())
@@ -64,7 +66,8 @@ class CircuitBreakerSpec
       .map(s => (s, UUID.randomUUID()))
       .via(CircuitBreaker[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow()))
       .to(Sink.ignore)
-      .runWith(Source.actorRef[String](25, OverflowStrategy.fail))
+      .runWith(Source.actorRef[String](completionMatcher, failureMatcher = PartialFunction.empty,
+        25, OverflowStrategy.fail))
   }
 
   it should "increment failure count on call timeout" in {
@@ -107,7 +110,8 @@ class CircuitBreakerSpec
     val ref = Flow[String]
       .map(s => (s, UUID.randomUUID())).via(circuitBreakerBidiFlow.join(flow))
       .to(Sink.ignore)
-      .runWith(Source.actorRef[String](25, OverflowStrategy.fail))
+      .runWith(Source.actorRef[String](completionMatcher, failureMatcher = PartialFunction.empty,
+        25, OverflowStrategy.fail))
 
     ref ! "a"
     ref ! "b"
@@ -318,7 +322,8 @@ class CircuitBreakerSpec
 
     circuitBreakerState.subscribe(self, Open)
 
-    val flow = Source.actorRef[String](25, OverflowStrategy.fail)
+    val flow = Source.actorRef[String](completionMatcher, failureMatcher = PartialFunction.empty,
+      25, OverflowStrategy.fail)
       .map(s => (s, UUID.randomUUID()))
       .via(CircuitBreaker[String, String, UUID](CircuitBreakerSettings(circuitBreakerState)).join(delayFlow()))
       .map(_._1)

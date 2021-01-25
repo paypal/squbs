@@ -118,7 +118,10 @@ class CircuitBreaker[In, Out, Context] private[circuitbreaker](
 
     setHandler(toWrapped, new OutHandler {
       override def onPull(): Unit = if(!hasBeenPulled(in)) pull(in)
-      override def onDownstreamFinish(): Unit = completeStage()
+      override def onDownstreamFinish(cause: Throwable): Unit = {
+        completeStage()
+        super.onDownstreamFinish(cause)
+      }
     })
 
     setHandler(fromWrapped, new InHandler {
@@ -148,7 +151,10 @@ class CircuitBreaker[In, Out, Context] private[circuitbreaker](
         }
         else complete(out)
 
-      override def onDownstreamFinish(): Unit = cancel(fromWrapped)
+      override def onDownstreamFinish(cause: Throwable): Unit = {
+        cancel(fromWrapped)
+        super.onDownstreamFinish(cause)
+      }
     })
   }
 
