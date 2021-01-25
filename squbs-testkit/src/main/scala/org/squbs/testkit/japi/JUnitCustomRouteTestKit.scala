@@ -55,5 +55,4 @@ class CustomTestKitActorSystemResource(boot: UnicomplexBoot)
     extends ActorSystemResource(boot.actorSystem.name, boot.config) {
   override protected def config: Config = boot.config
   override protected def createSystem(): ActorSystem = boot.actorSystem
-  override protected def createMaterializer(system: ActorSystem): ActorMaterializer = ActorMaterializer()(system)
 }

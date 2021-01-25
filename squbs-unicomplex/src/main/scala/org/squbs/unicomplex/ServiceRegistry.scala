@@ -148,22 +148,20 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     import context.{dispatcher, system}
     val uniSelf = context.self
 
-//    Http().shutdownAllConnectionPools() andThen { case _ =>
-      serverBindings foreach {
-        case (name, ServerBindingInfo(Some(sb), None)) =>
-          listenerRoutes(name) foreach {
-            case (_, sw, _) => sw.actor ! PoisonPill
-          }
-          listenerRoutes = listenerRoutes - name
-          sb.unbind() andThen { case _ => uniSelf ! Unbound(sb) }
-          if (listenerRoutes.isEmpty) {
-            Http().shutdownAllConnectionPools()
-            // TODO Unregister "Listeners" JMX Bean.
-          }
-        // TODO Unregister "ServerStats,Listener=name" JMX Bean
-        case _ =>
-      }
-//    }
+    serverBindings foreach {
+      case (name, ServerBindingInfo(Some(sb), None)) =>
+        listenerRoutes(name) foreach {
+          case (_, sw, _) => sw.actor ! PoisonPill
+        }
+        listenerRoutes = listenerRoutes - name
+        sb.unbind() andThen { case _ => uniSelf ! Unbound(sb) }
+        if (listenerRoutes.isEmpty) {
+          Http().shutdownAllConnectionPools()
+          // TODO Unregister "Listeners" JMX Bean.
+        }
+      // TODO Unregister "ServerStats,Listener=name" JMX Bean
+      case _ =>
+    }
   }
 
   override private[unicomplex] def isAnyFailedToInitialize: Boolean = serverBindings.values exists (_.exception.nonEmpty)
@@ -232,13 +230,13 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
         val finalRoute = PathDirectives.pathPrefix(PathMatchers.separateOnSlashes(webContext)) {routeDef.route}
         Success((materializer: ActorMaterializer) => {
           implicit val mat = materializer
-          RequestContextFlow(finalRoute)
+          RequestContextFlow(finalRoute) // TODO: Implicits changed.
         })
       } else {
         // don't append pathPrefix if webContext is empty, won't be null due to the top check
         Success((materializer: ActorMaterializer) => {
           implicit val mat = materializer
-          RequestContextFlow(routeDef.route)
+          RequestContextFlow(routeDef.route) // TODO: Implicits changed.
         })
       }
 
@@ -328,15 +326,8 @@ object RequestContextFlow {
       FlowShape(unzip.in, zip.out)
     })
 
-  def apply(route: Route)(implicit
-                          routingSettings: RoutingSettings,
-                          parserSettings:   ParserSettings,
-                          materializer:     Materializer,
-                          routingLog:       RoutingLog,
-                          rejectionHandler: RejectionHandler = RejectionHandler.default,
-                          exceptionHandler: ExceptionHandler = null
-  ): Flow[RequestContext, RequestContext, NotUsed] =
-    Flow[RequestContext].mapAsync(1) { asyncCall(_, materializer, Route.asyncHandler(route)) }
+  def apply(route: Route)(implicit mat: Materializer): Flow[RequestContext, RequestContext, NotUsed] =
+    Flow[RequestContext].mapAsync(1) { asyncCall(_, mat, Route.toFunction(route)(mat.system)) }
 
   def asyncCall(reqContext: RequestContext, mat: Materializer,
                 asyncHandler: HttpRequest => Future[HttpResponse]): Future[RequestContext] = {
