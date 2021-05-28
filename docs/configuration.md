@@ -58,9 +58,6 @@ default-listener {
 
   # Any custom SSLContext provider? Setting to "default" means platform default.
   ssl-context = default
-
-  # Which materializer to use for HTTP streams.  default-materializer is used if not specified
-  # materializer = default-materializer
 }
 
 blocking-dispatcher {
@@ -93,14 +90,6 @@ blocking-dispatcher {
   # Set to 1 for as fair as possible.
   throughput = 2
 }
-
-default-materializer {
-  # All squbs materializers carry the type "squbs.materializer"
-  type = squbs.materializer
-
-  # The class with createMaterializer function to create a materializer
-  class = org.squbs.unicomplex.DefaultMaterializer
-}
 ```
 
 ## Blocking Dispatcher
@@ -114,31 +103,6 @@ A listener defines a port binding and the behavior of this port binding such as 
 A listener is declared at the root level of the configuration file. The name generally follows the pattern `*-listener` but this is not a requirement. What defines the entry as a listener is the `type` field under the listener entry. It must be set to `squbs.listener`. Please see the `default-listener` example above on how to configure new listeners listening to different ports.
 
 A declared listener is not started unless a service route attaches itself to this listener. In other words, just declaring the listener does not automatically cause the listener to start unless there is a real use for the listener.
-
-## Materializers
-
-A squbs materializer is nothing but an Akka Streams `Materializer` that is specified in the configuration.  This allows squbs to keep a registry of all materializers so that:
-
-   * a `Materializer` can be accessed from different locations through an Akka Extension as follows:
-
-     **Scala**
-   
-     ```scala
-     implicit val mat = Unicomplex(system).materializer("default-materializer")
-     ```
-   
-     **Java**
-   
-     ```java
-     final Materializer mat = Unicomplex.get(system).materializer("default-materializer")
-     ```
-
-   * a materializer can be referenced from a [squbs listener](#listeners).
-   * The materializers in use by an application can be reported on JMX with the corresponding settings.
-
-A default materializer is provided by the squbs `reference.conf`.  Materializer creation is lazy.  Only the ones that are actually in use are created.
-
-A materializer is declared at the root level of the configuration file. The name generally follows the pattern `*-materializer` but this is not a requirement. What defines the entry as a materializer is the `type` field under the listener entry. It must be set to `squbs.materializer`. Please see the `default-materializer` example above on how to configure new materializers.
 
 ## Pipeline
 

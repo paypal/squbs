@@ -23,7 +23,6 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server._
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
@@ -79,7 +78,6 @@ object PipelineChunkingSpec {
 class PipelineChunkingSpec extends TestKit(PipelineChunkingSpec.boot.actorSystem) with AnyFlatSpecLike
   with Matchers with ImplicitSender with BeforeAndAfterAll {
 
-  implicit val am = ActorMaterializer()
   import system.dispatcher
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)

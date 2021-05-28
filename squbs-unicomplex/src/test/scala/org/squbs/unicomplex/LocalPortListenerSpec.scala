@@ -19,7 +19,6 @@ package org.squbs.unicomplex
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Route
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
@@ -101,8 +100,6 @@ object LocalPortListenerSpecActorSystem {
 
 class LocalPortListenerSpec extends TestKit(LocalPortListenerSpecActorSystem.boot.actorSystem)
     with AnyFlatSpecLike with BeforeAndAfterAll with Matchers {
-
-  implicit val am = ActorMaterializer()
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val port1 = portBindings("default-listener")

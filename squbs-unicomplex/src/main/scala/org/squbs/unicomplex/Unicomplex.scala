@@ -65,42 +65,11 @@ class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
   lazy val externalConfigDir = config.getString("external-config-dir")
 
   val boot = new AtomicReference[UnicomplexBoot]
-
-  private[unicomplex] val materializers = new ConcurrentHashMap[String, Materializer]
-
-  def materializer(name: String) = Option(materializers.get(name)).getOrElse {
-
-    val materializerConfig = system.settings.config.getConfig(name)
-    require(materializerConfig.getString("type") == "squbs.materializer", s"No materializer with name $name specified in configuration")
-
-    val materializerFactoryClass = materializerConfig.getString("class")
-
-    try {
-      val clazz = Class.forName(materializerFactoryClass)
-      val materializer = clazz
-        .getMethod("createMaterializer", classOf[ActorSystem])
-        .invoke(clazz.newInstance(), system)
-        .asInstanceOf[Materializer]
-      materializer match {
-        case actorMaterializer: ActorMaterializer =>
-          import org.squbs.unicomplex.JMX._
-          val actorMaterializerBean = new ActorMaterializerBean(name, clazz.getName, actorMaterializer)
-          register(actorMaterializerBean, prefix(system) + materializerName + ObjectName.quote(name))
-        case _ =>
-      }
-      materializers.putIfAbsent(name, materializer)
-      materializers.get(name)
-    } catch {
-      case NonFatal(e) =>
-        log.error(e, s"Failure creating a materializer from $materializerFactoryClass.")
-        throw e
-    }
-  }
 }
 
 object Unicomplex extends ExtensionId[UnicomplexExtension] with ExtensionIdProvider {
 
-  override def lookup() = Unicomplex
+  override def lookup: Unicomplex.type = Unicomplex
 
   override def createExtension(system: ExtendedActorSystem) = new UnicomplexExtension(system)
 
@@ -620,8 +589,6 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         }
     }
   }
-
-
 }
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
@@ -820,22 +787,4 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   */
 private[unicomplex] class NoopActor extends Actor {
   def receive = PartialFunction.empty
-}
-
-class DefaultMaterializer {
-
-  def createMaterializer(implicit system: ActorSystem): ActorMaterializer = {
-    // Needs ActorSystem, that's why defining inside the function.  Given that it should be not be called more than
-    // a few times, it should be ok.
-    val log = Logging.getLogger(system, this)
-
-    val decider: Supervision.Decider = {
-      case ex =>
-        log.error(ex, "An error occurred in the stream.  Calling Supervision.Stop inside the decider!")
-        Supervision.Stop
-    }
-
-    val settings = ActorMaterializerSettings(system).withSupervisionStrategy(decider)
-    ActorMaterializer(settings)
-  }
 }

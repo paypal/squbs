@@ -16,21 +16,18 @@
 
 package org.squbs.unicomplex
 
+import akka.actor._
+import com.typesafe.config.Config
+
 import java.beans.ConstructorProperties
 import java.lang.management.ManagementFactory
 import java.util
 import java.util.Date
-import javax.management.{MXBean, ObjectName}
-
-import akka.actor._
-import akka.stream.StreamSubscriptionTimeoutTerminationMode.{CancelTermination, NoopTermination, WarnTermination}
-import akka.stream.ActorMaterializer
-import com.typesafe.config.Config
-
+import javax.management.{MXBean, ObjectInstance, ObjectName}
 import scala.beans.BeanProperty
 import scala.collection.concurrent.TrieMap
-import scala.language.{implicitConversions, postfixOps}
 import scala.jdk.CollectionConverters._
+import scala.language.{implicitConversions, postfixOps}
 
 object JMX {
 
@@ -78,13 +75,15 @@ object JMX {
 
   def prefix(implicit context: ActorContext): String = prefix(context.system)
 
-  def register(ob: AnyRef, objName: ObjectName) = ManagementFactory.getPlatformMBeanServer.registerMBean(ob, objName)
+  def register(ob: AnyRef, objName: ObjectName): ObjectInstance =
+    ManagementFactory.getPlatformMBeanServer.registerMBean(ob, objName)
 
-  def unregister(objName: ObjectName) = ManagementFactory.getPlatformMBeanServer.unregisterMBean(objName)
+  def unregister(objName: ObjectName): Unit = ManagementFactory.getPlatformMBeanServer.unregisterMBean(objName)
 
-  def isRegistered(objName: ObjectName) = ManagementFactory.getPlatformMBeanServer.isRegistered(objName)
+  def isRegistered(objName: ObjectName): Boolean = ManagementFactory.getPlatformMBeanServer.isRegistered(objName)
 
-  def get(objName: ObjectName, attr: String) = ManagementFactory.getPlatformMBeanServer.getAttribute(objName, attr)
+  def get(objName: ObjectName, attr: String): AnyRef =
+    ManagementFactory.getPlatformMBeanServer.getAttribute(objName, attr)
 }
 
 // $COVERAGE-OFF$
@@ -230,80 +229,9 @@ class SystemSettingBean(config: Config) extends SystemSettingMXBean {
       result
     }
 
-    iterateMap("", config.root.unwrapped()).asScala.toList.map{case (k:String, v:String) => {
+    iterateMap("", config.root.unwrapped()).asScala.toList.map { case (k:String, v:String) =>
       SystemSetting(k, v)
-    }}.asJava
+    }.asJava
   }
   override def getSystemSetting: util.List[SystemSetting] = settings
-}
-
-@MXBean
-trait ActorMaterializerMXBean {
-  def getName: String
-  def getFactoryClass: String
-  def getActorSystemName: String
-  def getShutdown: String
-  def getInitialInputBufferSize: Int
-  def getMaxInputBufferSize: Int
-  def getDispatcher: String
-  def getStreamSubscriptionTimeoutTerminationMode: String
-  def getSubscriptionTimeout: String
-  def getDebugLogging: String
-  def getOutputBurstLimit: Int
-  def getFuzzingMode: String
-  def getAutoFusing: String
-  def getMaxFixedBufferSize: Int
-  def getSyncProcessingLimit: Int
-}
-
-class ActorMaterializerBean(name: String, className: String, materializer: ActorMaterializer)
-  extends ActorMaterializerMXBean {
-
-  val settings = materializer.settings
-
-  override def getName: String = name
-
-  override def getFactoryClass: String = className
-
-  override def getActorSystemName: String = materializer.system.name
-
-  override def getShutdown: String = materializer.isShutdown match {
-    case true => "yes"
-    case false => "no"
-  }
-
-  override def getInitialInputBufferSize: Int = settings.initialInputBufferSize
-
-  override def getMaxInputBufferSize: Int = settings.maxInputBufferSize
-
-  override def getDispatcher: String = settings.dispatcher
-
-  override def getStreamSubscriptionTimeoutTerminationMode: String = settings.subscriptionTimeoutSettings.mode match {
-    case NoopTermination => "noop"
-    case WarnTermination => "warn"
-    case CancelTermination => "cancel"
-  }
-
-  override def getSubscriptionTimeout: String = settings.subscriptionTimeoutSettings.timeout.toString
-
-  override def getDebugLogging: String = settings.debugLogging match {
-    case true => "on"
-    case false => "off"
-  }
-
-  override def getOutputBurstLimit: Int = settings.outputBurstLimit
-
-  override def getFuzzingMode: String = settings.fuzzingMode match {
-    case true => "on"
-    case false => "off"
-  }
-
-  override def getAutoFusing: String = settings.autoFusing match {
-    case true => "on"
-    case false => "off"
-  }
-
-  override def getMaxFixedBufferSize: Int = settings.maxFixedBufferSize
-
-  override def getSyncProcessingLimit: Int = settings.syncProcessingLimit
 }

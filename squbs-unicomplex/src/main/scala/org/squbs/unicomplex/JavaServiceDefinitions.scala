@@ -16,7 +16,6 @@
 package org.squbs.unicomplex
 
 import java.util.{Optional, function => jf}
-
 import akka.NotUsed
 import akka.actor.{Actor, ActorContext, ActorLogging}
 import akka.http.javadsl.model.{HttpRequest, HttpResponse}
@@ -24,7 +23,7 @@ import akka.http.javadsl.server._
 import akka.http.javadsl.server.directives.{PathDirectives, RouteAdapter}
 import akka.http.scaladsl.{model => sm, server => ss}
 import akka.stream.javadsl.Flow
-import akka.stream.{ActorMaterializer, scaladsl => sd}
+import akka.stream.{ActorMaterializer, Materializer, scaladsl => sd}
 import org.squbs.pipeline.RequestContext
 
 import scala.util.{Failure, Success, Try}
@@ -55,12 +54,12 @@ private[unicomplex] class JavaFlowActor(webContext: String, clazz: Class[Abstrac
     }
   }
 
-  val flowTry: Try[ActorMaterializer => sd.Flow[RequestContext, RequestContext, NotUsed]] = flowDefTry match {
+  val flowTry: Try[Materializer => sd.Flow[RequestContext, RequestContext, NotUsed]] = flowDefTry match {
 
     case Success(flowDef) =>
       context.parent ! Initialized(Success(None))
       val reqFlow = flowDef.flow.asScala.asInstanceOf[sd.Flow[sm.HttpRequest, sm.HttpResponse, NotUsed]]
-      Success((materializer: ActorMaterializer) => {
+      Success((materializer: Materializer) => {
         implicit val mat = materializer
         RequestContextFlow(reqFlow)
       })
@@ -111,15 +110,15 @@ private[unicomplex] class JavaRouteActor(webContext: String, clazz: Class[Abstra
       Failure(e)
   }
 
-  val flowTry: Try[ActorMaterializer => sd.Flow[RequestContext, RequestContext, NotUsed]] =
+  val flowTry: Try[Materializer => sd.Flow[RequestContext, RequestContext, NotUsed]] =
     routeTry.map {
       case r: RouteAdapter =>
-        materializer: ActorMaterializer =>
+        materializer: Materializer =>
           implicit val mat = materializer
           RequestContextFlow(r.delegate)
       case r => // There should be NO java Route that is not a RouteAdapter. This code is to catch such cases.
         // $COVERAGE-OFF$
-        materializer: ActorMaterializer =>
+        materializer: Materializer =>
           implicit val mat = materializer
           val requestFlow = r.flow(context.system, materializer).asScala
             .asInstanceOf[sd.Flow[sm.HttpRequest, sm.HttpResponse, NotUsed]]
