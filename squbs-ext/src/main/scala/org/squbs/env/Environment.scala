@@ -102,7 +102,7 @@ class EnvironmentResolverRegistryExtension(system: ExtendedActorSystem) extends 
 
 object EnvironmentResolverRegistry extends ExtensionId[EnvironmentResolverRegistryExtension] with ExtensionIdProvider {
 
-  override def lookup() = EnvironmentResolverRegistry
+  override def lookup = EnvironmentResolverRegistry
 
   override def createExtension(system: ExtendedActorSystem): EnvironmentResolverRegistryExtension = {
     val mBeanServer = ManagementFactory.getPlatformMBeanServer

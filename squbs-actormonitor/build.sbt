@@ -8,7 +8,6 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "org.scalatest" %% "scalatest" % scalatestV % Test,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
-  "com.typesafe.akka" %% "akka-agent" % akkaV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV % Test,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test,

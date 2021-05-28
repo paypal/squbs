@@ -20,18 +20,16 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.{HttpEntity, MediaTypes, MessageEntity}
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.ActorMaterializer
 import org.json4s._
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterAll
 
 class Json4sJacksonSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll {
 
   import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
 
   implicit val system = ActorSystem("Json4sJacksonSpec")
-  implicit val mat = ActorMaterializer()
   implicit val serialization = jackson.Serialization
 
   "NotTypeHints Example (case class)" should "have correct behaviour of read/write" in {

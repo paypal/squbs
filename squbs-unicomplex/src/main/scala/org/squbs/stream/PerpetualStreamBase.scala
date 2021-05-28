@@ -16,7 +16,7 @@
 package org.squbs.stream
 
 import akka.Done
-import akka.actor.{Actor, ActorIdentity, ActorLogging, ActorNotFound, ActorRef, ActorRefFactory, Identify, Props, Stash, Status, Terminated}
+import akka.actor._
 import akka.stream._
 import akka.util.Timeout
 import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
@@ -64,8 +64,6 @@ trait PerpetualStreamBase[T] extends Actor with ActorLogging with Stash with Gra
   Unicomplex() ! ObtainLifecycleEvents(streamRunLifecycleState, Stopping)
   Unicomplex() ! SystemState
 
-  implicit val materializer: ActorMaterializer
-
   private[stream] def runGraph(): T
 
   private[stream] def shutdownAndNotify(): Unit
@@ -88,7 +86,7 @@ trait PerpetualStreamBase[T] extends Actor with ActorLogging with Stash with Gra
   }
 
   final def stopped(children: Iterable[ActorRef]): Receive = {
-    case Done => materializer.shutdown()
+    case Done => // Just accept the fact. Do nothing.
 
     case Terminated(ref) =>
       val remaining = children filterNot ( _ == ref )

@@ -79,7 +79,7 @@ If you want to respond to more lifecycle events beyond `Active` and `Stopping`, 
 import org.squbs.stream.TriggerEvent._
 
 val inSource = <your-original-source>
-val trigger = Source.actorPublisher[LifecycleState](Props.create(classOf[UnicomplexActorPublisher]))
+val trigger = LifecycleEventSource()
   .collect {
     case Active => ENABLE
     case Stopping | Failed => DISABLE
@@ -95,7 +95,7 @@ import static org.squbs.stream.TriggerEvent.DISABLE;
 import static org.squbs.stream.TriggerEvent.ENABLE;
 
 final Source<?, ?> inSource = <your-original-source>;
-final Source<?, ActorRef> trigger = Source.<LifecycleState>actorPublisher(Props.create(UnicomplexActorPublisher.class))
+final Source<?, ActorRef> trigger = LifecycleEventSource.create()
     .collect(new PFBuilder<Integer, TriggerEvent>()
         .matchEquals(Active.instance(), p -> ENABLE)
         .matchEquals(Stopping.instance(), p -> DISABLE)

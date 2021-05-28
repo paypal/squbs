@@ -16,32 +16,29 @@
 
 package org.squbs.unicomplex
 
-
-import java.io.{PrintWriter, StringWriter}
-import java.util
-import java.util.Date
-import java.util.concurrent.ConcurrentHashMap
-import javax.management.ObjectName
-
 import akka.NotUsed
 import akka.actor.SupervisorStrategy._
 import akka.actor.{Extension => AkkaExtension, _}
-import akka.agent.Agent
 import akka.event.Logging
 import akka.http.scaladsl.model.HttpResponse
 import akka.pattern._
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Materializer, Supervision}
 import akka.stream.scaladsl.Flow
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Materializer, Supervision}
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
 import org.squbs.pipeline.{PipelineSetting, RequestContext}
 import org.squbs.unicomplex.UnicomplexBoot.StartupType
 import org.squbs.unicomplex.{Extension => SqubsExtension}
 
+import java.io.{PrintWriter, StringWriter}
+import java.util
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
+import javax.management.ObjectName
 import scala.annotation.varargs
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
@@ -67,43 +64,12 @@ class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
 
   lazy val externalConfigDir = config.getString("external-config-dir")
 
-  val boot = Agent[UnicomplexBoot](null)(system.dispatcher)
-
-  private[unicomplex] val materializers = new ConcurrentHashMap[String, Materializer]
-
-  def materializer(name: String) = Option(materializers.get(name)).getOrElse {
-
-    val materializerConfig = system.settings.config.getConfig(name)
-    require(materializerConfig.getString("type") == "squbs.materializer", s"No materializer with name $name specified in configuration")
-
-    val materializerFactoryClass = materializerConfig.getString("class")
-
-    try {
-      val clazz = Class.forName(materializerFactoryClass)
-      val materializer = clazz
-        .getMethod("createMaterializer", classOf[ActorSystem])
-        .invoke(clazz.newInstance(), system)
-        .asInstanceOf[Materializer]
-      materializer match {
-        case actorMaterializer: ActorMaterializer =>
-          import org.squbs.unicomplex.JMX._
-          val actorMaterializerBean = new ActorMaterializerBean(name, clazz.getName, actorMaterializer)
-          register(actorMaterializerBean, prefix(system) + materializerName + ObjectName.quote(name))
-        case _ =>
-      }
-      materializers.putIfAbsent(name, materializer)
-      materializers.get(name)
-    } catch {
-      case NonFatal(e) =>
-        log.error(e, s"Failure creating a materializer from $materializerFactoryClass.")
-        throw e
-    }
-  }
+  val boot = new AtomicReference[UnicomplexBoot]
 }
 
 object Unicomplex extends ExtensionId[UnicomplexExtension] with ExtensionIdProvider {
 
-  override def lookup() = Unicomplex
+  override def lookup: Unicomplex.type = Unicomplex
 
   override def createExtension(system: ExtendedActorSystem) = new UnicomplexExtension(system)
 
@@ -271,13 +237,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
    */
   class SystemStateBean extends SystemStateMXBean {
 
-    private[Unicomplex] var startTime: Date = null
+    private[Unicomplex] var startTime: util.Date = null
     private[Unicomplex] var initDuration = -1
     private[Unicomplex] var activationDuration = -1
 
     override def getSystemState: String = systemState.toString
 
-    override def getStartTime: Date = startTime
+    override def getStartTime: util.Date = startTime
 
     override def getInitMillis: Int = initDuration
 
@@ -435,7 +401,7 @@ class Unicomplex extends Actor with Stash with ActorLogging {
   def receive = stopAndStartCube orElse shutdownBehavior orElse {
     case t: Timestamp => // Setting the real start time from bootstrap
       systemStart = Some(t)
-      stateMXBean.startTime = new Date(t.millis)
+      stateMXBean.startTime = new util.Date(t.millis)
 
     case Extensions(es) => // Extension registration
       extensions = es
@@ -473,10 +439,9 @@ class Unicomplex extends Actor with Stash with ActorLogging {
           },
             discardOld = false)
 
-        case Failure(t) => {
+        case Failure(t) =>
           sender() ! StartFailure(t)
           updateSystemState(checkInitState())
-        }
       }
 
     case Started => // Bootstrap startup and extension init done
@@ -624,15 +589,13 @@ class Unicomplex extends Actor with Stash with ActorLogging {
         }
     }
   }
-
-
 }
 
 class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   import context.dispatcher
 
   val cubeName = self.path.name
-  val actorErrorStatesAgent = Agent[Map[String, ActorErrorState]](Map())
+  val actorErrorStates = new AtomicReference[Map[String, ActorErrorState]](Map.empty)
 
   implicit val timeout = UnicomplexBoot.defaultStartupTimeout
 
@@ -644,7 +607,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
 
     override def getWellKnownActors: String = context.children.mkString(",")
 
-    override def getActorErrorStates: util.List[ActorErrorState] = actorErrorStatesAgent().values.toList.asJava
+    override def getActorErrorStates: util.List[ActorErrorState] = actorErrorStates.get.values.toList.asJava
   }
 
   override def preStart(): Unit = {
@@ -659,12 +622,13 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     unregister(prefix + cubeStateName + cubeName)
   }
 
-  override val supervisorStrategy =
-    OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
+  override val supervisorStrategy = {
+    val maxRetries = 10
+    OneForOneStrategy(maxRetries, withinTimeRange = 1 minute) {
       case NonFatal(e) =>
         val actorPath = sender().path.toStringWithoutAddress
         log.warning(s"Received ${e.getClass.getName} with message ${e.getMessage} from $actorPath")
-        actorErrorStatesAgent.send{states =>
+        actorErrorStates.updateAndGet { states =>
           val stringWriter = new StringWriter()
           e.printStackTrace(new PrintWriter(stringWriter))
           val stackTrace = stringWriter.toString
@@ -676,6 +640,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
         }
         Restart
     }
+  }
 
   private var cubeState: LifecycleState = Initializing
   private var pendingContexts = 0
@@ -822,22 +787,4 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
   */
 private[unicomplex] class NoopActor extends Actor {
   def receive = PartialFunction.empty
-}
-
-class DefaultMaterializer {
-
-  def createMaterializer(implicit system: ActorSystem): ActorMaterializer = {
-    // Needs ActorSystem, that's why defining inside the function.  Given that it should be not be called more than
-    // a few times, it should be ok.
-    val log = Logging.getLogger(system, this)
-
-    val decider: Supervision.Decider = {
-      case ex =>
-        log.error(ex, "An error occurred in the stream.  Calling Supervision.Stop inside the decider!")
-        Supervision.Stop
-    }
-
-    val settings = ActorMaterializerSettings(system).withSupervisionStrategy(decider)
-    ActorMaterializer(settings)
-  }
 }

@@ -118,10 +118,10 @@ class MaterializationMetricsCollector[T] private[metrics] (name: String)(implici
     setHandler(out, new OutHandler {
       override def onPull(): Unit = pull(in)
 
-      override def onDownstreamFinish(): Unit = {
+      override def onDownstreamFinish(cause: Throwable): Unit = {
         activeMaterializationCount.dec()
         materializationTerminationCount.mark()
-        super.onDownstreamFinish()
+        super.onDownstreamFinish(cause)
       }
     })
   }

@@ -58,10 +58,8 @@ abstract class AbstractPerpetualStream[T] extends AbstractActor with PerpetualSt
       }
     }
 
-  implicit val materializer: ActorMaterializer =
-    ActorMaterializer(ActorMaterializerSettings(context.system).withSupervisionStrategy(decider))
-
-  override private[stream] final def runGraph(): T = streamGraph.run(materializer)
+  override private[stream] final def runGraph(): T =
+    streamGraph.withAttributes(ActorAttributes.withSupervisionStrategy(decider)).run(context.system)
 
   override private[stream] final def shutdownAndNotify(): Unit = shutdown()
     .thenAccept(asJavaConsumer((_: Done) => self ! Done))

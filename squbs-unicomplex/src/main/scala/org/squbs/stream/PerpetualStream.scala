@@ -15,8 +15,7 @@
  */
 package org.squbs.stream
 
-import akka.actor.{ActorContext, ActorRefFactory}
-import akka.japi.Pair
+import akka.actor.{ActorContext, ActorRefFactory, ActorSystem}
 import akka.stream.Supervision._
 import akka.stream._
 import akka.stream.scaladsl.{RunnableGraph, Sink}
@@ -50,10 +49,10 @@ trait PerpetualStream[T] extends PerpetualStreamBase[T] {
     Resume
   }
 
-  implicit val materializer: ActorMaterializer =
-    ActorMaterializer(ActorMaterializerSettings(context.system).withSupervisionStrategy(decider))
-
-  override private[stream] final def runGraph(): T = streamGraph.run()
+  override private[stream] final def runGraph(): T = {
+    import context.system
+    streamGraph.withAttributes(ActorAttributes.supervisionStrategy(decider)).run()
+  }
 
   override private[stream] final def shutdownAndNotify(): Unit = {
     import context.dispatcher
@@ -106,7 +105,7 @@ trait PerpetualStreamMatValue[T] {
     SafeSelect(name)
 
   def matValue(perpetualStreamName: String)(implicit classTag: ClassTag[T]): Sink[T, NotUsed] = {
-    implicit val sys = context.system
+    implicit val sys: ActorSystem = context.system
     implicit val timeout: Timeout = Timeout(10.seconds)
     import akka.pattern.ask
 
@@ -114,7 +113,7 @@ trait PerpetualStreamMatValue[T] {
 
     // Exception! This code is executed only at startup. We really need a better API, though.
     Await.result(responseF, timeout.duration) match {
-      case sink: Sink[T, NotUsed] => sink
+      case sink: Sink[T, _] => sink.asInstanceOf[Sink[T, NotUsed]]
       case p: akka.japi.Pair[_, _] => sinkCast(p.first)
       case l: java.util.List[_] =>
         if (l.isEmpty) {
@@ -132,7 +131,7 @@ trait PerpetualStreamMatValue[T] {
 
   private def sinkCast(a: Any): Sink[T, NotUsed] = {
     a match {
-      case sink: Sink[T, NotUsed] => sink
+      case sink: Sink[T, _] => sink.asInstanceOf[Sink[T, NotUsed]]
       case other => throw new ClassCastException(
         s"Materialized value mismatch. First element should be a Sink. Found ${other.getClass.getName}.")
     }

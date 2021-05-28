@@ -17,7 +17,6 @@
 package org.squbs.metrics
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink}
 import akka.stream.testkit.scaladsl.TestSource
 import akka.testkit.TestKit
@@ -34,7 +33,6 @@ class MaterializationMetricsCollectorSpec extends TestKit(ActorSystem("Materiali
   with AsyncFlatSpecLike with Matchers {
 
   val awaitMax = 60.seconds
-  implicit val materializer = ActorMaterializer()
 
   it should "update metrics when upstream finishes" in {
 

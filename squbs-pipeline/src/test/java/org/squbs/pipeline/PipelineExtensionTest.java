@@ -22,8 +22,6 @@ import akka.http.javadsl.model.HttpHeader;
 import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.model.headers.RawHeader;
-import akka.stream.ActorMaterializer;
-import akka.stream.Materializer;
 import akka.stream.javadsl.*;
 import com.typesafe.config.ConfigFactory;
 import org.testng.annotations.AfterClass;
@@ -62,7 +60,6 @@ public class PipelineExtensionTest {
 
     private static final ActorSystem system = ActorSystem.create("PipelineExtensionTest",
         ConfigFactory.parseString(cfg));
-    private static final Materializer mat = ActorMaterializer.create(system);
 
     private static final PipelineExtensionImpl pipeLineExtension = PipelineExtension.get(system);
 
@@ -84,9 +81,9 @@ public class PipelineExtensionTest {
         Flow<RequestContext, RequestContext, NotUsed> httpFlow = pipelineFlow.join(dummyEndpoint);
         final CompletionStage<RequestContext> result = Source
             .single(RequestContext.create(HttpRequest.create(), 0))
-            .runWith(httpFlow.toMat(Sink.head(), Keep.right()), mat);
+            .runWith(httpFlow.toMat(Sink.head(), Keep.right()), system);
         final String actualEntity = result.toCompletableFuture().thenCompose(t -> t.getResponse().get().get().entity()
-            .toStrict(Timeouts.awaitMax().toMillis(), mat)).toCompletableFuture().get().getData().utf8String();
+            .toStrict(Timeouts.awaitMax().toMillis(), system)).toCompletableFuture().get().getData().utf8String();
 
         RawHeader[] entityList = {
             RawHeader.create("keyA", "valA"),

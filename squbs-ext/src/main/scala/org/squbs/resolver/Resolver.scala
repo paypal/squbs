@@ -182,7 +182,7 @@ class ResolverRegistryExtension(system: ExtendedActorSystem) extends Extension w
 
 object ResolverRegistry extends ExtensionId[ResolverRegistryExtension] with ExtensionIdProvider {
 
-  override def lookup() = ResolverRegistry
+  override def lookup = ResolverRegistry
 
   override def createExtension(system: ExtendedActorSystem): ResolverRegistryExtension = {
     val mBeanServer = ManagementFactory.getPlatformMBeanServer

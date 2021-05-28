@@ -16,15 +16,13 @@
 
 package org.squbs
 
-import java.net.InetSocketAddress
-import java.nio.channels.ServerSocketChannel
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import akka.stream.ActorMaterializer
 import akka.util.ByteString
 
+import java.net.InetSocketAddress
+import java.nio.channels.ServerSocketChannel
 import scala.concurrent.Future
 
 package object unicomplex {
@@ -44,36 +42,35 @@ package object unicomplex {
     (socketAddress, socketAddress.getHostName, socketAddress.getPort)
   }
 
-  def extractEntityAsString(response: HttpResponse)
-                           (implicit am: ActorMaterializer, system: ActorSystem): Future[String] = {
+  def extractEntityAsString(response: HttpResponse)(implicit system: ActorSystem): Future[String] = {
     import system.dispatcher
     response.entity.dataBytes.runFold(ByteString(""))(_ ++ _) map(_.utf8String)
   }
 
-  def entityAsString(uri: String)(implicit am: ActorMaterializer, system: ActorSystem): Future[String] = {
+  def entityAsString(uri: String)(implicit system: ActorSystem): Future[String] = {
     import system.dispatcher
     get(uri) flatMap extractEntityAsString
   }
 
-  def entityAsStringWithHeaders(uri: String)(implicit am: ActorMaterializer, system: ActorSystem): Future[(String, Seq[HttpHeader])] = {
+  def entityAsStringWithHeaders(uri: String)(implicit system: ActorSystem): Future[(String, Seq[HttpHeader])] = {
     import system.dispatcher
-    get(uri) flatMap( response => extractEntityAsString(response) map((_, response.headers)))
+    get(uri) flatMap(response => extractEntityAsString(response) map((_, response.headers)))
   }
 
-  def entityAsInt(uri: String)(implicit am: ActorMaterializer, system: ActorSystem): Future[Int] = {
+  def entityAsInt(uri: String)(implicit system: ActorSystem): Future[Int] = {
     import system.dispatcher
-    entityAsString(uri) map (s => s.toInt)
+    entityAsString(uri).map (s => s.toInt)
   }
 
-  def get(uri: String)(implicit am: ActorMaterializer, system: ActorSystem): Future[HttpResponse] = {
+  def get(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
     Http().singleRequest(HttpRequest(uri = Uri(uri)))
   }
 
-  def post(uri: String, e: RequestEntity)(implicit am: ActorMaterializer, system: ActorSystem): Future[HttpResponse] = {
+  def post(uri: String, e: RequestEntity)(implicit system: ActorSystem): Future[HttpResponse] = {
     Http().singleRequest(HttpRequest(method = HttpMethods.POST, uri = Uri(uri), entity = e))
   }
 
-  def put(uri: String)(implicit am: ActorMaterializer, system: ActorSystem): Future[HttpResponse] = {
+  def put(uri: String)(implicit system: ActorSystem): Future[HttpResponse] = {
     Http().singleRequest(HttpRequest(method = HttpMethods.PUT, uri = Uri(uri)))
   }
 }

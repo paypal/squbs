@@ -16,7 +16,6 @@
 package org.squbs.streams
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.flatspec.AnyFlatSpec
@@ -25,7 +24,6 @@ import org.scalatest.matchers.should.Matchers
 class BoundedOrderingSpec extends AnyFlatSpec with Matchers with ScalaFutures {
 
   implicit val system = ActorSystem("OrderingStateSpec")
-  implicit val mat = ActorMaterializer()
 
   it should "require waitFor > 0" in {
     an [IllegalArgumentException] should be thrownBy BoundedOrdering[Int, Int](maxBounded = 0, 1, _ + 1, identity)

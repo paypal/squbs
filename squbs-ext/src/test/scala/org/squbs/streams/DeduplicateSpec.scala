@@ -17,7 +17,6 @@
 package org.squbs.streams
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -27,7 +26,6 @@ import java.util
 class DeduplicateSpec extends AsyncFlatSpec with Matchers{
 
   implicit val system = ActorSystem("DeduplicateSpec")
-  implicit val materializer = ActorMaterializer()
 
   it should "require duplicateCount >= 2" in {
     an [IllegalArgumentException] should be thrownBy

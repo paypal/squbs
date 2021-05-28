@@ -20,7 +20,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl._
-import akka.stream.{ActorMaterializer, BidiShape}
+import akka.stream.BidiShape
 import akka.testkit.TestKit
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
@@ -34,7 +34,6 @@ import scala.util.{Success, Try}
 class PipelineExtensionSpec extends TestKit(ActorSystem("PipelineExtensionSpec", PipelineExtensionSpec.config))
   with AnyFlatSpecLike with Matchers {
 
-  implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)
   val dummyEndpoint = Flow[RequestContext].map { r =>
     r.withResponse(Try(HttpResponse(entity = s"${r.request.headers.sortBy(_.name).mkString(",")}")))
@@ -146,7 +145,6 @@ class PipelineExtensionSpec3 extends TestKit(ActorSystem("PipelineExtensionSpec3
      |}
    """.stripMargin))) with AnyFlatSpecLike with Matchers {
 
-  implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)
   val dummyEndpoint = Flow[RequestContext].map { r =>
     r.withResponse(Try(HttpResponse(entity = s"${r.request.headers.sortBy(_.name).mkString(",")}")))
