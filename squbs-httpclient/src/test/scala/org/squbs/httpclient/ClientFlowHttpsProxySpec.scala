@@ -30,6 +30,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
+import org.squbs.httpclient.ClientFlowHttpsSpec.InsecureSSLEngineProvider
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.testkit.Timeouts._
 
@@ -86,7 +87,7 @@ object ClientFlowHttpsProxySpec {
   }
 }
 
-class ClientFlowHttpsProxySpec  extends AnyFlatSpec with Matchers with BeforeAndAfterAll
+class ClientFlowHttpsProxySpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll
   with BeforeAndAfterEach with ScalaFutures {
 
   val serverBinding = Await.result(ClientFlowHttpsProxySpec.startServers(), awaitMax)
@@ -106,7 +107,7 @@ class ClientFlowHttpsProxySpec  extends AnyFlatSpec with Matchers with BeforeAnd
       name match {
         case "helloHttps" =>
           Some(HttpEndpoint(s"https://localhost:$serverPort",
-            Some(sslContext("exampletrust.jks", "changeit")), None))
+            Some(sslContext("exampletrust.jks", "changeit")), None, Some(InsecureSSLEngineProvider)))
         case _ => None
       }
     }
@@ -130,7 +131,6 @@ class ClientFlowHttpsProxySpec  extends AnyFlatSpec with Matchers with BeforeAnd
       s"""
          |helloHttps {
          |  type = squbs.httpclient
-         |  akka.ssl-config.loose.disableHostnameVerification = true
          |  akka.http.client.proxy {
          |    https {
          |      host = localhost
@@ -171,7 +171,6 @@ class ClientFlowHttpsProxySpec  extends AnyFlatSpec with Matchers with BeforeAnd
       s"""
          |helloHttps {
          |  type = squbs.httpclient
-         |  akka.ssl-config.loose.disableHostnameVerification = true
          |}
          |
          |akka.http.client.proxy {

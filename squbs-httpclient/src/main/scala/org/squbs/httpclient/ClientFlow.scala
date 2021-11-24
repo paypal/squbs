@@ -150,9 +150,11 @@ object ClientFlow {
     val cps = settings.getOrElse {
       Try { HttpsProxySettings(clientConfigWithDefaults) } match {
         case Success(proxySettings) =>
+          println(s"Successfully loaded proxy settings: $proxySettings")
           ConnectionPoolSettings(clientConfigWithDefaults).withTransport(ClientTransport.httpsProxy(
-            InetSocketAddress.createUnresolved(proxySettings.host, proxySettings.port)))
+              InetSocketAddress.createUnresolved(proxySettings.host, proxySettings.port)))
         case _ =>
+          println("Error loading proxy settings")
           ConnectionPoolSettings(clientConfigWithDefaults)
       }
     }

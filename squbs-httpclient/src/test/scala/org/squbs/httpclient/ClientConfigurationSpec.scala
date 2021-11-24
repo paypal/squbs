@@ -107,7 +107,25 @@ object ClientConfigurationSpec {
     }
   }
 
+  trait TypeConverter[T] {
+    def convert(src: Any): T
+  }
 
+  implicit val durationConverter = new TypeConverter[Duration] {
+    override def convert(src: Any): Duration = src match {
+      case d: Duration => d
+      case x => Duration(x.toString)
+    }
+  }
+  implicit val stringConverter = new TypeConverter[String] {
+    override def convert(src: Any): String = src.toString
+  }
+  implicit val intConverter = new TypeConverter[Int] {
+    override def convert(src: Any):Int = src match {
+      case i: Int => i
+      case x => x.toString.toInt
+    }
+  }
 }
 
 class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
@@ -121,9 +139,9 @@ class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
     assertJmxValue("sampleClient", "MaxRetries",
       appConfig.getInt("sampleClient.akka.http.host-connection-pool.max-retries"))
     assertJmxValue("sampleClient", "ConnectionPoolIdleTimeout",
-      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
+      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
     assertJmxValue("sampleClient", "ConnectingTimeout",
-      appConfig.get[Duration]("sampleClient.akka.http.host-connection-pool.client.connecting-timeout").toString)
+      appConfig.get[Duration]("sampleClient.akka.http.host-connection-pool.client.connecting-timeout"))
   }
 
   it should "fallback to default values if no client specific configuration is provided" in {
@@ -141,7 +159,7 @@ class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
     assertJmxValue("resolverConfig", "MaxConnections", 111)
     assertJmxValue("resolverConfig", "MaxRetries", 123)
     assertJmxValue("resolverConfig", "ConnectionPoolIdleTimeout",
-      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
+      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
   }
 
   it should "ignore client specific configuration if type is not set to squbs.httpclient" in {
@@ -157,15 +175,15 @@ class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
     assertJmxValue("sampleClient", "MaxRetries",
       appConfig.getInt("sampleClient.akka.http.host-connection-pool.max-retries"))
     assertJmxValue("sampleClient", "ConnectionPoolIdleTimeout",
-      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
+      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
     assertJmxValue("sampleClient", "ConnectingTimeout",
-      appConfig.get[Duration]("sampleClient.akka.http.host-connection-pool.client.connecting-timeout").toString)
+      appConfig.get[Duration]("sampleClient.akka.http.host-connection-pool.client.connecting-timeout"))
 
     assertJmxValue("sampleClient2", "MaxConnections",
       appConfig.getInt("sampleClient2.akka.http.host-connection-pool.max-connections"))
     assertJmxValue("sampleClient2", "MaxRetries", defaultConfig.getInt("akka.http.host-connection-pool.max-retries"))
     assertJmxValue("sampleClient2", "ConnectionPoolIdleTimeout",
-      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
+      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
   }
 
   it should "configure even if not present in conf file" in {
@@ -180,10 +198,11 @@ class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
     assertJmxValue("passedAsParameter", "MaxConnections", MaxConnections)
   }
 
-  private def assertJmxValue(clientName: String, key: String, expectedValue: Any) = {
+  private def assertJmxValue[T: TypeConverter](clientName: String, key: String, expectedValue: T) = {
     val oName = ObjectName.getInstance(
       s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=${ObjectName.quote(clientName)}")
-    val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
+    val actualValue = implicitly[TypeConverter[T]]
+      .convert(ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key))
     actualValue shouldEqual expectedValue
   }
 
@@ -191,6 +210,6 @@ class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
     assertJmxValue(clientName, "MaxConnections", defaultConfig.getInt("akka.http.host-connection-pool.max-connections"))
     assertJmxValue(clientName, "MaxRetries", defaultConfig.getInt("akka.http.host-connection-pool.max-retries"))
     assertJmxValue(clientName, "ConnectionPoolIdleTimeout",
-      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
+      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
   }
 }

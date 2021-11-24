@@ -72,7 +72,7 @@ class Json4sNativeSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAl
     implicit val formats = new Formats {
       val dateFormat: DateFormat = DefaultFormats.lossless.dateFormat
       override val typeHints = FullTypeHints(classOf[Fish] :: classOf[Dog] :: Nil)
-      override val typeHintFieldName = "$type$"
+      // override val typeHintFieldName = "$type$"
     }
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
     val entity = HttpEntity(MediaTypes.`application/json`,
