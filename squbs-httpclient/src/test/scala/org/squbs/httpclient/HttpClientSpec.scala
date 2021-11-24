@@ -21,18 +21,17 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.testkit.TestKit
 import org.json4s.{DefaultFormats, MappingException, jackson}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterAll
-import org.squbs.resolver.ResolverRegistry
 import org.squbs.httpclient.dummy._
 import org.squbs.marshallers.json.TestData._
-import org.squbs.marshallers.json.{TeamBeanWithCaseClassMember, TeamWithPrivateMembers, _}
+import org.squbs.marshallers.json._
+import org.squbs.resolver.ResolverRegistry
 import org.squbs.testkit.Timeouts._
 
 import scala.concurrent.{Await, Future}
@@ -41,8 +40,6 @@ import scala.util.{Failure, Success, Try}
 
 class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFlatSpecLike
   with DummyService with Matchers with BeforeAndAfterAll {
-
-  implicit val mat = ActorMaterializer()
 
   private [httpclient] val port = Await.result(startService, awaitMax)
   val baseUrl = s"http://localhost:$port"

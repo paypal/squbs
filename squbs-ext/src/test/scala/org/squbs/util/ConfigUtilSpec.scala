@@ -249,11 +249,6 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       config.getOption[FiniteDuration]("testConfig.timeout-inf") shouldBe None
     }
 
-    it("should throw IllegalArgumentException for unexpected type of existing config value by \"getOption\"") {
-        the [IllegalArgumentException] thrownBy config.get[Unit]("testConfig.str") should
-          have message "Configuration option type Unit not implemented"
-    }
-
     it("should get default value for non-existing config string") {
       config.get[String]("str", "default string") shouldBe "default string"
     }
@@ -266,11 +261,6 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       intercept[ConfigException.Missing](
         config.get[String]("str")
       )
-    }
-
-    it("should throw IllegalArgumentException for unexpected type of existing config value") {
-        the [IllegalArgumentException] thrownBy config.get[Unit]("testConfig.str") should
-          have message "Configuration option type Unit not implemented"
     }
 
     it("should throw ConfigException.WrongType exception for incorrect type of existing config value") {

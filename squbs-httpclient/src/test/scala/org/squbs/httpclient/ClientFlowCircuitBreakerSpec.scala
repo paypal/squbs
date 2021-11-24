@@ -15,26 +15,25 @@
  */
 package org.squbs.httpclient
 
-import java.lang.management.ManagementFactory
-import java.util.concurrent.{TimeUnit, TimeoutException}
-import javax.management.ObjectName
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpEntity.Chunked
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{Date, Server}
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterAll
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 import org.squbs.streams.circuitbreaker.{CircuitBreakerOpenException, CircuitBreakerSettings}
 import org.squbs.testkit.Timeouts.awaitMax
 
+import java.lang.management.ManagementFactory
+import java.util.concurrent.{TimeUnit, TimeoutException}
+import javax.management.ObjectName
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Await, Future, Promise}
 import scala.language.postfixOps
@@ -103,7 +102,6 @@ object ClientFlowCircuitBreakerSpec {
     """.stripMargin)
 
   implicit val system = ActorSystem("ClientFlowCircuitBreakerSpec", config)
-  implicit val materializer = ActorMaterializer()
 
   val defaultMaxFailures = system.settings.config.getInt("squbs.circuit-breaker.max-failures")
   val defaultMaxConnections = system.settings.config.getInt("akka.http.host-connection-pool.max-connections")
@@ -132,17 +130,16 @@ object ClientFlowCircuitBreakerSpec {
       import scala.concurrent.duration._
       val delay = 500.milliseconds
       scheduler.scheduleOnce(delay)(promise.success("delayed"))
-      onComplete(promise.future) {
-        case _ =>
-          complete {
-            HttpResponse(entity =
-              Chunked(ContentTypes.`text/plain(UTF-8)`,Source.single(ByteString("Response after delay!")))
-            )
-          }
+      onComplete(promise.future) { _ =>
+        complete {
+          HttpResponse(entity =
+            Chunked(ContentTypes.`text/plain(UTF-8)`,Source.single(ByteString("Response after delay!")))
+          )
+        }
       }
     }
 
-  val serverBinding = Await.result(Http().bindAndHandle(route, "localhost", 0), awaitMax)
+  val serverBinding = Await.result(Http().newServerAt("localhost", 0).bind(route), awaitMax)
   val port = serverBinding.localAddress.getPort
 }
 
@@ -254,7 +251,7 @@ class ClientFlowCircuitBreakerSpec extends AsyncFlatSpec with Matchers with Befo
       // Because default max-open-requests = 32 is so requests will wait in the queue of connection pool
       // If max-open-requests were equal to max-connections, we would not multiply by 2.
       val maxNumOfPassThroughBeforeCircuitBreakerIsOpen = 2 * defaultMaxConnections + defaultMaxFailures - 1
-      val actualNumPassThrough = responses.filter(_ == Success(InternalServerErrorResponse)).size
+      val actualNumPassThrough = responses.count(_ == Success(InternalServerErrorResponse))
       val actualNumFailFast = numOfRequests - actualNumPassThrough
       actualNumPassThrough should be >= numOfPassThroughBeforeCircuitBreakerIsOpen
       actualNumPassThrough should be <= maxNumOfPassThroughBeforeCircuitBreakerIsOpen
@@ -292,7 +289,7 @@ class ClientFlowCircuitBreakerSpec extends AsyncFlatSpec with Matchers with Befo
       // Because default max-open-requests = 32 is so requests will wait in the queue of connection pool
       // If max-open-requests were equal to max-connections, we would not multiply by 2.
       val maxNumOfPassThroughBeforeCircuitBreakerIsOpen = 2 * defaultMaxConnections + defaultMaxFailures - 1
-      val actualNumPassThrough = responses.filter(_ == Success(InternalServerErrorResponse)).size
+      val actualNumPassThrough = responses.count(_ == Success(InternalServerErrorResponse))
       val actualNumFailFast = numOfRequests - actualNumPassThrough
       actualNumPassThrough should be >= numOfPassThroughBeforeCircuitBreakerIsOpen
       actualNumPassThrough should be <= maxNumOfPassThroughBeforeCircuitBreakerIsOpen

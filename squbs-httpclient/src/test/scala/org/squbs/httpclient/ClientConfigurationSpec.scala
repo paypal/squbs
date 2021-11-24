@@ -18,7 +18,6 @@ package org.squbs.httpclient
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.settings.ConnectionPoolSettings
-import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -100,7 +99,6 @@ object ClientConfigurationSpec {
     """.stripMargin)
 
   implicit val system = ActorSystem("ClientConfigurationSpec", appConfig.withFallback(defaultConfig))
-  implicit val materializer = ActorMaterializer()
 
   ResolverRegistry(system).register[HttpEndpoint]("LocalhostEndpointResolver") { (name, _) =>
     name match {
@@ -182,7 +180,7 @@ class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
     assertJmxValue("passedAsParameter", "MaxConnections", MaxConnections)
   }
 
-  def assertJmxValue(clientName: String, key: String, expectedValue: Any) = {
+  private def assertJmxValue(clientName: String, key: String, expectedValue: Any) = {
     val oName = ObjectName.getInstance(
       s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=${ObjectName.quote(clientName)}")
     val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)

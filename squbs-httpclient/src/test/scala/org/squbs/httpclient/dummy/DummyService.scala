@@ -23,14 +23,13 @@ import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.{Directives, Route}
-import akka.stream.ActorMaterializer
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.PropertyAccessor
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.json4s.DefaultFormats
 import org.squbs.marshallers.json.TestData._
-import org.squbs.marshallers.json.{EmployeeBean, TeamBeanWithCaseClassMember, _}
+import org.squbs.marshallers.json._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -52,9 +51,7 @@ trait DummyService {
   def startService(implicit system: ActorSystem): Future[Int] = {
     import system.dispatcher
 
-    implicit val mat = ActorMaterializer()
-
-    val serverBindingF: Future[ServerBinding] = Http().bindAndHandle(route, "0.0.0.0", 0)
+    val serverBindingF: Future[ServerBinding] = Http().newServerAt("0.0.0.0", 0).bind(route)
 
     serverBindingF onComplete {
       case Success(b) =>

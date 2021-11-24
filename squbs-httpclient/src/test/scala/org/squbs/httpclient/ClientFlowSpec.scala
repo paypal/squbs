@@ -16,28 +16,25 @@
 
 package org.squbs.httpclient
 
-import java.lang.management.ManagementFactory
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import javax.management.ObjectName
-import org.scalatest.BeforeAndAfterAll
 import org.squbs.resolver._
 import org.squbs.testkit.Timeouts._
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import scala.concurrent.{Await, Future}
 import scala.util.{Success, Try}
 
 object ClientFlowSpec {
 
   implicit val system = ActorSystem("ClientFlowSpec")
-  implicit val materializer = ActorMaterializer()
 
   ResolverRegistry(system).register[HttpEndpoint]("LocalhostEndpointResolver") { (svcName, _) => svcName match {
     case "hello" => Some(HttpEndpoint(s"http://localhost:$port"))
@@ -45,7 +42,6 @@ object ClientFlowSpec {
   }}
 
   import akka.http.scaladsl.server.Directives._
-  import system.dispatcher
 
   val route =
     path("hello") {
@@ -54,7 +50,7 @@ object ClientFlowSpec {
       }
     }
 
-  val serverBinding = Await.result(Http().bindAndHandle(route, "localhost", 0), awaitMax)
+  val serverBinding = Await.result(Http().newServerAt("localhost", 0).bind(route), awaitMax)
   val port = serverBinding.localAddress.getPort
 }
 
@@ -94,7 +90,6 @@ class ClientFlowSpec  extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
 
   it should "register the default http endpoint resolver for each actor system" in {
     implicit val system = ActorSystem("ClientFlowSecondSpec")
-    implicit val materializer = ActorMaterializer()
     ClientFlow[Int]("https://akka.io")
     Future { ClientFlow.defaultResolverRegistrationRecord.size should be >= 2 }
   }

@@ -16,22 +16,19 @@
 
 package org.squbs.httpclient
 
-import java.io.InputStream
-import java.security.{KeyStore, SecureRandom}
-import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.{ConnectionContext, Http}
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterAll
 import org.squbs.resolver.ResolverRegistry
 import org.squbs.testkit.Timeouts._
 
+import javax.net.ssl.{SSLContext, SSLEngine}
 import scala.concurrent.{Await, Future}
 import scala.util.{Success, Try}
 
@@ -42,22 +39,30 @@ object ClientFlowHttpsSpec {
       |helloHttps {
       |  type = squbs.httpclient
       |  akka.ssl-config.loose.disableHostnameVerification = true
+      |  ssl-engine-factory = xxx
       |}
     """.stripMargin)
 
   implicit val system = ActorSystem("ClientFlowHttpsSpec", config)
-  implicit val materializer = ActorMaterializer()
+
+  object InsecureSSLEngineProvider extends SSLEngineProvider {
+    override def createSSLEngine(sslContext: SSLContext, hostname: String, port: Int): SSLEngine = {
+      val engine = sslContext.createSSLEngine(hostname, port)
+      engine.setUseClientMode(true) // Disables endpoint verification - never use in production
+      engine
+    }
+  }
 
   ResolverRegistry(system).register[HttpEndpoint]("LocalhostHttpsEndpointResolver") { (name, _) =>
     name match {
       case "helloHttps" =>
-        Some(HttpEndpoint(s"https://localhost:$port", Some(sslContext("exampletrust.jks", "changeit")), None))
+        Some(HttpEndpoint(s"https://localhost:$port", Some(sslContext("exampletrust.jks", "changeit")),
+          None, Some(InsecureSSLEngineProvider)))
       case _ => None
     }
   }
 
   import akka.http.scaladsl.server.Directives._
-  import system.dispatcher
 
   val route =
     path("hello") {
@@ -66,8 +71,10 @@ object ClientFlowHttpsSpec {
       }
     }
 
-  val serverBinding = Await.result(Http().bindAndHandle(route, "localhost", 0,
-    ConnectionContext.https(sslContext("example.com.jks", "changeit"))), awaitMax)
+  val serverBinding = Await.result(
+    Http().newServerAt("localhost", 0)
+      .enableHttps(ConnectionContext.httpsServer(sslContext("example.com.jks", "changeit"))).bind(route),
+    awaitMax)
   val port = serverBinding.localAddress.getPort
 }
 

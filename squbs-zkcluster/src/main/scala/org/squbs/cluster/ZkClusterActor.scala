@@ -54,7 +54,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
   private[this] implicit val segLogic = segmentationLogic
   import segLogic._
 
-  private[this] implicit val log = logger
+  private[this] implicit val iLog = logger
   private[cluster] var whenZkClientUpdated = Seq.empty[ActorRef]
   private[cluster] var whenPartitionUpdated = Set.empty[ActorRef]
 

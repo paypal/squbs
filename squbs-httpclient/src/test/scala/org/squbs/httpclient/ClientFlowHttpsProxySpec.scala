@@ -20,7 +20,6 @@ import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.http.scaladsl.{ClientTransport, ConnectionContext, Http}
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import com.typesafe.config.ConfigFactory
 import io.netty.handler.codec.http
@@ -43,8 +42,6 @@ import scala.util.{Success, Try}
 object ClientFlowHttpsProxySpec {
 
   implicit val system = ActorSystem("ClientFlowHttpsProxySpecServers")
-  implicit val mat = ActorMaterializer()
-  import system.dispatcher
 
   val proxyRequests = new AtomicInteger(0)
 
@@ -61,8 +58,8 @@ object ClientFlowHttpsProxySpec {
         }
       }
 
-    Http().bindAndHandle(route, "localhost", 0,
-      ConnectionContext.https(sslContext("example.com.jks", "changeit")))
+    Http().newServerAt("localhost", 0)
+      .enableHttps(ConnectionContext.httpsServer(sslContext("example.com.jks", "changeit"))).bind(route)
   }
 
   private def startProxyServer(): Unit = {
@@ -103,7 +100,6 @@ class ClientFlowHttpsProxySpec  extends AnyFlatSpec with Matchers with BeforeAnd
     val config = ConfigFactory.parseString(configText)
 
     implicit val system = ActorSystem(systemName, config)
-    implicit val mat = ActorMaterializer()
 
 
     ResolverRegistry(system).register[HttpEndpoint]("LocalhostHttpsEndpointResolver") { (name, _) =>

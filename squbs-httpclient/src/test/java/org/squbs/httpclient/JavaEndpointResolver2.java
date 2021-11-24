@@ -38,7 +38,8 @@ public class JavaEndpointResolver2 extends AbstractResolver<HttpEndpoint> {
     public Optional<HttpEndpoint> resolve(String svcName, Environment env) {
         if (name().equals(svcName)) {
             return Optional.of(
-                    HttpEndpoint.create(Uri.create(dummyServiceEndpoint),Optional.empty(), Optional.empty()));
+                    HttpEndpoint.create(Uri.create(dummyServiceEndpoint), Optional.empty(),
+                            Optional.empty(), Optional.empty()));
         } else {
             return Optional.empty();
         }

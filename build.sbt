@@ -1,6 +1,6 @@
 import Shared._
 
-crossScalaVersions in ThisBuild := Seq("2.13.4", "2.12.10")
+crossScalaVersions in ThisBuild := Seq("2.13.7", "2.12.15")
 
 scalaVersion in ThisBuild := crossScalaVersions.value.head
 

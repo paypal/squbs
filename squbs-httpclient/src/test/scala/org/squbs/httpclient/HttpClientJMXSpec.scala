@@ -15,19 +15,18 @@
  */
 package org.squbs.httpclient
 
-import java.lang.management.ManagementFactory
-import javax.management.ObjectName
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
-import org.squbs.resolver._
 import org.squbs.env.QA
+import org.squbs.resolver._
 import org.squbs.streams.circuitbreaker.CircuitBreakerSettings
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
@@ -122,7 +121,6 @@ object HttpClientJMXSpec {
     """.stripMargin).withFallback(ConfigFactory.load())
 
   implicit val system = ActorSystem("HttpClientJMXSpec", config)
-  implicit val materializer = ActorMaterializer()
 
   ResolverRegistry(system).register[HttpEndpoint]("DummyEndpointResolver")
     { (_, _) => Some(HttpEndpoint("http://localhost:8080")) }
