@@ -16,7 +16,6 @@
 package org.squbs.testkit.japi
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.testkit.TestKitBase
 import com.typesafe.config.Config
 import org.squbs.testkit.{DebugTiming, PortGetter, CustomTestKit => SCustomTestKit}
@@ -50,5 +49,4 @@ class CustomTestKitSystemResource(boot: UnicomplexBoot)
   extends SystemResource(boot.actorSystem.name, boot.config) {
     override protected def config: Config = boot.config
     override protected def createSystem(): ActorSystem = boot.actorSystem
-    override protected def createMaterializer(system: ActorSystem): ActorMaterializer = ActorMaterializer()(system)
   }

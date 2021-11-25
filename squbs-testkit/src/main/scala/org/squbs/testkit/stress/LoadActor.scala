@@ -57,7 +57,7 @@ class LoadActor extends Actor {
     val steadyStart = startTimeNs + warmUp.toNanos
     val endTime = startTimeNs + warmUp.toNanos + steady.toNanos
     val firstFire = (startTimeNs + firingInterval.toNanos - System.nanoTime).nanoseconds
-    val scheduler = context.system.scheduler.schedule(firstFire, firingInterval, self, Ping)
+    val scheduler = context.system.scheduler.scheduleWithFixedDelay(firstFire, firingInterval, self, Ping)
 
     var nextIntervalStart = firingInterval.toNanos + startTimeNs
 
@@ -121,7 +121,7 @@ class CPUStatsActor extends Actor {
     val cpu = new CPULoad
     val firstFire = (startTimeNs + warmUp.toNanos - System.nanoTime()).nanoseconds
     val endTime = startTimeNs + warmUp.toNanos + steady.toNanos
-    val scheduler = context.system.scheduler.schedule(firstFire, interval, self, Ping)
+    val scheduler = context.system.scheduler.scheduleWithFixedDelay(firstFire, interval, self, Ping)
 
     {
       case Ping =>
