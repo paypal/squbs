@@ -99,7 +99,7 @@ class Trigger[T, M1, M2](eagerComplete: Boolean = false) {
 
   private[stream] val source =
     (in: Graph[SourceShape[T], M1], trigger: Graph[SourceShape[TriggerEvent], M2]) => Source.fromGraph(
-      GraphDSL.create(in, trigger)((_, _)) { implicit builder =>
+      GraphDSL.createGraph(in, trigger)((_, _)) { implicit builder =>
         (sIn, sTrigger) =>
           val merge = builder.add(new TriggerMerge[T](eagerComplete))
           sIn ~> merge.in0

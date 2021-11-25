@@ -47,7 +47,7 @@ class ProperShutdownStream extends PerpetualStream[(ActorRef, Future[Long])] {
 
   val counter = Flow[Int].map { _ => 1L }.reduce { _ + _ }.toMat(Sink.head)(Keep.right)
 
-  override def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(managedSource, counter)((a, b) => (a._2, b)) {
+  override def streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(managedSource, counter)((a, b) => (a._2, b)) {
     implicit builder =>
     (source, sink) =>
       import GraphDSL.Implicits._

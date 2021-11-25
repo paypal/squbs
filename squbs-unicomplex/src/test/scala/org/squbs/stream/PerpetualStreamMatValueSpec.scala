@@ -187,7 +187,7 @@ object PerpetualStreamMatValueSpecHelper {
     class GoodProductSinkMaterializingStream extends PerpStream[(Sink[Long, NotUsed], Future[akka.Done])] {
       self ! Active
       override def streamGraph = {
-        RunnableGraph.fromGraph(GraphDSL.create(MergeHub.source[Long], Sink.ignore)((_, _)) { implicit builder =>
+        RunnableGraph.fromGraph(GraphDSL.createGraph(MergeHub.source[Long], Sink.ignore)((_, _)) { implicit builder =>
           (mergeHubSource, sink) =>
             import GraphDSL.Implicits._
             mergeHubSource ~> addToBatch ~> sink

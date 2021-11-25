@@ -27,7 +27,7 @@ import scala.language.postfixOps
 import scala.util.Try
 
 class IllegalStateStream extends PerpetualStream[Future[Int]] {
-    def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(endSink) {implicit builder =>
+    def streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(endSink) {implicit builder =>
     sink => startSource ~> sink
   ClosedShape
   })
