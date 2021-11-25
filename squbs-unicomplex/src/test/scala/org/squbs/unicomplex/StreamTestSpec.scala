@@ -19,7 +19,6 @@ import akka.actor._
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.FileIO
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
@@ -60,7 +59,6 @@ object StreamTestSpec {
 class StreamTestSpec extends TestKit(StreamTestSpec.boot.actorSystem) with ImplicitSender with AnyWordSpecLike
     with Matchers with BeforeAndAfterAll with Waiters {
 
-  implicit val am = ActorMaterializer()
   import system.dispatcher
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)

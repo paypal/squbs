@@ -79,8 +79,6 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
   import UnicomplexSpec._
   import system.dispatcher
 
-  implicit val am = ActorMaterializer()
-
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val port = portBindings("default-listener")
 

@@ -29,8 +29,6 @@ import scala.language.postfixOps
 
 class TriggerMergeSpec extends TestKit(ActorSystem.create("TriggerMergeSpec")) with AnyFlatSpecLike with Matchers {
 
-  implicit val materializer = ActorMaterializer()
-
   val in = TestSource.probe[String]
   val trigger = TestSource.probe[Int].collect {
     case 0 => DISABLE

@@ -18,7 +18,6 @@ package org.squbs.dispatcher
 
 import akka.actor.ActorSystem
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Waiters
@@ -78,7 +77,6 @@ class ForkJoinConfiguratorSpec extends TestKit(ForkJoinConfiguratorSpec.boot.act
 
   import ForkJoinConfiguratorSpec._
   import system.dispatcher
-  implicit val am = ActorMaterializer()
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val port = portBindings("default-listener")

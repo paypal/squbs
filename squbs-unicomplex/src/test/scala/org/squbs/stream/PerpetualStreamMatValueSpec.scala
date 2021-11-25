@@ -18,8 +18,8 @@ package org.squbs.stream
 import akka.NotUsed
 import akka.actor.{Actor, ActorRef, ActorRefFactory, ActorSystem, Props, Status}
 import akka.pattern._
+import akka.stream.ClosedShape
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, MergeHub, RunnableGraph, Sink, Source}
-import akka.stream.{ActorMaterializer, ClosedShape, Materializer}
 import akka.util.Timeout
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
@@ -41,7 +41,6 @@ class PerpetualStreamMatValueSpec extends AnyFunSpec with Matchers with BeforeAn
 
 
   implicit val system = ActorSystem(this.getClass.getSimpleName)
-  implicit val mat = ActorMaterializer()
 
   private val timeout = Timeout(PerpetualStreamMatValueSpecHelper.timeoutDuration)
   implicit override val patienceConfig = PatienceConfig(timeout = Span(3, Seconds))
@@ -146,7 +145,7 @@ object PerpetualStreamMatValueSpecHelper {
   implicit val timeout = Timeout(timeoutDuration)
 
   def useSystem[PC <: PerpStream[_] : ClassTag](fn: Try[ActorRef] => Unit)
-    (implicit system: ActorSystem, mat: Materializer): Unit = {
+    (implicit system: ActorSystem): Unit = {
 
     val perpRef = system.actorOf(Props[PC]())
     val someRef = system.actorOf(Props(new SomeActor(perpRef)))
@@ -266,11 +265,11 @@ object PerpetualStreamMatValueSpecHelper {
     }
   }
 
-  class SomeActor(perpStream: ActorRef)(implicit mat: Materializer)
+  class SomeActor(perpStream: ActorRef)
   extends Actor
   with PerpetualStreamMatValue[Long] {
 
-    import context.dispatcher
+    import context.{dispatcher, system}
 
     override def actorLookup(name: String)(implicit refFactory: ActorRefFactory, timeout: Timeout) =
       perpStream

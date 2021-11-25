@@ -22,7 +22,6 @@ import akka.http.scaladsl.model.headers.Connection
 import akka.http.scaladsl.model.ws.PeerClosedConnectionException
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes, Uri}
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
@@ -104,8 +103,6 @@ class ConnectionMetricsSpec extends TestKit(ConnectionMetricsSpec.boot.actorSyst
   val hello2 = HttpRequest(uri = s"/sample2/hello") -> 0
   val helloWithConnectionClose = HttpRequest(uri = s"/sample/hello").withHeaders(Connection("close")) -> 0
   val connectionException = HttpRequest(uri = s"/sample/connectionException") -> 0
-
-  implicit val materializer = ActorMaterializer()
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val secondListenerPort = portBindings("second-listener")

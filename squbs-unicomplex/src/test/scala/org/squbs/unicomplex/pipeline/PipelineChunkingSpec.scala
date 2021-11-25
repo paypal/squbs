@@ -16,7 +16,7 @@
 
 package org.squbs.unicomplex.pipeline
 
-import akka.actor.{Actor, ActorSystem}
+import akka.actor.{Actor, ActorSystem, Status}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpEntity.{Chunk, LastChunk}
 import akka.http.scaladsl.model._
@@ -142,7 +142,9 @@ class PipelineChunkingSpec extends TestKit(PipelineChunkingSpec.boot.actorSystem
 
     response.headers.filter(_.name.startsWith("key")).sortBy(_.name) should equal(expectedResponseHeaders)
 
-    response.entity.dataBytes.map(b => Chunk(b)).runWith(Sink.actorRef(self, "Done"))
+    response.entity.dataBytes
+      .map(b => Chunk(b))
+      .runWith(Sink.actorRef(self, "Done", t => Status.Failure(t)))
     expectMsg(Chunk("1"))
     expectMsg(Chunk("2"))
     expectMsg(Chunk("3"))

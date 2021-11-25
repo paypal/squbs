@@ -19,7 +19,6 @@ package org.squbs.unicomplex
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Route
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
@@ -52,8 +51,6 @@ object RootCtxRouteSpec{
 
 class RootCtxRouteSpec extends TestKit(
   RootCtxRouteSpec.boot.actorSystem) with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
-
-  implicit val am = ActorMaterializer()
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val port = portBindings("default-listener")

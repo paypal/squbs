@@ -87,8 +87,6 @@ class MetricsFlowSpec extends TestKit(MetricsFlowSpec.boot.actorSystem) with Asy
   def connectionException(webContext: String) = HttpRequest(uri = s"$webContext/connectionException") -> 0
   def timeoutException(webContext: String) = HttpRequest(uri = s"$webContext/timeoutException") -> 0
 
-  implicit val materializer = ActorMaterializer()
-
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val port = portBindings("default-listener")
   val poolClientFlow = Http().cachedHostConnectionPool[Int]("localhost", port)
