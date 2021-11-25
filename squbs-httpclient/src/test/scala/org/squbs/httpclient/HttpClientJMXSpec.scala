@@ -182,10 +182,10 @@ class HttpClientJMXSpec extends AnyFlatSpecLike with Matchers {
     assertJmxValue("sampleClient", "MaxHeaderCount", config.getInt("akka.http.parsing.max-header-count"))
     assertJmxValue("sampleClient", "MaxChunkExtLength", config.getInt("akka.http.parsing.max-chunk-ext-length"))
     assertJmxValue("sampleClient", "MaxChunkSize", config.getBytes("akka.http.parsing.max-chunk-size"))
-    if (config.getString("akka.http.client.parsing.max-content-length") == "infinite")
-      assertJmxValue("sampleClient", "MaxContentLength", Long.MaxValue)
-    else
-      assertJmxValue("sampleClient", "MaxContentLength", config.getBytes("akka.http.client.parsing.max-content-length"))
+    val contentLengthValue =
+      if (config.getString("akka.http.client.parsing.max-content-length") == "infinite") Long.MaxValue
+      else config.getBytes("akka.http.client.parsing.max-content-length")
+      assertJmxValue("sampleClient", "MaxContentLength", contentLengthValue)
     assertJmxValue("sampleClient", "UriParsingMode", config.getString("akka.http.parsing.uri-parsing-mode"))
     assertJmxValue("sampleClient", "CookieParsingMode", config.getString("akka.http.parsing.cookie-parsing-mode"))
     assertJmxValue("sampleClient", "IllegalHeaderWarnings",
@@ -230,8 +230,10 @@ class HttpClientJMXSpec extends AnyFlatSpecLike with Matchers {
       config.getInt("clientWithParsingOverride.akka.http.parsing.max-chunk-ext-length"))
     assertJmxValue("clientWithParsingOverride", "MaxChunkSize",
       config.getBytes("clientWithParsingOverride.akka.http.parsing.max-chunk-size"))
-    assertJmxValue("clientWithParsingOverride", "MaxContentLength",
-      config.getBytes("clientWithParsingOverride.akka.http.client.parsing.max-content-length"))
+    val contentLengthValue =
+      if (config.getString("akka.http.client.parsing.max-content-length") == "infinite") Long.MaxValue
+      else config.getBytes("akka.http.client.parsing.max-content-length")
+    assertJmxValue("sampleClient", "MaxContentLength", contentLengthValue)
     assertJmxValue("clientWithParsingOverride", "UriParsingMode",
       config.getString("clientWithParsingOverride.akka.http.parsing.uri-parsing-mode"))
     assertJmxValue("clientWithParsingOverride", "CookieParsingMode",
