@@ -658,7 +658,7 @@ object OFuture {
     */
   def traverse[A, B, M[_] <: IterableOnce[_]](in: M[A])(fn: A => OFuture[B])
                                              (implicit bf: BuildFrom[M[A], B, M[B]]): OFuture[M[B]] =
-    in.foldLeft(OPromise.successful(bf.newBuilder(in)).future) { (fr, a) =>
+    in.iterator.foldLeft(OPromise.successful(bf.newBuilder(in)).future) { (fr, a) =>
       val fb = fn(a.asInstanceOf[A])
       for (r <- fr; b <- fb) yield r += b
     }.map(_.result())

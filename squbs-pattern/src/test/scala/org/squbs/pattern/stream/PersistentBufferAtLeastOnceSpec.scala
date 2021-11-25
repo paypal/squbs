@@ -18,7 +18,7 @@ package org.squbs.pattern.stream
 import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
-import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape}
+import akka.stream.{AbruptTerminationException, ClosedShape, Materializer}
 import akka.util.ByteString
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
@@ -35,7 +35,6 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
 (typeName: String) extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   implicit val system = ActorSystem(s"Persistent${typeName}BufferAtLeastOnceSpec", PersistentBufferSpec.testConfig)
-  implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[T]()
   implicit override val patienceConfig = PatienceConfig(timeout = Span(3, Seconds)) // extend eventually timeout for CI
   import StreamSpecUtil._
@@ -70,7 +69,7 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
     val buffer = PersistentBufferAtLeastOnce[T](config)
     val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
 
-    val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
+    val streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         in ~> transform ~> buffer.async ~> commit ~> sink
@@ -94,7 +93,8 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
       s
     }.toMat(Sink.head)(Keep.right)
 
-    val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter(t1 = _), flowCounter)((_,_)) { implicit builder =>
+    val streamGraph = RunnableGraph.fromGraph(
+      GraphDSL.createGraph(counter(t1 = _), flowCounter)((_,_)) { implicit builder =>
       (sink, total) =>
         import GraphDSL.Implicits._
         val bc1 = builder.add(Broadcast[T](2))
@@ -122,7 +122,7 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
     implicit val util = new StreamSpecUtil[T, Event[T]]
     import util._
 
-    val mat = ActorMaterializer()
+    val mat = Materializer(system)
     var t = Long.MinValue
     val pBufferInCount = new AtomicInteger(0)
     val commitCount = new AtomicInteger(0)
@@ -136,7 +136,7 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
 
     val shutdownF = finishedGenerating.future map { d => mat.shutdown(); d }
 
-    val graph = RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit builder =>
+    val graph = RunnableGraph.fromGraph(GraphDSL.createGraph(Sink.ignore) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         val buffer = PersistentBufferAtLeastOnce[T](config).withOnPushCallback(() => pBufferInCount.incrementAndGet()).withOnCommitCallback(() =>  commitCount.incrementAndGet())
@@ -163,7 +163,6 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
     implicit val util = new StreamSpecUtil[T, Event[T]]
     import util._
 
-    val mat = ActorMaterializer()
     val outCount = new AtomicInteger(0)
     val injectCounter = new AtomicInteger(0)
     val inCounter = new AtomicInteger(0)
@@ -174,7 +173,7 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
       else n
     }
 
-    val graph = RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit builder =>
+    val graph = RunnableGraph.fromGraph(GraphDSL.createGraph(Sink.ignore) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         val buffer = PersistentBufferAtLeastOnce[T](config).withOnPushCallback(() => inCounter.incrementAndGet()).withOnCommitCallback(() => outCount.incrementAndGet())
@@ -182,7 +181,7 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
         in ~> transform ~> buffer.async ~> throttle ~> injectError ~> commit ~> sink
         ClosedShape
     })
-    val sinkF = graph.run()(mat)
+    val sinkF = graph.run()
     Await.result(sinkF.failed, awaitMax) shouldBe an[NumberFormatException]
     val restartFrom = inCounter.incrementAndGet()
     println(s"Restart from count $restartFrom")
@@ -193,7 +192,6 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
   it should "recover from upstream failure" in {
     implicit val util = new StreamSpecUtil[T, Event[T]]
     import util._
-    val mat = ActorMaterializer()
     val recordCount = new AtomicInteger(0)
 
     val injectError = Flow[Int].map { n =>
@@ -204,14 +202,14 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
     def updateCounter() = Sink.foreach[Any] { _ => recordCount.incrementAndGet() }
 
     val buffer = PersistentBufferAtLeastOnce[T](config)
-    val graph = RunnableGraph.fromGraph(GraphDSL.create(updateCounter()) { implicit builder =>
+    val graph = RunnableGraph.fromGraph(GraphDSL.createGraph(updateCounter()) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
         in ~> injectError ~> transform ~> buffer.async ~> throttle ~> commit ~> sink
         ClosedShape
     })
-    val countF = graph.run()(mat)
+    val countF = graph.run()
     Await.result(countF, awaitMax)
     eventually { buffer.queue shouldBe 'closed }
     resumeGraphAndDoAssertion(recordCount.get, failTestAt)
@@ -222,33 +220,32 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
     implicit val util = new StreamSpecUtil[T, Event[T]]
     import util._
 
-    val mat = ActorMaterializer()
     val firstGroup = List(createElement(0), createElement(1), createElement(2))
     val secondGroup = List(createElement(3), createElement(4), createElement(5))
 
     {
       // first, run some elements through the buffer, but ensure none are committed
-      val (collector, collectorSink) = Sink.seq[Event[T]].preMaterialize()(mat)
+      val (collector, collectorSink) = Sink.seq[Event[T]].preMaterialize()
       val buffer = PersistentBufferAtLeastOnce[T](config)
 
       Source(firstGroup)
         .via(buffer)
         .filter(_ => false)
         .via(buffer.commit)
-        .runWith(collectorSink)(mat)
+        .runWith(collectorSink)
 
       Await.result(collector, awaitMax) shouldBe Seq.empty
     }
 
     {
       // next, run some more elements, and ensure that all six are properly read
-      val (collector, collectorSink) = Sink.seq[Event[T]].preMaterialize()(mat)
+      val (collector, collectorSink) = Sink.seq[Event[T]].preMaterialize()
       val buffer = PersistentBufferAtLeastOnce[T](config)
 
       Source(secondGroup)
         .via(buffer)
         .via(buffer.commit)
-        .runWith(collectorSink)(mat)
+        .runWith(collectorSink)
 
       Await.result(collector, awaitMax).map(_.entry) shouldBe firstGroup ++ secondGroup
     }
@@ -256,14 +253,14 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
     {
       // finally, read from the buffer again, and ensure none are read given all committed
 
-      val (collector, collectorSink) = Sink.seq[Event[T]].preMaterialize()(mat)
+      val (collector, collectorSink) = Sink.seq[Event[T]].preMaterialize()
       val buffer = PersistentBufferAtLeastOnce[T](config)
 
       Source
         .empty
         .via(buffer)
         .via(buffer.commit)
-        .runWith(collectorSink)(mat)
+        .runWith(collectorSink)
 
       Await.result(collector, awaitMax).map(_.entry) shouldBe Seq.empty
     }
@@ -275,7 +272,7 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
     import util._
     val buffer = PersistentBufferAtLeastOnce[T](config)
     val graph = RunnableGraph.fromGraph(
-      GraphDSL.create(flowCounter, head)((_,_)) { implicit builder =>
+      GraphDSL.createGraph(flowCounter, head)((_,_)) { implicit builder =>
         (sink, first) =>
           import GraphDSL.Implicits._
           val commit = buffer.commit[T] // makes a dummy flow if autocommit is set to false
@@ -284,7 +281,7 @@ abstract class PersistentBufferAtLeastOnceSpec[T: ClassTag, Q <: QueueSerializer
           bc ~> first
           ClosedShape
       })
-    val (countF, firstF) = graph.run()(ActorMaterializer())
+    val (countF, firstF) = graph.run()
     val afterRecovery = Await.result(countF, awaitMax)
     val first = Await.result(firstF, awaitMax)
     eventually { buffer.queue shouldBe 'closed }

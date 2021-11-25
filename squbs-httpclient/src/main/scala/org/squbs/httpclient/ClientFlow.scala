@@ -274,7 +274,7 @@ object ClientFlow {
         }
         val clientConnectionFlowWithPipeline = pipeline.joinMat(pipelineAdapter(clientConnectionFlow))(Keep.right)
 
-        Flow.fromGraph( GraphDSL.create(clientConnectionFlowWithPipeline) { implicit b =>
+        Flow.fromGraph( GraphDSL.createGraph(clientConnectionFlowWithPipeline) { implicit b =>
           clientConnectionFlowWithPipeline =>
           import GraphDSL.Implicits._
 
@@ -295,7 +295,7 @@ object ClientFlow {
             (tryHttpResponse, rc.attribute[T](AkkaHttpClientCustomContext).get)
         }
 
-        Flow.fromGraph( GraphDSL.create(clientConnectionFlow) { implicit b => clientConnectionFlow =>
+        Flow.fromGraph( GraphDSL.createGraph(clientConnectionFlow) { implicit b => clientConnectionFlow =>
           import GraphDSL.Implicits._
 
           val toRequestContext = b.add(customContextToRequestContext)
