@@ -27,6 +27,8 @@ import akka.stream.testkit.TestSubscriber;
 import akka.stream.testkit.javadsl.TestSink;
 import akka.stream.testkit.javadsl.TestSource;
 
+import java.util.function.Supplier;
+
 public class UnicomplexActorPublisherJ {
     private final ActorSystem system;
 
@@ -37,7 +39,7 @@ public class UnicomplexActorPublisherJ {
         materializer = ActorMaterializer.create(system);
     }
 
-    public Pair<Pair<TestPublisher.Probe<String>, ActorRef>, TestSubscriber.Probe<String>> runnableGraph() {
+    public Pair<Pair<TestPublisher.Probe<String>, Supplier<ActorRef>>, TestSubscriber.Probe<String>> runnableGraph() {
         Source<String, TestPublisher.Probe<String>> in = TestSource.<String>probe(system);
         return new LifecycleManaged<String, TestPublisher.Probe<String>>().source(in).toMat(TestSink.<String>probe(system), Keep.both()).run(materializer);
     }

@@ -30,7 +30,7 @@ object ProperShutdownStream {
   val genCount = new AtomicLong(0L)
 }
 
-class ProperShutdownStream extends PerpetualStream[(ActorRef, Future[Long])] {
+class ProperShutdownStream extends PerpetualStream[(() => ActorRef, Future[Long])] {
   import ProperShutdownStream._
   import org.squbs.unicomplex.Timeouts._
 
@@ -69,7 +69,7 @@ class ProperShutdownStream extends PerpetualStream[(ActorRef, Future[Long])] {
     super.shutdown()
     import context.dispatcher
     val (actorRef, fCount) = matValue
-    val fStopped = gracefulStop(actorRef, awaitMax)
+    val fStopped = gracefulStop(actorRef(), awaitMax)
     for { _ <- fCount; _ <- fStopped } yield Done
   }
 }

@@ -64,7 +64,7 @@ final class UnicomplexActorPublisherSpec extends TestKit(UnicomplexActorPublishe
     // re-send Active to unicomplex trigger, flow continues
     sub.request(2)
     sub.expectNoMessage(remainingOrDefault)
-    pubTrigger ! SystemState
+    pubTrigger() ! SystemState
     pubIn.sendNext("3")
     pubIn.sendNext("4")
     sub.expectNext("3", "4")

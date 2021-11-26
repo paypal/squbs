@@ -23,33 +23,42 @@ import akka.stream.stage.{GraphStageLogic, GraphStageWithMaterializedValue, OutH
 import org.squbs.stream.TriggerEvent._
 import org.squbs.unicomplex.{Active, Stopping, _}
 
+import java.util.function.Supplier
+import scala.jdk.FunctionConverters._
+
 final class LifecycleEventSource
-  extends GraphStageWithMaterializedValue[SourceShape[LifecycleState], ActorRef] {
+  extends GraphStageWithMaterializedValue[SourceShape[LifecycleState], () => ActorRef] {
 
   val out: Outlet[LifecycleState] = Outlet("lifecycleEventSource.out")
 
   override def shape: SourceShape[LifecycleState] = SourceShape.of(out)
 
   trait LifecycleActorAccessible {
-    def lifecycleActor: ActorRef
+    def lifecycleActor(): ActorRef
   }
 
-  override def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, ActorRef) = {
+  override def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, () => ActorRef) = {
     val stage = new GraphStageLogic(shape) with StageLogging with LifecycleActorAccessible {
 
-      getStageActor(_ => ()) // Initializes an empty stageActor
-      override def lifecycleActor: ActorRef = stageActor.ref
+      private var uniActor: ActorRef = _
 
-      // Initialize the signals
-      private val uniActor = Unicomplex.get(materializer.system).uniActor
-      uniActor.tell(SystemState, stageActor.ref)
-      uniActor.tell(ObtainLifecycleEvents(), stageActor.ref)
+      override def lifecycleActor(): ActorRef = stageActor.ref
 
-      // Set the `receive` for stageActor - it can't be set during initialization due to initialization dependencies.
-      stageActor.become {
-        case (_, state: LifecycleState) =>
-          if (isAvailable(out)) push(out, state) else log.debug("Dropping state as there is no demand.")
-        case (_, SystemState) => uniActor.tell(SystemState, stageActor.ref)
+      override def preStart(): Unit = {
+        uniActor = Unicomplex.get(materializer.system).uniActor
+
+        getStageActor(_ => ()) // Initializes an empty stageActor
+        // Set the `receive` for stageActor - it can't be set during initialization due to initialization dependencies.
+
+        stageActor.become {
+          case (_, state: LifecycleState) =>
+            if (isAvailable(out)) push(out, state) else log.debug("Dropping state as there is no demand.")
+          case (_, SystemState) => uniActor.tell(SystemState, stageActor.ref)
+        }
+
+        // Initialize the signals
+        uniActor.tell(SystemState, stageActor.ref)
+        uniActor.tell(ObtainLifecycleEvents(), stageActor.ref)
       }
 
       setHandler(out, new OutHandler {
@@ -57,7 +66,7 @@ final class LifecycleEventSource
       })
     }
 
-    (stage, stage.lifecycleActor)
+    (stage, stage.lifecycleActor _)
   }
 }
 
@@ -66,28 +75,29 @@ object LifecycleEventSource {
    * Creates a new Source for obtaining lifecycle events.
    * @return A new [[Source]] emitting [[LifecycleState]] events.
    */
-  def apply(): Source[LifecycleState, ActorRef] = Source.fromGraph(new LifecycleEventSource)
+  def apply(): Source[LifecycleState, () => ActorRef] = Source.fromGraph(new LifecycleEventSource)
 
   /**
    * Java API. Creates a new Source for obtaining lifecycle events.
    * @return A new [[JSource]] emitting [[LifecycleState]] events.
    */
-  def create(): JSource[LifecycleState, ActorRef] = JSource.fromGraph(new LifecycleEventSource)
+  def create(): JSource[LifecycleState, Supplier[ActorRef]] =
+    JSource.fromGraph(new LifecycleEventSource).mapMaterializedValue(_.asJava)
 }
 
 case class LifecycleManaged[T, M]() {
-  val trigger: Source[TriggerEvent, ActorRef] = LifecycleEventSource()
+  val trigger: Source[TriggerEvent, () => ActorRef] = LifecycleEventSource()
     .collect {
       case Active => ENABLE
       case Stopping => DISABLE
     }
 
-  val source: Source[T, M] => Source[T, (M, ActorRef)] =
+  val source: Source[T, M] => Source[T, (M, () => ActorRef)] =
     (in: Source[T, M]) => new Trigger(eagerComplete = true).source(in, trigger)
 
   // for Java
-  def source(in: javadsl.Source[T, M]): javadsl.Source[T, akka.japi.Pair[M, ActorRef]] = source(in.asScala)
+  def source(in: javadsl.Source[T, M]): javadsl.Source[T, akka.japi.Pair[M, Supplier[ActorRef]]] = source(in.asScala)
     .mapMaterializedValue {
-      case (m1, m2) => akka.japi.Pair(m1, m2)
+      case (m1, m2) => akka.japi.Pair(m1, m2.asJava)
     }.asJava
 }
