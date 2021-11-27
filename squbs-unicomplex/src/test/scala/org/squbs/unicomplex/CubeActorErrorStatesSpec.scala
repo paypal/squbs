@@ -69,7 +69,7 @@ class CubeActorErrorStatesSpec extends TestKit(CubeActorErrorStatesSpec.boot.act
     Http().singleRequest(HttpRequest(uri = Uri(s"http://127.0.0.1:$port/test1?msg=1")))
     Thread.sleep(100)
     Http().singleRequest(HttpRequest(uri = Uri(s"http://127.0.0.1:$port/test1?msg=2")))
-    // Thread.sleep(1000) // wait the agent get refreshed
+    Thread.sleep(1000) // wait the agent get refreshed
     import org.squbs.unicomplex.JMX._
     val errorStates = get(new ObjectName(prefix(system) + cubeStateName + "CubeActorErrorStates"), "ActorErrorStates")
       .asInstanceOf[Array[CompositeData]]

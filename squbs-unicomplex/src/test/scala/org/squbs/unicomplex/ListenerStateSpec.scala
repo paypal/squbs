@@ -117,7 +117,9 @@ class ListenerStateSpec extends TestKit(ListenerStateSpec.boot.actorSystem) with
 
     defaultListener.get("state") should be("Success")
     portConflictListener.get("state") should be("Failed")
-    portConflictListener.get("error").asInstanceOf[String] should endWith("Bind failed because of java.net.BindException: Address already in use")
+    val errMsg = portConflictListener.get("error").asInstanceOf[String]
+    errMsg should include ("Bind failed because of java.net.BindException:")
+    errMsg should include ("Address already in use")
     sslContextNotExistListener.get("state") should be("Failed")
     sslContextNotExistListener.get("error").asInstanceOf[String] should startWith("java.lang.ClassNotFoundException: org.squbs.unicomplex.IDoNotExist")
   }

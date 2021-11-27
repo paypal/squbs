@@ -8,6 +8,7 @@ import akka.stream.ClosedShape;
 import akka.stream.FlowShape;
 import akka.stream.ThrottleMode;
 import akka.stream.javadsl.*;
+import org.squbs.lifecycle.GracefulStop;
 import org.squbs.unicomplex.Timeouts;
 import org.squbs.util.DurationConverters;
 
@@ -74,8 +75,8 @@ public class ProperShutdownStreamJ extends AbstractPerpetualStream<Pair<Supplier
         super.shutdown();
         Supplier<ActorRef> actorRefSupplier = matValue().first();
         CompletionStage<Long> fCount = matValue().second();
-        CompletionStage<Boolean> fStopped =
-                gracefulStop(actorRefSupplier.get(), DurationConverters.toJava(Timeouts.awaitMax()));
+        CompletionStage<Boolean> fStopped = gracefulStop(actorRefSupplier.get(),
+                DurationConverters.toJava(Timeouts.awaitMax()), GracefulStop.getInstance());
         return fCount.thenCombine(fStopped, (count, stopped) -> Done.getInstance());
     }
 }

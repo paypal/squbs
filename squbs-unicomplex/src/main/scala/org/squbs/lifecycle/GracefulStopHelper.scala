@@ -30,7 +30,9 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-case object GracefulStop
+case object GracefulStop {
+  def getInstance: GracefulStop.type = this
+}
 
 /**
  * The trait provides some helper methods to support graceful stop of an actor
