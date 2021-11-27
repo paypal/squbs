@@ -338,8 +338,8 @@ class CircuitBreakerSpec
     expectMsg(Open)
     ref2 ! "a"
     ref2 ! "a"
-    ref1 ! akka.actor.Status.Success("a")
-    ref2 ! akka.actor.Status.Success("a")
+    ref1 ! Done
+    ref2 ! Done
 
     assertFuture(result2) { r2 =>
       val expected = circuitBreakerOpenFailure :: circuitBreakerOpenFailure :: Nil

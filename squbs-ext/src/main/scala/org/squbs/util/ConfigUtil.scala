@@ -27,17 +27,9 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 import scala.util.matching.Regex
 import scala.reflect.runtime.universe._
+import scala.util.control.NonFatal
 
 object ConfigUtil extends LazyLogging {
-
-  private val StringTag = typeTag[String]
-  private val StringListTag = typeTag[Seq[String]]
-  private val ConfigTag = typeTag[Config]
-  private val ConfigListTag = typeTag[Seq[Config]]
-  private val RegexTag = typeTag[Regex]
-  private val ConfigMemorySizeTag = typeTag[ConfigMemorySize]
-  private val DurationTag = typeTag[Duration]
-  private val FiniteDurationTag = typeTag[FiniteDuration]
 
   @implicitNotFound("Cannot find `TypedGetter[T]` for accessing requested type from config")
   trait TypedGetter[T] {
@@ -76,7 +68,12 @@ object ConfigUtil extends LazyLogging {
     (config: Config, path: String) => config.getDuration(path).toScala
   implicit val fdListGetter: TypedGetter[Seq[FiniteDuration]] =
     (config: Config, path: String) => config.getDurationList(path).asScala.toSeq.map(_.toScala)
-  implicit val durGetter: TypedGetter[Duration] = (config: Config, path: String) => config.getDuration(path).toScala
+  implicit val durGetter: TypedGetter[Duration] = (config: Config, path: String) =>
+    try {
+      config.getDuration(path).toScala
+    } catch {
+      case e: ConfigException.BadValue if config.getString(path) == "Inf" => Duration.Inf
+    }
   implicit val durListGetter: TypedGetter[Seq[Duration]] =
     (config: Config, path: String) => config.getDurationList(path).asScala.toSeq.map(_.toScala)
   // TODO: Check the next two actually work and do not interfere.

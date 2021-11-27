@@ -190,7 +190,7 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
     it("should get Failure(ConfigException.WrongType) for infinite duration by \"getTry\"") {
       the [ConfigException.WrongType] thrownBy
         config.getTry[FiniteDuration]("testConfig.timeout-inf").get should have message
-      s"${config.origin.description}: Path: testConfig.timeout-inf, value Inf is not a scala.concurrent.duration.FiniteDuration"
+      s"${config.origin.description}: Path: testConfig.timeout-inf, value Inf is not the correct type"
     }
 
     it ("should get a proper Regex for existing value") {
