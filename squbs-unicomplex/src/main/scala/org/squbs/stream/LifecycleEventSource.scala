@@ -20,6 +20,7 @@ import akka.stream._
 import akka.stream.scaladsl.Source
 import akka.stream.javadsl.{Source => JSource}
 import akka.stream.stage.{GraphStageLogic, GraphStageWithMaterializedValue, OutHandler, StageLogging}
+import org.squbs.lifecycle.GracefulStop
 import org.squbs.stream.TriggerEvent._
 import org.squbs.unicomplex.{Active, Stopping, _}
 
@@ -54,6 +55,7 @@ final class LifecycleEventSource
           case (_, state: LifecycleState) =>
             if (isAvailable(out)) push(out, state) else log.debug("Dropping state as there is no demand.")
           case (_, SystemState) => uniActor.tell(SystemState, stageActor.ref)
+          case (_, GracefulStop) => complete(out)
         }
 
         // Initialize the signals

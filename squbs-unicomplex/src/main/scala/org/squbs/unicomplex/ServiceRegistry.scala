@@ -231,13 +231,13 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
         val finalRoute = PathDirectives.pathPrefix(PathMatchers.separateOnSlashes(webContext)) {routeDef.route}
         Success((materializer: Materializer) => {
           implicit val mat = materializer
-          RequestContextFlow(finalRoute) // TODO: Implicits changed.
+          RequestContextFlow(Route.seal(finalRoute))
         })
       } else {
         // don't append pathPrefix if webContext is empty, won't be null due to the top check
         Success((materializer: Materializer) => {
           implicit val mat = materializer
-          RequestContextFlow(routeDef.route) // TODO: Implicits changed.
+          RequestContextFlow(Route.seal(routeDef.route))
         })
       }
 
