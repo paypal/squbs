@@ -17,7 +17,7 @@ package org.squbs.util
 
 import java.net.{Inet4Address, NetworkInterface}
 import com.typesafe.config.ConfigException.{Missing, WrongType}
-import com.typesafe.config.{Config, ConfigException, ConfigMemorySize, ConfigObject}
+import com.typesafe.config.{Config, ConfigException, ConfigFactory, ConfigMemorySize, ConfigObject}
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.annotation.implicitNotFound
@@ -72,11 +72,22 @@ object ConfigUtil extends LazyLogging {
     try {
       config.getDuration(path).toScala
     } catch {
-      case e: ConfigException.BadValue if config.getString(path) == "Inf" => Duration.Inf
+      case _: ConfigException.BadValue if config.getString(path) == "Inf" => Duration.Inf
     }
-  implicit val durListGetter: TypedGetter[Seq[Duration]] =
-    (config: Config, path: String) => config.getDurationList(path).asScala.toSeq.map(_.toScala)
-  // TODO: Check the next two actually work and do not interfere.
+  implicit val durListGetter: TypedGetter[Seq[Duration]] = (config: Config, path: String) =>
+    try {
+      config.getDurationList(path).asScala.toSeq.map(_.toScala)
+    } catch { // Since 'Inf' is not implicitly supported, dealing with it in a list is a little messy.
+      case _: ConfigException.BadValue =>
+        config.getStringList(path).asScala.toSeq.map { elem =>
+          val tmpConfig = ConfigFactory.parseString(s"some-key = $elem")
+          try
+            tmpConfig.getDuration("some-key").toScala
+          catch {
+            case _: ConfigException.BadValue if tmpConfig.getString("some-key") == "Inf" => Duration.Inf
+          }
+        }
+    }
   implicit val anyRefGetter: TypedGetter[AnyRef] = (config: Config, path: String) => config.getAnyRef(path)
   implicit val anyRefListGetter: TypedGetter[Seq[_]] =
     (config: Config, path: String) => config.getAnyRefList(path).asScala.toSeq

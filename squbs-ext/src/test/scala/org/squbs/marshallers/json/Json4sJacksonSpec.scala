@@ -21,6 +21,7 @@ import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.{HttpEntity, MediaTypes, MessageEntity}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import org.json4s._
+import org.json4s.jackson.Serialization
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -59,7 +60,7 @@ class Json4sJacksonSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterA
   }
 
   "FullTypeHints Example (inheritance)" should "have correct behaviour of read/write" in {
-    implicit val formats = DefaultFormats.withHints(FullTypeHints(classOf[Dog] :: classOf[Fish] :: Nil))
+    implicit val formats: Formats = Serialization.formats(FullTypeHints(classOf[Dog] :: classOf[Fish] :: Nil))
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
     val entity = HttpEntity(MediaTypes.`application/json`,
       """{"animals":[{"jsonClass":"org.squbs.marshallers.json.Dog","name":"lucky"},""" +
@@ -69,11 +70,8 @@ class Json4sJacksonSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterA
   }
 
   "Custom Example (inheritance)" should "have correct behaviour of read/write" in {
-    implicit val formats = new Formats {
-      val dateFormat = DefaultFormats.lossless.dateFormat
-      override val typeHints = FullTypeHints(classOf[Fish] :: classOf[Dog] :: Nil)
-      // override val typeHintFieldName = "$type$"
-    }
+    implicit val format: Formats = Serialization.formats(FullTypeHints(List(classOf[Dog], classOf[Fish]),
+      typeHintFieldName = "$type$"))
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
     val entity = HttpEntity(MediaTypes.`application/json`,
       """{"animals":[{"$type$":"org.squbs.marshallers.json.Dog","name":"lucky"},""" +

@@ -50,6 +50,7 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       |  ]
       |  timeout = 20s
       |  timeout-inf = Inf
+      |  timeout-list-with-inf = [ 10ms, 5m, Inf, 2h ]
       |  mem-size = 4m
       |  correct-regex = "[0-9]"
       |  incorrect-regex = "("
@@ -178,6 +179,10 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       config.getTry[Duration]("testConfig.timeout-inf") shouldBe Success(Duration.Inf)
     }
 
+    it("should get duration list with some infinite elements by \"getTry\"") {
+      config.getTry[Seq[Duration]]("testConfig.timeout-list-with-inf") shouldBe
+        Success(Seq(10.millis, 5.minutes, Duration.Inf, 2.hours))
+    }
 
     it("should get finite duration for existing finite duration by \"getTry\"") {
       config.getTry[FiniteDuration]("testConfig.timeout").get shouldEqual Duration.create(20, SECONDS)
