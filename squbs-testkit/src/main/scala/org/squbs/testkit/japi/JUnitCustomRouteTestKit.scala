@@ -36,7 +36,6 @@ abstract class JUnitCustomRouteTestKit(val boot: UnicomplexBoot) extends {
   @Rule
   override protected def systemResource: ActorSystemResource = _systemResource
 
-
   def this() = this(SCustomTestKit.boot())
 
   def this(config: Config) = this(SCustomTestKit.boot(config = Option(config)))

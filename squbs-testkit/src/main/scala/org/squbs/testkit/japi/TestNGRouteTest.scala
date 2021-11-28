@@ -36,8 +36,8 @@ import scala.util.control.NonFatal
   */
 trait TestNGRouteTestBase extends RouteTest with RouteDefinitionTest with TestNGSuiteLike  {
   protected def systemResource: SystemResource
-  implicit def system: ActorSystem = systemResource.system
-  implicit def materializer: Materializer = implicitly
+  override implicit def system: ActorSystem = systemResource.system
+  override implicit def materializer: Materializer = Materializer.matFromSystem
 
   override protected def createTestRouteResultAsync(request: HttpRequest, result: Future[RouteResult]):
   TestRouteResult =
