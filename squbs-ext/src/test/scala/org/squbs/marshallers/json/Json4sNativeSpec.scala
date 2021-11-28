@@ -70,8 +70,8 @@ class Json4sNativeSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAl
   }
 
   "Custom Example (inheritance)" should "have correct behaviour of read/write" in {
-    implicit val format: Formats = Serialization.formats(FullTypeHints(List(classOf[Dog], classOf[Fish]),
-      typeHintFieldName = "$type$"))
+    implicit val format: Formats = Serialization.formats(
+      FullTypeHints(List(classOf[Dog], classOf[Fish]), typeHintFieldName = "$type$"))
     val animals = Animals(Dog("lucky") :: Fish(3.4) :: Nil)
     val entity = HttpEntity(MediaTypes.`application/json`,
       """{"animals":[{"$type$":"org.squbs.marshallers.json.Dog","name":"lucky"},""" +

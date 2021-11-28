@@ -27,8 +27,9 @@ import org.scalatest.matchers.should.Matchers
 import org.squbs.testkit.Timeouts._
 
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.{Await, Future, Promise}
 import scala.reflect._
+import scala.util.control.NonFatal
 
 abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manifest]
    (typeName: String) extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
@@ -194,8 +195,8 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
 
     val (sink1F, sink2F) = graph.run()
 
-    Await.result(sink1F.failed, awaitMax) shouldBe an[NumberFormatException]
-    Await.result(sink2F, awaitMax) shouldBe Done
+    Await.result(sink1F.failed, awaitMax) shouldBe a[NumberFormatException]
+    Await.ready(sink2F.recover { case _ => Done}, awaitMax) // Since Akka 2.6 if one branch fails the other fails, too.
 
     val beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
     val restartFrom = inCounter.incrementAndGet()
