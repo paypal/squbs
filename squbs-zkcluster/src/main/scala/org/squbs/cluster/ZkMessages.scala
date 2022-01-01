@@ -19,33 +19,35 @@ import akka.actor.Address
 import akka.util.ByteString
 import org.apache.curator.framework.CuratorFramework
 
+/** Marker trait for all ZkMessages for easy serialization */
+sealed trait ZkMessages
 /**
  * request for leader identity of the cluster
  */
-case object ZkQueryLeadership
+case object ZkQueryLeadership extends ZkMessages
 /**
  * request for members identities of the cluster
  */
-case object ZkQueryMembership
+case object ZkQueryMembership extends ZkMessages
 /**
  * subscribe to zkclient updates
  */
-case object ZkMonitorClient
+case object ZkMonitorClient extends ZkMessages
 /**
  * response for leader identity query
  * @param address
  */
-case class ZkLeadership(address: Address)
+case class ZkLeadership(address: Address) extends ZkMessages
 /**
  * response for members identities query
  * @param members
  */
-case class ZkMembership(members: Set[Address])
+case class ZkMembership(members: Set[Address]) extends ZkMessages
 /**
  * event when zkclient updates
  * @param zkClient
  */
-case class ZkClientUpdated(zkClient:CuratorFramework)
+case class ZkClientUpdated(zkClient:CuratorFramework) extends ZkMessages
 /**
  * request for partition members
  * @param partitionKey
@@ -57,23 +59,23 @@ case class ZkClientUpdated(zkClient:CuratorFramework)
 case class ZkQueryPartition(partitionKey:ByteString,
                             notification:Option[Any] = None,
                             expectedSize:Option[Int] = None,
-                            props:Array[Byte] = Array[Byte](),
-                            members:Set[Address] = Set.empty) {
+                            props:Array[Byte] = Array.empty,
+                            members:Set[Address] = Set.empty) extends ZkMessages {
   if (expectedSize.nonEmpty) require(expectedSize.get > 0)
 }
 /**
  * request to discontinue a partition
  * @param partitionKey
  */
-case class ZkRemovePartition(partitionKey:ByteString)
+case class ZkRemovePartition(partitionKey:ByteString) extends ZkMessages
 /**
  * subscribe to partition updates
  */
-case object ZkMonitorPartition
+case object ZkMonitorPartition extends ZkMessages
 /**
  * stop subscription to a partition's updates
  */
-case object ZkStopMonitorPartition
+case object ZkStopMonitorPartition extends ZkMessages
 /**
  * event of partition update
  * @param partitionKey
@@ -83,12 +85,12 @@ case object ZkStopMonitorPartition
 case class ZkPartitionDiff(partitionKey: ByteString,
                            onBoardMembers: Set[Address],
                            dropOffMembers: Set[Address],
-                           props: Array[Byte] = Array.empty)
+                           props: Array[Byte] = Array.empty) extends ZkMessages
 /**
  * event of a partition removal
  * @param partitionKey
  */
-case class ZkPartitionRemoval(partitionKey:ByteString)
+case class ZkPartitionRemoval(partitionKey:ByteString) extends ZkMessages
 /**
  * response for partition query
  * @param partitionKey
@@ -100,27 +102,28 @@ case class ZkPartition(partitionKey:ByteString,
                        members: Set[Address], //who have been assigned to be part of this partition
                        zkPath:String, //where the partition data is stored
                        notification:Option[Any])//optional notification when the query was issued
+  extends ZkMessages
 /**
  * response for partition query
  * @param partitionKey
  */
-case class ZkPartitionNotFound(partitionKey: ByteString)
+case class ZkPartitionNotFound(partitionKey: ByteString) extends ZkMessages
 /**
  * request for VM's enrolled partitions
  * @param address
  */
-case class ZkListPartitions(address: Address)
+case class ZkListPartitions(address: Address) extends ZkMessages
 /**
  * response for list partitions query
  * @param partitionKeys
  */
-case class ZkPartitions(partitionKeys:Seq[ByteString])
+case class ZkPartitions(partitionKeys:Seq[ByteString]) extends ZkMessages
 
 /**
  * Lifecycle events corresponding to CONNECTED, RECONNECTED, SUSPENDED, LOST state in Curator Framework
  */
-case object ZkConnected
-case object ZkReconnected
-case object ZkSuspended
-case object ZkLost
-case class ZkConfigChanged(connStr: String)
+case object ZkConnected extends ZkMessages
+case object ZkReconnected extends ZkMessages
+case object ZkSuspended extends ZkMessages
+case object ZkLost extends ZkMessages
+case class ZkConfigChanged(connStr: String) extends ZkMessages

@@ -17,6 +17,7 @@
 object Versions {
   val akkaV = "2.6.17"
   val akkaHttpV = "10.2.6"
+  val akkaKryoV = "2.3.0"
   val scalaCompatV = "2.6.0"
   val scalatestV = "3.2.3"
   val scalatestplusV = "3.2.3.0"

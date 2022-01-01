@@ -193,5 +193,5 @@ object ZkCluster extends ExtensionId[ZkCluster] with ExtensionIdProvider with La
     )(system)
   }
   private[cluster] def external(system:ExtendedActorSystem):Address =
-    Address("akka.tcp", system.name, InetAddress.getLocalHost.getHostAddress, system.provider.getDefaultAddress.port.getOrElse(DEFAULT_REMOTE_PORT))
+    Address("akka", system.name, InetAddress.getLocalHost.getHostAddress, system.provider.getDefaultAddress.port.getOrElse(DEFAULT_REMOTE_PORT))
 }
