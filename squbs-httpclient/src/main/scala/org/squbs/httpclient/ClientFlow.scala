@@ -17,6 +17,7 @@
 package org.squbs.httpclient
 
 import akka.actor.ActorSystem
+import akka.event.Logging
 import akka.http.javadsl.{model => jm}
 import akka.http.org.squbs.util.JavaConverters._
 import akka.http.scaladsl.Http.HostConnectionPool
@@ -110,7 +111,8 @@ object ClientFlow {
     toJava[T](apply[T](name, cCtx, sSettings, toScala(circuitBreakerSettings), env)(system, mat))
   }
 
-  private def toScala[T](circuitBreakerSettings: Optional[japi.CircuitBreakerSettings[jm.HttpRequest, jm.HttpResponse, T]]) = {
+  private def toScala[T](
+      circuitBreakerSettings: Optional[japi.CircuitBreakerSettings[jm.HttpRequest, jm.HttpResponse, T]]) = {
     OptionConverters.toScala(circuitBreakerSettings).map(_.toScala).map { sCircuitBreakerSettings =>
       CircuitBreakerSettings[HttpRequest, HttpResponse, T](sCircuitBreakerSettings.circuitBreakerState)
         .copy(fallback = sCircuitBreakerSettings.fallback
@@ -148,13 +150,14 @@ object ClientFlow {
     }
     val clientConfigWithDefaults = clientSpecificConfig.map(_.withFallback(config)).getOrElse(config)
     val cps = settings.getOrElse {
+      val log = Logging(system, this.getClass)
       Try { HttpsProxySettings(clientConfigWithDefaults) } match {
         case Success(proxySettings) =>
-          println(s"Successfully loaded proxy settings: $proxySettings")
+          log.info("Successfully loaded proxy settings: {}", proxySettings)
           ConnectionPoolSettings(clientConfigWithDefaults).withTransport(ClientTransport.httpsProxy(
               InetSocketAddress.createUnresolved(proxySettings.host, proxySettings.port)))
-        case _ =>
-          println("Error loading proxy settings")
+        case Failure(e) =>
+          log.error(e, "Did not load proxy settings. Falling back to non-proxy.")
           ConnectionPoolSettings(clientConfigWithDefaults)
       }
     }
