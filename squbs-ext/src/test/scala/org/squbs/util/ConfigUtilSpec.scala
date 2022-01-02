@@ -250,6 +250,10 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       config.getOption[Int]("testConfig.str") shouldBe None
     }
 
+    it("should fail compile and type check for calling \"getOption\" with unexpected type") {
+      "config.getOption[Unit](\"testConfig.str\")" shouldNot typeCheck
+    }
+
     it("should get None for config value with failed class cast by \"getOption\"") {
       config.getOption[FiniteDuration]("testConfig.timeout-inf") shouldBe None
     }
