@@ -250,8 +250,8 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       config.getOption[Int]("testConfig.str") shouldBe None
     }
 
-    it("should fail compile and type check for calling \"getOption\" with unexpected type") {
-      "config.getOption[Unit](\"testConfig.str\")" shouldNot typeCheck
+    it("should fail compile for calling \"getOption\" with unexpected type") {
+      "config.getOption[Unit](\"testConfig.str\")" shouldNot compile
     }
 
     it("should get None for config value with failed class cast by \"getOption\"") {
@@ -270,6 +270,10 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       intercept[ConfigException.Missing](
         config.get[String]("str")
       )
+    }
+
+    it("unexpected type of existing config value should not compile or type check") {
+      "config.get[Unit](\"testConfig.str\")" shouldNot typeCheck
     }
 
     it("should throw ConfigException.WrongType exception for incorrect type of existing config value") {
