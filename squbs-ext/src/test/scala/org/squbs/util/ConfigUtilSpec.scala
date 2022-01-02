@@ -282,7 +282,7 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       config.getTry[Int]("testConfig.str").failed.get shouldBe a [ConfigException.WrongType]
     }
 
-    it ("should get provide at least one IPv$ address for any host") {
+    it ("should get provide at least one IPv4 address for any host") {
       ipv4 should fullyMatch regex """\d+\.\d+\.\d+\.\d+"""
       println(ipv4)
     }
