@@ -501,7 +501,7 @@ The HTTP `FlowDefinition` can be connected to the `PerpetualStream` as follows b
 ```java
 class HttpFlowWithMergeHub extends FlowToPerpetualStream {
 
-    private final Materializer mat = ActorMaterializer.create(context().system());
+    private final Materializer mat = Materializer.createMaterializer(context().system());
     private final MarshalUnmarshal mu = new MarshalUnmarshal(context().system().dispatcher(), mat);
 
     @Override

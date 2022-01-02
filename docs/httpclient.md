@@ -50,7 +50,7 @@ Also, similar to the example at [Akka HTTP Host-Level Client-Side API](http://do
 
 ```java
 final ActorSystem system = ActorSystem.create();
-final ActorMaterializer mat = ActorMaterializer.create(system);
+final Materializer mat = Materializer.createMaterializer(system);
 
 final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostConnectionPool>
     clientFlow = ClientFlow.create("sample", system, mat); // Only this line is specific to squbs
