@@ -31,7 +31,7 @@ implicit val serializer = QueueSerializer[ByteString]()
 val source = Source(1 to 1000000).map { n => ByteString(s"Hello $n") }
 val buffer = new PersistentBuffer[ByteString](new File("/tmp/myqueue"))
 val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
-val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit builder =>
+val streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(counter) { implicit builder =>
   sink =>
     import GraphDSL.Implicits._
     source ~> buffer.async ~> sink
@@ -70,7 +70,7 @@ val buffer = new PersistentBufferAtLeastOnce[ByteString](config)
 val commit = buffer.commit[ByteString]
 val flowSink = // do some transformation or a sink flow with expected failure
 val counter = Flow[Any].map( _ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
-val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit builder =>
+val streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(counter) { implicit builder =>
   sink =>
     import GraphDSL.Implicits._
     // ensures that records are reprocessed when something fails at tranform flow
@@ -217,7 +217,7 @@ implicit val serializer = QueueSerializer[ByteString]()
 val in = Source(1 to 100000)
 val flowCounter = Flow[Any].map(_ => 1L).reduce(_ + _).toMat(Sink.head)(Keep.right)
 
-val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
+val streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         val buffer = new BroadcastBufferAtLeastOnce[ByteString](config)

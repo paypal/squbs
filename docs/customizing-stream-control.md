@@ -29,7 +29,9 @@ final Source inSource = <your-original-source>
 final Source aggregatedSource = new LifecycleManaged().source(inSource);
 ```
 
-The resulting source will be an aggregated source materialize to a `(T, ActorRef)` where `T` is the materialized type of `inSource` and `ActorRef` is the materialized type of the trigger actor which receives events from the Unicomplex, the squbs container.
+In the Scala API, the resulting source will be an aggregated source materialize to a `(M, () => ActorRef)` where `M` is the materialized type of `inSource` and `() => ActorRef` is the materialized type of the function for accessing the trigger actor which receives events from the Unicomplex, the squbs container.
+
+In the Java API, the resulting source will be an aggregated source materialize to a `akka.japi.Pair<M, Supplier<ActorRef>>` where `M` is the materialized type of `inSource` and `Supplier<ActorRef>` is the materialized type of the function for accessing the trigger actor. Calling the `get()` method on the `Supplier` allows access to the `ActorRef`. This `ActorRef` receives events from the Unicomplex, the squbs container.
 
 The aggregated source does not emit from original source until lifecycle becomes `Active`, and stop emitting element and shuts down the stream after lifecycle state becomes `Stopping`.
 
@@ -71,7 +73,7 @@ final Source aggregatedSource = new Trigger(false).source(inSource, trigger);
 ```
 
 ## Custom Lifecycle Event(s) for Trigger
-If you want to respond to more lifecycle events beyond `Active` and `Stopping`, for example you want `Failed` to also stop the flow, you can modify the lifecylce event mapping.
+If you want to respond to more lifecycle events beyond `Active` and `Stopping`, for example you want `Failed` to also stop the flow, you can modify the lifecycle event mapping.
 
 ##### Scala
 

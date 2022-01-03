@@ -198,7 +198,7 @@ An example use case for this functionality is when `Timeout` is used with Akka H
 val akkaHttpDiscard = (response: HttpResponse) => response.discardEntityBytes()
 
 val settings =
-  TimeoutSettings[HttpRequest, HttpResponse, Context](1 second)
+  TimeoutSettings[HttpRequest, HttpResponse, Context](1.second)
     .withCleanUp(response => response.discardEntityBytes())
 
 val timeout = Timeout(settings)
@@ -210,7 +210,7 @@ final Duration duration = Duration.ofMillis(20);
 
 final TimeoutSettings settings =
     TimeoutSettings.<HttpRequest, HttpResponse, Context>create(duration)
-            .withCleanUp(httpResponse -> httpResponse.discardEntityBytes(materializer));
+            .withCleanUp(httpResponse -> httpResponse.discardEntityBytes(system));
 
 final BidiFlow<Pair<HttpRequest, UUID>, 
                Pair<HttpRequest, UUID>, 

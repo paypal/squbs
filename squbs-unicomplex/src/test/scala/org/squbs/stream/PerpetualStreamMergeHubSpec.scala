@@ -21,7 +21,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshal, Unmarshaller}
 import akka.pattern.ask
-import akka.stream.scaladsl.{Flow, MergeHub, Sink}
+import akka.stream.scaladsl.{Flow, MergeHub, RunnableGraph, Sink}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
@@ -107,7 +107,7 @@ class PerpetualStreamWithMergeHub extends PerpetualStream[Sink[MyMessage, NotUse
     *
     * @return The graph.
     */
-  override def streamGraph=
+  override def streamGraph: RunnableGraph[Sink[MyMessage, NotUsed]] =
     source.to(Sink.actorRef(myMessageStorageActor, "Done", t => Status.Failure(t)))
 
   override def receive: Receive = {
