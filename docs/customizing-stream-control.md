@@ -97,7 +97,7 @@ import static org.squbs.stream.TriggerEvent.DISABLE;
 import static org.squbs.stream.TriggerEvent.ENABLE;
 
 final Source<?, ?> inSource = <your-original-source>;
-final Source<?, ActorRef> trigger = LifecycleEventSource.create()
+final Source<?, Supplier<ActorRef>> trigger = LifecycleEventSource.create()
     .collect(new PFBuilder<Integer, TriggerEvent>()
         .matchEquals(Active.instance(), p -> ENABLE)
         .matchEquals(Stopping.instance(), p -> DISABLE)
