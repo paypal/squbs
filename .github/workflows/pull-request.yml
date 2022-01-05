@@ -1,0 +1,82 @@
+name: Pull Request
+'on':
+  # push:
+  #   branches:
+  #     - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      ACTION_JDK_VERSION: openjdk8
+      SCALA_VERSION: 2.13.7
+      #DEPLOY_TOKEN: "Em0gPbHUk/RDOXaC/Y4ddtePVv21cHltj6z5noIS3Ne3Z4OgDzxTknce4QWDjkjfeIToFPuCZiesiifWgw1eAx9xKDA4ijDe7PmMICU2nnn17YRk6bRUBFtX4bb6c0BN7PrbaQOMTbgqt19TntPyELHQ3L0btvo51wV0siF/K6uvS3oK45XRYLqThYCjvoygehGRjd6WaNqvGForKZvj652sPjwmJFhpHYpCxyoZ4LaXcLTRQBQ4M4h1UwIbd0V9Hn0AiOR8+KIqMzwrbIFrtt2vN5RoUfoZkRK2OumcsvydVbliGndr5fz+hm08tTEuwpW6dUffogvsp72Dk6rIKoDckEBwZ6M10u4ECj+Op3byVyR5/a84BQQ/RzaDFB69J1wVZnWLuMxDT5WQTLzoTJzYsDm03/c8X+ojeWsGwn9XqxKIyoHhltra1lLmRSa3TavAQWj9Lol4qvqz4l/ftMo0wTrD75JwyRzK/llwO+U5XIStXIsaXtmxxfbRSdJt8pl24s8DWQQ9ugT6RLy6/1OsFrTwToybO4oeGYhmbwwo7bwheG92bA8uC1SDm6ICnh3VbVnzbgAaxtZ/gNk6yGtNKSN50flj45nhvT0BQyzg67PwZMYlLyeLUVuMSFDWjHI+mTeV5qRvn6pq2poZ0DFzJhZE1EJDWBvmS8o6ZH0="
+    steps:
+    # - uses: jwalton/gh-find-current-pr@v1
+    #   id: findPr
+    #   with:
+    #     # Can be "open", "closed", or "all".  Defaults to "open".
+    #     state: open
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup JDK
+      uses: olafurpg/setup-scala@v10
+      with:
+        java-version: adopt@1.8.0
+    # - name: Before Install
+    # - uses: actions/checkout@v2
+    # - run: |
+    #     if [ "x${ENCRYPTION_PASSWORD}" != "x" ]; then
+    #       openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in secring.gpg.enc -out local.secring.gpg -d
+    #       openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in pubring.gpg.enc -out local.pubring.gpg -d
+    #       openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in credentials.sbt.enc -out local.credentials.sbt -d
+    #     fi
+    - name: Cache Coursier Cache
+      uses: coursier/cache-action@v6.2
+    - run: sbt ++$SCALA_VERSION -jvm-opts jvmopts clean coverage test
+    - run: sbt ++$SCALA_VERSION coverageReport
+    - run: sbt ++$SCALA_VERSION coverageAggregate
+    - run: sbt ++$SCALA_VERSION codacyCoverage
+    # - name: Cache multiple paths
+    #   uses: actions/cache@v2
+    #   with:
+    #       path: |-
+    #         $HOME/.sbt
+    #         $HOME/.ivy2
+    #       key: '${{ runner.os }}-${{ hashFiles(''TODO'') }}'
+    # - uses: actions/checkout@v2
+
+  # build:
+  #   runs-on: '${{ matrix.os }}'
+  #   strategy:
+  #     matrix:
+  #       os:
+  #         - ubuntu-18.04
+  #   steps:
+  #     - name: Cache multiple paths
+  #       uses: actions/cache@v2
+  #       with:
+  #         path: |-
+  #           $HOME/.sbt
+  #           $HOME/.ivy2
+  #         key: '${{ runner.os }}-${{ hashFiles(''TODO'') }}'
+  #     - uses: actions/checkout@v2
+  #     - run: |
+  #         if [ "x${ENCRYPTION_PASSWORD}" != "x" ]; then
+  #           openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in secring.gpg.enc -out local.secring.gpg -d
+  #           openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in pubring.gpg.enc -out local.pubring.gpg -d
+  #           openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in credentials.sbt.enc -out local.credentials.sbt -d
+  #         fi
+  #     - run: _JAVA_OPTIONS=
+  #     - run: sbt ++$TRAVIS_SCALA_VERSION -jvm-opts jvmopts clean coverage test
+  #     - run: sbt ++$TRAVIS_SCALA_VERSION coverageReport
+  #     - run: sbt ++$TRAVIS_SCALA_VERSION coverageAggregate
+  #     - run: sbt ++$TRAVIS_SCALA_VERSION codacyCoverage
+  #     - run: >
+  #         test "${TRAVIS_PULL_REQUEST}" = 'false' && test
+  #         "${TRAVIS_JDK_VERSION}" = 'openjdk8' && sbt ++$TRAVIS_SCALA_VERSION
+  #         'set credentials += Credentials("Sonatype Nexus Repository Manager",
+  #         "oss.sonatype.org", System.getenv("SONATYPE_USER"),
+  #         System.getenv("SONATYPE_PASS"))' clean publishSigned
