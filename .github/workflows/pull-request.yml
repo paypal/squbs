@@ -7,7 +7,7 @@ name: Pull Request
     branches:
       - master
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     env:
       ACTION_JDK_VERSION: openjdk8
@@ -33,9 +33,9 @@ jobs:
     #       openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in pubring.gpg.enc -out local.pubring.gpg -d
     #       openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in credentials.sbt.enc -out local.credentials.sbt -d
     #     fi
-    - name: Cache Coursier Cache
-      uses: coursier/cache-action@v6.2
-    - run: sbt ++$SCALA_VERSION -jvm-opts jvmopts clean coverage test
+    # - name: Cache Coursier Cache
+    #   uses: coursier/cache-action@v6.2
+    - run: sbt ++$SCALA_VERSION clean coverage test
     - run: sbt ++$SCALA_VERSION coverageReport
     - run: sbt ++$SCALA_VERSION coverageAggregate
     - run: sbt ++$SCALA_VERSION codacyCoverage
@@ -70,10 +70,10 @@ jobs:
   #           openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in credentials.sbt.enc -out local.credentials.sbt -d
   #         fi
   #     - run: _JAVA_OPTIONS=
-  #     - run: sbt ++$TRAVIS_SCALA_VERSION -jvm-opts jvmopts clean coverage test
-  #     - run: sbt ++$TRAVIS_SCALA_VERSION coverageReport
-  #     - run: sbt ++$TRAVIS_SCALA_VERSION coverageAggregate
-  #     - run: sbt ++$TRAVIS_SCALA_VERSION codacyCoverage
+  #     - run: sbt -J-Xms256m ++$TRAVIS_SCALA_VERSION -jvm-opts jvmopts clean coverage test
+  #     - run: sbt -J-Xms256m ++$TRAVIS_SCALA_VERSION coverageReport
+  #     - run: sbt -J-Xms256m ++$TRAVIS_SCALA_VERSION coverageAggregate
+  #     - run: sbt -J-Xms256m ++$TRAVIS_SCALA_VERSION codacyCoverage
   #     - run: >
   #         test "${TRAVIS_PULL_REQUEST}" = 'false' && test
   #         "${TRAVIS_JDK_VERSION}" = 'openjdk8' && sbt ++$TRAVIS_SCALA_VERSION
