@@ -37,7 +37,6 @@ jobs:
     - run: sbt ++$SCALA_VERSION clean coverage test
     - run: sbt ++$SCALA_VERSION coverageReport
     - run: sbt ++$SCALA_VERSION coverageAggregate
-    - run: sbt ++$SCALA_VERSION codacyCoverage
     # - name: Cache multiple paths
     #   uses: actions/cache@v2
     #   with:
