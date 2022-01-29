@@ -88,6 +88,8 @@ import scala.language.higherKinds
   * in a batch within a single `execute()` and it may run
   * `execute()` either immediately or asynchronously.
   */
+@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+  since = "0.15.0")
 trait OFuture[+T] {
 
   /* Callbacks */
@@ -544,6 +546,8 @@ trait OFuture[+T] {
   *  @define nonDeterministic
   *  Note: using this method yields nondeterministic dataflow programs.
   */
+@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+since = "0.15.0")
 object OFuture {
 
   private[orchestration] val toBoxed = Map[Class[_], Class[_]](
@@ -658,7 +662,7 @@ object OFuture {
     */
   def traverse[A, B, M[_] <: IterableOnce[_]](in: M[A])(fn: A => OFuture[B])
                                              (implicit bf: BuildFrom[M[A], B, M[B]]): OFuture[M[B]] =
-    in.iterator.foldLeft(OPromise.successful(bf.newBuilder(in)).future) { (fr, a) =>
+    in.foldLeft(OPromise.successful(bf.newBuilder(in)).future) { (fr, a) =>
       val fb = fn(a.asInstanceOf[A])
       for (r <- fr; b <- fb) yield r += b
     }.map(_.result())
@@ -669,6 +673,8 @@ object OFuture {
   * All callbacks provided to a `Future` end up going through `onComplete`, so this allows an
   * `ExecutionContext` to special-case callbacks that were executed by `Future` if desired.
   */
+@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+  since = "0.15.0")
 trait OnCompleteRunnable {
   self: Runnable =>
 }

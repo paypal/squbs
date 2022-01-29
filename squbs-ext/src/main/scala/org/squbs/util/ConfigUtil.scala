@@ -15,19 +15,17 @@
  */
 package org.squbs.util
 
-import java.net.{Inet4Address, NetworkInterface}
 import com.typesafe.config.ConfigException.{Missing, WrongType}
-import com.typesafe.config.{Config, ConfigException, ConfigFactory, ConfigMemorySize, ConfigObject}
+import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
+import org.squbs.util.DurationConverters._
 
+import java.net.{Inet4Address, NetworkInterface}
 import scala.annotation.implicitNotFound
-import scala.jdk.CollectionConverters._
-import scala.jdk.DurationConverters._
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
+import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
-import scala.reflect.runtime.universe._
-import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 object ConfigUtil extends LazyLogging {
 
@@ -107,15 +105,15 @@ object ConfigUtil extends LazyLogging {
     def getOption[T: TypedGetter](path: String): Option[T] =
       getTry[T](path) match {
         case Success(value) => Some(value)
-        case Failure(e: ConfigException.Missing) => None
+        case Failure(_: ConfigException.Missing) => None
         case Failure(e: IllegalArgumentException) => throw e
-        case Failure(e) =>
+        case Failure(_) =>
           logger.warn("Value at path {} has an illegal format for type: {}",
             path, underlying.getString(path))
           None
       }
 
-    def get[T: TypedGetter](path: String, default: => T) = getOption[T](path).getOrElse(default)
+    def get[T: TypedGetter](path: String, default: => T): T = getOption[T](path).getOrElse(default)
 
     def get[T: TypedGetter](path: String): T = getTry[T](path).get
 
@@ -123,7 +121,7 @@ object ConfigUtil extends LazyLogging {
       try {
         Option(underlying.getString(path))
       } catch {
-        case e: ConfigException.Missing => None
+        case _: ConfigException.Missing => None
       }
     }
 
@@ -132,7 +130,7 @@ object ConfigUtil extends LazyLogging {
         try {
           Some(underlying.getStringList(path))
         } catch {
-          case e: ConfigException.Missing => None
+          case _: ConfigException.Missing => None
         }
       list map (_.asScala.toSeq)
     }
@@ -142,7 +140,7 @@ object ConfigUtil extends LazyLogging {
       try {
         Option(underlying.getInt(path))
       } catch {
-        case e: ConfigException.Missing => None
+        case _: ConfigException.Missing => None
       }
     }
 
@@ -150,7 +148,7 @@ object ConfigUtil extends LazyLogging {
       try {
         Option(underlying.getBoolean(path))
       } catch {
-        case e: ConfigException.Missing => None
+        case _: ConfigException.Missing => None
       }
     }
 
@@ -158,7 +156,7 @@ object ConfigUtil extends LazyLogging {
       try {
         Some(underlying.getConfig(path))
       } catch {
-        case e: ConfigException.Missing => None
+        case _: ConfigException.Missing => None
       }
     }
 
@@ -166,7 +164,7 @@ object ConfigUtil extends LazyLogging {
     def getOptionalConfigList(path: String): Option[Seq[Config]] = try {
           Some(underlying.getConfigList(path).asScala.toSeq)
         } catch {
-          case e: ConfigException.Missing => None
+          case _: ConfigException.Missing => None
         }
 
 
@@ -183,12 +181,12 @@ object ConfigUtil extends LazyLogging {
       try {
         Some(underlying.getMemorySize(path))
       } catch {
-        case e: ConfigException.Missing => None
+        case _: ConfigException.Missing => None
       }
     }
   }
 
-  def ipv4 = {
+  def ipv4: String = {
     val addresses = NetworkInterface.getNetworkInterfaces.asScala.flatMap (_.getInetAddresses.asScala) filter { a =>
       a.isInstanceOf[Inet4Address] && !a.isLoopbackAddress
     }

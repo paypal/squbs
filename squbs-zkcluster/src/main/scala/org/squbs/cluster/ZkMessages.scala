@@ -20,33 +20,46 @@ import akka.util.ByteString
 import org.apache.curator.framework.CuratorFramework
 
 /** Marker trait for all ZkMessages for easy serialization */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 sealed trait ZkMessages
 /**
  * request for leader identity of the cluster
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case object ZkQueryLeadership extends ZkMessages
 /**
  * request for members identities of the cluster
  */
-case object ZkQueryMembership extends ZkMessages
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")case object ZkQueryMembership extends ZkMessages
 /**
  * subscribe to zkclient updates
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case object ZkMonitorClient extends ZkMessages
 /**
  * response for leader identity query
  * @param address
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkLeadership(address: Address) extends ZkMessages
 /**
  * response for members identities query
  * @param members
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkMembership(members: Set[Address]) extends ZkMessages
 /**
  * event when zkclient updates
  * @param zkClient
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkClientUpdated(zkClient:CuratorFramework) extends ZkMessages
 /**
  * request for partition members
@@ -56,6 +69,8 @@ case class ZkClientUpdated(zkClient:CuratorFramework) extends ZkMessages
  * @param props properties of the partition, plain byte array
  * @param members don't assign anything, used internally
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkQueryPartition(partitionKey:ByteString,
                             notification:Option[Any] = None,
                             expectedSize:Option[Int] = None,
@@ -67,14 +82,20 @@ case class ZkQueryPartition(partitionKey:ByteString,
  * request to discontinue a partition
  * @param partitionKey
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkRemovePartition(partitionKey:ByteString) extends ZkMessages
 /**
  * subscribe to partition updates
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case object ZkMonitorPartition extends ZkMessages
 /**
  * stop subscription to a partition's updates
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case object ZkStopMonitorPartition extends ZkMessages
 /**
  * event of partition update
@@ -82,6 +103,8 @@ case object ZkStopMonitorPartition extends ZkMessages
  * @param onBoardMembers
  * @param dropOffMembers
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkPartitionDiff(partitionKey: ByteString,
                            onBoardMembers: Set[Address],
                            dropOffMembers: Set[Address],
@@ -90,6 +113,8 @@ case class ZkPartitionDiff(partitionKey: ByteString,
  * event of a partition removal
  * @param partitionKey
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkPartitionRemoval(partitionKey:ByteString) extends ZkMessages
 /**
  * response for partition query
@@ -98,6 +123,8 @@ case class ZkPartitionRemoval(partitionKey:ByteString) extends ZkMessages
  * @param zkPath
  * @param notification
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkPartition(partitionKey:ByteString,
                        members: Set[Address], //who have been assigned to be part of this partition
                        zkPath:String, //where the partition data is stored
@@ -107,23 +134,43 @@ case class ZkPartition(partitionKey:ByteString,
  * response for partition query
  * @param partitionKey
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkPartitionNotFound(partitionKey: ByteString) extends ZkMessages
 /**
  * request for VM's enrolled partitions
  * @param address
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkListPartitions(address: Address) extends ZkMessages
 /**
  * response for list partitions query
  * @param partitionKeys
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkPartitions(partitionKeys:Seq[ByteString]) extends ZkMessages
 
 /**
  * Lifecycle events corresponding to CONNECTED, RECONNECTED, SUSPENDED, LOST state in Curator Framework
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case object ZkConnected extends ZkMessages
+
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case object ZkReconnected extends ZkMessages
+
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case object ZkSuspended extends ZkMessages
+
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case object ZkLost extends ZkMessages
+
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkConfigChanged(connStr: String) extends ZkMessages

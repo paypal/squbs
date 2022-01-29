@@ -38,6 +38,8 @@ import scala.language.implicitConversions
 import scala.util.Try
 import scala.util.control.NonFatal
 
+@deprecated("zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 case class ZkCluster(zkAddress: Address,
                      initConnStr: String,
                      zkNamespace: String,

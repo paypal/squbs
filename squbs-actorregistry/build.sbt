@@ -2,7 +2,7 @@ import Versions._
 
 name := "squbs-actorregistry"
 
-javaOptions in Test += "-Xmx512m"
+Test / javaOptions += "-Xmx512m"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
@@ -16,7 +16,7 @@ libraryDependencies ++= Seq(
   "com.novocode" % "junit-interface" % junitInterfaceV % Test
 )
 
-testOptions in Test ++= Seq(
+Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
   Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/unicomplex")
 )

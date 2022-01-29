@@ -2,12 +2,12 @@ import Versions._
 
 name := "squbs-pattern"
 
-testOptions in Test ++= Seq(
+Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.ScalaTest, "-l", "org.squbs.testkit.tags.SlowTest"),
   Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 )
 
-javaOptions in Test ++= Seq("-Xmx512m", "-ea")
+Test / javaOptions ++= Seq("-Xmx512m", "-ea")
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
@@ -37,6 +37,6 @@ def akkaDependencies = Seq(
 )
 
 
-// (testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pattern")
+// Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pattern")
 
 updateOptions := updateOptions.value.withCachedResolution(true)

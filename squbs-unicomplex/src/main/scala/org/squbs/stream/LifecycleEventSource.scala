@@ -25,7 +25,7 @@ import org.squbs.stream.TriggerEvent._
 import org.squbs.unicomplex.{Active, Stopping, _}
 
 import java.util.function.Supplier
-import scala.jdk.FunctionConverters._
+import scala.compat.java8.FunctionConverters._
 
 final class LifecycleEventSource
   extends GraphStageWithMaterializedValue[SourceShape[LifecycleState], () => ActorRef] {

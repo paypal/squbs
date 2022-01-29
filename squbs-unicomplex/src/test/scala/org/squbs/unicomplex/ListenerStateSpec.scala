@@ -115,13 +115,17 @@ class ListenerStateSpec extends TestKit(ListenerStateSpec.boot.actorSystem) with
     val portConflictListener = listenerStates.find(_.get("listener") == "port-conflict-listener").get
     val sslContextNotExistListener = listenerStates.find(_.get("listener") == "ssl-context-not-exist-listener").get
 
-    defaultListener.get("state") should be("Success")
-    portConflictListener.get("state") should be("Failed")
-    val errMsg = portConflictListener.get("error").asInstanceOf[String]
+    // Due to timing issues, either the default listener or the portConflictListener will succeed, but not both.
+    val defaultListenerSuccess = defaultListener.get("state") == "Success"
+    val portConflictListenerSuccess = portConflictListener.get("state") == "Success"
+    defaultListenerSuccess ^ portConflictListenerSuccess shouldBe true
+    val failingListener = if (defaultListenerSuccess) portConflictListener else defaultListener
+    val errMsg = failingListener.get("error").asInstanceOf[String]
     errMsg should include ("Bind failed because of java.net.BindException:")
     errMsg should include ("Address already in use")
     sslContextNotExistListener.get("state") should be("Failed")
-    sslContextNotExistListener.get("error").asInstanceOf[String] should startWith("java.lang.ClassNotFoundException: org.squbs.unicomplex.IDoNotExist")
+    sslContextNotExistListener.get("error").asInstanceOf[String] should startWith(
+      "java.lang.ClassNotFoundException: org.squbs.unicomplex.IDoNotExist")
   }
 }
 

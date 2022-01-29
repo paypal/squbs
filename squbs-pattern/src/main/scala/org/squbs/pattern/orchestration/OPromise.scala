@@ -33,6 +33,8 @@ import scala.util.{Failure, Success, Try}
   *  @define nonDeterministic
   *  Note: Using this method may result in non-deterministic concurrent programs.
   */
+@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+  since = "0.15.0")
 trait OPromise[T] {
 
   /** Future containing the value of this promise.

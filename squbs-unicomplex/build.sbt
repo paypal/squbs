@@ -2,7 +2,7 @@ import Versions._
 
 name := "squbs-unicomplex"
 
-javaOptions in Test += "-Xmx512m"
+Test / javaOptions += "-Xmx512m"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
@@ -25,7 +25,7 @@ def akka = Seq(
   "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % Test
 )
 
-testOptions in Test ++= Seq(
+Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex"),
   Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 )

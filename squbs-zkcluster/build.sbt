@@ -21,7 +21,7 @@ libraryDependencies ++= Seq(
   "commons-io" % "commons-io" % "2.6" % Test
 )
 
-(testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-zkcluster")
+Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-zkcluster")
 
 parallelExecution := false
 

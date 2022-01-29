@@ -16,7 +16,7 @@ libraryDependencies ++= Seq(
 
 enablePlugins(de.johoop.testngplugin.TestNGPlugin)
 
-testOptions in Test ++= Seq(
+Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pipeline"),
   Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 )

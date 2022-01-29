@@ -2,7 +2,7 @@ import Versions._
 
 name := "squbs-httpclient"
 
-javaOptions in Test += "-Xmx512m"
+Test / javaOptions += "-Xmx512m"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka"         %% "akka-actor"                   % akkaV,
@@ -25,7 +25,7 @@ libraryDependencies ++= Seq(
 
 javacOptions += "-parameters"
 
-testOptions in Test ++= Seq(
+Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-httpclient"),
   Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 )

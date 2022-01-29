@@ -2,7 +2,7 @@ import Versions._
 
 name := "squbs-actormonitor"
 
-javaOptions in Test += "-Xmx512m"
+Test / javaOptions += "-Xmx512m"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
@@ -16,4 +16,4 @@ libraryDependencies ++= Seq(
 
 updateOptions := updateOptions.value.withCachedResolution(true)
 
-(testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/unicomplex")
+Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/unicomplex")

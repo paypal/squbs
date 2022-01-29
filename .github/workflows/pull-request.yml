@@ -8,10 +8,13 @@ name: Pull Request
       - master
 jobs:
   test:
+    strategy:
+      matrix:
+        scala-version: [2.12.15, 2.13.7]
     runs-on: ubuntu-latest
     env:
       ACTION_JDK_VERSION: openjdk8
-      SCALA_VERSION: 2.13.7
+      SCALA_VERSION: ${{ matrix.scala-version }}
     steps:
     # - uses: jwalton/gh-find-current-pr@v1
     #   id: findPr
@@ -37,7 +40,7 @@ jobs:
     - run: sbt ++$SCALA_VERSION clean coverage test
     - run: sbt ++$SCALA_VERSION coverageReport
     - run: sbt ++$SCALA_VERSION coverageAggregate
-    - run: sbt ++$SCALA_VERSION codacyCoverage
+    # - run: sbt ++$SCALA_VERSION codacyCoverage
     # - name: Cache multiple paths
     #   uses: actions/cache@v2
     #   with:

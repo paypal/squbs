@@ -149,14 +149,14 @@ class HttpClientJMXSpec extends AnyFlatSpecLike with Matchers {
     assertJmxValue("sampleClient", "MaxRetries", config.getInt("akka.http.host-connection-pool.max-retries"))
     assertJmxValue("sampleClient", "MaxOpenRequests", config.getInt("akka.http.host-connection-pool.max-open-requests"))
     assertJmxValue("sampleClient", "PipeliningLimit", config.getInt("akka.http.host-connection-pool.pipelining-limit"))
-    assertJmxValue("sampleClient", "ConnectionPoolIdleTimeout",
-      config.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
+    assertJmxDuration("sampleClient", "ConnectionPoolIdleTimeout",
+      config.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
     assertJmxValue("sampleClient", "UserAgentHeader",
       config.getString("akka.http.client.user-agent-header"))
-    assertJmxValue("sampleClient", "ConnectingTimeout",
-      config.get[Duration]("akka.http.client.connecting-timeout").toString)
-    assertJmxValue("sampleClient", "ConnectionIdleTimeout",
-      config.get[Duration]("akka.http.client.idle-timeout").toString)
+    assertJmxDuration("sampleClient", "ConnectingTimeout",
+      config.get[Duration]("akka.http.client.connecting-timeout"))
+    assertJmxDuration("sampleClient", "ConnectionIdleTimeout",
+      config.get[Duration]("akka.http.client.idle-timeout"))
     assertJmxValue("sampleClient", "RequestHeaderSizeHint",
       config.getInt("akka.http.client.request-header-size-hint"))
     assertJmxValue("sampleClient", "SoReceiveBufferSize",
@@ -337,5 +337,12 @@ class HttpClientJMXSpec extends AnyFlatSpecLike with Matchers {
       s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=${ObjectName.quote(clientName)}")
     val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
     actualValue shouldEqual expectedValue
+  }
+
+  def assertJmxDuration(clientName: String, key: String, expectedValue: Duration) = {
+    val oName = ObjectName.getInstance(
+      s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=${ObjectName.quote(clientName)}")
+    val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
+    Duration(actualValue.toString) shouldEqual expectedValue
   }
 }

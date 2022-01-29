@@ -64,4 +64,12 @@ object DurationConverters {
       case TimeUnit.DAYS => JavaDuration.ofDays(duration.length)
     }
   }
+
+  implicit class Java2ScalaDurationConverter(val duration: java.time.Duration) extends AnyVal {
+    def toScala: scala.concurrent.duration.FiniteDuration = DurationConverters.toScala(duration)
+  }
+
+  implicit class Scala2JavaDurationConverters(val duration: scala.concurrent.duration.FiniteDuration) extends AnyVal {
+    def toJava: java.time.Duration = DurationConverters.toJava(duration)
+  }
 }

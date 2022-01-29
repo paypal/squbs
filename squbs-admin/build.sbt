@@ -4,7 +4,7 @@ name := "squbs-admin"
 
 Revolver.settings
 
-javaOptions in Test += "-Xmx512m"
+Test / javaOptions += "-Xmx512m"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
@@ -19,8 +19,8 @@ libraryDependencies ++= Seq(
   "org.json4s" %% "json4s-jackson" % json4sV
 )
 
-(testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")
+Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-unicomplex")
 
 updateOptions := updateOptions.value.withCachedResolution(true)
 
-mainClass in (Compile, run) := Some("org.squbs.unicomplex.Bootstrap")
+Compile / run / mainClass := Some("org.squbs.unicomplex.Bootstrap")

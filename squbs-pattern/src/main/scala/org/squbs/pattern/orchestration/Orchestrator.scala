@@ -22,6 +22,8 @@ import scala.concurrent.Future
 import scala.language.implicitConversions
 import scala.util.Try
 
+@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+  since = "0.15.0")
 trait Orchestrator extends Aggregator { this: Actor =>
 
   protected case class UniqueTryWrapper[T](id: Long, result: Try[T])
