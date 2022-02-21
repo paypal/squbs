@@ -6,10 +6,6 @@ ThisBuild / scalaVersion := crossScalaVersions.value.head
 
 publishArtifact := false
 
-// TODO: Commented out the overwrite flag once https://github.com/sbt/sbt/issues/3725 is fixed. Need verification.
-//import com.typesafe.sbt.pgp.PgpKeys.publishSignedConfiguration
-//publishSignedConfiguration := publishSignedConfiguration.value.withOverwrite(isSnapshot.value)
-
 Test / compile / coverageEnabled := true
 
 Compile / compile / coverageEnabled := false
