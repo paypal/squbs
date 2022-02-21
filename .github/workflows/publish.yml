@@ -1,0 +1,34 @@
+name: Pull Request
+'on':
+  push:
+    branches:
+    - master
+jobs:
+  test:
+    strategy:
+      matrix:
+        scala-version: [2.12.15, 2.13.7]
+    runs-on: ubuntu-latest
+    env:
+      ACTION_JDK_VERSION: openjdk8
+      SCALA_VERSION: ${{ matrix.scala-version }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup JDK
+      uses: olafurpg/setup-scala@v10
+      with:
+        java-version: adopt@1.8.0
+    - name: Import GPG key
+      id: import_gpg
+      uses: crazy-max/ghaction-import-gpg@v4
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        passphrase: ${{ secrets.PASSPHRASE }}
+    - run: sbt ++$SCALA_VERSION clean coverage test
+    - run: sbt ++$SCALA_VERSION coverageReport
+    - run: sbt ++$SCALA_VERSION coverageAggregate
+    - run: gpg --batch --passphrase ${{ secrets.PASSPHRASE }} --decrypt sonatype_credentials.asc > ~/.sbt/.sonatype_credentials
+    - run: echo 'credentials += Credentials(Path.userHome / ".sbt" / ".sonatype_credentials")' > ~/.sbt/1.0/sonatype.sbt
+    - run: sbt ++$SCALA_VERSION clean publishSigned
+    - run: rm ~/.sbt/1.0/sonatype.sbt ~/.sbt/.sonatype_credentials

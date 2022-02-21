@@ -4,13 +4,11 @@ ThisBuild / crossScalaVersions := Seq("2.13.7", "2.12.15")
 
 ThisBuild / scalaVersion := crossScalaVersions.value.head
 
-ThisBuild / organization := "org.squbs"
-
 publishArtifact := false
 
-// TODO: Remove the overwrite flag once https://github.com/sbt/sbt/issues/3725 is fixed.
-import com.typesafe.sbt.pgp.PgpKeys.publishSignedConfiguration
-publishSignedConfiguration := publishSignedConfiguration.value.withOverwrite(isSnapshot.value)
+// TODO: Commented out the overwrite flag once https://github.com/sbt/sbt/issues/3725 is fixed. Need verification.
+//import com.typesafe.sbt.pgp.PgpKeys.publishSignedConfiguration
+//publishSignedConfiguration := publishSignedConfiguration.value.withOverwrite(isSnapshot.value)
 
 Test / compile / coverageEnabled := true
 
@@ -71,20 +69,6 @@ lazy val `squbs-actormonitor` = project dependsOn (`squbs-unicomplex`, `squbs-te
 lazy val `squbs-admin` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` % Test)
 
 lazy val `squbs-ext` = project dependsOn `squbs-pipeline` % "provided"
-
-ThisBuild / publishTo := {
-  val nexus = "https://oss.sonatype.org/"
-  if (version.value.trim.endsWith("SNAPSHOT"))
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  else
-    Some("releases" at nexus + "service/local/staging/deploy/maven2")
-}
-
-ThisBuild / publishMavenStyle := true
-
-Test / publishArtifact := false
-
-ThisBuild / pomIncludeRepository := { _ => false }
 
 ThisBuild / pomExtra :=
   <url>https://github.com/paypal/squbs</url>

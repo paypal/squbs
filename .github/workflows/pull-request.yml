@@ -1,8 +1,5 @@
 name: Pull Request
 'on':
-  # push:
-  #   branches:
-  #     - master
   pull_request:
     branches:
       - master
@@ -16,69 +13,12 @@ jobs:
       ACTION_JDK_VERSION: openjdk8
       SCALA_VERSION: ${{ matrix.scala-version }}
     steps:
-    # - uses: jwalton/gh-find-current-pr@v1
-    #   id: findPr
-    #   with:
-    #     # Can be "open", "closed", or "all".  Defaults to "open".
-    #     state: open
     - name: Checkout
       uses: actions/checkout@v2
     - name: Setup JDK
       uses: olafurpg/setup-scala@v10
       with:
         java-version: adopt@1.8.0
-    # - name: Before Install
-    # - uses: actions/checkout@v2
-    # - run: |
-    #     if [ "x${ENCRYPTION_PASSWORD}" != "x" ]; then
-    #       openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in secring.gpg.enc -out local.secring.gpg -d
-    #       openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in pubring.gpg.enc -out local.pubring.gpg -d
-    #       openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in credentials.sbt.enc -out local.credentials.sbt -d
-    #     fi
-    # - name: Cache Coursier Cache
-    #   uses: coursier/cache-action@v6.2
     - run: sbt ++$SCALA_VERSION clean coverage test
     - run: sbt ++$SCALA_VERSION coverageReport
     - run: sbt ++$SCALA_VERSION coverageAggregate
-    # - run: sbt ++$SCALA_VERSION codacyCoverage
-    # - name: Cache multiple paths
-    #   uses: actions/cache@v2
-    #   with:
-    #       path: |-
-    #         $HOME/.sbt
-    #         $HOME/.ivy2
-    #       key: '${{ runner.os }}-${{ hashFiles(''TODO'') }}'
-    # - uses: actions/checkout@v2
-
-  # build:
-  #   runs-on: '${{ matrix.os }}'
-  #   strategy:
-  #     matrix:
-  #       os:
-  #         - ubuntu-18.04
-  #   steps:
-  #     - name: Cache multiple paths
-  #       uses: actions/cache@v2
-  #       with:
-  #         path: |-
-  #           $HOME/.sbt
-  #           $HOME/.ivy2
-  #         key: '${{ runner.os }}-${{ hashFiles(''TODO'') }}'
-  #     - uses: actions/checkout@v2
-  #     - run: |
-  #         if [ "x${ENCRYPTION_PASSWORD}" != "x" ]; then
-  #           openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in secring.gpg.enc -out local.secring.gpg -d
-  #           openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in pubring.gpg.enc -out local.pubring.gpg -d
-  #           openssl aes-256-cbc -pass pass:${ENCRYPTION_PASSWORD} -in credentials.sbt.enc -out local.credentials.sbt -d
-  #         fi
-  #     - run: _JAVA_OPTIONS=
-  #     - run: sbt -J-Xms256m ++$TRAVIS_SCALA_VERSION -jvm-opts jvmopts clean coverage test
-  #     - run: sbt -J-Xms256m ++$TRAVIS_SCALA_VERSION coverageReport
-  #     - run: sbt -J-Xms256m ++$TRAVIS_SCALA_VERSION coverageAggregate
-  #     - run: sbt -J-Xms256m ++$TRAVIS_SCALA_VERSION codacyCoverage
-  #     - run: >
-  #         test "${TRAVIS_PULL_REQUEST}" = 'false' && test
-  #         "${TRAVIS_JDK_VERSION}" = 'openjdk8' && sbt ++$TRAVIS_SCALA_VERSION
-  #         'set credentials += Credentials("Sonatype Nexus Repository Manager",
-  #         "oss.sonatype.org", System.getenv("SONATYPE_USER"),
-  #         System.getenv("SONATYPE_PASS"))' clean publishSigned
