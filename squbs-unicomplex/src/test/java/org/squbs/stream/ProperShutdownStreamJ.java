@@ -8,6 +8,7 @@ import akka.stream.ClosedShape;
 import akka.stream.FlowShape;
 import akka.stream.ThrottleMode;
 import akka.stream.javadsl.*;
+import org.squbs.lifecycle.GracefulStop;
 import org.squbs.unicomplex.Timeouts;
 import org.squbs.util.DurationConverters;
 
@@ -15,8 +16,9 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
-public class ProperShutdownStreamJ extends AbstractPerpetualStream<Pair<ActorRef, CompletionStage<Long>>> {
+public class ProperShutdownStreamJ extends AbstractPerpetualStream<Pair<Supplier<ActorRef>, CompletionStage<Long>>> {
 
     static final AtomicLong genCount = new AtomicLong(0L);
 
@@ -32,7 +34,7 @@ public class ProperShutdownStreamJ extends AbstractPerpetualStream<Pair<ActorRef
                 }
             });
 
-    Source<Integer, Pair<NotUsed, ActorRef>> managedSource =
+    Source<Integer, Pair<NotUsed, Supplier<ActorRef>>> managedSource =
             new LifecycleManaged<Integer, NotUsed>()
                     .source(toBeManaged);
 
@@ -48,7 +50,7 @@ public class ProperShutdownStreamJ extends AbstractPerpetualStream<Pair<ActorRef
     }
 
     @Override
-    public RunnableGraph<Pair<ActorRef, CompletionStage<Long>>> streamGraph() {
+    public RunnableGraph<Pair<Supplier<ActorRef>, CompletionStage<Long>>> streamGraph() {
         return RunnableGraph.fromGraph(GraphDSL.create(managedSource, counter, (a, b) -> Pair.create(a.second(), b),
                 (builder, source, sink) -> {
                     FlowShape<Integer, Integer> throttle = builder.add(Flow.<Integer>create().throttle(5000, Duration.ofSeconds(1), 1000,
@@ -71,10 +73,10 @@ public class ProperShutdownStreamJ extends AbstractPerpetualStream<Pair<ActorRef
     @Override
     public CompletionStage<Done> shutdown() {
         super.shutdown();
-        ActorRef actorRef = matValue().first();
+        Supplier<ActorRef> actorRefSupplier = matValue().first();
         CompletionStage<Long> fCount = matValue().second();
-        CompletionStage<Boolean> fStopped =
-                gracefulStop(actorRef, DurationConverters.toJava(Timeouts.awaitMax()));
+        CompletionStage<Boolean> fStopped = gracefulStop(actorRefSupplier.get(),
+                DurationConverters.toJava(Timeouts.awaitMax()), GracefulStop.getInstance());
         return fCount.thenCombine(fStopped, (count, stopped) -> Done.getInstance());
     }
 }

@@ -656,7 +656,7 @@ case class UnicomplexBoot private[unicomplex](startTime: Timestamp,
     }
 
     val boot = copy(config = actorSystem.settings.config, actors = actors, extensions = postInitExtensions, started = true)
-    Unicomplex(actorSystem).boot send boot
+    Unicomplex(actorSystem).boot.set(boot)
     boot
   }
 

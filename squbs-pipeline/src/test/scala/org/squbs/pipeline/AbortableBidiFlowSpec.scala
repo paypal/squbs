@@ -19,8 +19,8 @@ package org.squbs.pipeline
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.stream.BidiShape
 import akka.stream.scaladsl._
-import akka.stream.{ActorMaterializer, BidiShape}
 import akka.testkit.TestKit
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
@@ -34,7 +34,6 @@ import scala.util.{Success, Try}
 class AbortableBidiFlowSpec extends TestKit(ActorSystem("AbortableBidiFlowSpec", AbortableBidiFlowSpec.config))
   with AnyFlatSpecLike with Matchers {
 
-  implicit val am = ActorMaterializer()
   val pipelineExtension = PipelineExtension(system)
   val dummyEndpoint = Flow[RequestContext].map { rc =>
     rc.withResponse(Try(HttpResponse(entity = s"${rc.request.headers.sortBy(_.name).mkString(",")}")))

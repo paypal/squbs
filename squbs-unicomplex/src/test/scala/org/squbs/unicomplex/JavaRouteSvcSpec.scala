@@ -18,12 +18,11 @@ package org.squbs.unicomplex
 
 import akka.actor.ActorSystem
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterAll
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 
@@ -49,8 +48,6 @@ object JavaRouteSvcSpec {
 
 class JavaRouteSvcSpec extends TestKit(
   JavaRouteSvcSpec.boot.actorSystem) with AsyncFlatSpecLike with BeforeAndAfterAll with Matchers {
-
-  implicit val am = ActorMaterializer()
 
   val portBindingsF = (Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]]
   val portF = portBindingsF map { bindings => bindings("default-listener") }

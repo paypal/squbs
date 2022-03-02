@@ -17,7 +17,6 @@
 package org.squbs.streams
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.testkit.scaladsl.TestSink
 import akka.testkit.TestKit
@@ -34,7 +33,6 @@ import scala.util.{Failure, Success}
 
 class RetryJMXSpec extends TestKit(ActorSystem("RetryJMXSpec")) with AnyFlatSpecLike with Matchers {
 
-  implicit val materializer = ActorMaterializer()
   val failure = Failure(new Exception("failed"))
 
   it should "collect retry metrics" in {
@@ -125,7 +123,6 @@ class RetryJMXSpec extends TestKit(ActorSystem("RetryJMXSpec")) with AnyFlatSpec
 }
 
 class RetryStateJmxSpec extends TestKit(ActorSystem("RetryStateJmxSpec")) with AnyFlatSpecLike with Matchers {
-  implicit val materializer = ActorMaterializer()
 
   it should "publish registry and queue size via jmx" in {
     val bottom = Flow[(String, Long)].delay(1 second).map {

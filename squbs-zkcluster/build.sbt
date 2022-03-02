@@ -9,6 +9,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-slf4j" % akkaV,
   "org.apache.curator" % "curator-recipes" % curatorV,
   "org.apache.curator" % "curator-framework" % curatorV exclude("org.jboss.netty", "netty"),
+  "io.altoo" %% "akka-kryo-serialization" % akkaKryoV,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV % Test,
   "org.scalatest" %% "scalatest" % scalatestV % Test,
@@ -20,7 +21,7 @@ libraryDependencies ++= Seq(
   "commons-io" % "commons-io" % "2.6" % Test
 )
 
-(testOptions in Test) += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-zkcluster")
+Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-zkcluster")
 
 parallelExecution := false
 

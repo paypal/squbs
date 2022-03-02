@@ -16,14 +16,13 @@
 
 package org.squbs.unicomplex.pipeline
 
-import akka.actor.{Actor, ActorSystem}
+import akka.actor.{Actor, ActorSystem, Status}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpEntity.{Chunk, LastChunk}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server._
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
@@ -79,7 +78,6 @@ object PipelineChunkingSpec {
 class PipelineChunkingSpec extends TestKit(PipelineChunkingSpec.boot.actorSystem) with AnyFlatSpecLike
   with Matchers with ImplicitSender with BeforeAndAfterAll {
 
-  implicit val am = ActorMaterializer()
   import system.dispatcher
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
@@ -144,7 +142,9 @@ class PipelineChunkingSpec extends TestKit(PipelineChunkingSpec.boot.actorSystem
 
     response.headers.filter(_.name.startsWith("key")).sortBy(_.name) should equal(expectedResponseHeaders)
 
-    response.entity.dataBytes.map(b => Chunk(b)).runWith(Sink.actorRef(self, "Done"))
+    response.entity.dataBytes
+      .map(b => Chunk(b))
+      .runWith(Sink.actorRef(self, "Done", t => Status.Failure(t)))
     expectMsg(Chunk("1"))
     expectMsg(Chunk("2"))
     expectMsg(Chunk("3"))

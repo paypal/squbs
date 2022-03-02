@@ -18,7 +18,6 @@ package org.squbs.unicomplex
 
 import akka.actor.ActorSystem
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
@@ -52,7 +51,6 @@ object RootCtxFlowSpec{
 class RootCtxFlowSpec extends TestKit(
   RootCtxFlowSpec.boot.actorSystem) with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
-  implicit val am = ActorMaterializer()
   import org.squbs.unicomplex.Timeouts._
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)

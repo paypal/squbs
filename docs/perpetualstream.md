@@ -51,7 +51,7 @@ class WellBehavedStream extends PerpetualStream[Future[Done]] {
 
   val ignoreSink = Sink.ignore
   
-  override def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(ignoreSink) {
+  override def streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(ignoreSink) {
     implicit builder =>
       sink =>
         import GraphDSL.Implicits._
@@ -75,7 +75,7 @@ class WellBehavedStream2 extends PerpetualStream[(KillSwitch, Future[Done])] {
   val ignoreSink = Sink.ignore
   
   override def streamGraph = RunnableGraph.fromGraph(
-    GraphDSL.create(KillSwitch.single[Int], ignoreSink)((_,_)) { implicit builder =>
+    GraphDSL.createGraph(KillSwitch.single[Int], ignoreSink)((_,_)) { implicit builder =>
       (kill, sink) =>
         import GraphDSL.Implicits._
         source ~> kill ~> sink
@@ -383,7 +383,7 @@ class PerpetualStreamWithMergeHub extends PerpetualStream[Sink[MyMessage, NotUse
     * @return The graph.
     */
   override def streamGraph: RunnableGraph[Sink[MyMessage, NotUsed]] = RunnableGraph.fromGraph(
-    GraphDSL.create(source) { implicit builder=>
+    GraphDSL.createGraph(source) { implicit builder=>
         input =>  
           import GraphDSL.Implicits._
             
@@ -501,7 +501,7 @@ The HTTP `FlowDefinition` can be connected to the `PerpetualStream` as follows b
 ```java
 class HttpFlowWithMergeHub extends FlowToPerpetualStream {
 
-    private final Materializer mat = ActorMaterializer.create(context().system());
+    private final Materializer mat = Materializer.createMaterializer(context().system());
     private final MarshalUnmarshal mu = new MarshalUnmarshal(context().system().dispatcher(), mat);
 
     @Override

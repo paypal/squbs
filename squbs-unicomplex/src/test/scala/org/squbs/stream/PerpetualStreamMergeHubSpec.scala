@@ -16,13 +16,12 @@
 package org.squbs.stream
 
 import akka.NotUsed
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, ActorSystem, Props, Status}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshal, Unmarshaller}
 import akka.pattern.ask
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Flow, MergeHub, Sink}
+import akka.stream.scaladsl.{Flow, MergeHub, RunnableGraph, Sink}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
@@ -65,8 +64,6 @@ class PerpetualStreamMergeHubSpec extends TestKit(PerpetualStreamMergeHubSpec.bo
 
 
   it should "connect streams with mergehub" in {
-
-    implicit val ac = ActorMaterializer()
     Http().singleRequest(HttpRequest(uri = Uri(s"http://127.0.0.1:$port/mergehub"), entity = "10"))
     Http().singleRequest(HttpRequest(uri = Uri(s"http://127.0.0.1:$port/mergehub"), entity = "11"))
 
@@ -83,10 +80,9 @@ case class MyMessage(id: Int)
 
 class HttpFlowWithMergeHub extends FlowDefinition with PerpetualStreamMatValue[MyMessage] {
 
-  import context.dispatcher
+  import context.{dispatcher, system}
 
   import scala.concurrent.duration._
-  implicit val mat = ActorMaterializer()
 
   implicit val myMessageUnmarshaller: FromEntityUnmarshaller[MyMessage] =
     Unmarshaller { implicit ex => entity => entity.toStrict(1.second).map(e => MyMessage(e.data.utf8String.toInt)) }
@@ -111,7 +107,8 @@ class PerpetualStreamWithMergeHub extends PerpetualStream[Sink[MyMessage, NotUse
     *
     * @return The graph.
     */
-  override def streamGraph= source.to(Sink.actorRef(myMessageStorageActor, "Done"))
+  override def streamGraph: RunnableGraph[Sink[MyMessage, NotUsed]] =
+    source.to(Sink.actorRef(myMessageStorageActor, "Done", t => Status.Failure(t)))
 
   override def receive: Receive = {
     case RetrieveMyMessageStorageActorRef => sender() ! myMessageStorageActor

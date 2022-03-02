@@ -15,7 +15,6 @@
  */
 package org.squbs.httpclient;
 
-import akka.NotUsed;
 import akka.actor.ActorSystem;
 import akka.http.javadsl.ConnectHttp;
 import akka.http.javadsl.HostConnectionPool;
@@ -30,7 +29,7 @@ import akka.http.javadsl.model.headers.Server;
 import akka.http.javadsl.server.AllDirectives;
 import akka.http.javadsl.server.Route;
 import akka.japi.Pair;
-import akka.stream.ActorMaterializer;
+import akka.stream.Materializer;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
@@ -62,9 +61,9 @@ public class ClientFlowCircuitBreakerTest {
                 "}");
 
     private static final ActorSystem system = ActorSystem.create("ClientFlowCircuitBreakerTest", config);
-    private static final ActorMaterializer mat = ActorMaterializer.create(system);
-    private static final Flow<HttpRequest, HttpResponse, NotUsed> flow =
-            new MyProblematicRoute().route().flow(system, mat);
+    private static final Materializer mat = Materializer.createMaterializer(system);
+    private static final Route route =
+            new MyProblematicRoute().route();
 
     private static final HttpResponse INTERNAL_SERVER_ERROR_RESPONSE =
             HttpResponse.create()
@@ -77,9 +76,11 @@ public class ClientFlowCircuitBreakerTest {
     static {
         ServerBinding binding;
         try {
-            binding = Http.get(system).
-                    bindAndHandle(flow, ConnectHttp.toHost("localhost", 0), mat).
-                    toCompletableFuture().get();
+            binding = Http.get(system)
+                    .newServerAt("localhost", 0)
+                    .bind(route)
+                    .toCompletableFuture()
+                    .get();
         } catch(Exception e) {
             binding = null;
         }

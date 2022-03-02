@@ -15,19 +15,18 @@
  */
 package org.squbs.httpclient
 
-import java.lang.management.ManagementFactory
-import javax.management.ObjectName
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
-import org.squbs.resolver._
 import org.squbs.env.QA
+import org.squbs.resolver._
 import org.squbs.streams.circuitbreaker.CircuitBreakerSettings
 import org.squbs.streams.circuitbreaker.impl.AtomicCircuitBreakerState
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
@@ -46,7 +45,6 @@ object HttpClientJMXSpec {
       |    max-header-count           = 19
       |    max-chunk-ext-length       = 20
       |    max-chunk-size             = 3m
-      |    max-content-length = 4m
       |    uri-parsing-mode = relaxed
       |    cookie-parsing-mode = raw
       |    illegal-header-warnings = off
@@ -64,6 +62,9 @@ object HttpClientJMXSpec {
       |      User-Agent = 29
       |    }
       |    tls-session-info-header = on
+      |  }
+      |  akka.http.client.parsing { // Needs to override this value at the client level.
+      |    max-content-length = 4m
       |  }
       |}
       |
@@ -122,7 +123,6 @@ object HttpClientJMXSpec {
     """.stripMargin).withFallback(ConfigFactory.load())
 
   implicit val system = ActorSystem("HttpClientJMXSpec", config)
-  implicit val materializer = ActorMaterializer()
 
   ResolverRegistry(system).register[HttpEndpoint]("DummyEndpointResolver")
     { (_, _) => Some(HttpEndpoint("http://localhost:8080")) }
@@ -149,14 +149,14 @@ class HttpClientJMXSpec extends AnyFlatSpecLike with Matchers {
     assertJmxValue("sampleClient", "MaxRetries", config.getInt("akka.http.host-connection-pool.max-retries"))
     assertJmxValue("sampleClient", "MaxOpenRequests", config.getInt("akka.http.host-connection-pool.max-open-requests"))
     assertJmxValue("sampleClient", "PipeliningLimit", config.getInt("akka.http.host-connection-pool.pipelining-limit"))
-    assertJmxValue("sampleClient", "ConnectionPoolIdleTimeout",
-      config.get[Duration]("akka.http.host-connection-pool.idle-timeout").toString)
+    assertJmxDuration("sampleClient", "ConnectionPoolIdleTimeout",
+      config.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
     assertJmxValue("sampleClient", "UserAgentHeader",
       config.getString("akka.http.client.user-agent-header"))
-    assertJmxValue("sampleClient", "ConnectingTimeout",
-      config.get[Duration]("akka.http.client.connecting-timeout").toString)
-    assertJmxValue("sampleClient", "ConnectionIdleTimeout",
-      config.get[Duration]("akka.http.client.idle-timeout").toString)
+    assertJmxDuration("sampleClient", "ConnectingTimeout",
+      config.get[Duration]("akka.http.client.connecting-timeout"))
+    assertJmxDuration("sampleClient", "ConnectionIdleTimeout",
+      config.get[Duration]("akka.http.client.idle-timeout"))
     assertJmxValue("sampleClient", "RequestHeaderSizeHint",
       config.getInt("akka.http.client.request-header-size-hint"))
     assertJmxValue("sampleClient", "SoReceiveBufferSize",
@@ -182,7 +182,10 @@ class HttpClientJMXSpec extends AnyFlatSpecLike with Matchers {
     assertJmxValue("sampleClient", "MaxHeaderCount", config.getInt("akka.http.parsing.max-header-count"))
     assertJmxValue("sampleClient", "MaxChunkExtLength", config.getInt("akka.http.parsing.max-chunk-ext-length"))
     assertJmxValue("sampleClient", "MaxChunkSize", config.getBytes("akka.http.parsing.max-chunk-size"))
-    assertJmxValue("sampleClient", "MaxContentLength", config.getBytes("akka.http.parsing.max-content-length"))
+    val contentLengthValue =
+      if (config.getString("akka.http.client.parsing.max-content-length") == "infinite") Long.MaxValue
+      else config.getBytes("akka.http.client.parsing.max-content-length")
+      assertJmxValue("sampleClient", "MaxContentLength", contentLengthValue)
     assertJmxValue("sampleClient", "UriParsingMode", config.getString("akka.http.parsing.uri-parsing-mode"))
     assertJmxValue("sampleClient", "CookieParsingMode", config.getString("akka.http.parsing.cookie-parsing-mode"))
     assertJmxValue("sampleClient", "IllegalHeaderWarnings",
@@ -227,8 +230,10 @@ class HttpClientJMXSpec extends AnyFlatSpecLike with Matchers {
       config.getInt("clientWithParsingOverride.akka.http.parsing.max-chunk-ext-length"))
     assertJmxValue("clientWithParsingOverride", "MaxChunkSize",
       config.getBytes("clientWithParsingOverride.akka.http.parsing.max-chunk-size"))
-    assertJmxValue("clientWithParsingOverride", "MaxContentLength",
-      config.getBytes("clientWithParsingOverride.akka.http.parsing.max-content-length"))
+    val contentLengthValue =
+      if (config.getString("akka.http.client.parsing.max-content-length") == "infinite") Long.MaxValue
+      else config.getBytes("akka.http.client.parsing.max-content-length")
+    assertJmxValue("sampleClient", "MaxContentLength", contentLengthValue)
     assertJmxValue("clientWithParsingOverride", "UriParsingMode",
       config.getString("clientWithParsingOverride.akka.http.parsing.uri-parsing-mode"))
     assertJmxValue("clientWithParsingOverride", "CookieParsingMode",
@@ -332,5 +337,12 @@ class HttpClientJMXSpec extends AnyFlatSpecLike with Matchers {
       s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=${ObjectName.quote(clientName)}")
     val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
     actualValue shouldEqual expectedValue
+  }
+
+  def assertJmxDuration(clientName: String, key: String, expectedValue: Duration) = {
+    val oName = ObjectName.getInstance(
+      s"org.squbs.configuration.${system.name}:type=squbs.httpclient,name=${ObjectName.quote(clientName)}")
+    val actualValue = ManagementFactory.getPlatformMBeanServer.getAttribute(oName, key)
+    Duration(actualValue.toString) shouldEqual expectedValue
   }
 }

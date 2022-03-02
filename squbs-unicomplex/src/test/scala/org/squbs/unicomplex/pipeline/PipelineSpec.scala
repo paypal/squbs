@@ -22,8 +22,8 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.{RejectionHandler, Route}
 import akka.pattern._
+import akka.stream.BidiShape
 import akka.stream.scaladsl.{BidiFlow, Flow, GraphDSL}
-import akka.stream.{ActorMaterializer, BidiShape}
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
@@ -79,7 +79,6 @@ object PipelineSpec {
   class PipelineSpec extends TestKit(
     PipelineSpec.boot.actorSystem) with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
-    implicit val am = ActorMaterializer()
 
     val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
     val port = portBindings("default-listener")
@@ -90,7 +89,8 @@ object PipelineSpec {
     }
 
     it should "build the flow with defaults" in {
-      val (actualEntity, actualHeaders) = Await.result(entityAsStringWithHeaders(s"http://127.0.0.1:$port/1/dummy"), awaitMax)
+      val (actualEntity, actualHeaders) =
+        Await.result(entityAsStringWithHeaders(s"http://127.0.0.1:$port/1/dummy"), awaitMax)
 
       val expectedHeaders = Seq(
         RawHeader("keyD", "valD"),

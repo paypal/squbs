@@ -37,8 +37,8 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
   implicit def byteArray2String(array: Array[Byte]): String = array.map(_.toChar).mkString
 
   override def beforeAll(): Unit = {
-    // Don't need to start the cluster for now
-    // We preset the data in Zookeeper instead.
+    // We preset the data in Zookeeper.
+    val startTime = System.currentTimeMillis
     val zkClient = CuratorFrameworkFactory.newClient(
       zkConfig.getString("zkCluster.connectionString"),
       new ExponentialBackoffRetry(ZkCluster.DEFAULT_BASE_SLEEP_TIME_MS, ZkCluster.DEFAULT_MAX_RETRIES)
@@ -60,27 +60,35 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
     guarantee(s"/segments/segment-0/${keyToPath(par3)}/servants", None, CreateMode.PERSISTENT)
     guarantee(s"/segments/segment-0/${keyToPath(par3)}/$$size", Some(3), CreateMode.PERSISTENT)
     zkClient.close()
+
+    // Then we start the cluster.
+    startCluster()
+
+    logger.info("beforeAll() took {} ms.", System.currentTimeMillis - startTime)
   }
 
   "ZkCluster" should "list the partitions" in {
-    startCluster()
     zkClusterExts foreach {
-      case (_, ext) => ext tell (ZkListPartitions(ext.zkAddress), self)
+      case (_, ext) =>
+        ext tell (ZkListPartitions(ext.zkAddress), self)
         expectMsgType[ZkPartitions](timeout)
     }
   }
 
   "ZkCluster" should "load persisted partition information and sync across the cluster" in {
     zkClusterExts foreach {
-      case (_, ext) => ext tell (ZkQueryPartition(par1), self)
+      case (_, ext) =>
+        ext tell (ZkQueryPartition(par1), self)
         expectMsgType[ZkPartition](timeout).members should have size 3
     }
     zkClusterExts foreach {
-      case (_, ext) => ext tell (ZkQueryPartition(par2), self)
+      case (_, ext) =>
+        ext tell (ZkQueryPartition(par2), self)
         expectMsgType[ZkPartition](timeout).members should have size 3
     }
     zkClusterExts foreach {
-      case (_, ext) => ext tell (ZkQueryPartition(par3), self)
+      case (_, ext) =>
+        ext tell (ZkQueryPartition(par3), self)
         expectMsgType[ZkPartition](timeout).members should have size 3
     }
   }
@@ -88,7 +96,8 @@ class ZkClusterInitTest extends ZkClusterMultiActorSystemTestKit("ZkClusterInitT
   "ZkCluster" should "list all the members across the cluster" in {
     val members = zkClusterExts.map(_._2.zkAddress).toSet
     zkClusterExts foreach {
-      case (_, ext) => ext tell (ZkQueryMembership, self)
+      case (_, ext) =>
+        ext tell (ZkQueryMembership, self)
         expectMsgType[ZkMembership](timeout).members should be (members)
     }
   }

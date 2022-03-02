@@ -16,7 +16,6 @@
 package org.squbs.stream
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.testkit.scaladsl.TestSource
 import akka.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
@@ -41,7 +40,7 @@ object UnicomplexActorPublisherJSpec {
 
 final class UnicomplexActorPublisherJSpec extends TestKit(UnicomplexActorPublisherJSpec.boot.actorSystem)
     with AnyFlatSpecLike with Matchers with BeforeAndAfterAll {
-  implicit val materializer = ActorMaterializer()
+
   val duration = 10.second
 
   val in = TestSource.probe[String]
@@ -66,7 +65,7 @@ final class UnicomplexActorPublisherJSpec extends TestKit(UnicomplexActorPublish
     // re-send Active to unicomplex trigger, flow continues
     sub.request(2)
     sub.expectNoMessage(remainingOrDefault)
-    pubTrigger ! SystemState
+    pubTrigger.get ! SystemState
     pubIn.sendNext("3")
     pubIn.sendNext("4")
     sub.expectNext("3", "4")

@@ -15,12 +15,12 @@
  */
 package org.squbs.stream
 import java.util.concurrent.atomic.AtomicLong
-
 import akka.Done
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, PoisonPill}
 import akka.stream.ClosedShape
 import akka.stream.ThrottleMode.Shaping
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
+import org.squbs.lifecycle.GracefulStop
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -30,7 +30,7 @@ object ProperShutdownStream {
   val genCount = new AtomicLong(0L)
 }
 
-class ProperShutdownStream extends PerpetualStream[(ActorRef, Future[Long])] {
+class ProperShutdownStream extends PerpetualStream[(() => ActorRef, Future[Long])] {
   import ProperShutdownStream._
   import org.squbs.unicomplex.Timeouts._
 
@@ -47,7 +47,7 @@ class ProperShutdownStream extends PerpetualStream[(ActorRef, Future[Long])] {
 
   val counter = Flow[Int].map { _ => 1L }.reduce { _ + _ }.toMat(Sink.head)(Keep.right)
 
-  override def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(managedSource, counter)((a, b) => (a._2, b)) {
+  override def streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(managedSource, counter)((a, b) => (a._2, b)) {
     implicit builder =>
     (source, sink) =>
       import GraphDSL.Implicits._
@@ -69,7 +69,7 @@ class ProperShutdownStream extends PerpetualStream[(ActorRef, Future[Long])] {
     super.shutdown()
     import context.dispatcher
     val (actorRef, fCount) = matValue
-    val fStopped = gracefulStop(actorRef, awaitMax)
+    val fStopped = gracefulStop(actorRef(), awaitMax, GracefulStop)
     for { _ <- fCount; _ <- fStopped } yield Done
   }
 }

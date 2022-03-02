@@ -16,9 +16,9 @@
 package org.squbs.pattern.stream
 
 import akka.Done
-import akka.actor.ActorSystem
+import akka.actor.{ActorContext, ActorSystem}
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
-import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape}
+import akka.stream.{AbruptTerminationException, ClosedShape, Materializer}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
@@ -49,7 +49,6 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
 (typeName: String) extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   implicit val system = ActorSystem(s"Persistent${typeName}BufferSpec", PersistentBufferSpec.testConfig)
-  implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[T]()
   implicit override val patienceConfig = PatienceConfig(timeout = Span(3, Seconds)) // extend eventually timeout for CI
   import StreamSpecUtil._
@@ -81,7 +80,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     val util = new StreamSpecUtil[T, T]
     import util._
     val buffer = PersistentBuffer[T](config)
-    val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
+    val streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         in ~> transform ~> buffer.async ~> sink
@@ -105,7 +104,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
       s
     }.toMat(Sink.head)(Keep.right)
 
-    val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter(t1 = _), flowCounter)((_,_)) { implicit builder =>
+    val streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(counter(t1 = _), flowCounter)((_,_)) { implicit builder =>
       (sink, total) =>
         import GraphDSL.Implicits._
         val bc1 = builder.add(Broadcast[T](2))
@@ -132,7 +131,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     implicit val util = new StreamSpecUtil[T, T]
     import util._
 
-    val mat = ActorMaterializer()
+    val mat = Materializer(system)
     val pBufferInCount = new AtomicInteger(0)
     val commitCount = new AtomicInteger(0)
     val finishedGenerating = Promise[Done]()
@@ -145,7 +144,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
 
     val shutdownF = finishedGenerating.future map { d => mat.shutdown(); d }
 
-    val graph = RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit builder =>
+    val graph = RunnableGraph.fromGraph(GraphDSL.createGraph(Sink.ignore) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         val buffer = PersistentBuffer[T](config)
@@ -173,7 +172,6 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     implicit val util = new StreamSpecUtil[T, T]
     import util._
 
-    val mat = ActorMaterializer()
     val outCount = new AtomicInteger(0)
     val injectCounter = new AtomicInteger(0)
     val inCounter = new AtomicInteger(0)
@@ -184,14 +182,14 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
       else n
     }
 
-    val graph = RunnableGraph.fromGraph(GraphDSL.create(Sink.ignore) { implicit builder =>
+    val graph = RunnableGraph.fromGraph(GraphDSL.createGraph(Sink.ignore) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         val buffer = PersistentBuffer[T](config).withOnPushCallback(() => inCounter.incrementAndGet()).withOnCommitCallback(() => outCount.incrementAndGet())
         in ~> transform ~> buffer.async ~> throttle ~> injectError ~> sink
         ClosedShape
     })
-    val sinkF = graph.run()(mat)
+    val sinkF = graph.run()
     Await.result(sinkF.failed, awaitMax) shouldBe an[NumberFormatException]
     val restartFrom = outCount.get()
     println(s"Restart from count $restartFrom")
@@ -202,7 +200,6 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
   it should "recover from upstream failure" in {
     implicit val util = new StreamSpecUtil[T, T]
     import util._
-    val mat = ActorMaterializer()
     val recordCount = new AtomicInteger(0)
 
     val injectError = Flow[Int].map { n =>
@@ -213,13 +210,13 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     def updateCounter() = Sink.foreach[Any] { _ => recordCount.incrementAndGet() }
 
     val buffer = PersistentBuffer[T](config)
-    val graph = RunnableGraph.fromGraph(GraphDSL.create(updateCounter()) { implicit builder =>
+    val graph = RunnableGraph.fromGraph(GraphDSL.createGraph(updateCounter()) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         in ~> injectError ~> transform ~> buffer.async ~> throttle ~> sink
         ClosedShape
     })
-    val countF = graph.run()(mat)
+    val countF = graph.run()
     Await.result(countF, awaitMax)
     eventually { buffer.queue shouldBe 'closed }
     resumeGraphAndDoAssertion(recordCount.get, failTestAt)
@@ -230,7 +227,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
     import util._
     val buffer = PersistentBuffer[T](config)
     val graph = RunnableGraph.fromGraph(
-      GraphDSL.create(flowCounter, head)((_,_)) { implicit builder =>
+      GraphDSL.createGraph(flowCounter, head)((_,_)) { implicit builder =>
         (sink, first) =>
           import GraphDSL.Implicits._
         val bc = builder.add(Broadcast[T](2))
@@ -238,7 +235,7 @@ abstract class PersistentBufferSpec[T: ClassTag, Q <: QueueSerializer[T]: Manife
                                                                                                     bc ~> first
           ClosedShape
       })
-    val (countF, firstF) = graph.run()(ActorMaterializer())
+    val (countF, firstF) = graph.run()
     val afterRecovery = Await.result(countF, awaitMax)
     val first = Await.result(firstF, awaitMax)
     eventually { buffer.queue shouldBe 'closed }

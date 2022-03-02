@@ -20,7 +20,6 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
@@ -85,8 +84,6 @@ object MultiListenerSpecActorSystem {
 
 class MultiListenerSpec extends TestKit(MultiListenerSpecActorSystem.boot.actorSystem)
     with AnyFlatSpecLike with BeforeAndAfterAll with Matchers {
-
-  implicit val am = ActorMaterializer()
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val port1 = portBindings("default-listener")

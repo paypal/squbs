@@ -4,9 +4,9 @@ name := "squbs-ext"
 
 Revolver.settings
 
-javaOptions in Test += "-Xmx512m"
+Test / javaOptions += "-Xmx512m"
 
-testOptions in Test ++= Seq(
+Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 )
 

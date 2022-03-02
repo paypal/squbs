@@ -22,7 +22,7 @@ import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 class TimeBucketMetrics[T: ClassTag](val units: Int, val unitSize: FiniteDuration, bucketCreator: () => T,
-                                     clearBucket: (T) => Unit)(implicit val system: ActorSystem) {
+                                     clearBucket: T => Unit)(implicit val system: ActorSystem) {
 
   require(units >= 1)
 
@@ -66,7 +66,7 @@ class TimeBucketMetrics[T: ClassTag](val units: Int, val unitSize: FiniteDuratio
    */
   def bucketAt(index: Int, time: Long): T = buckets(indexAt(index, time))
 
-  private def clearNext(time: Long) = clearBucket(bucketAt(1, time))
+  private def clearNext(time: Long): Unit = clearBucket(bucketAt(1, time))
 
   /**
    * Provides the time into the bucket useful for calculating ratios in the current bucket when reporting,
@@ -94,7 +94,8 @@ class TimeBucketMetrics[T: ClassTag](val units: Int, val unitSize: FiniteDuratio
     val currentTime = System.nanoTime
     val firstCleanup = nextBucketBase(currentTime) + offset
     import system.dispatcher
-    system.scheduler.schedule((firstCleanup - currentTime) nanos, unitSize) { clearNext(System.nanoTime) }
+    system.scheduler
+      .scheduleWithFixedDelay((firstCleanup - currentTime).nanos, unitSize) { () => clearNext(System.nanoTime) }
   }
 
   /**

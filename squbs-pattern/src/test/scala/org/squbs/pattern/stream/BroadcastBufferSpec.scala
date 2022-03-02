@@ -18,7 +18,7 @@ package org.squbs.pattern.stream
 import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
-import akka.stream.{AbruptTerminationException, ActorMaterializer, ClosedShape, ThrottleMode}
+import akka.stream.{AbruptTerminationException, ClosedShape, Materializer, ThrottleMode}
 import akka.util.ByteString
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
@@ -27,14 +27,14 @@ import org.scalatest.matchers.should.Matchers
 import org.squbs.testkit.Timeouts._
 
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.{Await, Future, Promise}
 import scala.reflect._
+import scala.util.control.NonFatal
 
 abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manifest]
    (typeName: String) extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   implicit val system = ActorSystem(s"Broadcast${typeName}BufferSpec", PersistentBufferSpec.testConfig)
-  implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[T]()
   import StreamSpecUtil._
   import system.dispatcher
@@ -54,7 +54,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     import util._
 
     val buffer = new BroadcastBuffer[T](config)
-    val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
+    val streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         val bcBuffer = builder.add(buffer.async)
@@ -85,7 +85,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     }.toMat(Sink.head)(Keep.right)
 
     val buffer = new BroadcastBuffer[T](config)
-    val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter(t1 = _)) { implicit builder =>
+    val streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(counter(t1 = _)) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         val bc = builder.add(Broadcast[T](2))
@@ -111,7 +111,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     implicit val util = new StreamSpecUtil[T, T](2)
     import util._
 
-    val mat = ActorMaterializer()
+    val mat = Materializer(system)
     val finishedGenerating = Promise[Done]()
     val bBufferInCount = new AtomicInteger(0)
     val counter = new AtomicInteger(0)
@@ -123,7 +123,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
 
     val shutdownF = finishedGenerating.future map { d => mat.shutdown(); d }
 
-    val graph = RunnableGraph.fromGraph(GraphDSL.create(
+    val graph = RunnableGraph.fromGraph(GraphDSL.createGraph(
       Sink.ignore, Sink.ignore, fireFinished())((_,_,_)) { implicit builder =>
       (sink1, sink2, sink3) =>
         import GraphDSL.Implicits._
@@ -170,7 +170,6 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     implicit val util = new StreamSpecUtil[T, T](2)
     import util._
 
-    val mat = ActorMaterializer()
     val injectCounter = new AtomicInteger(0)
     val inCounter = new AtomicInteger(0)
 
@@ -181,7 +180,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     }
 
     val graph = RunnableGraph.fromGraph(
-      GraphDSL.create(Sink.ignore, Sink.ignore)((_, _)) { implicit builder => (sink1, sink2) =>
+      GraphDSL.createGraph(Sink.ignore, Sink.ignore)((_, _)) { implicit builder => (sink1, sink2) =>
           import GraphDSL.Implicits._
           val buffer = new BroadcastBuffer[T](config)
             .withOnPushCallback(() => inCounter.incrementAndGet())
@@ -194,10 +193,10 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
           ClosedShape
       })
 
-    val (sink1F, sink2F) = graph.run()(mat)
+    val (sink1F, sink2F) = graph.run()
 
-    Await.result(sink1F.failed, awaitMax) shouldBe an[NumberFormatException]
-    Await.result(sink2F, awaitMax) shouldBe Done
+    Await.result(sink1F.failed, awaitMax) shouldBe a[NumberFormatException]
+    Await.ready(sink2F.recover { case _ => Done}, awaitMax) // Since Akka 2.6 if one branch fails the other fails, too.
 
     val beforeShutDown = SinkCounts(atomicCounter(0).get, atomicCounter(1).get)
     val restartFrom = inCounter.incrementAndGet()
@@ -210,7 +209,6 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     implicit val util = new StreamSpecUtil[T, T](2)
     import util._
 
-    val mat = ActorMaterializer()
     val injectError = Flow[Int].map { n =>
       if (n == failTestAt) throw new NumberFormatException("This is a fake exception")
       else n
@@ -218,7 +216,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
 
     val buffer = new BroadcastBuffer[T](config).withOnCommitCallback(i => commitCounter(i))
     val graph1 = RunnableGraph.fromGraph(
-      GraphDSL.create(Sink.ignore, Sink.ignore)((_,_)) { implicit builder =>
+      GraphDSL.createGraph(Sink.ignore, Sink.ignore)((_,_)) { implicit builder =>
         (sink1, sink2) =>
           import GraphDSL.Implicits._
           val bcBuffer = builder.add(buffer.async)
@@ -228,7 +226,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
 
           ClosedShape
       })
-    val (sink1F, sink2F) = graph1.run()(mat)
+    val (sink1F, sink2F) = graph1.run()
     Await.result(for {a <- sink1F; b <- sink2F} yield (a, b), awaitMax)
     eventually { buffer.queue shouldBe 'closed }
 
@@ -244,7 +242,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
     import util._
     val buffer = new BroadcastBuffer[T](config)
     val graph = RunnableGraph.fromGraph(
-      GraphDSL.create(head, head,
+      GraphDSL.createGraph(head, head,
         flowCounter, flowCounter)((_,_,_,_)) { implicit builder =>
         (first1, first2, last1, last2) =>
           import GraphDSL.Implicits._
@@ -258,7 +256,7 @@ abstract class BroadcastBufferSpec[T: ClassTag, Q <: QueueSerializer[T] : Manife
                         bc2 ~> last2
           ClosedShape
       })
-    val (head1F, head2F, last1F, last2F) = graph.run()(ActorMaterializer())
+    val (head1F, head2F, last1F, last2F) = graph.run()
     val head1 = Await.result(head1F, awaitMax)
     val head2 = Await.result(head2F, awaitMax)
     println(s"First record processed after shutdown => ${(format(head1), format(head2))}")

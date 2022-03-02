@@ -2,7 +2,7 @@ import Shared._
 
 val javaVersion = "1.8"
 
-scalacOptions in ThisBuild ++= Seq(    // Copied from https://tpolecat.github.io/2017/04/25/scalac-flags.html
+ThisBuild / scalacOptions ++= Seq(    // Copied from https://tpolecat.github.io/2017/04/25/scalac-flags.html
   "-target:jvm-" + javaVersion,        //
   "-deprecation",                      // Emit warning and location for usages of deprecated APIs.
   "-encoding", "utf-8",                // Specify character encoding used by source files.
@@ -52,14 +52,14 @@ scalacOptions in ThisBuild ++= Seq(    // Copied from https://tpolecat.github.io
 */
 )
 
-scalacOptions in ThisBuild ++= {
+ThisBuild / scalacOptions ++= {
   CrossVersion.binaryScalaVersion(scalaVersion.value) match {
     case "2.12" => Seq("-Ybackend-parallelism", par.toString)
     case _ => Nil
   }
 }
 
-javacOptions in Compile ++= Seq(
+Compile / javacOptions ++= Seq(
   "-source", javaVersion,
   "-target", javaVersion,
   "-Xlint:unchecked",

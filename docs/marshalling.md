@@ -258,11 +258,9 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.MessageEntity
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.ActorMaterializer
 
 // We need the ActorSystem and Materializer to marshal/unmarshal
 implicit val system = ActorSystem()
-implicit val mat = ActorMaterializer()
 
 // Also need the implicit marshallers provided by this import
 import org.squbs.marshallers.json.XLangJsonSupport._
@@ -278,7 +276,6 @@ The `MarshalUnmarshal` utility class is used for manually marshalling and unmars
 ```java
 import akka.actor.ActorSystem;
 import akka.http.javadsl.model.RequestEntity;
-import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 
 import org.squbs.marshallers.MarshalUnmarshal;
@@ -289,7 +286,7 @@ import static org.squbs.marshallers.json.JacksonMapperSupport.*;
 
 // Base infrastructure, and the 'mu' MarshalUnmarshal. 
 private final ActorSystem system = ActorSystem.create();
-private final Materializer mat = ActorMaterializer.create(system);
+private final Materializer mat = Materializer.createMaterializer(system);
 private final MarshalUnmarshal mu = new MarshalUnmarshal(system.dispatcher(), mat);
 
 // Call 'apply' passing marshaller or unmarshaller as follows, using marshaller

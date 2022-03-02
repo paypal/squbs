@@ -41,7 +41,7 @@ class ThrowExceptionStream extends PerpetualStream[Future[Int]] {
 
   import ThrowExceptionStream._
 
-  def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) { implicit builder =>
+  def streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(counter) { implicit builder =>
     sink =>
       startSource ~> injectError ~> sink
       ClosedShape

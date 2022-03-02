@@ -52,7 +52,7 @@ class KillSwitchWithChildActorStream extends PerpetualStream[Future[Long]] {
 
   val counter = Flow[Int].map { _ => 1L }.reduce { _ + _ }.toMat(Sink.head)(Keep.right)
 
-  override def streamGraph = RunnableGraph.fromGraph(GraphDSL.create(counter) {
+  override def streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(counter) {
     implicit builder =>
       sink =>
         import GraphDSL.Implicits._

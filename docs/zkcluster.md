@@ -1,5 +1,8 @@
 # Clustering squbs Services using ZooKeeper
 
+**Important Note:** _The ZooKeeper support in squbs is deprecated. Please use Akka clusters directly or move to more modern
+cluster coordinators._
+
 ## Overview
 
 squbs achieves clustering of services through the zkcluster module. zkcluster is an [Akka extension](http://doc.akka.io/docs/akka/snapshot/scala/extending-akka.html) which leverages [ZooKeeper](https://zookeeper.apache.org/) to manage akka cluster and partitions.

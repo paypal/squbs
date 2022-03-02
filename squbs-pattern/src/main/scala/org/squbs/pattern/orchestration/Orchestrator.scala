@@ -17,18 +17,19 @@
 package org.squbs.pattern.orchestration
 
 import akka.actor.Actor
-import akka.contrib.pattern.Aggregator
 
 import scala.concurrent.Future
 import scala.language.implicitConversions
 import scala.util.Try
 
+@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+  since = "0.15.0")
 trait Orchestrator extends Aggregator { this: Actor =>
 
   protected case class UniqueTryWrapper[T](id: Long, result: Try[T])
 
   private[this] var _messageId = 0L
-  protected def nextMessageId = { _messageId += 1L; _messageId }
+  protected def nextMessageId: Long = { _messageId += 1L; _messageId }
 
   implicit def toOFuture[T](future: Future[T]): OFuture[T] = {
     // Dragons here: DO NOT call nextMessageId from inside future.onComplete as that executes

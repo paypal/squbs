@@ -27,21 +27,20 @@ import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.PathDirectives
-import akka.http.scaladsl.settings.{ParserSettings, RoutingSettings}
-import akka.http.scaladsl.{ConnectionContext, Http}
+import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.pattern.pipe
-import akka.stream.TLSClientAuth.{Need, Want}
+import akka.stream.TLSClientAuth.{Need, Want, need}
 import akka.stream.scaladsl.{Flow, GraphDSL, UnzipWith, ZipWith}
-import akka.stream.{ActorMaterializer, BindFailedException, FlowShape, Materializer}
+import akka.stream.{BindFailedException, FlowShape, Materializer}
 import com.typesafe.config.Config
 import org.squbs.metrics.MaterializationMetricsCollector
 import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, RequestContext, ServerPipeline}
 
 import scala.concurrent.Future
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
-import scala.jdk.CollectionConverters._
 
 /**
   * Akka HTTP based [[ServiceRegistryBase]] implementation.
@@ -70,9 +69,6 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
         throw ex
     }
 
-    import org.squbs.util.ConfigUtil._
-    val materializerName = config.get[String]("materializer", "default-materializer")
-    implicit val am = Unicomplex(context.system).materializer(materializerName)
     import context.system
 
     val handler = try { FlowHandler(listenerRoutes(name), localPort) } catch { case NonFatal(e) =>
@@ -91,10 +87,15 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
 
     val bindingF = sslContext match {
       case Some(sslCtx) =>
-        val httpsCtx = ConnectionContext.https(sslCtx, clientAuth = Some { if(needClientAuth) Need else Want })
-        Http().bindAndHandle(requestFlow, interface, port, connectionContext = httpsCtx )
+        val httpsCtx: HttpsConnectionContext = ConnectionContext.httpsServer { () =>
+          val engine = sslCtx.createSSLEngine()
+          engine.setUseClientMode(false)
+          if (needClientAuth) engine.setNeedClientAuth(true) else engine.setWantClientAuth(true)
+          engine
+        }
+        Http().newServerAt(interface, port).enableHttps(httpsCtx).bindFlow(requestFlow)
 
-      case None => Http().bindAndHandle(requestFlow, interface, port)
+      case None => Http().newServerAt(interface, port).bindFlow(requestFlow)
     }
     bindingF pipeTo uniSelf
 
@@ -148,22 +149,20 @@ class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path]
     import context.{dispatcher, system}
     val uniSelf = context.self
 
-//    Http().shutdownAllConnectionPools() andThen { case _ =>
-      serverBindings foreach {
-        case (name, ServerBindingInfo(Some(sb), None)) =>
-          listenerRoutes(name) foreach {
-            case (_, sw, _) => sw.actor ! PoisonPill
-          }
-          listenerRoutes = listenerRoutes - name
-          sb.unbind() andThen { case _ => uniSelf ! Unbound(sb) }
-          if (listenerRoutes.isEmpty) {
-            Http().shutdownAllConnectionPools()
-            // TODO Unregister "Listeners" JMX Bean.
-          }
-        // TODO Unregister "ServerStats,Listener=name" JMX Bean
-        case _ =>
-      }
-//    }
+    serverBindings foreach {
+      case (name, ServerBindingInfo(Some(sb), None)) =>
+        listenerRoutes(name) foreach {
+          case (_, sw, _) => sw.actor ! PoisonPill
+        }
+        listenerRoutes = listenerRoutes - name
+        sb.unbind() andThen { case _ => uniSelf ! Unbound(sb) }
+        if (listenerRoutes.isEmpty) {
+          Http().shutdownAllConnectionPools()
+          // TODO Unregister "Listeners" JMX Bean.
+        }
+      // TODO Unregister "ServerStats,Listener=name" JMX Bean
+      case _ =>
+    }
   }
 
   override private[unicomplex] def isAnyFailedToInitialize: Boolean = serverBindings.values exists (_.exception.nonEmpty)
@@ -200,7 +199,7 @@ private[unicomplex] trait FlowSupplier { this: Actor with ActorLogging =>
         Escalate
     }
 
-  val flowTry: Try[ActorMaterializer => Flow[RequestContext, RequestContext, NotUsed]]
+  val flowTry: Try[Materializer => Flow[RequestContext, RequestContext, NotUsed]]
 
   final def receive: Receive = {
     case FlowRequest =>
@@ -220,7 +219,7 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
     }
   }
 
-  val flowTry: Try[ActorMaterializer => Flow[RequestContext, RequestContext, NotUsed]] = routeDefTry match {
+  val flowTry: Try[Materializer => Flow[RequestContext, RequestContext, NotUsed]] = routeDefTry match {
 
     case Success(routeDef) =>
       context.parent ! Initialized(Success(None))
@@ -230,15 +229,15 @@ private[unicomplex] class RouteActor(webContext: String, clazz: Class[RouteDefin
 
       if (webContext.nonEmpty) {
         val finalRoute = PathDirectives.pathPrefix(PathMatchers.separateOnSlashes(webContext)) {routeDef.route}
-        Success((materializer: ActorMaterializer) => {
+        Success((materializer: Materializer) => {
           implicit val mat = materializer
-          RequestContextFlow(finalRoute)
+          RequestContextFlow(Route.seal(finalRoute))
         })
       } else {
         // don't append pathPrefix if webContext is empty, won't be null due to the top check
-        Success((materializer: ActorMaterializer) => {
+        Success((materializer: Materializer) => {
           implicit val mat = materializer
-          RequestContextFlow(routeDef.route)
+          RequestContextFlow(Route.seal(routeDef.route))
         })
       }
 
@@ -295,11 +294,11 @@ private[unicomplex] class FlowActor(webContext: String, clazz: Class[FlowDefinit
     }
   }
 
-  val flowTry: Try[ActorMaterializer => Flow[RequestContext, RequestContext, NotUsed]] = flowDefTry match {
+  val flowTry: Try[Materializer => Flow[RequestContext, RequestContext, NotUsed]] = flowDefTry match {
 
     case Success(flowDef) =>
       context.parent ! Initialized(Success(None))
-      Success((materializer: ActorMaterializer) => RequestContextFlow(flowDef.flow))
+      Success((materializer: Materializer) => RequestContextFlow(flowDef.flow))
 
     case Failure(e) =>
       log.error(e, s"Error instantiating flow from {}: {}", clazz.getName, e)
@@ -328,15 +327,8 @@ object RequestContextFlow {
       FlowShape(unzip.in, zip.out)
     })
 
-  def apply(route: Route)(implicit
-                          routingSettings: RoutingSettings,
-                          parserSettings:   ParserSettings,
-                          materializer:     Materializer,
-                          routingLog:       RoutingLog,
-                          rejectionHandler: RejectionHandler = RejectionHandler.default,
-                          exceptionHandler: ExceptionHandler = null
-  ): Flow[RequestContext, RequestContext, NotUsed] =
-    Flow[RequestContext].mapAsync(1) { asyncCall(_, materializer, Route.asyncHandler(route)) }
+  def apply(route: Route)(implicit mat: Materializer): Flow[RequestContext, RequestContext, NotUsed] =
+    Flow[RequestContext].mapAsync(1) { asyncCall(_, mat, Route.toFunction(route)(mat.system)) }
 
   def asyncCall(reqContext: RequestContext, mat: Materializer,
                 asyncHandler: HttpRequest => Future[HttpResponse]): Future[RequestContext] = {

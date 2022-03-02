@@ -234,8 +234,10 @@ final class Retry[In, Out, Context] private[streams](settings: RetrySettings[In,
         }
       }
 
-      override def onDownstreamFinish(): Unit =
+      override def onDownstreamFinish(cause: Throwable): Unit = {
         if (retryRegistry.isEmpty) completeStage() else cancel(in1)
+        super.onDownstreamFinish(cause)
+      }
     })
 
     setHandler(in2, handler = new InHandler {

@@ -25,22 +25,30 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.annotation.tailrec
 import scala.collection.immutable
 
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 trait Correlation[C] {
 
   def common(address:Address):C
 }
 
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 class DefaultCorrelation extends Correlation[String] {
   //for 10.100.254.73 ipv4, we use "10.100" as the common identifier for correlation
   override def common(address:Address) = address.hostPort.split('.').take(2).mkString(".")
 }
 
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 object DefaultCorrelation {
 
   def apply() = new DefaultCorrelation
 
 }
 
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlation[C])
   extends RoutingLogic with LazyLogging {
 
@@ -63,6 +71,8 @@ class CorrelateRoundRobinRoutingLogic[C](zkAddress:Address, correlation:Correlat
   }
 }
 
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 object CorrelateRoundRobinRoutingLogic {
 
   def apply[C](zkAddress:Address, correlation:Correlation[C]) =
@@ -70,6 +80,8 @@ object CorrelateRoundRobinRoutingLogic {
 
 }
 
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 final case class CorrelateRoundRobinGroup[C](val routerPaths: (ActorSystem) => immutable.Iterable[String],
                                              override val routerDispatcher: String = Dispatchers.DefaultDispatcherId,
                                              zkAddress:Address,
@@ -87,7 +99,8 @@ final case class CorrelateRoundRobinGroup[C](val routerPaths: (ActorSystem) => i
   override def paths(system: ActorSystem): immutable.Iterable[String] = routerPaths(system)
 }
 
-
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], val spareLeader:Boolean) extends RebalanceLogic {
 
   @tailrec private[cluster] final def classify(members:Seq[Address], classified:Map[C, Seq[Address]]):
@@ -165,6 +178,8 @@ class DataCenterAwareRebalanceLogic[C](correlation:Correlation[C], val spareLead
   }
 }
 
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 object DataCenterAwareRebalanceLogic {
 
   def apply[C](correlation:Correlation[C], spareLeader:Boolean = false) =

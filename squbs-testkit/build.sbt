@@ -18,9 +18,9 @@ libraryDependencies ++= Seq(
 
 )
 
-testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
+Test / testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 
-javaOptions in Test += "-Xmx512m"
+Test / javaOptions += "-Xmx512m"
 
 updateOptions := updateOptions.value.withCachedResolution(true)
 

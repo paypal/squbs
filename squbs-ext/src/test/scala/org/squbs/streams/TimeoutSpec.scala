@@ -18,7 +18,7 @@ package org.squbs.streams
 
 import akka.actor.{Actor, ActorSystem, Props}
 import akka.stream.scaladsl._
-import akka.stream.{ActorMaterializer, Attributes, FlowShape}
+import akka.stream.{Attributes, FlowShape}
 import akka.testkit.TestKit
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.matchers.should.Matchers
@@ -35,7 +35,6 @@ import scala.util.{Failure, Success}
 class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with AsyncFlatSpecLike with Matchers{
   import Timing._
 
-  implicit val materializer = ActorMaterializer()
   implicit val askTimeout = akka.util.Timeout(10.seconds)
 
   val timeoutFailure = Failure(FlowTimeoutException())

@@ -16,9 +16,6 @@
 
 package org.squbs.cluster.test
 
-import java.io.File
-import java.net.{InetAddress, ServerSocket}
-
 import akka.actor.{ActorSelection, ActorSystem, PoisonPill, Terminated}
 import akka.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
@@ -26,12 +23,15 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.commons.io.FileUtils
 import org.apache.curator.test.TestingServer
 import org.squbs.cluster.ZkCluster
-import ZkClusterMultiActorSystemTestKit._
+import org.squbs.cluster.test.ZkClusterMultiActorSystemTestKit._
 
+import java.io.File
+import java.net.{InetAddress, ServerSocket}
 import scala.annotation.tailrec
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
-import scala.util.{Failure, Success, Try, Random}
+import scala.util.{Failure, Random, Success, Try}
 
 abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
   extends TestKit(ActorSystem(systemName, akkaRemoteConfig)) with LazyLogging {
@@ -45,18 +45,22 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
   def zkClusterExts: Map[String, ZkCluster] = actorSystems map { sys => sys._1 -> ZkCluster(sys._2)}
 
   def startCluster(): Unit = {
+    val startTime = System.currentTimeMillis
+    logger.info("Starting cluster of size {}", clusterSize)
     Random.setSeed(System.nanoTime)
-    actorSystems = (0 until clusterSize) map {num =>
-      val sysName: String = num
-      sysName -> ActorSystem(sysName, akkaRemoteConfig withFallback zkConfig)
+    actorSystems = (0 until clusterSize) map { num =>
+        val sysName: String = systemName(num)
+        logger.info("Starting actor system {}", sysName)
+        sysName -> ActorSystem(sysName, akkaRemoteConfig withFallback zkConfig)
     } toMap
-    
+
     // start the lazy actor
     zkClusterExts foreach { ext =>
       watch(ext._2.zkClusterActor)
     }
-    
-    Thread.sleep(timeout.toMillis / 10)
+
+    Thread.sleep(500)
+    logger.info("Finished starting cluster in {} ms", System.currentTimeMillis - startTime)
   }
 
   protected lazy val zkConfig = ConfigFactory.parseString(
@@ -69,12 +73,12 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
     """.stripMargin)
 
   def shutdownCluster(): Unit = {
+    logger.info("Shutting down cluster")
     zkClusterExts.foreach(ext => killSystem(ext._1))
-    system.terminate()
-    Thread.sleep(timeout.toMillis / 10)
+    Await.ready(system.terminate(), timeout)
   }
 
-  implicit protected def int2SystemName(num: Int): String = s"member-$num"
+  protected def systemName(num: Int): String = s"member-$num"
 
   implicit protected def zkCluster2Selection(zkCluster: ZkCluster): ActorSelection =
     system.actorSelection(zkCluster.zkClusterActor.path.toStringWithAddress(zkCluster.zkAddress))
@@ -95,7 +99,7 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
   }
 
   @tailrec final def pickASystemRandomly(exclude: Option[String] = None): String = {
-    val candidate: String = Math.abs(Random.nextInt()) % clusterSize
+    val candidate: String = systemName(Math.abs(Random.nextInt()) % clusterSize)
     (actorSystems get candidate, exclude) match {
       case (Some(sys), Some(ex)) if candidate != ex =>
         candidate
@@ -134,21 +138,19 @@ object ZkClusterMultiActorSystemTestKit {
        |akka {
        |  actor {
        |    provider = "akka.remote.RemoteActorRefProvider"
+       |    serializers {
+       |      kryo = "io.altoo.akka.serialization.kryo.KryoSerializer"
+       |    }
+       |    serialization-bindings {
+       |      "org.squbs.cluster.ZkMessages" = kryo
+       |    }
        |  }
        |  remote {
        |    enabled-transports = ["akka.remote.netty.tcp"]
-       |    netty.tcp {
-       |      port = $nextPort
-       |      hostname = ${InetAddress.getLocalHost.getHostAddress}
-       |      server-socket-worker-pool {
-       |        pool-size-min = 2
-       |        pool-size-max = 4
-       |      }
-       |      client-socket-worker-pool {
-       |        pool-size-min = 2
-       |        pool-size-max = 4
-       |      }
-       |      connection-timeout = 1 s
+       |    artery {
+       |      transport = tcp # See Selecting a transport below
+       |      canonical.hostname = ${InetAddress.getLocalHost.getHostAddress}
+       |      canonical.port = $nextPort
        |    }
        |    log-received-messages = on
        |    log-sent-messages = on

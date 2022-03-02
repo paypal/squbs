@@ -19,7 +19,6 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, Uri}
 import akka.pattern.ask
-import akka.stream.ActorMaterializer
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
@@ -64,7 +63,6 @@ class PerpetualStreamMergeHubJSpec extends TestKit(PerpetualStreamMergeHubJSpec.
 
   it should "connect streams with mergehub" in {
 
-    implicit val ac = ActorMaterializer()
     Http().singleRequest(HttpRequest(uri = Uri(s"http://127.0.0.1:$port/mergehub"), entity = "10"))
     Http().singleRequest(HttpRequest(uri = Uri(s"http://127.0.0.1:$port/mergehub"), entity = "11"))
 

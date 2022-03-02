@@ -22,7 +22,8 @@ import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-
+@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+since = "0.15.0")
 private[orchestration] trait OPromise[T] extends org.squbs.pattern.orchestration.OPromise[T]
     with OFuture[T] {
   def future: this.type = this
@@ -40,6 +41,8 @@ private[orchestration] trait OPromise[T] extends org.squbs.pattern.orchestration
 
 /* Precondition: `executor` is prepared, i.e., `executor` has been returned from invocation of `prepare` on some other `ExecutionContext`.
  */
+@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+since = "0.15.0")
 private class CallbackRunnable[T](val onComplete: Try[T] => Any, errorReporter: Throwable => Unit) {
   // must be filled in before running it
   var value: Try[T] = null
@@ -61,6 +64,8 @@ private object CallbackRunnable {
   }
 }
 
+@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+since = "0.15.0")
 private class CallbackList[T] {
   val head = new CallbackRunnable[T](null, null) // Empty placeholder
   var tail = head
@@ -87,6 +92,8 @@ private class CallbackList[T] {
   }
 }
 
+@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+since = "0.15.0")
 private[orchestration] object OPromise {
 
   private def resolveTry[T](source: Try[T]): Try[T] = source match {
@@ -167,6 +174,8 @@ private[orchestration] object OPromise {
   }
 }
 
+@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+since = "0.15.0")
 private[impl] abstract class AbstractOPromise {
 
   var _ref: AnyRef = null

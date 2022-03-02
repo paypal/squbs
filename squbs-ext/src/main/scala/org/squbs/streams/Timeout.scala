@@ -16,10 +16,6 @@
 
 package org.squbs.streams
 
-import java.util.concurrent.TimeUnit.NANOSECONDS
-import java.util.concurrent.{TimeUnit, TimeoutException}
-import java.util.function.Consumer
-
 import akka.NotUsed
 import akka.http.org.squbs.util.JavaConverters._
 import akka.japi.Pair
@@ -27,9 +23,12 @@ import akka.stream._
 import akka.stream.scaladsl.{BidiFlow, Flow}
 import akka.stream.stage.{GraphStage, _}
 import com.typesafe.scalalogging.LazyLogging
-import org.squbs.util.DurationConverters
 import org.squbs.streams.TimeoutBidi._
+import org.squbs.util.DurationConverters
 
+import java.util.concurrent.TimeUnit.NANOSECONDS
+import java.util.concurrent.{TimeUnit, TimeoutException}
+import java.util.function.Consumer
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
@@ -117,7 +116,10 @@ abstract class TimeoutGraphStageLogic[In, FromWrapped, Out](shape: BidiShape[In,
     override def onPull(): Unit = {
       pull(in)
     }
-    override def onDownstreamFinish(): Unit = completeStage()
+    override def onDownstreamFinish(cause: Throwable): Unit = {
+      completeStage()
+      super.onDownstreamFinish(cause)
+    }
   })
 
   setHandler(fromWrapped, new InHandler {
@@ -150,7 +152,10 @@ abstract class TimeoutGraphStageLogic[In, FromWrapped, Out](shape: BidiShape[In,
         else downstreamDemand += 1
       } else complete(out)
     }
-    override def onDownstreamFinish(): Unit = cancel(fromWrapped)
+    override def onDownstreamFinish(cause: Throwable): Unit = {
+      cancel(fromWrapped)
+      super.onDownstreamFinish(cause)
+    }
   })
 
   final override def onTimer(key: Any): Unit = {

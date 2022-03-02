@@ -19,7 +19,6 @@ package org.squbs.unicomplex.dummysvcactor
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import org.squbs.unicomplex.WebContext
 
@@ -34,8 +33,7 @@ class DummySvcActor extends Actor with WebContext with ActorLogging {
 
   var timeoutListeners = Seq.empty[ActorRef]
 
-  implicit val am = ActorMaterializer()
-  import context.dispatcher
+  import context.{dispatcher, system}
 
   def receive: Receive = {
     case req @ HttpRequest(_, Uri(_, _, Path("/dummysvcactor/ping"), _, _), _, _, _) =>

@@ -20,13 +20,12 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpEntity.Chunked
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.testkit.TestKit
 import com.typesafe.config.ConfigFactory
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterAll
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.Timeouts._
 
@@ -52,8 +51,6 @@ object JavaFlowSvcSpec {
 
 class JavaFlowSvcSpec extends TestKit(
   JavaFlowSvcSpec.boot.actorSystem) with AsyncFlatSpecLike with BeforeAndAfterAll with Matchers {
-
-  implicit val am = ActorMaterializer()
 
   val portBindingsF = (Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]]
   val portF = portBindingsF map { bindings => bindings("default-listener") }

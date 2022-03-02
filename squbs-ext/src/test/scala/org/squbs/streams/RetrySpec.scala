@@ -21,7 +21,7 @@ import akka.actor.{Actor, ActorSystem, Props}
 import akka.stream.Attributes.inputBuffer
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import akka.stream.{ActorMaterializer, OverflowStrategy, ThrottleMode}
+import akka.stream.{OverflowStrategy, ThrottleMode}
 import akka.testkit.TestKit
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.matchers.should.Matchers
@@ -38,7 +38,6 @@ class RetrySpec
     with AsyncFlatSpecLike
     with Matchers {
 
-  implicit val materializer = ActorMaterializer()
   val failure = createFail("failed")
 
   it should "require failure retryCount > 0" in {

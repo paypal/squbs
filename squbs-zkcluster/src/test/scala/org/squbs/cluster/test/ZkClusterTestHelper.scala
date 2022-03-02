@@ -35,7 +35,7 @@ trait ZkClusterTestHelper extends AnyFlatSpecLike with ImplicitSender with Match
   override val clusterSize: Int = 6
 
   override def afterEach(): Unit = {
-    Thread.sleep(timeout.toMillis / 10)
+    Thread.sleep(500)
   }
 
   protected def checkLeaderInSync(leader: ZkLeadership) = {
@@ -55,7 +55,7 @@ trait ZkClusterTestHelper extends AnyFlatSpecLike with ImplicitSender with Match
   protected def killLeader(leader: ZkLeadership) = {
     val toBeKilled = leader.address.system
     killSystem(toBeKilled)
-    Thread.sleep(timeout.toMillis / 10)
+    Thread.sleep(500)
     toBeKilled
   }
 
@@ -63,7 +63,7 @@ trait ZkClusterTestHelper extends AnyFlatSpecLike with ImplicitSender with Match
     val leaderName = leader.address.system
     val toBeKilled = pickASystemRandomly(Some(leaderName))
     killSystem(toBeKilled)
-    Thread.sleep(timeout.toMillis / 10)
+    Thread.sleep(500)
     toBeKilled
   }
 
@@ -72,5 +72,5 @@ trait ZkClusterTestHelper extends AnyFlatSpecLike with ImplicitSender with Match
     expectMsgType[ZkLeadership](timeout)
   }
 
-  protected val originalMembers = (0 until clusterSize).map(int2SystemName).toSet
+  protected val originalMembers = (0 until clusterSize).map(systemName).toSet
 }

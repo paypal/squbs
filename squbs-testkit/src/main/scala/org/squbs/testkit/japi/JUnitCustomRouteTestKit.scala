@@ -36,7 +36,6 @@ abstract class JUnitCustomRouteTestKit(val boot: UnicomplexBoot) extends {
   @Rule
   override protected def systemResource: ActorSystemResource = _systemResource
 
-
   def this() = this(SCustomTestKit.boot())
 
   def this(config: Config) = this(SCustomTestKit.boot(config = Option(config)))
@@ -55,5 +54,4 @@ class CustomTestKitActorSystemResource(boot: UnicomplexBoot)
     extends ActorSystemResource(boot.actorSystem.name, boot.config) {
   override protected def config: Config = boot.config
   override protected def createSystem(): ActorSystem = boot.actorSystem
-  override protected def createMaterializer(system: ActorSystem): ActorMaterializer = ActorMaterializer()(system)
 }

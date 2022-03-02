@@ -20,14 +20,14 @@ import akka.event.Logging
 import akka.http.javadsl.model.HttpRequest
 import akka.http.javadsl.server.RouteResult
 import akka.http.javadsl.testkit.{RouteTest, TestRouteResult}
-import akka.stream.{ActorMaterializer, Materializer}
+import akka.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatestplus.testng.TestNGSuiteLike
 import org.testng.Assert
 import org.testng.annotations.{AfterClass, BeforeClass}
 
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.util.control.NonFatal
 
 /**
@@ -36,8 +36,8 @@ import scala.util.control.NonFatal
   */
 trait TestNGRouteTestBase extends RouteTest with RouteDefinitionTest with TestNGSuiteLike  {
   protected def systemResource: SystemResource
-  implicit def system: ActorSystem = systemResource.system
-  implicit def materializer: Materializer = systemResource.materializer
+  override implicit def system: ActorSystem = systemResource.system
+  override implicit def materializer: Materializer = Materializer.matFromSystem
 
   override protected def createTestRouteResultAsync(request: HttpRequest, result: Future[RouteResult]):
   TestRouteResult =
@@ -90,23 +90,18 @@ abstract class TestNGRouteTest extends TestNGRouteTestBase {
 class SystemResource(name: String, additionalConfig: Config) {
   protected def config = additionalConfig.withFallback(ConfigFactory.load())
   protected def createSystem(): ActorSystem = ActorSystem(name, config)
-  protected def createMaterializer(system: ActorSystem): ActorMaterializer = ActorMaterializer()(system)
 
   implicit def system: ActorSystem = _system
-  implicit def materializer: ActorMaterializer = _materializer
 
   private[this] var _system: ActorSystem = null
-  private[this] var _materializer: ActorMaterializer = null
 
   def before(): Unit = {
-    require((_system eq null) && (_materializer eq null))
+    require(_system eq null)
     _system = createSystem()
-    _materializer = createMaterializer(_system)
   }
   def after(): Unit = {
     Await.result(_system.terminate(), 5.seconds)
     _system = null
-    _materializer = null
   }
 }
 

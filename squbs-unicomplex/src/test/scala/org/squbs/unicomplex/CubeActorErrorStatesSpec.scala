@@ -20,7 +20,6 @@ import akka.actor.{Actor, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, Uri}
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
@@ -59,9 +58,6 @@ class CubeActorErrorStatesSpec extends TestKit(CubeActorErrorStatesSpec.boot.act
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val port = portBindings("default-listener")
-
-
-  implicit val am = ActorMaterializer()
 
   override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop

@@ -40,6 +40,8 @@ trait RouteDefinitionTest { this: RouteTest =>
       def run(request: HttpRequest): TestRouteResult = runRoute(underlying, request)
 
       def runWithRejections(request: HttpRequest): TestRouteResult = runRouteUnSealed(underlying, request)
+
+      def runClientServer(request: HttpRequest): TestRouteResult = runRoute(underlying, request)
     }
   }
 }

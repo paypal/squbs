@@ -18,7 +18,6 @@ package org.squbs.unicomplex
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
-import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
@@ -62,7 +61,6 @@ object UnicomplexTimeoutSpec {
 class UnicomplexTimeoutSpec extends TestKit(UnicomplexTimeoutSpec.boot.actorSystem) with ImplicitSender
     with AnyWordSpecLike with Matchers with BeforeAndAfterAll with Waiters {
 
-  implicit val am = ActorMaterializer()
   import akka.pattern.ask
   val port = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)("default-listener")
 

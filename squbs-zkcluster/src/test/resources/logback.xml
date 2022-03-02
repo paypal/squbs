@@ -15,5 +15,5 @@
     <logger name="org.apache.curator" level="ERROR"/>
     <logger name="org.apache.zookeeper" level="ERROR"/>
     <logger name="akka.remote" level="ERROR"/>
-    <logger name="org.squbs.cluster.test" level="INFO"/>
+    <logger name="org.squbs.cluster" level="INFO"/>
 </configuration>

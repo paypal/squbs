@@ -6,7 +6,6 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "org.scalatest" %% "scalatest" % scalatestV % Test,
   "com.typesafe.akka" %% "akka-actor" % akkaV,
-  "com.typesafe.akka" %% "akka-agent" % akkaV,
   "com.typesafe.akka" %% "akka-stream" % akkaV,
   "com.typesafe.akka" %% "akka-http-core" % akkaHttpV % Provided,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
@@ -17,7 +16,7 @@ libraryDependencies ++= Seq(
 
 enablePlugins(de.johoop.testngplugin.TestNGPlugin)
 
-testOptions in Test ++= Seq(
+Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pipeline"),
   Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 )

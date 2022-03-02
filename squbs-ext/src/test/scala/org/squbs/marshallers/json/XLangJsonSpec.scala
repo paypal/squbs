@@ -19,15 +19,14 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.{HttpEntity, MediaTypes, MessageEntity}
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.ActorMaterializer
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.PropertyAccessor
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.json4s.{DefaultFormats, jackson, native}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterAll
 import org.squbs.marshallers.json.TestData._
 
 class XLangJsonSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll {
@@ -35,7 +34,6 @@ class XLangJsonSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll {
   import XLangJsonSupport._
 
   implicit val system = ActorSystem("XLangJsonSpec")
-  implicit val mat = ActorMaterializer()
 
   it should "marshal and unmarshal standard case classes" in {
     val entity = HttpEntity(MediaTypes.`application/json`, fullTeamJson)

@@ -17,8 +17,8 @@
 package org.squbs.pattern.stream
 
 import akka.actor.ActorSystem
+import akka.stream.ClosedShape
 import akka.stream.scaladsl.{GraphDSL, RunnableGraph}
-import akka.stream.{ActorMaterializer, ClosedShape}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
@@ -31,7 +31,6 @@ import scala.concurrent.Await
 class PersistentBufferCommitOrderSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   implicit val system = ActorSystem("PersistentBufferCommitOrderSpec", PersistentBufferSpec.testConfig)
-  implicit val mat = ActorMaterializer()
   implicit val serializer = QueueSerializer[Int]()
   import StreamSpecUtil._
 
@@ -45,7 +44,7 @@ class PersistentBufferCommitOrderSpec extends AnyFlatSpec with Matchers with Bef
     val buffer = PersistentBufferAtLeastOnce[Int](ConfigFactory.parseString("commit-order-policy = strict").withFallback(config))
     val commit = buffer.commit[Int]
 
-    val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
+    val streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         in ~> buffer.async ~> filterARandomElement ~> commit ~> sink
@@ -62,7 +61,7 @@ class PersistentBufferCommitOrderSpec extends AnyFlatSpec with Matchers with Bef
     val buffer = PersistentBufferAtLeastOnce[Int](ConfigFactory.parseString("commit-order-policy = lenient").withFallback(config))
     val commit = buffer.commit[Int]
 
-    val streamGraph = RunnableGraph.fromGraph(GraphDSL.create(flowCounter) { implicit builder =>
+    val streamGraph = RunnableGraph.fromGraph(GraphDSL.createGraph(flowCounter) { implicit builder =>
       sink =>
         import GraphDSL.Implicits._
         in ~> buffer.async ~> filterARandomElement ~> commit ~> sink

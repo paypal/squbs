@@ -5,14 +5,13 @@ import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.model.RequestEntity;
 import akka.http.javadsl.unmarshalling.Unmarshaller;
-import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 import akka.stream.javadsl.Flow;
 import org.squbs.marshallers.MarshalUnmarshal;
 
 public class HttpFlowWithMergeHubJ extends FlowToPerpetualStream {
 
-    private final Materializer mat = ActorMaterializer.create(context().system());
+    private final Materializer mat = Materializer.createMaterializer(context());
     private final MarshalUnmarshal mu = new MarshalUnmarshal(context().system().dispatcher(), mat);
 
     private final Unmarshaller<RequestEntity, MyMessage> unmarshaller = Unmarshaller.async(entity ->

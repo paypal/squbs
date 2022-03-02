@@ -16,24 +16,23 @@
 
 package org.squbs.httpclient
 
-import java.lang.management.ManagementFactory
-import javax.management.ObjectName
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ws.PeerClosedConnectionException
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, RequestTimeoutException, StatusCodes}
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{BidiFlow, Flow, Sink, Source}
 import com.typesafe.config.ConfigFactory
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterAll
-import org.squbs.resolver._
 import org.squbs.metrics.{MetricsExtension, MetricsFlow}
 import org.squbs.pipeline.{Context, PipelineFlow, PipelineFlowFactory, RequestContext}
+import org.squbs.resolver._
 import org.squbs.testkit.Timeouts._
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
 
@@ -72,9 +71,7 @@ object MetricsFlowSpec {
   )
 
   implicit val system: ActorSystem = ActorSystem("ClientMetricFlowSpec", config)
-  implicit val materializer = ActorMaterializer()
   import akka.http.scaladsl.server.Directives._
-  import system.dispatcher
 
   val route =
     path("hello") {
@@ -91,7 +88,7 @@ object MetricsFlowSpec {
       }
     }
 
-  val serverBinding = Await.result(Http().bindAndHandle(route, "localhost", 0), awaitMax)
+  val serverBinding = Await.result(Http().newServerAt("localhost", 0).bind(route), awaitMax)
   val port = serverBinding.localAddress.getPort
 }
 

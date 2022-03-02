@@ -1,32 +1,26 @@
 import Shared._
 
-crossScalaVersions in ThisBuild := Seq("2.13.4", "2.12.10", "2.11.12")
+ThisBuild / crossScalaVersions := Seq("2.13.7", "2.12.15")
 
-scalaVersion in ThisBuild := crossScalaVersions.value.head
-
-organization in ThisBuild := "org.squbs"
+ThisBuild / scalaVersion := crossScalaVersions.value.head
 
 publishArtifact := false
 
-// TODO: Remove the overwrite flag once https://github.com/sbt/sbt/issues/3725 is fixed.
-import com.typesafe.sbt.pgp.PgpKeys.publishSignedConfiguration
-publishSignedConfiguration := publishSignedConfiguration.value.withOverwrite(isSnapshot.value)
+Test / compile / coverageEnabled := true
 
-coverageEnabled in(Test, compile) := true
+Compile / compile / coverageEnabled := false
 
-coverageEnabled in(Compile, compile) := false
+ThisBuild / coverageMinimumStmtTotal := 70.0
 
-coverageMinimum in ThisBuild := 70.0
+ThisBuild / coverageFailOnMinimum := true
 
-coverageFailOnMinimum in ThisBuild := true
+ThisBuild / fork := true
 
-fork in ThisBuild := true
+ThisBuild / parallelExecution := false
 
-parallelExecution in ThisBuild := false
+ThisBuild / updateOptions := updateOptions.value.withCachedResolution(true)
 
-updateOptions in ThisBuild := updateOptions.value.withCachedResolution(true)
-
-concurrentRestrictions in Global := Seq(Tags.limitAll(par))
+Global / concurrentRestrictions := Seq(Tags.limitAll(par))
 
 lazy val `squbs-pipeline` = project
 
@@ -49,7 +43,7 @@ lazy val SlowTest = config("slow") extend Test
 lazy val `squbs-pattern` = (project dependsOn (`squbs-ext`, `squbs-testkit` % "test"))
   .configs(SlowTest)
   .settings(inConfig(SlowTest)(Defaults.testTasks): _*)
-  .settings(testOptions in SlowTest := Seq.empty)
+  .settings(SlowTest / testOptions := Seq.empty)
   .enablePlugins(spray.boilerplate.BoilerplatePlugin)
 
 // Information for debugging tests and test launchers inside sbt.
@@ -72,21 +66,7 @@ lazy val `squbs-admin` = project dependsOn (`squbs-unicomplex`, `squbs-testkit` 
 
 lazy val `squbs-ext` = project dependsOn `squbs-pipeline` % "provided"
 
-publishTo in ThisBuild := {
-  val nexus = "https://oss.sonatype.org/"
-  if (version.value.trim.endsWith("SNAPSHOT"))
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  else
-    Some("releases" at nexus + "service/local/staging/deploy/maven2")
-}
-
-publishMavenStyle in ThisBuild := true
-
-publishArtifact in Test := false
-
-pomIncludeRepository in ThisBuild := { _ => false }
-
-pomExtra in ThisBuild :=
+ThisBuild / pomExtra :=
   <url>https://github.com/paypal/squbs</url>
     <licenses>
       <license>

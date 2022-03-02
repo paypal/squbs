@@ -28,16 +28,31 @@ import scala.language.postfixOps
 import scala.util.Try
 import scala.jdk.CollectionConverters._
 
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 private[cluster] sealed trait ZkClusterState
 
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 private[cluster] case object ZkClusterUninitialized extends ZkClusterState
+
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 private[cluster] case object ZkClusterActiveAsLeader extends ZkClusterState
+
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 private[cluster] case object ZkClusterActiveAsFollower extends ZkClusterState
 
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 private[cluster] case class ZkPartitionData(partitionKey: ByteString,
                                             members: Set[Address] = Set.empty,
                                             expectedSize: Int,
                                             props: Array[Byte] = Array.empty)
+
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 private[cluster] case class ZkClusterData(leader: Option[Address],
                                           members: Set[Address],
                                           partitions: Map[ByteString, ZkPartitionData],
@@ -46,6 +61,8 @@ private[cluster] case class ZkClusterData(leader: Option[Address],
 /**
  * The main Actor of ZkCluster
  */
+@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+  since = "0.15.0")
 class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with LazyLogging {
 
   private[this] val zkCluster = ZkCluster(context.system)
@@ -54,7 +71,7 @@ class ZkClusterActor extends FSM[ZkClusterState, ZkClusterData] with Stash with 
   private[this] implicit val segLogic = segmentationLogic
   import segLogic._
 
-  private[this] implicit val log = logger
+  private[this] implicit val iLog = logger
   private[cluster] var whenZkClientUpdated = Seq.empty[ActorRef]
   private[cluster] var whenPartitionUpdated = Set.empty[ActorRef]
 

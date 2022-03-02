@@ -19,7 +19,6 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ErrorInfo, IllegalRequestException, StatusCodes}
 import akka.http.scaladsl.server.Route
 import akka.pattern._
-import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
@@ -93,7 +92,6 @@ class RouteDefinitionSpec extends TestKit(
   with ScalaFutures {
 
   implicit val pc = PatienceConfig(1.minute)
-  implicit val am = ActorMaterializer()
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
   val port = portBindings("default-listener")

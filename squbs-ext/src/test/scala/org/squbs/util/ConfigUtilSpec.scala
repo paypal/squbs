@@ -50,6 +50,7 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       |  ]
       |  timeout = 20s
       |  timeout-inf = Inf
+      |  timeout-list-with-inf = [ 10ms, 5m, Inf, 2h ]
       |  mem-size = 4m
       |  correct-regex = "[0-9]"
       |  incorrect-regex = "("
@@ -178,6 +179,10 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       config.getTry[Duration]("testConfig.timeout-inf") shouldBe Success(Duration.Inf)
     }
 
+    it("should get duration list with some infinite elements by \"getTry\"") {
+      config.getTry[Seq[Duration]]("testConfig.timeout-list-with-inf") shouldBe
+        Success(Seq(10.millis, 5.minutes, Duration.Inf, 2.hours))
+    }
 
     it("should get finite duration for existing finite duration by \"getTry\"") {
       config.getTry[FiniteDuration]("testConfig.timeout").get shouldEqual Duration.create(20, SECONDS)
@@ -190,7 +195,7 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
     it("should get Failure(ConfigException.WrongType) for infinite duration by \"getTry\"") {
       the [ConfigException.WrongType] thrownBy
         config.getTry[FiniteDuration]("testConfig.timeout-inf").get should have message
-      s"${config.origin.description}: Path: testConfig.timeout-inf, value Inf is not a scala.concurrent.duration.FiniteDuration"
+      s"${config.origin.description}: Path: testConfig.timeout-inf, value Inf is not the correct type"
     }
 
     it ("should get a proper Regex for existing value") {
@@ -249,9 +254,8 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       config.getOption[FiniteDuration]("testConfig.timeout-inf") shouldBe None
     }
 
-    it("should throw IllegalArgumentException for unexpected type of existing config value by \"getOption\"") {
-        the [IllegalArgumentException] thrownBy config.get[Unit]("testConfig.str") should
-          have message "Configuration option type Unit not implemented"
+    it("should fail to compile for calling \"getOption\" with unexpected type") {
+      "config.getOption[Unit](\"testConfig.str\")" shouldNot compile
     }
 
     it("should get default value for non-existing config string") {
@@ -268,9 +272,8 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       )
     }
 
-    it("should throw IllegalArgumentException for unexpected type of existing config value") {
-        the [IllegalArgumentException] thrownBy config.get[Unit]("testConfig.str") should
-          have message "Configuration option type Unit not implemented"
+    it("unexpected type of existing config value should not compile or type check") {
+      "config.get[Unit](\"testConfig.str\")" shouldNot typeCheck
     }
 
     it("should throw ConfigException.WrongType exception for incorrect type of existing config value") {
@@ -283,7 +286,7 @@ class ConfigUtilSpec extends AnyFunSpecLike with Matchers {
       config.getTry[Int]("testConfig.str").failed.get shouldBe a [ConfigException.WrongType]
     }
 
-    it ("should get provide at least one IPv$ address for any host") {
+    it ("should get provide at least one IPv4 address for any host") {
       ipv4 should fullyMatch regex """\d+\.\d+\.\d+\.\d+"""
       println(ipv4)
     }

@@ -17,7 +17,6 @@
 package org.squbs.unicomplex.pipeline
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
@@ -51,10 +50,8 @@ object BadPipelineFactorySpec {
     .initExtensions.start()
 }
 
-class BadPipelineFactorySpec extends TestKit(
-  BadPipelineFactorySpec.boot.actorSystem) with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
-
-  implicit val am = ActorMaterializer()
+class BadPipelineFactorySpec extends TestKit(BadPipelineFactorySpec.boot.actorSystem)
+  with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
   override def afterAll(): Unit = {
     Unicomplex(system).uniActor ! GracefulStop

@@ -1,14 +1,16 @@
 # The Orchestration DSL
 
+**Important Note:** _The Orchestration DSL is deprecated and will be removed in a future version.
+Orchestration can be better achieved using Akka Streams_
+
 Orchestration is one of the major use cases for services, whether you try to orchestrate multiple service calls with as much concurrency, and therefore as good a response time, as possible, or you try to do multiple business operations, data writes, data reads, service calls, etc. dependent on each others, etc. The ability to concisely describe your business logic is essential to making the service easy to understand and maintain. The orchestration DSL - part of squbs-pattern - will make asynchronous code easy to write, read, and reason about.
 
 ## Dependencies
 
-The Orchestration DSL is part of `squbs-pattern`. To use the Orchestration DSL, please add the following dependencies:
+The Orchestration DSL is part of `squbs-pattern`. To use the Orchestration DSL, please add the following dependency:
 
 ```scala
-"org.squbs" %% "squbs-pattern" % squbsVersion,
-"com.typesafe.akka" %% "akka-contrib" % akkaVersion
+"org.squbs" %% "squbs-pattern" % squbsVersion
 ```
 
 ## Getting Started

@@ -19,7 +19,6 @@ package org.squbs.testkit
 import akka.actor.{Actor, Props}
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives
-import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
@@ -31,7 +30,6 @@ import scala.concurrent.Await
 class CustomTestKitSpec extends CustomTestKit(CustomTestKitSpec.boot) with AnyFlatSpecLike with Matchers {
 
   it should "return OK with the port from PortGetter" in {
-    implicit val materializer = ActorMaterializer()
     val result = Await.result(entityAsString(s"http://127.0.0.1:$port/test"), awaitMax)
     result should include ("success")
   }

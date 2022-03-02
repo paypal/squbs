@@ -19,7 +19,6 @@ package org.squbs.metrics
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.ws.PeerClosedConnectionException
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.testkit.TestKit
 import org.scalatest.OptionValues._
@@ -52,8 +51,6 @@ class MetricsFlowSpec extends TestKit(ActorSystem("MetricsFlowSpec")) with Async
   val internalServerError = RequestContext(HttpRequest(uri = "/internalservererror"), 0)
   val connectionException = RequestContext(HttpRequest(uri = "/connectionException"), 0)
   val timeoutException = RequestContext(HttpRequest(uri = "/timeoutException"), 0)
-
-  implicit val materializer = ActorMaterializer()
 
   it should "collect request count and time metrics" in {
     val future = Source(hello :: hello :: Nil).
