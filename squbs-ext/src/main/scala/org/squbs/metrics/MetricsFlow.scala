@@ -80,7 +80,8 @@ object MaterializationMetricsCollector {
   def create[T](name: String, system: ActorSystem) = apply[T](name)(system)
 }
 
-class MaterializationMetricsCollector[T] private[metrics] (name: String)(implicit system: ActorSystem) extends GraphStage[FlowShape[T, T]] {
+class MaterializationMetricsCollector[T] private[metrics] (name: String)(implicit system: ActorSystem)
+    extends GraphStage[FlowShape[T, T]] {
 
   val domain = MetricsExtension(system).Domain
   val metrics = MetricsExtension(system).metrics
