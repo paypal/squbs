@@ -70,7 +70,7 @@ trait PerpetualStreamBase[T] extends Actor with ActorLogging with Stash with Gra
 
   final def starting: Receive = {
     case `streamRunLifecycleState` =>
-      context.become(running orElse flowMatValue orElse receive)
+      context.become(running orElse flowMatValue orElse receive orElse catchAnyLifecycleState)
       matValueOption = Option(runGraph())
       unstashAll()
     case _ => stash()
@@ -95,6 +95,10 @@ trait PerpetualStreamBase[T] extends Actor with ActorLogging with Stash with Gra
 
   final def flowMatValue: Receive = {
     case MatValueRequest => sender() ! matValue
+  }
+
+  final def catchAnyLifecycleState: Receive = {
+    case _: LifecycleState => // Stashed lifecycle states without meaning or anyone caring should be ignored.
   }
 }
 
