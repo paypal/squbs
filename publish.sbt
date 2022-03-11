@@ -2,13 +2,6 @@ ThisBuild / organization := "org.squbs"
 ThisBuild / organizationName := "squbs.org"
 ThisBuild / organizationHomepage := Some(url("https://github.com/paypal/squbs"))
 
-ThisBuild / scmInfo := Some(
-  ScmInfo(
-    url("https://github.com/paypal/squbs"),
-    "scm:git@github.com:paypal/squbs.git"
-  )
-)
-
 ThisBuild / pomIncludeRepository := { _ => false }
 
 ThisBuild / publishTo := {
