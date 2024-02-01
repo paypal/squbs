@@ -75,8 +75,12 @@ object JMX {
 
   def prefix(implicit context: ActorContext): String = prefix(context.system)
 
-  def register(ob: AnyRef, objName: ObjectName): ObjectInstance =
-    ManagementFactory.getPlatformMBeanServer.registerMBean(ob, objName)
+  def register(ob: AnyRef, objName: ObjectName): ObjectInstance = {
+    if(!isRegistered(objName))
+      ManagementFactory.getPlatformMBeanServer.registerMBean(ob, objName)
+    else
+      ManagementFactory.getPlatformMBeanServer.getObjectInstance(objName)
+  }
 
   def unregister(objName: ObjectName): Unit = ManagementFactory.getPlatformMBeanServer.unregisterMBean(objName)
 
