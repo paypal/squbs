@@ -21,6 +21,7 @@ import org.apache.pekko.http.javadsl.marshalling.Marshaller
 import org.apache.pekko.http.javadsl.unmarshalling.Unmarshaller
 import org.apache.pekko.http.scaladsl.marshalling.Marshal
 import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
+import org.apache.pekko.http.scaladsl.settings
 import org.apache.pekko.stream.Materializer
 
 import scala.compat.java8.FutureConverters._

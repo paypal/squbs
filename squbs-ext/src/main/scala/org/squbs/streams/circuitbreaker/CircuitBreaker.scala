@@ -188,7 +188,7 @@ object CircuitBreaker {
     * @see [[CircuitBreakerSettings]] for details about each parameter and type parameter.
     */
   def create[In, Out, Context](circuitBreakerSettings: japi.CircuitBreakerSettings[In, Out, Context]):
-  akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] =
+  org.apache.pekko.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] =
     JavaConverters.toJava[In, In, Out, Try[Out], Context](apply[In, Out, Context](circuitBreakerSettings.toScala))
 }
 

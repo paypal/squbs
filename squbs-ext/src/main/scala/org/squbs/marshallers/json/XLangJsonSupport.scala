@@ -21,7 +21,7 @@ import org.apache.pekko.http.javadsl.unmarshalling.Unmarshaller
 import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
 import org.apache.pekko.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import com.fasterxml.jackson.databind.ObjectMapper
-import de.heikoseeberger.akkahttpjson4s.Json4sSupport
+import com.github.pjfanning.pekkohttpjson4s.Json4sSupport
 import org.json4s.{DefaultFormats, Formats, Serialization, Serializer, jackson, native}
 
 import scala.annotation.varargs

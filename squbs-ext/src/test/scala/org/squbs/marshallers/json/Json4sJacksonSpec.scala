@@ -28,7 +28,7 @@ import org.scalatest.matchers.should.Matchers
 
 class Json4sJacksonSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll {
 
-  import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+  import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
   implicit val system = ActorSystem("Json4sJacksonSpec")
   implicit val serialization = jackson.Serialization

@@ -9,7 +9,7 @@ libraryDependencies ++= Seq(
   "org.apache.pekko" %% "pekko-slf4j" % pekkoV,
   "org.apache.curator" % "curator-recipes" % curatorV,
   "org.apache.curator" % "curator-framework" % curatorV exclude("org.jboss.netty", "netty"),
-  "io.altoo" %% "akka-kryo-serialization" % akkaKryoV,
+  //"io.altoo" %% "akka-kryo-serialization" % akkaKryoV,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
   "org.apache.pekko" %% "pekko-testkit" % pekkoV % Test,
   "org.scalatest" %% "scalatest" % scalatestV % Test,

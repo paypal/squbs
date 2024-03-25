@@ -21,7 +21,7 @@ import org.apache.pekko.http.javadsl.unmarshalling.Unmarshaller
 import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
 import org.apache.pekko.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import com.fasterxml.jackson.databind.ObjectMapper
-import de.heikoseeberger.akkahttpjackson.JacksonSupport
+import com.github.pjfanning.pekkohttpjackson.JacksonSupport
 
 import scala.reflect.runtime.universe._
 import scala.reflect.{ClassTag, classTag}

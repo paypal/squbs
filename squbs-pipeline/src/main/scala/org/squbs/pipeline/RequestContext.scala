@@ -17,12 +17,12 @@
 package org.squbs.pipeline
 
 import java.util.Optional
-
 import org.apache.pekko.http.javadsl.{model => jm}
 import org.apache.pekko.http.scaladsl.{model => sm}
+
 import scala.annotation.varargs
 import scala.jdk.CollectionConverters._
-import scala.compat.jdk.OptionConverters._
+import scala.jdk.OptionConverters.RichOption
 import scala.util.Try
 
 object RequestContext {

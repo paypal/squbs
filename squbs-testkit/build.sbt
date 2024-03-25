@@ -11,7 +11,7 @@ libraryDependencies ++= Seq(
   "org.apache.pekko" %% "pekko-http-testkit" % pekkoHttpV % Optional,
   "junit" % "junit" % junitV % Optional,
   "org.testng" % "testng" % testngV % Optional,
-  "de.heikoseeberger" %% "akka-http-jackson" % heikoseebergerAkkaHttpJsonV % Test,
+  "com.github.pjfanning" %% "pekko-http-jackson" % heikoseebergerAkkaHttpJsonV % Test,
   "com.novocode" % "junit-interface" % junitInterfaceV % Test,
   "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test,
   "ch.qos.logback" % "logback-classic" % logbackInTestV % Test

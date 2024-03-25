@@ -179,7 +179,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow GET unmarshal" should "get the correct response" in {
-    import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+    import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
     implicit val formats = DefaultFormats
     implicit val serialization = jackson.Serialization
@@ -254,7 +254,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
 //  }
 
   "HttpClient deserialization call resulting in NO_CONTENT" should "get the correct exception" in {
-    import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+    import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
     implicit val formats = DefaultFormats
     implicit val serialization = jackson.Serialization
@@ -294,7 +294,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow OPTIONS unmarshal" should "get the correct response" in {
-    import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+    import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
     implicit val formats = DefaultFormats
     implicit val serialization = jackson.Serialization
@@ -324,7 +324,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow DELETE unmarshal" should "get the correct response" in {
-    import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+    import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
     implicit val formats = DefaultFormats
     implicit val serialization = jackson.Serialization
@@ -342,7 +342,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow POST" should "get the correct response" in {
-    import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+    import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
     implicit val formats = DefaultFormats
     implicit val serialization = jackson.Serialization
@@ -360,7 +360,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow POST unmarshal" should "get the correct response" in {
-    import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+    import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
     implicit val formats = DefaultFormats
     implicit val serialization = jackson.Serialization
@@ -390,7 +390,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow PUT" should "get the correct response" in {
-    import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+    import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
     implicit val formats = DefaultFormats
     implicit val serialization = jackson.Serialization
@@ -408,7 +408,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow PUT unmarshal" should "get the correct response" in {
-    import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+    import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
     implicit val formats = DefaultFormats
     implicit val serialization = jackson.Serialization
@@ -438,7 +438,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
 //  }
 
   "ClientFlow GET wrong unmarshal" should "give a failed future" in {
-    import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+    import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
     implicit val formats = DefaultFormats
     implicit val serialization = jackson.Serialization
@@ -461,7 +461,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow GET non-existing resource and unmarshal" should "give a failed future" in {
-    import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+    import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
     implicit val formats = DefaultFormats
     implicit val serialization = jackson.Serialization

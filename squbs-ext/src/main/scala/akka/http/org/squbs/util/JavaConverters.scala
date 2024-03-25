@@ -17,7 +17,6 @@
 package akka.http.org.squbs.util
 
 import java.util.Optional
-
 import org.apache.pekko.NotUsed
 import org.apache.pekko.http.impl.util.JavaMapping
 import org.apache.pekko.http.javadsl.{model => jm}
@@ -30,6 +29,7 @@ import org.apache.pekko.japi.Pair
 import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow}
 import org.apache.pekko.stream.{javadsl => js}
 
+import scala.jdk.OptionConverters.RichOptional
 import scala.util.Try
 
 /**
@@ -39,13 +39,12 @@ object JavaConverters {
   def fromJava(connectionContext: Optional[jd.HttpsConnectionContext],
                                  settings: Optional[jd.settings.ConnectionPoolSettings]):
   (Option[HttpsConnectionContext], Option[ConnectionPoolSettings]) = {
-    import scala.compat.java8.OptionConverters._
     val cCtx = connectionContext.asScala.asInstanceOf[Option[HttpsConnectionContext]]
     val sSettings = settings.asScala.asInstanceOf[Option[ConnectionPoolSettings]]
     (cCtx, sSettings)
   }
 
-  def toJava[In1, Out1, In2, Out2, Context](bidiFlow: BidiFlow[(In1, Context), (Out1, Context), (In2, Context), (Out2, Context), NotUsed]):
+  /*def toJava[In1, Out1, In2, Out2, Context](bidiFlow: BidiFlow[(In1, Context), (Out1, Context), (In2, Context), (Out2, Context), NotUsed]):
   js.BidiFlow[Pair[In1, Context], Pair[Out1, Context], Pair[In2, Context], Pair[Out2, Context], NotUsed] = {
     implicit val sIn1Mapping = JavaMapping.identity[In1]
     implicit val sOut1Mapping = JavaMapping.identity[Out1]
@@ -74,5 +73,6 @@ object JavaConverters {
     adaptTupleFlow[T](flow)
   }
 
-  def toScala(uri: akka.http.javadsl.model.Uri) = JavaMapping.toScala(uri)
+  def toScala(uri: org.apache.pekko.http.javadsl.model.Uri) = JavaMapping.toScala(uri)
+   */
 }

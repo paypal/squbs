@@ -25,7 +25,7 @@ import javax.management.{MXBean, ObjectName}
 import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.event.LoggingAdapter
-import org.apache.pekko.http.org.squbs.util.JavaConverters
+import org.squbs.util.JavaConverters
 import org.apache.pekko.japi.Pair
 import org.apache.pekko.stream.Attributes.InputBuffer
 import org.apache.pekko.stream._
