@@ -16,12 +16,12 @@
 
 package org.squbs.streams
 
-import akka.NotUsed
-import akka.http.org.squbs.util.JavaConverters._
-import akka.japi.Pair
-import akka.stream._
-import akka.stream.scaladsl.{BidiFlow, Flow}
-import akka.stream.stage.{GraphStage, _}
+import org.apache.pekko.NotUsed
+import org.apache.pekko.http.org.squbs.util.JavaConverters._
+import org.apache.pekko.japi.Pair
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow}
+import org.apache.pekko.stream.stage.{GraphStage, _}
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.streams.TimeoutBidi._
 import org.squbs.util.DurationConverters

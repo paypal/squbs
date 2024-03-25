@@ -18,8 +18,8 @@ package org.squbs.lifecycle
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor._
-import akka.pattern.GracefulStopSupport
+import org.apache.pekko.actor._
+import org.apache.pekko.pattern.GracefulStopSupport
 import org.squbs.unicomplex.{StopTimeout, Unicomplex}
 import org.squbs.util.DurationConverters
 

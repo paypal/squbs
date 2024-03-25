@@ -15,12 +15,12 @@
  */
 package org.squbs.stream
 
-import akka.actor.ActorSystem
-import akka.dispatch.Futures
-import akka.stream.scaladsl.Keep
-import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import akka.stream.{ActorMaterializer, OverflowStrategy}
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.dispatch.Futures
+import org.apache.pekko.stream.scaladsl.Keep
+import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
+import org.apache.pekko.stream.{ActorMaterializer, OverflowStrategy}
+import org.apache.pekko.testkit.TestKit
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 import org.squbs.stream.TriggerEvent._

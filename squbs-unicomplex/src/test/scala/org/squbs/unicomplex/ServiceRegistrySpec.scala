@@ -16,9 +16,9 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.Uri.Path
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.Uri.Path
+import org.apache.pekko.testkit.TestKit
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 import org.squbs.unicomplex.FlowHandler._

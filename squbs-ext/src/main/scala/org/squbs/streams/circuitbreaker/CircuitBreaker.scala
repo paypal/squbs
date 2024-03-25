@@ -16,12 +16,12 @@
 
 package org.squbs.streams.circuitbreaker
 
-import akka.NotUsed
-import akka.http.org.squbs.util.JavaConverters
-import akka.japi.Pair
-import akka.stream._
-import akka.stream.scaladsl.{BidiFlow, Flow}
-import akka.stream.stage._
+import org.apache.pekko.NotUsed
+import org.apache.pekko.http.org.squbs.util.JavaConverters
+import org.apache.pekko.japi.Pair
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow}
+import org.apache.pekko.stream.stage._
 import org.squbs.streams.{Timeout, TimeoutSettings, UniqueId}
 
 import scala.collection.mutable

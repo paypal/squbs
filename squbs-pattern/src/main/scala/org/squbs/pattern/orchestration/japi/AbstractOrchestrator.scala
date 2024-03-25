@@ -17,9 +17,9 @@ package org.squbs.pattern.orchestration.japi
 
 import java.util.concurrent.CompletableFuture
 
-import akka.actor.{Actor, ActorRef, ActorSelection}
-import akka.pattern.{AskableActorRef, AskableActorSelection}
-import akka.util.Timeout
+import org.apache.pekko.actor.{Actor, ActorRef, ActorSelection}
+import org.apache.pekko.pattern.{AskableActorRef, AskableActorSelection}
+import org.apache.pekko.util.Timeout
 import org.squbs.pattern.orchestration.Orchestrator
 
 import scala.concurrent.Future

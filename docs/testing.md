@@ -13,7 +13,7 @@ Optionally, you should also include the following dependencies based upon whethe
 
 ```scala
 // Testing RouteDefinition...
-"com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % "test",
+"org.apache.pekko" %% "pekko-http-testkit" % pekkoHttpVersion % "test",
 
 // Using JUnit...
 "junit" % "junit" % junitV % "test",
@@ -215,12 +215,12 @@ JUnit creates an instance of the class for every individual test in the class. T
 
 Note: If you construct the `CustomTestKit` passing a `UnicomplexBoot` object on the `super(boot)` call, use caution how and when to shutdown. If the `UnicomplexBoot` instance is created per-class, meaning one single instance is used for all test methods, the shutdown also needs to happen only once. Use JUnit's `@AfterClass` annotation to annotate a static shutdown method. But if the `UnicomplexBoot` instance is created per test method - the default behavior, the `@After` annotation should be used similar to default construction of `CustomTestKit`.
 
-## Testing Akka Http Routes using Akka Http TestKit
+## Testing Pekko Http Routes using Akka Http TestKit
 
-The `akka-http-testkit` needs to be added to the dependencies in order to test routes.  Please add the followings to your dependencies:
+The `pekko-http-testkit` needs to be added to the dependencies in order to test routes.  Please add the followings to your dependencies:
 
 ```
-"com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV % "test"
+"org.apache.pekko" %% "pekko-http-testkit" % pekkoHttpV % "test"
 ```
 
 ### Usage
@@ -255,7 +255,7 @@ class MyRoute extends RouteDefinition {
 Implementing the test, obtaining route from `TestRoute[MyRoute]`:
 
 ```scala
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalatest.{Matchers, FlatSpecLike}
 import org.squbs.testkit.TestRoute
 
@@ -358,7 +358,7 @@ class MyRouteTest extends CustomRouteTestKit with FlatSpecLike with Matchers {
 }
 
 class ReverserRoute extends RouteDefinition {
-  import akka.pattern.ask
+  import org.apache.pekko.pattern.ask
   import Timeouts._
   import context.dispatcher
 
@@ -392,7 +392,7 @@ public class MyRouteTest extends TestNGCustomRouteTestKit {
 And the corresponding route to test would be as follows:
 
 ```java
-import akka.http.javadsl.server.Route;
+import org.apache.pekko.http.javadsl.server.Route;
 import org.squbs.unicomplex.AbstractRouteDefinition;
 
 public class ReverserRoute extends AbstractRouteDefinition {
@@ -411,7 +411,7 @@ public class ReverserRoute extends AbstractRouteDefinition {
 
 ```
 
-**Note:** To use `CustomRouteTestKit`, please ensure Akka Http testkit is in your dependencies as described [above](#testing-akka-http-routes-using-akka-http-testkit).
+**Note:** To use `CustomRouteTestKit`, please ensure Akka Http testkit is in your dependencies as described [above](#testing-pekko-http-routes-using-pekko-http-testkit).
 
 #### Shutting Down
 

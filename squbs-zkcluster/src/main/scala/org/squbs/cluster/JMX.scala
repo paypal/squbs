@@ -21,7 +21,7 @@ import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 import scala.language.implicitConversions
 
-import akka.actor.ActorContext
+import org.apache.pekko.actor.ActorContext
 
 import scala.beans.BeanProperty
 

@@ -15,7 +15,7 @@
  */
 package org.squbs.httpclient;
 
-import akka.http.javadsl.model.Uri;
+import org.apache.pekko.http.javadsl.model.Uri;
 import org.squbs.env.Environment;
 import org.squbs.resolver.AbstractResolver;
 

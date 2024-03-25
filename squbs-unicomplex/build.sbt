@@ -19,10 +19,10 @@ libraryDependencies ++= Seq(
 ) ++ akka
 
 def akka = Seq(
-  "com.typesafe.akka" %% "akka-actor" % akkaV,
-  "com.typesafe.akka" %% "akka-http" % akkaHttpV,
-  "com.typesafe.akka" %% "akka-testkit" % akkaV % Test,
-  "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % Test
+  "org.apache.pekko" %% "pekko-actor" % pekkoV,
+  "org.apache.pekko" %% "pekko-http" % pekkoHttpV,
+  "org.apache.pekko" %% "pekko-testkit" % pekkoV % Test,
+  "org.apache.pekko" %% "pekko-stream-testkit" % pekkoV % Test
 )
 
 Test / testOptions ++= Seq(

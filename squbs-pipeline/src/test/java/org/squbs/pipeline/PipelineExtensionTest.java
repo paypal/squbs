@@ -16,13 +16,13 @@
 
 package org.squbs.pipeline;
 
-import akka.NotUsed;
-import akka.actor.ActorSystem;
-import akka.http.javadsl.model.HttpHeader;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.HttpResponse;
-import akka.http.javadsl.model.headers.RawHeader;
-import akka.stream.javadsl.*;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.http.javadsl.model.HttpHeader;
+import org.apache.pekko.http.javadsl.model.HttpRequest;
+import org.apache.pekko.http.javadsl.model.HttpResponse;
+import org.apache.pekko.http.javadsl.model.headers.RawHeader;
+import org.apache.pekko.stream.javadsl.*;
 import com.typesafe.config.ConfigFactory;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.Test;

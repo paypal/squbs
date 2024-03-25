@@ -15,11 +15,11 @@
  */
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{ErrorInfo, IllegalRequestException, StatusCodes}
-import akka.http.scaladsl.server.Route
-import akka.pattern._
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.{ErrorInfo, IllegalRequestException, StatusCodes}
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.pattern._
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures

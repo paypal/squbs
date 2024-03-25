@@ -15,11 +15,11 @@
  */
 package org.squbs.stream
 
-import akka.actor.ActorRef
-import akka.stream._
-import akka.stream.scaladsl.Source
-import akka.stream.javadsl.{Source => JSource}
-import akka.stream.stage.{GraphStageLogic, GraphStageWithMaterializedValue, OutHandler, StageLogging}
+import org.apache.pekko.actor.ActorRef
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.stream.javadsl.{Source => JSource}
+import org.apache.pekko.stream.stage.{GraphStageLogic, GraphStageWithMaterializedValue, OutHandler, StageLogging}
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.stream.TriggerEvent._
 import org.squbs.unicomplex.{Active, Stopping, _}

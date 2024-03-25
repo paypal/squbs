@@ -16,9 +16,9 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.StatusCodes
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.StatusCodes
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Waiters
@@ -61,7 +61,7 @@ object UnicomplexTimeoutSpec {
 class UnicomplexTimeoutSpec extends TestKit(UnicomplexTimeoutSpec.boot.actorSystem) with ImplicitSender
     with AnyWordSpecLike with Matchers with BeforeAndAfterAll with Waiters {
 
-  import akka.pattern.ask
+  import org.apache.pekko.pattern.ask
   val port = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)("default-listener")
 
   override def afterAll(): Unit = {

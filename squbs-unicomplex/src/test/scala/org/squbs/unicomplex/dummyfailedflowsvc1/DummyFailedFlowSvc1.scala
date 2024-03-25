@@ -15,9 +15,9 @@
  */
 package org.squbs.unicomplex.dummyfailedflowsvc1
 
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model._
-import akka.stream.scaladsl.Flow
+import org.apache.pekko.http.scaladsl.model.Uri.Path
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.stream.scaladsl.Flow
 import org.squbs.unicomplex.{FlowDefinition, WebContext}
 
 /**

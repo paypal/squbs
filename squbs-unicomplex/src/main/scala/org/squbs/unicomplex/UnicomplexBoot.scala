@@ -22,10 +22,10 @@ import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.jar.JarFile
 import java.util.{Timer, TimerTask}
 
-import akka.actor._
-import akka.pattern.ask
-import akka.routing.FromConfig
-import akka.util.Timeout
+import org.apache.pekko.actor._
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.routing.FromConfig
+import org.apache.pekko.util.Timeout
 import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.lifecycle.ExtensionLifecycle

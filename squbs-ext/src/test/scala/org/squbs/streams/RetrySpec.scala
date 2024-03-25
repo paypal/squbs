@@ -16,13 +16,13 @@
 
 package org.squbs.streams
 
-import akka.NotUsed
-import akka.actor.{Actor, ActorSystem, Props}
-import akka.stream.Attributes.inputBuffer
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import akka.stream.{OverflowStrategy, ThrottleMode}
-import akka.testkit.TestKit
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.{Actor, ActorSystem, Props}
+import org.apache.pekko.stream.Attributes.inputBuffer
+import org.apache.pekko.stream.scaladsl.{Flow, Keep, Sink, Source}
+import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
+import org.apache.pekko.stream.{OverflowStrategy, ThrottleMode}
+import org.apache.pekko.testkit.TestKit
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 
@@ -609,7 +609,7 @@ class RetrySpec
   it should "not backpressure if downstream demands more and retryQ is not growing" in {
     // https://github.com/paypal/squbs/issues/623
     val delayActor = system.actorOf(Props[RetryDelayActor]())
-    import akka.pattern.ask
+    import org.apache.pekko.pattern.ask
     implicit val askTimeout = akka.util.Timeout(10 seconds)
 
     val delayFlow =
@@ -633,7 +633,7 @@ class RetrySpec
   it should "not backpressure if downstream demands more and retryQ is not growing with larger internal buffer size" in {
     // https://github.com/paypal/squbs/issues/623
     val delayActor = system.actorOf(Props[RetryDelayActor]())
-    import akka.pattern.ask
+    import org.apache.pekko.pattern.ask
     implicit val askTimeout = akka.util.Timeout(10 seconds)
 
     val delayFlow =

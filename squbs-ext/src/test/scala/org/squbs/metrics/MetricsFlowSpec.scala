@@ -16,11 +16,11 @@
 
 package org.squbs.metrics
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.ws.PeerClosedConnectionException
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.ws.PeerClosedConnectionException
+import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
+import org.apache.pekko.testkit.TestKit
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.matchers.should.Matchers

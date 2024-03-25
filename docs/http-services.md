@@ -28,7 +28,7 @@ Services can be defined in either Scala or Java, using either the high-level or 
 The high-level server-side API is represented by Akka HTTP's `Route` artifact and its directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` function as follows:
 
 ```scala
-import akka.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.Route
 import org.squbs.unicomplex.RouteDefinition
 
 class PingPongSvc extends RouteDefinition {
@@ -62,9 +62,9 @@ Please refer to the [Akka HTTP high-level API](http://doc.akka.io/docs/akka-http
 Using the Scala low-level API, just extend `org.squbs.unicomplex.FlowDefinition` and override the `flow` function. The `flow` needs to be of type `Flow[HttpRequest, HttpResponse, NotUsed]` using the Scala DSL and model provided by Akka HTTP as follows:
 
 ```scala
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model._
-import akka.stream.scaladsl.Flow
+import org.apache.pekko.http.scaladsl.model.Uri.Path
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.stream.scaladsl.Flow
 import org.squbs.unicomplex.FlowDefinition
 
 class SampleFlowSvc extends FlowDefinition {
@@ -84,9 +84,9 @@ This provides access to the `Flow` representation of the Akka HTTP low-level ser
 The high-level server-side API is represented by Akka HTTP's `Route` artifact and its directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` method as follows:
 
 ```java
-import akka.http.javadsl.server.ExceptionHandler;
-import akka.http.javadsl.server.RejectionHandler;
-import akka.http.javadsl.server.Route;
+import org.apache.pekko.http.javadsl.server.ExceptionHandler;
+import org.apache.pekko.http.javadsl.server.RejectionHandler;
+import org.apache.pekko.http.javadsl.server.Route;
 import org.squbs.unicomplex.AbstractRouteDefinition;
 
 import java.util.Optional;
@@ -133,9 +133,9 @@ Please refer to the [Akka HTTP high-level API](http://doc.akka.io/docs/akka-http
 To use the Java low-level API, just extend `org.squbs.unicomplex.AbstractFlowDefinition` and override the `flow` method. The `flow` needs to be of type `Flow[HttpRequest, HttpResponse, NotUsed]` using the Java DSL and model provided by Akka HTTP. Note the imports in the following:
 
 ```java
-import akka.NotUsed;
-import akka.http.javadsl.model.*;
-import akka.stream.javadsl.Flow;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.http.javadsl.model.*;
+import org.apache.pekko.stream.javadsl.Flow;
 import org.squbs.unicomplex.AbstractFlowDefinition;
 
 public class JavaFlowSvc extends AbstractFlowDefinition {

@@ -16,10 +16,10 @@
 
 package org.squbs.metrics
 
-import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Keep, Sink}
-import akka.stream.testkit.scaladsl.TestSource
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.scaladsl.{Keep, Sink}
+import org.apache.pekko.stream.testkit.scaladsl.TestSource
+import org.apache.pekko.testkit.TestKit
 import org.scalatest.OptionValues._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.flatspec.AsyncFlatSpecLike

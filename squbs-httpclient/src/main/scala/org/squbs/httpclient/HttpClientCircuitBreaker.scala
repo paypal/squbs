@@ -16,7 +16,7 @@
 
 package org.squbs.httpclient
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import org.squbs.httpclient.ServiceCallStatus.ServiceCallStatus
 
 import scala.concurrent.duration._

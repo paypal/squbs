@@ -16,8 +16,8 @@
 
 package org.squbs.pipeline;
 
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.HttpResponse;
+import org.apache.pekko.http.javadsl.model.HttpRequest;
+import org.apache.pekko.http.javadsl.model.HttpResponse;
 import org.testng.annotations.Test;
 import scala.util.Success;
 import scala.util.Try;

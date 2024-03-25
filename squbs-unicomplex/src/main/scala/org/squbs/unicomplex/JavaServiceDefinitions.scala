@@ -16,14 +16,14 @@
 package org.squbs.unicomplex
 
 import java.util.{Optional, function => jf}
-import akka.NotUsed
-import akka.actor.{Actor, ActorContext, ActorLogging}
-import akka.http.javadsl.model.{HttpRequest, HttpResponse}
-import akka.http.javadsl.server._
-import akka.http.javadsl.server.directives.{PathDirectives, RouteAdapter}
-import akka.http.scaladsl.{model => sm, server => ss}
-import akka.stream.javadsl.Flow
-import akka.stream.{ActorMaterializer, Materializer, scaladsl => sd}
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.{Actor, ActorContext, ActorLogging}
+import org.apache.pekko.http.javadsl.model.{HttpRequest, HttpResponse}
+import org.apache.pekko.http.javadsl.server._
+import org.apache.pekko.http.javadsl.server.directives.{PathDirectives, RouteAdapter}
+import org.apache.pekko.http.scaladsl.{model => sm, server => ss}
+import org.apache.pekko.stream.javadsl.Flow
+import org.apache.pekko.stream.{ActorMaterializer, Materializer, scaladsl => sd}
 import org.squbs.pipeline.RequestContext
 
 import scala.util.{Failure, Success, Try}

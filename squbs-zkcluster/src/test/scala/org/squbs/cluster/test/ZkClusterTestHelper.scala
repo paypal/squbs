@@ -16,7 +16,7 @@
 
 package org.squbs.cluster.test
 
-import akka.testkit.ImplicitSender
+import org.apache.pekko.testkit.ImplicitSender
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}

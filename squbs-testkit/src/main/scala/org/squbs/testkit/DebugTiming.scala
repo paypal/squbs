@@ -16,7 +16,7 @@
 
 package org.squbs.testkit
 
-import akka.testkit.TestKitBase
+import org.apache.pekko.testkit.TestKitBase
 
 import scala.concurrent.duration._
 

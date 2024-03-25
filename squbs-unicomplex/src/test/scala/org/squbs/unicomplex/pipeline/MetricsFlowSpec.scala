@@ -16,16 +16,16 @@
 
 package org.squbs.unicomplex.pipeline
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.ws.PeerClosedConnectionException
-import akka.http.scaladsl.server._
-import akka.pattern._
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.Uri.Path
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.ws.PeerClosedConnectionException
+import org.apache.pekko.http.scaladsl.server._
+import org.apache.pekko.pattern._
+import org.apache.pekko.stream.ActorMaterializer
+import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
+import org.apache.pekko.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AsyncFlatSpecLike

@@ -1,13 +1,13 @@
 package org.squbs.stream;
 
-import akka.Done;
-import akka.NotUsed;
-import akka.actor.ActorRef;
-import akka.japi.Pair;
-import akka.stream.ClosedShape;
-import akka.stream.FlowShape;
-import akka.stream.ThrottleMode;
-import akka.stream.javadsl.*;
+import org.apache.pekko.Done;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.japi.Pair;
+import org.apache.pekko.stream.ClosedShape;
+import org.apache.pekko.stream.FlowShape;
+import org.apache.pekko.stream.ThrottleMode;
+import org.apache.pekko.stream.javadsl.*;
 import org.squbs.lifecycle.GracefulStop;
 import org.squbs.unicomplex.Timeouts;
 import org.squbs.util.DurationConverters;

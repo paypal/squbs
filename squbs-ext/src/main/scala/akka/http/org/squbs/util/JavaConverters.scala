@@ -18,17 +18,17 @@ package akka.http.org.squbs.util
 
 import java.util.Optional
 
-import akka.NotUsed
-import akka.http.impl.util.JavaMapping
-import akka.http.javadsl.{model => jm}
-import akka.http.scaladsl.Http.HostConnectionPool
-import akka.http.scaladsl.HttpsConnectionContext
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.http.scaladsl.settings.ConnectionPoolSettings
-import akka.http.{javadsl => jd}
-import akka.japi.Pair
-import akka.stream.scaladsl.{BidiFlow, Flow}
-import akka.stream.{javadsl => js}
+import org.apache.pekko.NotUsed
+import org.apache.pekko.http.impl.util.JavaMapping
+import org.apache.pekko.http.javadsl.{model => jm}
+import org.apache.pekko.http.scaladsl.Http.HostConnectionPool
+import org.apache.pekko.http.scaladsl.HttpsConnectionContext
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse}
+import org.apache.pekko.http.scaladsl.settings.ConnectionPoolSettings
+import org.apache.pekko.http.{javadsl => jd}
+import org.apache.pekko.japi.Pair
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow}
+import org.apache.pekko.stream.{javadsl => js}
 
 import scala.util.Try
 

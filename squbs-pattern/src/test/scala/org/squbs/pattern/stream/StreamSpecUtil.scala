@@ -19,8 +19,8 @@ import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicInteger
 
-import akka.stream.ThrottleMode
-import akka.stream.scaladsl._
+import org.apache.pekko.stream.ThrottleMode
+import org.apache.pekko.stream.scaladsl._
 import com.typesafe.config.ConfigFactory
 import net.openhft.chronicle.wire.{WireIn, WireOut}
 

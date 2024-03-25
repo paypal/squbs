@@ -18,9 +18,9 @@ package org.squbs.actormonitor
 
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
-import akka.actor._
-import akka.pattern.ask
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor._
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.BeforeAndAfterAll

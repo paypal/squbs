@@ -16,7 +16,7 @@
 
 package org.squbs.pattern.orchestration
 
-import akka.actor.Actor
+import org.apache.pekko.actor.Actor
 
 import scala.concurrent.Future
 import scala.language.implicitConversions

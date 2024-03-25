@@ -17,7 +17,7 @@
 package org.squbs.actorregistry
 
 
-import akka.actor._
+import org.apache.pekko.actor._
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.lifecycle.ExtensionLifecycle

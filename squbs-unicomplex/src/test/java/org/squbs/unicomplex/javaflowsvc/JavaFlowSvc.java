@@ -15,11 +15,11 @@
  */
 package org.squbs.unicomplex.javaflowsvc;
 
-import akka.NotUsed;
-import akka.http.javadsl.model.*;
-import akka.stream.javadsl.Flow;
-import akka.stream.javadsl.Source;
-import akka.util.ByteString;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.http.javadsl.model.*;
+import org.apache.pekko.stream.javadsl.Flow;
+import org.apache.pekko.stream.javadsl.Source;
+import org.apache.pekko.util.ByteString;
 import org.squbs.unicomplex.AbstractFlowDefinition;
 import scala.Tuple2;
 

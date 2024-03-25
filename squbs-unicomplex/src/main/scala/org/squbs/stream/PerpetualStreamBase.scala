@@ -15,10 +15,10 @@
  */
 package org.squbs.stream
 
-import akka.Done
-import akka.actor._
-import akka.stream._
-import akka.util.Timeout
+import org.apache.pekko.Done
+import org.apache.pekko.actor._
+import org.apache.pekko.stream._
+import org.apache.pekko.util.Timeout
 import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
 import org.squbs.unicomplex._
 

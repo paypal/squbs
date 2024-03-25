@@ -15,12 +15,12 @@
  */
 package org.squbs.stream
 
-import akka.actor.{ActorContext, ActorRefFactory, ActorSystem}
-import akka.stream.Supervision._
-import akka.stream._
-import akka.stream.scaladsl.{RunnableGraph, Sink}
-import akka.util.Timeout
-import akka.{Done, NotUsed}
+import org.apache.pekko.actor.{ActorContext, ActorRefFactory, ActorSystem}
+import org.apache.pekko.stream.Supervision._
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.{RunnableGraph, Sink}
+import org.apache.pekko.util.Timeout
+import org.apache.pekko.{Done, NotUsed}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -107,7 +107,7 @@ trait PerpetualStreamMatValue[T] {
   def matValue(perpetualStreamName: String)(implicit classTag: ClassTag[T]): Sink[T, NotUsed] = {
     implicit val sys: ActorSystem = context.system
     implicit val timeout: Timeout = Timeout(10.seconds)
-    import akka.pattern.ask
+    import org.apache.pekko.pattern.ask
 
     val responseF = actorLookup(perpetualStreamName) ? MatValueRequest
 

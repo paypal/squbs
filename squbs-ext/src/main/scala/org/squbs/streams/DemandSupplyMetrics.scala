@@ -16,11 +16,11 @@
 
 package org.squbs.streams
 
-import akka.actor.ActorSystem
-import akka.event.Logging
-import akka.stream._
-import akka.stream.scaladsl.Flow
-import akka.stream.stage._
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.event.Logging
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.Flow
+import org.apache.pekko.stream.stage._
 import com.codahale.metrics.MetricRegistry
 import org.squbs.metrics.MetricsExtension
 

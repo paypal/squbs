@@ -19,8 +19,8 @@ package org.squbs.testkit
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
-import akka.actor.ActorSystem
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.{Config, ConfigFactory, ConfigObject}
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import org.squbs.lifecycle.GracefulStop

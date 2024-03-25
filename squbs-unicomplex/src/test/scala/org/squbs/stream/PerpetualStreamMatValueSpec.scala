@@ -15,12 +15,12 @@
  */
 package org.squbs.stream
 
-import akka.NotUsed
-import akka.actor.{Actor, ActorRef, ActorRefFactory, ActorSystem, Props, Status}
-import akka.pattern._
-import akka.stream.ClosedShape
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, MergeHub, RunnableGraph, Sink, Source}
-import akka.util.Timeout
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.{Actor, ActorRef, ActorRefFactory, ActorSystem, Props, Status}
+import org.apache.pekko.pattern._
+import org.apache.pekko.stream.ClosedShape
+import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Keep, MergeHub, RunnableGraph, Sink, Source}
+import org.apache.pekko.util.Timeout
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatest.funspec.AnyFunSpec

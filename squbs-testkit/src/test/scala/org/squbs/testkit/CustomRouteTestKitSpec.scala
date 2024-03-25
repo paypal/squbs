@@ -16,7 +16,7 @@
 
 package org.squbs.testkit
 
-import akka.actor.Actor
+import org.apache.pekko.actor.Actor
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
@@ -206,7 +206,7 @@ class ReverserActor extends Actor {
 class ReverserRoute extends RouteDefinition {
 
   import Timeouts._
-  import akka.pattern.ask
+  import org.apache.pekko.pattern.ask
 
   val route =
     path("msg" / Segment) { msg =>

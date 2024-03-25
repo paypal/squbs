@@ -1,12 +1,12 @@
 package org.squbs.stream;
 
-import akka.Done;
-import akka.NotUsed;
-import akka.actor.ActorRef;
-import akka.stream.ClosedShape;
-import akka.stream.FlowShape;
-import akka.stream.SourceShape;
-import akka.stream.javadsl.*;
+import org.apache.pekko.Done;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.stream.ClosedShape;
+import org.apache.pekko.stream.FlowShape;
+import org.apache.pekko.stream.SourceShape;
+import org.apache.pekko.stream.javadsl.*;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;

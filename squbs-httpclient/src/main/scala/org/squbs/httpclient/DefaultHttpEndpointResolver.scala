@@ -16,7 +16,7 @@
 
 package org.squbs.httpclient
 
-import akka.http.scaladsl.model.Uri
+import org.apache.pekko.http.scaladsl.model.Uri
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.env.Environment
 import org.squbs.resolver.Resolver

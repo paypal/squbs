@@ -16,8 +16,8 @@
 
 package org.squbs.cluster
 
-import akka.actor._
-import akka.remote.QuarantinedEvent
+import org.apache.pekko.actor._
+import org.apache.pekko.remote.QuarantinedEvent
 
 /**
  * Created by zhuwang on 2/8/15.

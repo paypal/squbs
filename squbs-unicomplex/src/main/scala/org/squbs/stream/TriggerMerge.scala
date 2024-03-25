@@ -15,9 +15,9 @@
  */
 package org.squbs.stream
 
-import akka.stream._
-import akka.stream.scaladsl.{GraphDSL, Source}
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.{GraphDSL, Source}
+import org.apache.pekko.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 
 /**
  * Merge two streams, taking elements as they arrive from an input stream, and a trigger stream to start/stop the flow

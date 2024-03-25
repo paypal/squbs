@@ -16,8 +16,8 @@
 
 package org.squbs.testkit.japi
 
-import akka.actor.ActorSystem
-import akka.testkit.javadsl
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.testkit.javadsl
 import org.squbs.testkit.DebugTiming
 
 import scala.concurrent.duration.Duration

@@ -16,7 +16,7 @@
 
 package org.squbs.unicomplex.dummycube
 
-import akka.actor.{Props, ActorLogging, Actor}
+import org.apache.pekko.actor.{Props, ActorLogging, Actor}
 import org.squbs.unicomplex.{PrependedMsg, Constants, AppendedMsg, EchoMsg}
 import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
 

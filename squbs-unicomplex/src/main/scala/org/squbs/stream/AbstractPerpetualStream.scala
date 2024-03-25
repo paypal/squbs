@@ -17,13 +17,13 @@ package org.squbs.stream
 
 import java.util.concurrent.{CompletableFuture, CompletionStage}
 import java.util.function.Consumer
-import akka.actor.{AbstractActor, ActorRefFactory}
-import akka.japi.function
-import akka.stream.Supervision.{Directive, Resume}
-import akka.stream._
-import akka.stream.javadsl.{RunnableGraph, Sink}
-import akka.util.Timeout
-import akka.{Done, NotUsed}
+import org.apache.pekko.actor.{AbstractActor, ActorRefFactory}
+import org.apache.pekko.japi.function
+import org.apache.pekko.stream.Supervision.{Directive, Resume}
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.javadsl.{RunnableGraph, Sink}
+import org.apache.pekko.util.Timeout
+import org.apache.pekko.{Done, NotUsed}
 import org.squbs.unicomplex.AbstractFlowDefinition
 
 import scala.concurrent.Await
@@ -132,7 +132,7 @@ abstract class FlowToPerpetualStream extends AbstractFlowDefinition {
   def matValue[T](perpetualStreamName: String): Sink[T, NotUsed] = {
     implicit val refFactory: ActorRefFactory = context.system
     implicit val timeout: Timeout = Timeout(10.seconds)
-    import akka.pattern.ask
+    import org.apache.pekko.pattern.ask
     val responseF = SafeSelect(perpetualStreamName) ? MatValueRequest
 
     // Exception! This code is executed only at startup. We really need a better API, though.

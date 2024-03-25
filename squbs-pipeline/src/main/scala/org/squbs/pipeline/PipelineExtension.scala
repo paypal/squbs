@@ -16,9 +16,9 @@
 
 package org.squbs.pipeline
 
-import akka.NotUsed
-import akka.actor._
-import akka.stream.{javadsl, scaladsl}
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor._
+import org.apache.pekko.stream.{javadsl, scaladsl}
 import com.typesafe.config.ConfigObject
 
 import scala.jdk.CollectionConverters._
@@ -32,7 +32,7 @@ case class Context(name: String, pipelineType: PipelineType)
 
 package japi {
 
-  import akka.stream.javadsl.BidiFlow
+  import org.apache.pekko.stream.javadsl.BidiFlow
 
   /**
     * Java API

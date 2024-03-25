@@ -15,9 +15,9 @@
  */
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
-import akka.pattern._
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.pattern._
+import org.apache.pekko.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AsyncFlatSpecLike

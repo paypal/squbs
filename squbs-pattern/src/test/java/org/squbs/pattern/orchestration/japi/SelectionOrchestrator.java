@@ -16,9 +16,9 @@
 
 package org.squbs.pattern.orchestration.japi;
 
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.japi.pf.ReceiveBuilder;
+import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.actor.Props;
+import org.apache.pekko.japi.pf.ReceiveBuilder;
 import org.squbs.testkit.Timeouts;
 import scala.concurrent.duration.FiniteDuration;
 

@@ -17,8 +17,8 @@ package org.squbs.admin
 
 import java.net.URLEncoder
 
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.Uri.Path
+import org.apache.pekko.http.scaladsl.model._
 import org.json4s.JsonAST.{JObject, JString}
 import org.json4s.jackson.JsonMethods._
 import org.squbs.unicomplex.{RouteDefinition, WebContext}

@@ -15,7 +15,7 @@
  */
 package org.squbs.pattern.stream
 
-import akka.util.ByteString
+import org.apache.pekko.util.ByteString
 import net.openhft.chronicle.queue.RollCycles
 import net.openhft.chronicle.queue.impl.single.DirectoryListing
 import org.scalatest.OptionValues._

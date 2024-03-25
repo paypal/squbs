@@ -16,8 +16,8 @@
 
 package org.squbs.streams
 
-import akka.actor.ActorSystem
-import akka.stream.scaladsl._
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.scaladsl._
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
 

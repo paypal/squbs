@@ -15,14 +15,14 @@
  */
 package org.squbs.stream
 
-import akka.NotUsed
-import akka.actor.{Actor, ActorRef, ActorSystem, Props, Status}
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
-import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshal, Unmarshaller}
-import akka.pattern.ask
-import akka.stream.scaladsl.{Flow, MergeHub, RunnableGraph, Sink}
-import akka.testkit.TestKit
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.{Actor, ActorRef, ActorSystem, Props, Status}
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
+import org.apache.pekko.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshal, Unmarshaller}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.stream.scaladsl.{Flow, MergeHub, RunnableGraph, Sink}
+import org.apache.pekko.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers

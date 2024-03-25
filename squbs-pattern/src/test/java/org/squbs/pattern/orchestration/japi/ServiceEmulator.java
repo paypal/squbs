@@ -16,7 +16,7 @@
 
 package org.squbs.pattern.orchestration.japi;
 
-import akka.actor.AbstractActor;
+import org.apache.pekko.actor.AbstractActor;
 
 import static org.squbs.pattern.orchestration.japi.Messages.*;
 

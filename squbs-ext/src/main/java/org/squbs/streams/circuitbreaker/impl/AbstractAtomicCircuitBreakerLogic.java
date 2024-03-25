@@ -19,7 +19,7 @@
  */
 package org.squbs.streams.circuitbreaker.impl;
 
-import akka.util.Unsafe;
+import org.apache.pekko.util.Unsafe;
 
 class AbstractAtomicCircuitBreakerLogic {
     protected final static long stateOffset;

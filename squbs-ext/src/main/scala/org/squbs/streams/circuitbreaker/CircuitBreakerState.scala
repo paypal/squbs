@@ -19,9 +19,9 @@ package org.squbs.streams.circuitbreaker
 import java.lang.management.ManagementFactory
 import javax.management.{MXBean, ObjectName}
 
-import akka.actor.ActorRef
-import akka.event.{EventBus, SubchannelClassification}
-import akka.util.Subclassification
+import org.apache.pekko.actor.ActorRef
+import org.apache.pekko.event.{EventBus, SubchannelClassification}
+import org.apache.pekko.util.Subclassification
 import com.codahale.metrics.{Gauge, MetricRegistry}
 
 import scala.concurrent.duration._
