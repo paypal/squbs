@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package akka.http.org.squbs.util
+package org.apache.pekko.http.org.squbs.util
 
 import java.util.Optional
 import org.apache.pekko.NotUsed
@@ -44,7 +44,7 @@ object JavaConverters {
     (cCtx, sSettings)
   }
 
-  /*def toJava[In1, Out1, In2, Out2, Context](bidiFlow: BidiFlow[(In1, Context), (Out1, Context), (In2, Context), (Out2, Context), NotUsed]):
+  def toJava[In1, Out1, In2, Out2, Context](bidiFlow: BidiFlow[(In1, Context), (Out1, Context), (In2, Context), (Out2, Context), NotUsed]):
   js.BidiFlow[Pair[In1, Context], Pair[Out1, Context], Pair[In2, Context], Pair[Out2, Context], NotUsed] = {
     implicit val sIn1Mapping = JavaMapping.identity[In1]
     implicit val sOut1Mapping = JavaMapping.identity[Out1]
@@ -74,5 +74,5 @@ object JavaConverters {
   }
 
   def toScala(uri: org.apache.pekko.http.javadsl.model.Uri) = JavaMapping.toScala(uri)
-   */
+
 }
