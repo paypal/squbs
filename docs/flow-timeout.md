@@ -90,7 +90,7 @@ public class Timeout {
 }
 ```
 
-This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair<In, Context>` and outputs a `akka.japi.Pair<Out, Context>`.
+This `BidiFlow` can be joined with any flow that takes in a `org.apache.pekko.japi.Pair<In, Context>` and outputs a `org.apache.pekko.japi.Pair<Out, Context>`.
 
 ```java
 final Duration duration = Duration.ofSeconds(1);

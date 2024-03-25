@@ -46,7 +46,7 @@ object ScanResourceSpec {
 
   implicit val akkaTimeout: Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
-      akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
+      org.apache.pekko.util.Timeout(millis, TimeUnit.MILLISECONDS)
     } getOrElse Timeouts.askTimeout
 
   val boot = UnicomplexBoot(config)

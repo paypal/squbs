@@ -610,7 +610,7 @@ class RetrySpec
     // https://github.com/paypal/squbs/issues/623
     val delayActor = system.actorOf(Props[RetryDelayActor]())
     import org.apache.pekko.pattern.ask
-    implicit val askTimeout = akka.util.Timeout(10 seconds)
+    implicit val askTimeout = org.apache.pekko.util.Timeout(10 seconds)
 
     val delayFlow =
       Flow[(Long, Long)]
@@ -634,7 +634,7 @@ class RetrySpec
     // https://github.com/paypal/squbs/issues/623
     val delayActor = system.actorOf(Props[RetryDelayActor]())
     import org.apache.pekko.pattern.ask
-    implicit val askTimeout = akka.util.Timeout(10 seconds)
+    implicit val askTimeout = org.apache.pekko.util.Timeout(10 seconds)
 
     val delayFlow =
       Flow[(Long, Long)]

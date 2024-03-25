@@ -36,7 +36,7 @@ import scala.util.Try;
 
 import java.util.concurrent.CompletionStage;
 
-import static akka.http.javadsl.model.HttpRequest.*;
+import static org.apache.pekko.http.javadsl.model.HttpRequest.*;
 import static org.junit.Assert.assertEquals;
 import static org.squbs.marshallers.json.XLangJsonSupport.marshaller;
 import static org.squbs.marshallers.json.XLangJsonSupport.unmarshaller;

@@ -278,7 +278,7 @@ override def decider: Supervision.Decider = { t =>
 
 ```java
 @Override
-public akka.japi.function.Function<Throwable, Supervision.Directive> decider() {
+public org.apache.pekko.japi.function.Function<Throwable, Supervision.Directive> decider() {
     return t -> {
         log().error("Uncaught error {} from stream", t);
         t.printStackTrace();

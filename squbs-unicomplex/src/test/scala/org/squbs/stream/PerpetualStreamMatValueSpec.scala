@@ -68,7 +68,7 @@ class PerpetualStreamMatValueSpec extends AnyFunSpec with Matchers with BeforeAn
 
         List(
           "Product"        -> classTag[GoodProductSinkMaterializingStream],
-          "akka.japi.Pair" -> classTag[GoodJapiPairSinkMaterializingStream],
+          "org.apache.pekko.japi.Pair" -> classTag[GoodJapiPairSinkMaterializingStream],
           "java.util.List" -> classTag[GoodJavaListSinkMaterializingStream]
         ).foreach { case (testName, ct) =>
           implicit val to = timeout
@@ -92,7 +92,7 @@ class PerpetualStreamMatValueSpec extends AnyFunSpec with Matchers with BeforeAn
       describe("Cases where we examine the 'first' element, and it is NOT a Sink[T, NotUsed]") {
         List(
           "Products"       -> classTag[BadProductSinkMaterializingStream],
-          "akka.japi.Pair" -> classTag[BadJapiPairSinkMaterializingStream],
+          "org.apache.pekko.japi.Pair" -> classTag[BadJapiPairSinkMaterializingStream],
           "java.util.List" -> classTag[BadJavaListSinkMaterializingStream]
         ).foreach { case (testName, ct) =>
           implicit val ict = ct
@@ -125,7 +125,7 @@ class PerpetualStreamMatValueSpec extends AnyFunSpec with Matchers with BeforeAn
           case Failure(e) =>
             e shouldBe a[ClassCastException]
             e.getMessage should be(
-              "Materialized value mismatch. Should be a Sink or a Product/akka.japi.Pair/java.util.List " +
+              "Materialized value mismatch. Should be a Sink or a Product/org.apache.pekko.japi.Pair/java.util.List " +
                 s"with a Sink as its first element. Found ${classOf[Integer].getName}."
             )
           case _ => fail("Expected a failure")
@@ -184,7 +184,7 @@ object PerpetualStreamMatValueSpecHelper {
     /**
       * This has Sink[T, NotUsed] as the materialized value's first element.
       */
-    class GoodProductSinkMaterializingStream extends PerpStream[(Sink[Long, NotUsed], Future[akka.Done])] {
+    class GoodProductSinkMaterializingStream extends PerpStream[(Sink[Long, NotUsed], Future[org.apache.pekko.Done])] {
       self ! Active
       override def streamGraph = {
         RunnableGraph.fromGraph(GraphDSL.createGraph(MergeHub.source[Long], Sink.ignore)((_, _)) { implicit builder =>
@@ -197,15 +197,15 @@ object PerpetualStreamMatValueSpecHelper {
     }
 
     /**
-      * This has Sink[T, NotUsed] as the materialized value's first element of a [[akka.japi.Pair]].
+      * This has Sink[T, NotUsed] as the materialized value's first element of a [[org.apache.pekko.japi.Pair]].
       */
     class GoodJapiPairSinkMaterializingStream
-      extends PerpStream[akka.japi.Pair[Sink[Long, NotUsed], _]] {
+      extends PerpStream[org.apache.pekko.japi.Pair[Sink[Long, NotUsed], _]] {
       self ! Active
       override def streamGraph = {
         // an alternative to all the effort it took to do GoodProduct above..
         val sink: Sink[Long, NotUsed] = Flow[Long].via(addToBatch).to(Sink.ignore)
-        Source.single(1).toMat(Sink.ignore)((_, _) => akka.japi.Pair(sink, 1))
+        Source.single(1).toMat(Sink.ignore)((_, _) => org.apache.pekko.japi.Pair(sink, 1))
       }
     }
 
@@ -230,12 +230,12 @@ object PerpetualStreamMatValueSpecHelper {
     }
 
     /**
-      * This materializes an akka.japi.Pair that does NOT have Sink[T, NotUsed] as its first element.
+      * This materializes an org.apache.pekko.japi.Pair that does NOT have Sink[T, NotUsed] as its first element.
       */
-    class BadJapiPairSinkMaterializingStream extends PerpStream[akka.japi.Pair[Int, Any]] {
+    class BadJapiPairSinkMaterializingStream extends PerpStream[org.apache.pekko.japi.Pair[Int, Any]] {
       self ! Active
       override def streamGraph =
-        Source.single(1).toMat(Sink.ignore)((_, _) => akka.japi.Pair(1, 2))
+        Source.single(1).toMat(Sink.ignore)((_, _) => org.apache.pekko.japi.Pair(1, 2))
     }
 
     /**

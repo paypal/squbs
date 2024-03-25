@@ -28,7 +28,7 @@ import org.apache.pekko.stream.javadsl.Sink;
 import org.apache.pekko.stream.javadsl.Source;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import com.typesafe.sslconfig.akka.AkkaSSLConfig;
+import com.typesafe.sslconfig.pekko.PekkoSSLConfig;
 import com.typesafe.sslconfig.ssl.SSLConfigFactory;
 import org.junit.AfterClass;
 import org.junit.Test;
@@ -86,7 +86,7 @@ public class ClientFlowHttpsTest {
         Config mySslConfig = ConfigFactory.parseString("loose.disableHostnameVerification = true")
                 .withFallback(system.settings().config().getConfig("ssl-config"));
 
-        AkkaSSLConfig sslConfig = AkkaSSLConfig.get(system).withSettings(
+        PekkoSSLConfig sslConfig = PekkoSSLConfig.get(system).withSettings(
                 SSLConfigFactory.parse(mySslConfig));
         Optional<HttpsConnectionContext> connCtxOption = sslContext("exampletrust.jks", "changeit")
                 .map(s -> ConnectionContext.https(s, Optional.of(sslConfig), Optional.empty(), Optional.empty(),

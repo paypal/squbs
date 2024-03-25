@@ -98,8 +98,8 @@ case class LifecycleManaged[T, M]() {
     (in: Source[T, M]) => new Trigger(eagerComplete = true).source(in, trigger)
 
   // for Java
-  def source(in: javadsl.Source[T, M]): javadsl.Source[T, akka.japi.Pair[M, Supplier[ActorRef]]] = source(in.asScala)
+  def source(in: javadsl.Source[T, M]): javadsl.Source[T, org.apache.pekko.japi.Pair[M, Supplier[ActorRef]]] = source(in.asScala)
     .mapMaterializedValue {
-      case (m1, m2) => akka.japi.Pair(m1, m2.asJava)
+      case (m1, m2) => org.apache.pekko.japi.Pair(m1, m2.asJava)
     }.asJava
 }

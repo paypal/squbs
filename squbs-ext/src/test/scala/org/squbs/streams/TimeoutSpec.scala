@@ -35,7 +35,7 @@ import scala.util.{Failure, Success}
 class TimeoutSpec extends TestKit(ActorSystem("TimeoutBidiFlowSpec")) with AsyncFlatSpecLike with Matchers{
   import Timing._
 
-  implicit val askTimeout = akka.util.Timeout(10.seconds)
+  implicit val askTimeout = org.apache.pekko.util.Timeout(10.seconds)
 
   val timeoutFailure = Failure(FlowTimeoutException())
 
@@ -335,7 +335,7 @@ class DelayActor extends Actor {
       context.system.scheduler.scheduleOnce(delay(element), sender(), element)
     case element @ (s: String, _) =>
       context.system.scheduler.scheduleOnce(delay(s), sender(), element)
-    case element @ akka.japi.Pair(s: String, _) =>
+    case element @ org.apache.pekko.japi.Pair(s: String, _) =>
       context.system.scheduler.scheduleOnce(delay(s), sender(), element)
   }
 }

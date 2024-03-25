@@ -52,7 +52,7 @@ object UnicomplexBoot extends LazyLogging {
 
   val defaultStartupTimeout: Timeout =
     Try(System.getProperty("startup.timeout").toLong) map { millis =>
-      akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
+      org.apache.pekko.util.Timeout(millis, TimeUnit.MILLISECONDS)
     } getOrElse (1 minute)
 
   object StartupType extends Enumeration {

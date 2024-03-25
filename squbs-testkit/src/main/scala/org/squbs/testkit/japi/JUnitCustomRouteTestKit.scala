@@ -28,7 +28,7 @@ import scala.jdk.CollectionConverters._
 
 abstract class JUnitCustomRouteTestKit(val boot: UnicomplexBoot) extends {
   implicit override val system: ActorSystem = boot.actorSystem
-} with akka.http.javadsl.testkit.JUnitRouteTest with TestKitBase
+} with org.apache.pekko.http.javadsl.testkit.JUnitRouteTest with TestKitBase
   with RouteDefinitionTest with DebugTiming with PortGetter {
 
   private[this] val _systemResource = new CustomTestKitActorSystemResource(boot)

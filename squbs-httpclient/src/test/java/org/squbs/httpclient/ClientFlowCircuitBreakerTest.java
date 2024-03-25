@@ -69,7 +69,7 @@ public class ClientFlowCircuitBreakerTest {
             HttpResponse.create()
                     .withStatus(StatusCodes.INTERNAL_SERVER_ERROR)
                     .addHeader(Server.create(ProductVersion.create("testServer", "1.0")))
-                    .addHeader(akka.http.javadsl.model.headers.Date.create(DateTime.create(2017, 1, 1, 1, 1, 1)));
+                    .addHeader(org.apache.pekko.http.javadsl.model.headers.Date.create(DateTime.create(2017, 1, 1, 1, 1, 1)));
 
     private static final ServerBinding serverBinding;
 

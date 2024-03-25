@@ -24,9 +24,9 @@ import org.squbs.unicomplex.AbstractRouteDefinition;
 
 import java.time.Duration;
 
-import static akka.http.javadsl.server.PathMatchers.integerSegment;
-import static akka.http.javadsl.server.PathMatchers.segment;
-import static akka.pattern.Patterns.ask;
+import static org.apache.pekko.http.javadsl.server.PathMatchers.integerSegment;
+import static org.apache.pekko.http.javadsl.server.PathMatchers.segment;
+import static org.apache.pekko.pattern.Patterns.ask;
 
 public class InfoRouteWithActor extends AbstractRouteDefinition {
 

@@ -109,9 +109,9 @@ class Trigger[T, M1, M2](eagerComplete: Boolean = false) {
 
   // for Java
   def source(in: javadsl.Source[T, M1], trigger: javadsl.Source[TriggerEvent, M2]):
-      javadsl.Source[T, akka.japi.Pair[M1, M2]] = {
+      javadsl.Source[T, org.apache.pekko.japi.Pair[M1, M2]] = {
     source(in.asScala, trigger.asScala).mapMaterializedValue {
-      case (m1, m2) => akka.japi.Pair(m1, m2)
+      case (m1, m2) => org.apache.pekko.japi.Pair(m1, m2)
     }.asJava
   }
 }

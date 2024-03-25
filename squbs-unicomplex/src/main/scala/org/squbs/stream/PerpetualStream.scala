@@ -114,7 +114,7 @@ trait PerpetualStreamMatValue[T] {
     // Exception! This code is executed only at startup. We really need a better API, though.
     Await.result(responseF, timeout.duration) match {
       case sink: Sink[T, _] => sink.asInstanceOf[Sink[T, NotUsed]]
-      case p: akka.japi.Pair[_, _] => sinkCast(p.first)
+      case p: org.apache.pekko.japi.Pair[_, _] => sinkCast(p.first)
       case l: java.util.List[_] =>
         if (l.isEmpty) {
           throw new ClassCastException(
@@ -125,7 +125,7 @@ trait PerpetualStreamMatValue[T] {
       case p: Product => sinkCast(p.productElement(0))
       case other =>
         throw new ClassCastException("Materialized value mismatch. Should be a Sink or a " +
-          s"Product/akka.japi.Pair/java.util.List with a Sink as its first element. Found ${other.getClass.getName}.")
+          s"Product/org.apache.pekko.japi.Pair/java.util.List with a Sink as its first element. Found ${other.getClass.getName}.")
     }
   }
 
