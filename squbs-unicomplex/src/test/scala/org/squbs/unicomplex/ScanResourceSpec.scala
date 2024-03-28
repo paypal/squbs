@@ -16,9 +16,9 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
-import akka.testkit.{ImplicitSender, TestKit}
-import akka.util.Timeout
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Waiters
 import org.scalatest.matchers.should.Matchers
@@ -46,7 +46,7 @@ object ScanResourceSpec {
 
   implicit val akkaTimeout: Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
-      akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
+      org.apache.pekko.util.Timeout(millis, TimeUnit.MILLISECONDS)
     } getOrElse Timeouts.askTimeout
 
   val boot = UnicomplexBoot(config)

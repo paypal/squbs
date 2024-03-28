@@ -18,7 +18,7 @@ package org.squbs.cluster
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import akka.actor.{Actor, Address, AddressFromURIString}
+import org.apache.pekko.actor.{Actor, Address, AddressFromURIString}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.api.CuratorWatcher

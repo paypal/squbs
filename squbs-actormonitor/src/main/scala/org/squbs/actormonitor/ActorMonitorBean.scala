@@ -20,7 +20,7 @@ import java.lang.management.ManagementFactory
 import javax.management.MXBean
 import scala.language.existentials
 
-import akka.actor.{ActorContext, ActorRef, Props}
+import org.apache.pekko.actor.{ActorContext, ActorRef, Props}
 import org.squbs.unicomplex.JMX._
 
 import scala.annotation.tailrec

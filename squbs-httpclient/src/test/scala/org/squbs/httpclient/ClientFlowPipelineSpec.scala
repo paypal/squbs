@@ -16,13 +16,13 @@
 
 package org.squbs.httpclient
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.stream.BidiShape
-import akka.stream.scaladsl._
-import akka.util.ByteString
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.headers.RawHeader
+import org.apache.pekko.stream.BidiShape
+import org.apache.pekko.stream.scaladsl._
+import org.apache.pekko.util.ByteString
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
@@ -81,7 +81,7 @@ object ClientFlowPipelineSpec {
   )
 
   implicit val system: ActorSystem = ActorSystem("ClientFlowPipelineSpec", config)
-  import akka.http.scaladsl.server.Directives._
+  import org.apache.pekko.http.scaladsl.server.Directives._
 
   val route =
     path("hello") {

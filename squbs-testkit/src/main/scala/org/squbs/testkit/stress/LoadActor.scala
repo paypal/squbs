@@ -19,7 +19,7 @@ package org.squbs.testkit.stress
 import java.lang.management.ManagementFactory
 import javax.management.{Attribute, ObjectName}
 
-import akka.actor.{Actor, ActorRef}
+import org.apache.pekko.actor.{Actor, ActorRef}
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._

@@ -15,9 +15,9 @@
  */
 package org.squbs.unicomplex.timeout
 
-import akka.NotUsed
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
-import akka.stream.scaladsl.Flow
+import org.apache.pekko.NotUsed
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import org.apache.pekko.stream.scaladsl.Flow
 import org.slf4j.LoggerFactory
 import org.squbs.unicomplex.FlowDefinition
 

@@ -16,9 +16,9 @@
 
 package org.squbs.unicomplex.stashcube
 
-import akka.actor.{Actor, Stash}
-import akka.http.scaladsl.model._
-import akka.util.ByteString
+import org.apache.pekko.actor.{Actor, Stash}
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.util.ByteString
 
 import scala.collection.mutable.ListBuffer
 

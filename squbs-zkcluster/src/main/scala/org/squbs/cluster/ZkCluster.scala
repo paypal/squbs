@@ -21,7 +21,7 @@ import java.net.InetAddress
 import java.util.Properties
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
-import akka.actor._
+import org.apache.pekko.actor._
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.RetryPolicy

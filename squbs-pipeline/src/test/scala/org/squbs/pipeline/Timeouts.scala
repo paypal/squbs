@@ -16,7 +16,7 @@
 
 package org.squbs.pipeline
 
-import akka.util.Timeout
+import org.apache.pekko.util.Timeout
 
 import scala.concurrent.duration._
 

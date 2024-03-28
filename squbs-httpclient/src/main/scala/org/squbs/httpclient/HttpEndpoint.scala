@@ -16,8 +16,8 @@
 package org.squbs.httpclient
 import java.util.Optional
 
-import akka.http.javadsl
-import akka.http.scaladsl.model.Uri
+import org.apache.pekko.http.javadsl
+import org.apache.pekko.http.scaladsl.model.Uri
 import com.typesafe.config.Config
 import javax.net.ssl.SSLContext
 

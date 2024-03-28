@@ -16,16 +16,16 @@
 
 package org.squbs.streams;
 
-import akka.NotUsed;
-import akka.actor.ActorSystem;
-import akka.japi.Pair;
-import akka.stream.ActorMaterializer;
-import akka.stream.Materializer;
-import akka.stream.javadsl.BidiFlow;
-import akka.stream.javadsl.Flow;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
-import akka.stream.testkit.javadsl.TestSink;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.japi.Pair;
+import org.apache.pekko.stream.ActorMaterializer;
+import org.apache.pekko.stream.Materializer;
+import org.apache.pekko.stream.javadsl.BidiFlow;
+import org.apache.pekko.stream.javadsl.Flow;
+import org.apache.pekko.stream.javadsl.Sink;
+import org.apache.pekko.stream.javadsl.Source;
+import org.apache.pekko.stream.testkit.javadsl.TestSink;
 import org.junit.Test;
 import org.squbs.metrics.MetricsExtension;
 import scala.concurrent.duration.Duration;

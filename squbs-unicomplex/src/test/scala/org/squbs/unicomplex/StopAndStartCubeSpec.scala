@@ -16,8 +16,8 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.{ActorIdentity, ActorSystem, Identify}
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor.{ActorIdentity, ActorSystem, Identify}
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpecLike
@@ -55,9 +55,9 @@ object StopAndStartCubeSpec {
 class StopAndStartCubeSpec extends TestKit(StopAndStartCubeSpec.boot.actorSystem)
 with AnyFlatSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
 
-  implicit val timeout: akka.util.Timeout =
+  implicit val timeout: org.apache.pekko.util.Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
-      akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
+      org.apache.pekko.util.Timeout(millis, TimeUnit.MILLISECONDS)
     } getOrElse Timeouts.askTimeout
 
   import Timeouts.awaitMax

@@ -17,9 +17,9 @@ package org.squbs.pattern.stream
 
 import java.io.File
 
-import akka.actor.{ActorSystem, Props}
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import org.apache.pekko.actor.{ActorSystem, Props}
+import org.apache.pekko.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import org.apache.pekko.stream.{Attributes, FlowShape, Inlet, Outlet}
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory

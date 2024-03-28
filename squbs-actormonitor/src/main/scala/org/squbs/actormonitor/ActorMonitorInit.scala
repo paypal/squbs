@@ -16,7 +16,7 @@
 
 package org.squbs.actormonitor
 
-import akka.actor._
+import org.apache.pekko.actor._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.lifecycle.ExtensionLifecycle
 

@@ -16,7 +16,7 @@
 
 package org.squbs.cluster
 
-import akka.util.ByteString
+import org.apache.pekko.util.ByteString
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.CuratorFrameworkFactory
 import org.apache.curator.retry.ExponentialBackoffRetry

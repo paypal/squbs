@@ -15,4 +15,4 @@
  */
 package org.squbs.testkit.japi
 
-abstract class JUnitRouteTest extends akka.http.javadsl.testkit.JUnitRouteTest with RouteDefinitionTest
+abstract class JUnitRouteTest extends org.apache.pekko.http.javadsl.testkit.JUnitRouteTest with RouteDefinitionTest

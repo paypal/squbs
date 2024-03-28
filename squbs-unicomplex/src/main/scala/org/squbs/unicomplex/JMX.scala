@@ -16,7 +16,7 @@
 
 package org.squbs.unicomplex
 
-import akka.actor._
+import org.apache.pekko.actor._
 import com.typesafe.config.Config
 
 import java.beans.ConstructorProperties

@@ -1,12 +1,12 @@
 package org.squbs.stream;
 
-import akka.NotUsed;
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.stream.javadsl.MergeHub;
-import akka.stream.javadsl.RunnableGraph;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.actor.Props;
+import org.apache.pekko.stream.javadsl.MergeHub;
+import org.apache.pekko.stream.javadsl.RunnableGraph;
+import org.apache.pekko.stream.javadsl.Sink;
+import org.apache.pekko.stream.javadsl.Source;
 import org.squbs.unicomplex.Initializing;
 import org.squbs.unicomplex.LifecycleState;
 

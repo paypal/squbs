@@ -16,9 +16,9 @@
 
 package org.squbs
 
-import akka.NotUsed
-import akka.stream.BidiShape
-import akka.stream.scaladsl.{BidiFlow, Broadcast, GraphDSL, Merge}
+import org.apache.pekko.NotUsed
+import org.apache.pekko.stream.BidiShape
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Broadcast, GraphDSL, Merge}
 
 package object pipeline {
 

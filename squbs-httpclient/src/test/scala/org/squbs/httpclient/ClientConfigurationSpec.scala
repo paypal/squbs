@@ -16,8 +16,8 @@
 
 package org.squbs.httpclient
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.settings.ConnectionPoolSettings
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.settings.ConnectionPoolSettings
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

@@ -16,7 +16,7 @@
 package org.squbs.actorregistry
 
 
-import akka.actor._
+import org.apache.pekko.actor._
 import org.squbs.actorregistry.ActorRegistryBean._
 import org.squbs.unicomplex.Initialized
 import org.squbs.unicomplex.JMX._

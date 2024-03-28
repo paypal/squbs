@@ -16,12 +16,12 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.HttpEntity.Chunked
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
-import akka.pattern._
-import akka.stream.scaladsl.{Keep, Sink, Source}
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunked
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
+import org.apache.pekko.pattern._
+import org.apache.pekko.stream.scaladsl.{Keep, Sink, Source}
+import org.apache.pekko.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpecLike

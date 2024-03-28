@@ -16,7 +16,7 @@
 
 package org.squbs.testkit.japi
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.typesafe.config.Config
 import org.squbs.lifecycle.GracefulStop
 import org.squbs.unicomplex.{Unicomplex, UnicomplexBoot}

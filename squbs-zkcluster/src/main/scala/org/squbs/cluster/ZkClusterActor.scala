@@ -18,8 +18,8 @@ package org.squbs.cluster
 
 import java.util
 
-import akka.actor._
-import akka.util.ByteString
+import org.apache.pekko.actor._
+import org.apache.pekko.util.ByteString
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.CuratorFramework
 import org.squbs.cluster.JMX._

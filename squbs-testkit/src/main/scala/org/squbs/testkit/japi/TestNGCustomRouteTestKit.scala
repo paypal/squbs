@@ -15,8 +15,8 @@
  */
 package org.squbs.testkit.japi
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKitBase
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.testkit.TestKitBase
 import com.typesafe.config.Config
 import org.squbs.testkit.{DebugTiming, PortGetter, CustomTestKit => SCustomTestKit}
 import org.squbs.unicomplex.UnicomplexBoot

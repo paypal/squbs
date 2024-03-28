@@ -16,12 +16,12 @@
 
 package org.squbs.streams.circuitbreaker
 
-import akka.NotUsed
-import akka.http.org.squbs.util.JavaConverters
-import akka.japi.Pair
-import akka.stream._
-import akka.stream.scaladsl.{BidiFlow, Flow}
-import akka.stream.stage._
+import org.apache.pekko.NotUsed
+import org.apache.pekko.http.org.squbs.util.JavaConverters
+import org.apache.pekko.japi.Pair
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow}
+import org.apache.pekko.stream.stage._
 import org.squbs.streams.{Timeout, TimeoutSettings, UniqueId}
 
 import scala.collection.mutable
@@ -188,7 +188,7 @@ object CircuitBreaker {
     * @see [[CircuitBreakerSettings]] for details about each parameter and type parameter.
     */
   def create[In, Out, Context](circuitBreakerSettings: japi.CircuitBreakerSettings[In, Out, Context]):
-  akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] =
+  org.apache.pekko.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] =
     JavaConverters.toJava[In, In, Out, Try[Out], Context](apply[In, Out, Context](circuitBreakerSettings.toScala))
 }
 

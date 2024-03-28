@@ -16,7 +16,7 @@
 
 package org.squbs.unicomplex
 
-import akka.util.Timeout
+import org.apache.pekko.util.Timeout
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

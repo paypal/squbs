@@ -16,9 +16,9 @@
 
 package org.squbs.pattern.orchestration.japi;
 
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.util.Timeout;
+import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.actor.Props;
+import org.apache.pekko.util.Timeout;
 import com.typesafe.config.ConfigFactory;
 import org.junit.After;
 import org.junit.Test;

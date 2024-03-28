@@ -15,13 +15,13 @@
  */
 package org.squbs.marshallers.json
 
-import akka.http.javadsl.marshalling.Marshaller
-import akka.http.javadsl.model.{HttpEntity, RequestEntity}
-import akka.http.javadsl.unmarshalling.Unmarshaller
-import akka.http.scaladsl.marshalling.ToEntityMarshaller
-import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
+import org.apache.pekko.http.javadsl.marshalling.Marshaller
+import org.apache.pekko.http.javadsl.model.{HttpEntity, RequestEntity}
+import org.apache.pekko.http.javadsl.unmarshalling.Unmarshaller
+import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
+import org.apache.pekko.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import com.fasterxml.jackson.databind.ObjectMapper
-import de.heikoseeberger.akkahttpjson4s.Json4sSupport
+import com.github.pjfanning.pekkohttpjson4s.Json4sSupport
 import org.json4s.{DefaultFormats, Formats, Serialization, Serializer, jackson, native}
 
 import scala.annotation.varargs

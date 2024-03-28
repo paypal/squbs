@@ -15,12 +15,12 @@
  */
 package org.squbs.unicomplex
 
-import akka.actor._
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model._
-import akka.pattern._
-import akka.stream.scaladsl.FileIO
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor._
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.pattern._
+import org.apache.pekko.stream.scaladsl.FileIO
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Waiters

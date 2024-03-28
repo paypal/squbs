@@ -16,7 +16,7 @@
 
 package org.squbs.unicomplex.cubeB
 
-import akka.actor.{Actor, ActorLogging}
+import org.apache.pekko.actor.{Actor, ActorLogging}
 import org.squbs.lifecycle.{GracefulStop, GracefulStopHelper}
 import org.squbs.unicomplex.Initialized
 import org.squbs.unicomplex.Unicomplex.InitReport

@@ -16,8 +16,8 @@
 
 package org.squbs.cluster
 
-import akka.actor.Address
-import akka.util.ByteString
+import org.apache.pekko.actor.Address
+import org.apache.pekko.util.ByteString
 
 import scala.annotation.tailrec
 

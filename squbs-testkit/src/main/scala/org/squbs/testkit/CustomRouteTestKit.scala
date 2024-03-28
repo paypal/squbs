@@ -16,8 +16,8 @@
 
 package org.squbs.testkit
 
-import akka.http.scaladsl.testkit.ScalatestRouteTest
-import akka.testkit.TestKitBase
+import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
+import org.apache.pekko.testkit.TestKitBase
 import com.typesafe.config.Config
 import org.scalatest.Suite
 import org.squbs.lifecycle.GracefulStop

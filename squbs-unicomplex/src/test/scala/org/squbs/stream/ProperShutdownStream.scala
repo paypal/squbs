@@ -15,11 +15,11 @@
  */
 package org.squbs.stream
 import java.util.concurrent.atomic.AtomicLong
-import akka.Done
-import akka.actor.{ActorRef, PoisonPill}
-import akka.stream.ClosedShape
-import akka.stream.ThrottleMode.Shaping
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
+import org.apache.pekko.Done
+import org.apache.pekko.actor.{ActorRef, PoisonPill}
+import org.apache.pekko.stream.ClosedShape
+import org.apache.pekko.stream.ThrottleMode.Shaping
+import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import org.squbs.lifecycle.GracefulStop
 
 import scala.concurrent.Future

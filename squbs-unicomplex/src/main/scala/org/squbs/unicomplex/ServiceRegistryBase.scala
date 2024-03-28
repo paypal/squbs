@@ -18,9 +18,9 @@ package org.squbs.unicomplex
 
 import javax.net.ssl.SSLContext
 
-import akka.actor.Actor._
-import akka.actor.{ActorContext, ActorRef}
-import akka.event.LoggingAdapter
+import org.apache.pekko.actor.Actor._
+import org.apache.pekko.actor.{ActorContext, ActorRef}
+import org.apache.pekko.event.LoggingAdapter
 import com.typesafe.config.Config
 import org.squbs.pipeline.PipelineSetting
 import org.squbs.util.ConfigUtil._

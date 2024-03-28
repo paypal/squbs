@@ -16,14 +16,14 @@
 
 package org.squbs.unicomplex
 
-import akka.NotUsed
-import akka.actor.SupervisorStrategy._
-import akka.actor.{Extension => AkkaExtension, _}
-import akka.event.Logging
-import akka.http.scaladsl.model.HttpResponse
-import akka.pattern._
-import akka.stream.scaladsl.Flow
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Materializer, Supervision}
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.SupervisorStrategy._
+import org.apache.pekko.actor.{Extension => AkkaExtension, _}
+import org.apache.pekko.event.Logging
+import org.apache.pekko.http.scaladsl.model.HttpResponse
+import org.apache.pekko.pattern._
+import org.apache.pekko.stream.scaladsl.Flow
+import org.apache.pekko.stream.{ActorMaterializer, ActorMaterializerSettings, Materializer, Supervision}
 import com.typesafe.config.Config
 import org.squbs.lifecycle.{ExtensionLifecycle, GracefulStop, GracefulStopHelper}
 import org.squbs.pipeline.{PipelineSetting, RequestContext}

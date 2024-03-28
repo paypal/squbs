@@ -16,10 +16,10 @@
 
 package org.squbs.cluster.rebalance
 
-import akka.actor.{ActorSystem, Address, AddressFromURIString}
-import akka.dispatch.Dispatchers
-import akka.routing.{ActorSelectionRoutee, _}
-import akka.util.ByteString
+import org.apache.pekko.actor.{ActorSystem, Address, AddressFromURIString}
+import org.apache.pekko.dispatch.Dispatchers
+import org.apache.pekko.routing.{ActorSelectionRoutee, _}
+import org.apache.pekko.util.ByteString
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.annotation.tailrec

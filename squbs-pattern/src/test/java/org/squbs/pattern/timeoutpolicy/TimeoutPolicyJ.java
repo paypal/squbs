@@ -16,7 +16,7 @@
 
 package org.squbs.pattern.timeoutpolicy;
 
-import akka.actor.ActorSystem;
+import org.apache.pekko.actor.ActorSystem;
 import org.squbs.util.DurationConverters;
 
 import java.time.Duration;

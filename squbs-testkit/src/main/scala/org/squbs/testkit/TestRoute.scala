@@ -16,11 +16,11 @@
 
 package org.squbs.testkit
 
-import akka.actor.{Actor, ActorSystem}
-import akka.http.scaladsl.server.directives.PathDirectives._
-import akka.http.scaladsl.server.{ExceptionHandler, RejectionHandler, Route}
-import akka.http.scaladsl.settings.RoutingSettings
-import akka.testkit.TestActorRef
+import org.apache.pekko.actor.{Actor, ActorSystem}
+import org.apache.pekko.http.scaladsl.server.directives.PathDirectives._
+import org.apache.pekko.http.scaladsl.server.{ExceptionHandler, RejectionHandler, Route}
+import org.apache.pekko.http.scaladsl.settings.RoutingSettings
+import org.apache.pekko.testkit.TestActorRef
 import org.squbs.unicomplex.{RouteDefinition, WithActorContext, WithWebContext}
 
 import scala.reflect.ClassTag

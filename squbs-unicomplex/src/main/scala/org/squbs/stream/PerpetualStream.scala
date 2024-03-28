@@ -15,12 +15,12 @@
  */
 package org.squbs.stream
 
-import akka.actor.{ActorContext, ActorRefFactory, ActorSystem}
-import akka.stream.Supervision._
-import akka.stream._
-import akka.stream.scaladsl.{RunnableGraph, Sink}
-import akka.util.Timeout
-import akka.{Done, NotUsed}
+import org.apache.pekko.actor.{ActorContext, ActorRefFactory, ActorSystem}
+import org.apache.pekko.stream.Supervision._
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.{RunnableGraph, Sink}
+import org.apache.pekko.util.Timeout
+import org.apache.pekko.{Done, NotUsed}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -107,14 +107,14 @@ trait PerpetualStreamMatValue[T] {
   def matValue(perpetualStreamName: String)(implicit classTag: ClassTag[T]): Sink[T, NotUsed] = {
     implicit val sys: ActorSystem = context.system
     implicit val timeout: Timeout = Timeout(10.seconds)
-    import akka.pattern.ask
+    import org.apache.pekko.pattern.ask
 
     val responseF = actorLookup(perpetualStreamName) ? MatValueRequest
 
     // Exception! This code is executed only at startup. We really need a better API, though.
     Await.result(responseF, timeout.duration) match {
       case sink: Sink[T, _] => sink.asInstanceOf[Sink[T, NotUsed]]
-      case p: akka.japi.Pair[_, _] => sinkCast(p.first)
+      case p: org.apache.pekko.japi.Pair[_, _] => sinkCast(p.first)
       case l: java.util.List[_] =>
         if (l.isEmpty) {
           throw new ClassCastException(
@@ -125,7 +125,7 @@ trait PerpetualStreamMatValue[T] {
       case p: Product => sinkCast(p.productElement(0))
       case other =>
         throw new ClassCastException("Materialized value mismatch. Should be a Sink or a " +
-          s"Product/akka.japi.Pair/java.util.List with a Sink as its first element. Found ${other.getClass.getName}.")
+          s"Product/org.apache.pekko.japi.Pair/java.util.List with a Sink as its first element. Found ${other.getClass.getName}.")
     }
   }
 

@@ -16,11 +16,11 @@
 
 package org.squbs.streams
 
-import akka.actor.ActorSystem
-import akka.stream.OverflowStrategy
-import akka.stream.ThrottleMode.Shaping
-import akka.stream.scaladsl._
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.OverflowStrategy
+import org.apache.pekko.stream.ThrottleMode.Shaping
+import org.apache.pekko.stream.scaladsl._
+import org.apache.pekko.testkit.TestKit
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 import org.squbs.metrics.MetricsExtension

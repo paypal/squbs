@@ -15,9 +15,9 @@
  */
 package org.squbs.cluster
 
-import akka.actor._
-import akka.routing.ActorSelectionRoutee
-import akka.util.ByteString
+import org.apache.pekko.actor._
+import org.apache.pekko.routing.ActorSelectionRoutee
+import org.apache.pekko.util.ByteString
 import org.mockito.Mockito._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

@@ -16,7 +16,7 @@
 
 package org.squbs.actormonitor.testcube
 
-import akka.actor.Actor
+import org.apache.pekko.actor.Actor
 
 
 class TestActor extends Actor {

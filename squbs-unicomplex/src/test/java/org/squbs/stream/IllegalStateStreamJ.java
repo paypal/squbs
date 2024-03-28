@@ -1,13 +1,13 @@
 package org.squbs.stream;
 
-import akka.Done;
-import akka.NotUsed;
-import akka.stream.ClosedShape;
-import akka.stream.SourceShape;
-import akka.stream.javadsl.GraphDSL;
-import akka.stream.javadsl.RunnableGraph;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
+import org.apache.pekko.Done;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.stream.ClosedShape;
+import org.apache.pekko.stream.SourceShape;
+import org.apache.pekko.stream.javadsl.GraphDSL;
+import org.apache.pekko.stream.javadsl.RunnableGraph;
+import org.apache.pekko.stream.javadsl.Sink;
+import org.apache.pekko.stream.javadsl.Source;
 import org.squbs.unicomplex.Initialized;
 
 import java.util.concurrent.CompletableFuture;

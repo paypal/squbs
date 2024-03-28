@@ -19,7 +19,7 @@ package org.squbs.dispatcher
 import java.util.concurrent._
 import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 
-import akka.dispatch._
+import org.apache.pekko.dispatch._
 import com.typesafe.config.Config
 import org.squbs.unicomplex.{ForkJoinPoolMXBean, JMX}
 

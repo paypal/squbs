@@ -15,16 +15,16 @@
  */
 package org.squbs.metrics;
 
-import akka.Done;
-import akka.actor.ActorSystem;
-import akka.japi.Pair;
-import akka.stream.ActorMaterializer;
-import akka.stream.Materializer;
-import akka.stream.javadsl.Keep;
-import akka.stream.javadsl.RunnableGraph;
-import akka.stream.javadsl.Sink;
-import akka.stream.testkit.TestPublisher;
-import akka.stream.testkit.javadsl.TestSource;
+import org.apache.pekko.Done;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.japi.Pair;
+import org.apache.pekko.stream.ActorMaterializer;
+import org.apache.pekko.stream.Materializer;
+import org.apache.pekko.stream.javadsl.Keep;
+import org.apache.pekko.stream.javadsl.RunnableGraph;
+import org.apache.pekko.stream.javadsl.Sink;
+import org.apache.pekko.stream.testkit.TestPublisher;
+import org.apache.pekko.stream.testkit.javadsl.TestSource;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.Test;

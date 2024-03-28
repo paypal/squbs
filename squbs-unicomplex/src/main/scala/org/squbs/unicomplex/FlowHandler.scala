@@ -16,12 +16,12 @@
 
 package org.squbs.unicomplex
 
-import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
-import akka.stream.{FlowShape, Materializer}
-import akka.stream.scaladsl._
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.Uri.Path
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import org.apache.pekko.stream.{FlowShape, Materializer}
+import org.apache.pekko.stream.scaladsl._
 import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, RequestContext, ServerPipeline}
 import org.squbs.streams.BoundedOrdering
 

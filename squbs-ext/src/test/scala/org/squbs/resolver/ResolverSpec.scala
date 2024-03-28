@@ -16,8 +16,8 @@
 
 package org.squbs.resolver
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.testkit.TestKit
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpecLike

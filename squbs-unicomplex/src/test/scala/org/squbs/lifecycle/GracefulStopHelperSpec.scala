@@ -16,8 +16,8 @@
 
 package org.squbs.lifecycle
 
-import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill}
-import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
+import org.apache.pekko.actor.{Actor, ActorRef, ActorSystem, PoisonPill}
+import org.apache.pekko.testkit.{ImplicitSender, TestActorRef, TestKit}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers

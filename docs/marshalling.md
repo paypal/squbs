@@ -87,10 +87,10 @@ JacksonMapperSupport.register[MyScalaClass](
 The marshallers and unmarshallers can be obtained from the `marshaller` and `unmarshaller` methods in `JacksonMapperSupport`, passing the class instance of the type to marshal/unmarshal as follows:
 
 ```java
-import akka.http.javadsl.marshalling.Marshaller;
-import akka.http.javadsl.model.HttpEntity;
-import akka.http.javadsl.model.RequestEntity;
-import akka.http.javadsl.unmarshalling.Unmarshaller;
+import org.apache.pekko.http.javadsl.marshalling.Marshaller;
+import org.apache.pekko.http.javadsl.model.HttpEntity;
+import org.apache.pekko.http.javadsl.model.RequestEntity;
+import org.apache.pekko.http.javadsl.unmarshalling.Unmarshaller;
 
 import static org.squbs.marshallers.json.JacksonMapperSupport.*;
 
@@ -194,10 +194,10 @@ XLangJsonSupport.register[MyOtherClass](DefaultFormats + MySerializer)
 The marshallers and unmarshallers can be obtained from the `marshaller` and `unmarshaller` methods in `XLangJsonSupport`, passing the class instance of the type to marshal/unmarshal as follows:
 
 ```java
-import akka.http.javadsl.marshalling.Marshaller;
-import akka.http.javadsl.model.HttpEntity;
-import akka.http.javadsl.model.RequestEntity;
-import akka.http.javadsl.unmarshalling.Unmarshaller;
+import org.apache.pekko.http.javadsl.marshalling.Marshaller;
+import org.apache.pekko.http.javadsl.model.HttpEntity;
+import org.apache.pekko.http.javadsl.model.RequestEntity;
+import org.apache.pekko.http.javadsl.unmarshalling.Unmarshaller;
 
 import static org.squbs.marshallers.json.XLangJsonSupport.*;
 
@@ -254,10 +254,10 @@ Besides using marshallers and marshallers as part of Akka HTTP Routing DSL, manu
 Akka provides a great [Scala DSL for marshalling and unmarshalling](http://doc.akka.io/docs/akka-http/current/scala/http/common/marshalling.html#using-marshallers). Its use can be seen in the example below:
 
 ```scala
-import akka.actor.ActorSystem
-import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.model.MessageEntity
-import akka.http.scaladsl.unmarshalling.Unmarshal
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.marshalling.Marshal
+import org.apache.pekko.http.scaladsl.model.MessageEntity
+import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
 
 // We need the ActorSystem and Materializer to marshal/unmarshal
 implicit val system = ActorSystem()
@@ -274,9 +274,9 @@ Unmarshal(entity).to[MyType]
 The `MarshalUnmarshal` utility class is used for manually marshalling and unmarshalling objects using any `Marshaller` and `Unmarshaller` defined in Akka HTTP's JavaDSL. It's use can be seen in the example below:
 
 ```java
-import akka.actor.ActorSystem;
-import akka.http.javadsl.model.RequestEntity;
-import akka.stream.Materializer;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.http.javadsl.model.RequestEntity;
+import org.apache.pekko.stream.Materializer;
 
 import org.squbs.marshallers.MarshalUnmarshal;
 

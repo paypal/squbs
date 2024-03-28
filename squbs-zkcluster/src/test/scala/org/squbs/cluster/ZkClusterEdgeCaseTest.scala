@@ -16,7 +16,7 @@
 
 package org.squbs.cluster
 
-import akka.util.ByteString
+import org.apache.pekko.util.ByteString
 import org.squbs.cluster.test.{ZkClusterMultiActorSystemTestKit, ZkClusterTestHelper}
 
 class ZkClusterEdgeCaseTest extends ZkClusterMultiActorSystemTestKit("ZkClusterEdgeCaseTest") with ZkClusterTestHelper {

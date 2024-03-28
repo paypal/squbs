@@ -20,8 +20,8 @@ import java.net.{URLDecoder, URLEncoder}
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 
-import akka.actor.{Address, AddressFromURIString}
-import akka.util.ByteString
+import org.apache.pekko.actor.{Address, AddressFromURIString}
+import org.apache.pekko.util.ByteString
 import com.typesafe.scalalogging.Logger
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.CreateMode

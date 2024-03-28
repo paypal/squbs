@@ -16,11 +16,11 @@
 
 package org.squbs.httpclient
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.ws.PeerClosedConnectionException
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, RequestTimeoutException, StatusCodes}
-import akka.stream.scaladsl.{BidiFlow, Flow, Sink, Source}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.ws.PeerClosedConnectionException
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, RequestTimeoutException, StatusCodes}
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow, Sink, Source}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
@@ -71,7 +71,7 @@ object MetricsFlowSpec {
   )
 
   implicit val system: ActorSystem = ActorSystem("ClientMetricFlowSpec", config)
-  import akka.http.scaladsl.server.Directives._
+  import org.apache.pekko.http.scaladsl.server.Directives._
 
   val route =
     path("hello") {

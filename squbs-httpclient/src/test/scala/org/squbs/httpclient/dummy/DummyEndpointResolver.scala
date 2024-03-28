@@ -15,7 +15,7 @@
  */
 package org.squbs.httpclient.dummy
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import org.squbs.env.Environment
 import org.squbs.httpclient.HttpEndpoint
 import org.squbs.resolver.Resolver

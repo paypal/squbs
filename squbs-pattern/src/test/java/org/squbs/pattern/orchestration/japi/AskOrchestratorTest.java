@@ -16,8 +16,8 @@
 
 package org.squbs.pattern.orchestration.japi;
 
-import akka.actor.ActorRef;
-import akka.actor.Props;
+import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.actor.Props;
 import com.typesafe.config.ConfigFactory;
 import org.junit.After;
 import org.junit.Test;

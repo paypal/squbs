@@ -16,15 +16,15 @@
 
 package org.squbs.unicomplex.pipeline
 
-import akka.actor.{Actor, ActorSystem, Status}
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.HttpEntity.{Chunk, LastChunk}
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.server._
-import akka.pattern._
-import akka.stream.scaladsl.{FileIO, Sink, Source}
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor.{Actor, ActorSystem, Status}
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.HttpEntity.{Chunk, LastChunk}
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.headers.RawHeader
+import org.apache.pekko.http.scaladsl.server._
+import org.apache.pekko.pattern._
+import org.apache.pekko.stream.scaladsl.{FileIO, Sink, Source}
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpecLike

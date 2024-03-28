@@ -15,10 +15,10 @@
  */
 package org.squbs.testkit.japi
 
-import akka.actor.ActorSystem
-import akka.http.javadsl.testkit.ActorSystemResource
-import akka.stream.ActorMaterializer
-import akka.testkit.TestKitBase
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.javadsl.testkit.ActorSystemResource
+import org.apache.pekko.stream.ActorMaterializer
+import org.apache.pekko.testkit.TestKitBase
 import com.typesafe.config.Config
 import org.junit.Rule
 import org.squbs.testkit.{DebugTiming, PortGetter, CustomTestKit => SCustomTestKit}
@@ -28,7 +28,7 @@ import scala.jdk.CollectionConverters._
 
 abstract class JUnitCustomRouteTestKit(val boot: UnicomplexBoot) extends {
   implicit override val system: ActorSystem = boot.actorSystem
-} with akka.http.javadsl.testkit.JUnitRouteTest with TestKitBase
+} with org.apache.pekko.http.javadsl.testkit.JUnitRouteTest with TestKitBase
   with RouteDefinitionTest with DebugTiming with PortGetter {
 
   private[this] val _systemResource = new CustomTestKitActorSystemResource(boot)

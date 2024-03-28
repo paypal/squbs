@@ -18,8 +18,8 @@ package org.squbs.actorregistry.japi
 import java.util.Optional
 import java.util.concurrent.CompletionStage
 
-import akka.actor.{ActorRef, ActorRefFactory}
-import akka.util.Timeout
+import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
+import org.apache.pekko.util.Timeout
 import org.squbs.actorregistry.{ActorLookup => SActorLookup}
 
 import scala.compat.java8.FutureConverters._

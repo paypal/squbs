@@ -16,8 +16,8 @@
 
 package org.squbs.testkit.stress;
 
-import akka.actor.*;
-import akka.testkit.javadsl.TestKit;
+import org.apache.pekko.actor.*;
+import org.apache.pekko.testkit.javadsl.TestKit;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;

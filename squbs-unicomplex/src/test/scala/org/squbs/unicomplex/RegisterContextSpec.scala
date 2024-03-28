@@ -16,9 +16,9 @@
 
 package org.squbs.unicomplex
 
-import akka.http.scaladsl.model.Uri
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model.Uri.Path.{Empty, Segment, Slash}
+import org.apache.pekko.http.scaladsl.model.Uri
+import org.apache.pekko.http.scaladsl.model.Uri.Path
+import org.apache.pekko.http.scaladsl.model.Uri.Path.{Empty, Segment, Slash}
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 

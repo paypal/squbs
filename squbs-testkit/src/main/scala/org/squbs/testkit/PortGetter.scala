@@ -16,7 +16,7 @@
 
 package org.squbs.testkit
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import org.squbs.testkit.Timeouts._
 import org.squbs.unicomplex.{PortBindings, Unicomplex}
 
@@ -27,7 +27,7 @@ trait PortGetter {
   val system: ActorSystem
   lazy val port: Int = port(listener)
 
-  import akka.pattern.ask
+  import org.apache.pekko.pattern.ask
   def port(listener: String) = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)(listener)
 
   def listener: String = "default-listener"

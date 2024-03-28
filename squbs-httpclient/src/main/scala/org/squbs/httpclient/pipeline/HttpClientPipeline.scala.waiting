@@ -19,8 +19,8 @@ package org.squbs.httpclient.pipeline
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 
-import akka.actor._
-import akka.util.Timeout
+import org.apache.pekko.actor._
+import org.apache.pekko.util.Timeout
 import com.typesafe.scalalogging.LazyLogging
 //import org.squbs.httpclient.{Status, _}
 import org.squbs.endpoint.Endpoint

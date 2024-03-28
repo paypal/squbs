@@ -16,10 +16,10 @@
 
 package org.squbs
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model._
-import akka.util.ByteString
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.util.ByteString
 
 import java.net.InetSocketAddress
 import java.nio.channels.ServerSocketChannel
@@ -27,7 +27,7 @@ import scala.concurrent.Future
 
 package object unicomplex {
 
-  // Remove this once Akka-Http exposes this test utility.
+  // Remove this once pekko-http exposes this test utility.
   def temporaryServerAddress(interface: String = "127.0.0.1"): InetSocketAddress = {
     val serverSocket = ServerSocketChannel.open()
     try {

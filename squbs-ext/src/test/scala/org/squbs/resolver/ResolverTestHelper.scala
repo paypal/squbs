@@ -15,7 +15,7 @@
  */
 package org.squbs.resolver
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 
 /**
   * Test helper for Java tests.

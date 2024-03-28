@@ -15,10 +15,10 @@
  */
 package org.squbs.testkit.japi.testng;
 
-import akka.http.javadsl.marshallers.jackson.Jackson;
-import akka.http.javadsl.model.ContentTypes;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.testkit.TestRoute;
+import org.apache.pekko.http.javadsl.marshallers.jackson.Jackson;
+import org.apache.pekko.http.javadsl.model.ContentTypes;
+import org.apache.pekko.http.javadsl.model.HttpRequest;
+import org.apache.pekko.http.javadsl.testkit.TestRoute;
 import org.squbs.testkit.japi.InfoRouteWithActor;
 import org.squbs.testkit.japi.RouteResultInfo;
 import org.squbs.testkit.japi.TestNGCustomRouteTestKit;

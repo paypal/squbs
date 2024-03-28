@@ -15,20 +15,20 @@
  */
 package org.squbs.httpclient;
 
-import akka.NotUsed;
-import akka.actor.ActorSystem;
-import akka.http.javadsl.*;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.HttpResponse;
-import akka.http.javadsl.model.StatusCodes;
-import akka.japi.Pair;
-import akka.stream.ActorMaterializer;
-import akka.stream.javadsl.Flow;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.http.javadsl.*;
+import org.apache.pekko.http.javadsl.model.HttpRequest;
+import org.apache.pekko.http.javadsl.model.HttpResponse;
+import org.apache.pekko.http.javadsl.model.StatusCodes;
+import org.apache.pekko.japi.Pair;
+import org.apache.pekko.stream.ActorMaterializer;
+import org.apache.pekko.stream.javadsl.Flow;
+import org.apache.pekko.stream.javadsl.Sink;
+import org.apache.pekko.stream.javadsl.Source;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import com.typesafe.sslconfig.akka.AkkaSSLConfig;
+import com.typesafe.sslconfig.pekko.PekkoSSLConfig;
 import com.typesafe.sslconfig.ssl.SSLConfigFactory;
 import org.junit.AfterClass;
 import org.junit.Test;
@@ -86,7 +86,7 @@ public class ClientFlowHttpsTest {
         Config mySslConfig = ConfigFactory.parseString("loose.disableHostnameVerification = true")
                 .withFallback(system.settings().config().getConfig("ssl-config"));
 
-        AkkaSSLConfig sslConfig = AkkaSSLConfig.get(system).withSettings(
+        PekkoSSLConfig sslConfig = PekkoSSLConfig.get(system).withSettings(
                 SSLConfigFactory.parse(mySslConfig));
         Optional<HttpsConnectionContext> connCtxOption = sslContext("exampletrust.jks", "changeit")
                 .map(s -> ConnectionContext.https(s, Optional.of(sslConfig), Optional.empty(), Optional.empty(),

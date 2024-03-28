@@ -15,11 +15,11 @@
  */
 package org.squbs.stream
 
-import akka.actor.{ActorRef, ActorSystem}
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, Uri}
-import akka.pattern.ask
-import akka.testkit.TestKit
+import org.apache.pekko.actor.{ActorRef, ActorSystem}
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, Uri}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers

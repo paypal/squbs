@@ -19,7 +19,7 @@ package org.squbs.unicomplex.initblock
 import org.squbs.unicomplex.Unicomplex._
 import scala.util.Try
 import org.squbs.lifecycle.{GracefulStopHelper, GracefulStop}
-import akka.actor.{Actor, ActorLogging}
+import org.apache.pekko.actor.{Actor, ActorLogging}
 
 class InitBlockActor extends Actor with ActorLogging with GracefulStopHelper{
 

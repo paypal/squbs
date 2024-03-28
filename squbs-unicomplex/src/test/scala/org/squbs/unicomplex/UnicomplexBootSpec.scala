@@ -16,7 +16,7 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import org.scalatest.funspec.AnyFunSpecLike
 import org.scalatest.matchers.should.Matchers

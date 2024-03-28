@@ -91,7 +91,7 @@ limitations under the License.
 
 *******************************************************
 
-akka-http-json
+pekko-http-json
 
 Copyright 2015 Heiko Seeberger
 

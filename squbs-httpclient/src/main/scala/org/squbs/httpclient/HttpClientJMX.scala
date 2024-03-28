@@ -15,9 +15,9 @@
  */
 package org.squbs.httpclient
 
-import akka.http.scaladsl.settings.ConnectionPoolSettings
-import akka.io.Inet.SO.{ReceiveBufferSize, ReuseAddress, SendBufferSize, TrafficClass}
-import akka.io.Tcp.SO.{KeepAlive, OOBInline, TcpNoDelay}
+import org.apache.pekko.http.scaladsl.settings.ConnectionPoolSettings
+import org.apache.pekko.io.Inet.SO.{ReceiveBufferSize, ReuseAddress, SendBufferSize, TrafficClass}
+import org.apache.pekko.io.Tcp.SO.{KeepAlive, OOBInline, TcpNoDelay}
 import javax.management.MXBean
 
 import scala.language.implicitConversions

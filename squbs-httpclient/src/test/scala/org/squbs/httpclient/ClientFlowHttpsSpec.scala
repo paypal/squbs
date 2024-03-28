@@ -16,11 +16,11 @@
 
 package org.squbs.httpclient
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.{ConnectionContext, Http}
-import akka.stream.scaladsl.{Sink, Source}
-import akka.util.ByteString
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.{ConnectionContext, Http}
+import org.apache.pekko.stream.scaladsl.{Sink, Source}
+import org.apache.pekko.util.ByteString
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
@@ -62,7 +62,7 @@ object ClientFlowHttpsSpec {
     }
   }
 
-  import akka.http.scaladsl.server.Directives._
+  import org.apache.pekko.http.scaladsl.server.Directives._
 
   val route =
     path("hello") {

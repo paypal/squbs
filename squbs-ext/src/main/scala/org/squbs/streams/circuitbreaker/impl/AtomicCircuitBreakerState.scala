@@ -22,8 +22,8 @@ package org.squbs.streams.circuitbreaker.impl
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong}
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{ActorSystem, Scheduler}
-import akka.util.Unsafe
+import org.apache.pekko.actor.{ActorSystem, Scheduler}
+import org.apache.pekko.util.Unsafe
 import com.codahale.metrics.MetricRegistry
 import com.typesafe.config.Config
 import org.squbs.streams.circuitbreaker._

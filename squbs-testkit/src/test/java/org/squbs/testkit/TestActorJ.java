@@ -16,7 +16,7 @@
 
 package org.squbs.testkit;
 
-import akka.actor.AbstractActor;
+import org.apache.pekko.actor.AbstractActor;
 
 public class TestActorJ extends AbstractActor {
 

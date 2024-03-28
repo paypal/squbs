@@ -16,11 +16,11 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.{Actor, ActorSystem}
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, Uri}
-import akka.pattern._
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor.{Actor, ActorSystem}
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, Uri}
+import org.apache.pekko.pattern._
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._

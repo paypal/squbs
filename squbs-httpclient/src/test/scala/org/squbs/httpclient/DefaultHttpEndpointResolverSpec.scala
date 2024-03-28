@@ -16,7 +16,7 @@
 
 package org.squbs.httpclient
 
-import akka.http.scaladsl.model.Uri
+import org.apache.pekko.http.scaladsl.model.Uri
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers

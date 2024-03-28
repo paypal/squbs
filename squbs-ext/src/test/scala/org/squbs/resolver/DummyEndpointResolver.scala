@@ -18,7 +18,7 @@ package org.squbs.resolver
 
 import java.net.URI
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import org.squbs.env.{DEV, Default, Environment}
 
 class DummyServiceResolver(implicit system: ActorSystem) extends Resolver[URI] {

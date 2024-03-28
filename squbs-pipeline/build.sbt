@@ -5,11 +5,11 @@ name := "squbs-pipeline"
 libraryDependencies ++= Seq(
   "org.scala-lang.modules" %% "scala-collection-compat" % scalaCompatV,
   "org.scalatest" %% "scalatest" % scalatestV % Test,
-  "com.typesafe.akka" %% "akka-actor" % akkaV,
-  "com.typesafe.akka" %% "akka-stream" % akkaV,
-  "com.typesafe.akka" %% "akka-http-core" % akkaHttpV % Provided,
+  "org.apache.pekko" %% "pekko-actor" % pekkoV,
+  "org.apache.pekko" %% "pekko-stream" % pekkoV,
+  "org.apache.pekko" %% "pekko-http-core" % pekkoHttpV % Provided,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
-  "com.typesafe.akka" %% "akka-testkit" % akkaV % Test,
+  "org.apache.pekko" %% "pekko-testkit" % pekkoV % Test,
   "com.vladsch.flexmark" % "flexmark-all" % flexmarkV % Test,
   "ch.qos.logback" % "logback-classic" % logbackInTestV % Test
 )

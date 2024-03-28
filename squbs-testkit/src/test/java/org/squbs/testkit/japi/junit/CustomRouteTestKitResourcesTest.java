@@ -15,9 +15,9 @@
  */
 package org.squbs.testkit.japi.junit;
 
-import akka.http.javadsl.marshallers.jackson.Jackson;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.testkit.TestRoute;
+import org.apache.pekko.http.javadsl.marshallers.jackson.Jackson;
+import org.apache.pekko.http.javadsl.model.HttpRequest;
+import org.apache.pekko.http.javadsl.testkit.TestRoute;
 import org.junit.Test;
 import org.squbs.testkit.japi.InfoRouteWithActor;
 import org.squbs.testkit.japi.RouteResultInfo;

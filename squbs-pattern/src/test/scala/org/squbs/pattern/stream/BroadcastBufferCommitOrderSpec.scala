@@ -16,9 +16,9 @@
 
 package org.squbs.pattern.stream
 
-import akka.actor.ActorSystem
-import akka.stream.ClosedShape
-import akka.stream.scaladsl.{GraphDSL, RunnableGraph}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.ClosedShape
+import org.apache.pekko.stream.scaladsl.{GraphDSL, RunnableGraph}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually

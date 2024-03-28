@@ -17,9 +17,9 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.{ActorSystem, Cancellable, Scheduler}
-import akka.event.LoggingAdapter
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor.{ActorSystem, Cancellable, Scheduler}
+import org.apache.pekko.event.LoggingAdapter
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers

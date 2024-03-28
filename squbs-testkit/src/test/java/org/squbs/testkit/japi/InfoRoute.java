@@ -15,9 +15,9 @@
  */
 package org.squbs.testkit.japi;
 
-import akka.http.javadsl.model.ContentTypes;
-import akka.http.javadsl.model.HttpEntities;
-import akka.http.javadsl.server.Route;
+import org.apache.pekko.http.javadsl.model.ContentTypes;
+import org.apache.pekko.http.javadsl.model.HttpEntities;
+import org.apache.pekko.http.javadsl.server.Route;
 import org.squbs.unicomplex.AbstractRouteDefinition;
 
 public class InfoRoute extends AbstractRouteDefinition {

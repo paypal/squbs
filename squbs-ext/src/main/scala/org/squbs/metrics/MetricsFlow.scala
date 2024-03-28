@@ -16,10 +16,10 @@
 
 package org.squbs.metrics
 
-import akka.actor.ActorSystem
-import akka.stream.scaladsl.{BidiFlow, Flow}
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow}
+import org.apache.pekko.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import org.apache.pekko.stream.{Attributes, FlowShape, Inlet, Outlet}
 import com.codahale.metrics.{MetricRegistry, Timer}
 import org.squbs.pipeline.{PipelineFlow, RequestContext}
 

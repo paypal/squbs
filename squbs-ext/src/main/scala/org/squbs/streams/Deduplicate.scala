@@ -16,10 +16,10 @@
 
 package org.squbs.streams
 
-import akka.event.Logging
-import akka.stream.ActorAttributes.SupervisionStrategy
-import akka.stream._
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import org.apache.pekko.event.Logging
+import org.apache.pekko.stream.ActorAttributes.SupervisionStrategy
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 
 import scala.compat.java8.FunctionConverters._
 import scala.util.control.NonFatal

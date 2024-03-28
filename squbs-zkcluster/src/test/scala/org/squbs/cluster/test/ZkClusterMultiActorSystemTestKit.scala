@@ -16,8 +16,8 @@
 
 package org.squbs.cluster.test
 
-import akka.actor.{ActorSelection, ActorSystem, PoisonPill, Terminated}
-import akka.testkit.TestKit
+import org.apache.pekko.actor.{ActorSelection, ActorSystem, PoisonPill, Terminated}
+import org.apache.pekko.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.commons.io.FileUtils

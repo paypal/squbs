@@ -15,11 +15,11 @@
  */
 package org.squbs.stream
 
-import akka.{Done, NotUsed}
-import akka.actor.ActorContext
-import akka.stream.ClosedShape
-import akka.stream.scaladsl.GraphDSL.Implicits._
-import akka.stream.scaladsl._
+import org.apache.pekko.{Done, NotUsed}
+import org.apache.pekko.actor.ActorContext
+import org.apache.pekko.stream.ClosedShape
+import org.apache.pekko.stream.scaladsl.GraphDSL.Implicits._
+import org.apache.pekko.stream.scaladsl._
 import org.squbs.unicomplex.Initialized
 
 import scala.concurrent.Future

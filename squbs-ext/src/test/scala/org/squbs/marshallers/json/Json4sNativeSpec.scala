@@ -16,10 +16,10 @@
 
 package org.squbs.marshallers.json
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.model.{HttpEntity, MediaTypes, MessageEntity}
-import akka.http.scaladsl.unmarshalling.Unmarshal
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.marshalling.Marshal
+import org.apache.pekko.http.scaladsl.model.{HttpEntity, MediaTypes, MessageEntity}
+import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
 import org.json4s._
 import org.json4s.jackson.Serialization
 import org.scalatest.BeforeAndAfterAll
@@ -28,7 +28,7 @@ import org.scalatest.matchers.should.Matchers
 
 class Json4sNativeSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll {
 
-  import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+  import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
 
   implicit val system = ActorSystem("Json4sNativeSpec")
   implicit val serialization = native.Serialization
