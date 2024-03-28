@@ -30,7 +30,6 @@ libraryDependencies ++= Seq(
 def akkaDependencies = Seq(
   "org.apache.pekko" %% "pekko-actor" % pekkoV,
   "org.apache.pekko" %% "pekko-stream" % pekkoV,
-  "io.spray" %% "spray-json" % "1.3.6",
   "org.apache.pekko" %% "pekko-testkit" % pekkoV % Test,
   "org.apache.pekko" %% "pekko-http" % pekkoHttpV % Optional,
   "org.apache.pekko" %% "pekko-http-spray-json" % pekkoHttpV % Test,
