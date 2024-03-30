@@ -104,7 +104,7 @@ private[actormonitor] class ActorMonitorBean(actor: ActorRef)(implicit monitorCo
   def getDispatcher = props.map(_.dispatcher).getOrElse("Error")
   def getMailBoxSize =
     actor.getClass.getName match {
-      case "akka.actor.RepointableActorRef" =>
+      case "pekko.actor.RepointableActorRef" =>
         getPrivateValue(actor, Seq("underlying", "numberOfMessages")).map(_.toString).getOrElse("N/A")
       case clazz =>
         getPrivateValue(actor, Seq("actorCell", "numberOfMessages")).map(_.toString).getOrElse("N/A")
@@ -112,9 +112,9 @@ private[actormonitor] class ActorMonitorBean(actor: ActorRef)(implicit monitorCo
 
   lazy val props : Option[Props] =
     actor.getClass.getName match {
-      case "akka.actor.LocalActorRef" =>
+      case "pekko.actor.LocalActorRef" =>
         getPrivateValue(actor, Seq("actorCell","props")).map(_.asInstanceOf[Props])
-      case "akka.routing.RoutedActorRef" | "akka.actor.RepointableActorRef"=>
+      case "pekko.routing.RoutedActorRef" | "pekko.actor.RepointableActorRef"=>
         getPrivateValue(actor, Seq("props")).map(_.asInstanceOf[Props])
       case c =>
         None

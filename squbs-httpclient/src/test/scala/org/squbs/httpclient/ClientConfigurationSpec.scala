@@ -42,7 +42,7 @@ object ClientConfigurationSpec {
        |sampleClient {
        | type = squbs.httpclient
        |
-       | akka.http {
+       | pekko.http {
        |   host-connection-pool {
        |     max-connections = 987
        |     max-retries = 123
@@ -57,7 +57,7 @@ object ClientConfigurationSpec {
        |sampleClient2 {
        | type = squbs.httpclient
        |
-       | akka.http.host-connection-pool {
+       | pekko.http.host-connection-pool {
        |   max-connections = 666
        | }
        |}
@@ -68,7 +68,7 @@ object ClientConfigurationSpec {
        |
        |noType {
        |
-       | akka.http.host-connection-pool {
+       | pekko.http.host-connection-pool {
        |   max-connections = 987
        |   max-retries = 123
        | }
@@ -77,14 +77,14 @@ object ClientConfigurationSpec {
        |passedAsParameter {
        | type = squbs.httpclient
        |
-       | akka.http.host-connection-pool {
+       | pekko.http.host-connection-pool {
        |   max-connections = 111
        | }
        |}
        |
        |resolverConfig {
        |  type = squbs.httpclient
-       |  akka.http.host-connection-pool {
+       |  pekko.http.host-connection-pool {
        |    max-connections = 111
        |  }
        |}
@@ -92,7 +92,7 @@ object ClientConfigurationSpec {
 
   val resolverConfig = ConfigFactory.parseString(
     """
-      |akka.http.host-connection-pool {
+      |pekko.http.host-connection-pool {
       |  max-connections = 987
       |  max-retries = 123
       |}
@@ -135,13 +135,13 @@ class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
   it should "give priority to client specific configuration" in {
     ClientFlow("sampleClient")
     assertJmxValue("sampleClient", "MaxConnections",
-      appConfig.getInt("sampleClient.akka.http.host-connection-pool.max-connections"))
+      appConfig.getInt("sampleClient.pekko.http.host-connection-pool.max-connections"))
     assertJmxValue("sampleClient", "MaxRetries",
-      appConfig.getInt("sampleClient.akka.http.host-connection-pool.max-retries"))
+      appConfig.getInt("sampleClient.pekko.http.host-connection-pool.max-retries"))
     assertJmxValue("sampleClient", "ConnectionPoolIdleTimeout",
-      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
+      defaultConfig.get[Duration]("pekko.http.host-connection-pool.idle-timeout"))
     assertJmxValue("sampleClient", "ConnectingTimeout",
-      appConfig.get[Duration]("sampleClient.akka.http.host-connection-pool.client.connecting-timeout"))
+      appConfig.get[Duration]("sampleClient.pekko.http.host-connection-pool.client.connecting-timeout"))
   }
 
   it should "fallback to default values if no client specific configuration is provided" in {
@@ -159,7 +159,7 @@ class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
     assertJmxValue("resolverConfig", "MaxConnections", 111)
     assertJmxValue("resolverConfig", "MaxRetries", 123)
     assertJmxValue("resolverConfig", "ConnectionPoolIdleTimeout",
-      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
+      defaultConfig.get[Duration]("pekko.http.host-connection-pool.idle-timeout"))
   }
 
   it should "ignore client specific configuration if type is not set to squbs.httpclient" in {
@@ -171,19 +171,19 @@ class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
     ClientFlow("sampleClient2")
 
     assertJmxValue("sampleClient", "MaxConnections",
-      appConfig.getInt("sampleClient.akka.http.host-connection-pool.max-connections"))
+      appConfig.getInt("sampleClient.pekko.http.host-connection-pool.max-connections"))
     assertJmxValue("sampleClient", "MaxRetries",
-      appConfig.getInt("sampleClient.akka.http.host-connection-pool.max-retries"))
+      appConfig.getInt("sampleClient.pekko.http.host-connection-pool.max-retries"))
     assertJmxValue("sampleClient", "ConnectionPoolIdleTimeout",
-      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
+      defaultConfig.get[Duration]("pekko.http.host-connection-pool.idle-timeout"))
     assertJmxValue("sampleClient", "ConnectingTimeout",
-      appConfig.get[Duration]("sampleClient.akka.http.host-connection-pool.client.connecting-timeout"))
+      appConfig.get[Duration]("sampleClient.pekko.http.host-connection-pool.client.connecting-timeout"))
 
     assertJmxValue("sampleClient2", "MaxConnections",
-      appConfig.getInt("sampleClient2.akka.http.host-connection-pool.max-connections"))
-    assertJmxValue("sampleClient2", "MaxRetries", defaultConfig.getInt("akka.http.host-connection-pool.max-retries"))
+      appConfig.getInt("sampleClient2.pekko.http.host-connection-pool.max-connections"))
+    assertJmxValue("sampleClient2", "MaxRetries", defaultConfig.getInt("pekko.http.host-connection-pool.max-retries"))
     assertJmxValue("sampleClient2", "ConnectionPoolIdleTimeout",
-      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
+      defaultConfig.get[Duration]("pekko.http.host-connection-pool.idle-timeout"))
   }
 
   it should "configure even if not present in conf file" in {
@@ -207,9 +207,9 @@ class ClientConfigurationSpec extends AnyFlatSpec with Matchers {
   }
 
   private def assertDefaults(clientName: String) = {
-    assertJmxValue(clientName, "MaxConnections", defaultConfig.getInt("akka.http.host-connection-pool.max-connections"))
-    assertJmxValue(clientName, "MaxRetries", defaultConfig.getInt("akka.http.host-connection-pool.max-retries"))
+    assertJmxValue(clientName, "MaxConnections", defaultConfig.getInt("pekko.http.host-connection-pool.max-connections"))
+    assertJmxValue(clientName, "MaxRetries", defaultConfig.getInt("pekko.http.host-connection-pool.max-retries"))
     assertJmxValue(clientName, "ConnectionPoolIdleTimeout",
-      defaultConfig.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
+      defaultConfig.get[Duration]("pekko.http.host-connection-pool.idle-timeout"))
   }
 }

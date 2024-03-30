@@ -406,7 +406,7 @@ class AtomicCircuitBreakerState(val name: String,
     override def fails(): Unit = ()
 
     /**
-      * On entering this state, schedule an attempted reset via [[akka.actor.Scheduler]] and store the entry time.
+      * On entering this state, schedule an attempted reset via [[pekko.actor.Scheduler]] and store the entry time.
       *
       * @return
       */

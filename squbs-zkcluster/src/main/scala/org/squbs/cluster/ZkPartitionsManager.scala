@@ -191,7 +191,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
 
 }
 
-@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+@deprecated("The zkcluster is deprecated in lieu of maturity of Pekko cluster and more modern cluster coordinators",
   since = "0.15.0")
 object ZkPartitionsManager {
 

@@ -38,7 +38,7 @@ object FailedFlow1Spec {
        |  ${JMX.prefixConfig} = true
        |}
        |default-listener.bind-port = 0
-       |akka.http.server.remote-address-header = on
+       |pekko.http.server.remote-address-header = on
     """.stripMargin
   )
 

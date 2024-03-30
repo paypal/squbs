@@ -28,7 +28,7 @@ import scala.annotation.tailrec
 /**
   * The aggregator is to be mixed into an actor for the aggregator behavior.
   */
-@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+@deprecated("The Orchestration module is deprecated. Please use Pekko streams for safer orchestration instead.",
   since = "0.15.0")
 trait Aggregator {
   this: Actor =>
@@ -101,7 +101,7 @@ trait Aggregator {
 /**
   * Provides the utility methods and constructors to the WorkList class.
   */
-@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+@deprecated("The Orchestration module is deprecated. Please use Pekko streams for safer orchestration instead.",
 since = "0.15.0")
 object WorkList {
 
@@ -124,7 +124,7 @@ object WorkList {
   * entries from the list while processing. Most important, a processing function can remove its own entry from the list.
   * The first remove must return true and any subsequent removes must return false.
   */
-@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+@deprecated("The Orchestration module is deprecated. Please use Pekko streams for safer orchestration instead.",
 since = "0.15.0")
 class WorkList[T] {
 

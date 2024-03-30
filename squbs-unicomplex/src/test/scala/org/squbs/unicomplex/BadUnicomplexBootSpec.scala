@@ -54,7 +54,7 @@ object BadUnicomplexBootSpec {
   ) withFallback ConfigFactory.parseString(
     """
       |
-      |akka.actor.deployment {
+      |pekko.actor.deployment {
       |  /BadUnicomplexBoot/Prepender {
       |    router = round-robin-pool
       |    nr-of-instances = 5

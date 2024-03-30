@@ -28,11 +28,11 @@ import org.apache.zookeeper.{CreateMode, WatchedEvent}
 
 import scala.jdk.CollectionConverters._
 
-@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+@deprecated("The zkcluster is deprecated in lieu of maturity of Pekko cluster and more modern cluster coordinators",
   since = "0.15.0")
 private[cluster] case class ZkLeaderElected(address: Option[Address])
 
-@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+@deprecated("The zkcluster is deprecated in lieu of maturity of Pekko cluster and more modern cluster coordinators",
   since = "0.15.0")
 private[cluster] case class ZkMembersChanged(members: Set[Address])
 
@@ -41,7 +41,7 @@ private[cluster] case class ZkMembersChanged(members: Set[Address])
  * most importantly to enroll the leadership competition and get membership,
  * leadership information immediately after change
  */
-@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+@deprecated("The zkcluster is deprecated in lieu of maturity of Pekko cluster and more modern cluster coordinators",
   since = "0.15.0")
 private[cluster] class ZkMembershipMonitor extends Actor with LazyLogging {
 

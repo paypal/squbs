@@ -28,7 +28,7 @@ import org.apache.pekko.remote.QuarantinedEvent
  * If a QuarantinedEvent arrives, it will close the connection to Zookeeper and exit the JVM using code 99
  * External monitor tool like JSW can be configured to restart the app according to the exist code
  */
-@deprecated("zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+@deprecated("zkcluster is deprecated in lieu of maturity of Pekko cluster and more modern cluster coordinators",
   since = "0.15.0")
 class RemoteGuardian extends Actor with ActorLogging {
 

@@ -18,7 +18,7 @@ package org.squbs.unicomplex
 
 import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.SupervisorStrategy._
-import org.apache.pekko.actor.{Extension => AkkaExtension, _}
+import org.apache.pekko.actor.{Extension => PekkoExtension, _}
 import org.apache.pekko.event.Logging
 import org.apache.pekko.http.scaladsl.model.HttpResponse
 import org.apache.pekko.pattern._
@@ -43,7 +43,7 @@ import scala.language.postfixOps
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-class UnicomplexExtension(system: ExtendedActorSystem) extends AkkaExtension {
+class UnicomplexExtension(system: ExtendedActorSystem) extends PekkoExtension {
 
   val log = Logging.getLogger(system, this)
   val uniActor = system.actorOf(Props[Unicomplex](), "unicomplex")
@@ -683,7 +683,7 @@ class CubeSupervisor extends Actor with ActorLogging with GracefulStopHelper {
     case StartCubeService(webContext, listeners, props, name, ps, initRequired) =>
       val hostActor = context.actorOf(props, name)
       import org.squbs.util.ConfigUtil._
-      val concurrency = context.system.settings.config.get[Int]("akka.http.server.pipelining-limit")
+      val concurrency = context.system.settings.config.get[Int]("pekko.http.server.pipelining-limit")
       val flow = (materializer: Materializer) => Flow[RequestContext].mapAsync(concurrency) { requestContext =>
         (hostActor ? requestContext.request)
           .collect { case response: HttpResponse => requestContext.copy(response = Some(Success(response))) }

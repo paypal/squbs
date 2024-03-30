@@ -37,8 +37,8 @@ public class RouteTestTest extends TestNGRouteTest {
                 .assertStatusCode(200)
                 .entity(Jackson.unmarshaller(RouteInfo.class));
         assertEquals(routeInfo.getWebContext(), "");
-        assertTrue(routeInfo.getActorPath().startsWith("akka://"),
-                "ActorPath: " + routeInfo.getActorPath() + " does not start with akka://");
+        assertTrue(routeInfo.getActorPath().startsWith("pekko://"),
+                "ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://");
     }
 
     @Test
@@ -48,8 +48,8 @@ public class RouteTestTest extends TestNGRouteTest {
                 .assertStatusCode(200)
                 .entity(Jackson.unmarshaller(RouteInfo.class));
         assertEquals(routeInfo.getWebContext(), "my-context");
-        assertTrue(routeInfo.getActorPath().startsWith("akka://"),
-                "ActorPath: " + routeInfo.getActorPath() + " does not start with akka://");
+        assertTrue(routeInfo.getActorPath().startsWith("pekko://"),
+                "ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://");
     }
 
     @Test

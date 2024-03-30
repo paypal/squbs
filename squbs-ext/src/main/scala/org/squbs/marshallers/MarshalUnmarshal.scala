@@ -29,8 +29,8 @@ import scala.concurrent.ExecutionContext
 
 /**
   * Java API for manual marshalling and unmarshalling.
-  * This API is provided due to the lack of such API in Akka HTTP.
-  * If and when Akka HTTP provides a Java manual marshalling and
+  * This API is provided due to the lack of such API in Pekko HTTP.
+  * If and when Pekko HTTP provides a Java manual marshalling and
   * unmarshalling API, this class may become deprecated.
   *
   * @param ec An execution context

@@ -135,7 +135,7 @@ object ShutdownSpec4 {
        | ${JMX.prefixConfig} = true
        |}
        |
-       |akka.scheduler.implementation = org.squbs.unicomplex.MockScheduler
+       |pekko.scheduler.implementation = org.squbs.unicomplex.MockScheduler
     """.stripMargin)
 
   val boot = UnicomplexBoot(testConfig).createUsing((name, config) => ActorSystem(name, config)).start()

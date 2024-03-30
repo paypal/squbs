@@ -1,6 +1,6 @@
 # Customizing Stream Control
 
-Akka Streams/Reactive stream needs to be integrated with the [Runtime Lifecycle](lifecycle.md) of the server. For this, an automated or semi-automated integration is provided through the [`PerpetualStream`](perpetualstream.md) infrastructure. If you need even more fine-grained control over stream, the following sections explain such facilities.
+Pekko Streams/Reactive stream needs to be integrated with the [Runtime Lifecycle](lifecycle.md) of the server. For this, an automated or semi-automated integration is provided through the [`PerpetualStream`](perpetualstream.md) infrastructure. If you need even more fine-grained control over stream, the following sections explain such facilities.
 
 ### Dependency
 

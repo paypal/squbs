@@ -37,8 +37,8 @@ public class RouteTestTest extends JUnitRouteTest {
                 .assertStatusCode(200)
                 .entity(Jackson.unmarshaller(RouteInfo.class));
         assertEquals("", routeInfo.getWebContext());
-        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with akka://",
-                routeInfo.getActorPath().startsWith("akka://"));
+        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://",
+                routeInfo.getActorPath().startsWith("pekko://"));
     }
 
     @Test
@@ -48,8 +48,8 @@ public class RouteTestTest extends JUnitRouteTest {
                 .assertStatusCode(200)
                 .entity(Jackson.unmarshaller(RouteInfo.class));
         assertEquals("my-context", routeInfo.getWebContext());
-        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with akka://",
-                routeInfo.getActorPath().startsWith("akka://"));
+        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://",
+                routeInfo.getActorPath().startsWith("pekko://"));
     }
 
     @Test

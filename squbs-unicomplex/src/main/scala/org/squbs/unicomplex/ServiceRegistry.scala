@@ -43,7 +43,7 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
-  * Akka HTTP based [[ServiceRegistryBase]] implementation.
+  * Pekko HTTP based [[ServiceRegistryBase]] implementation.
   */
 class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path] {
 

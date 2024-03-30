@@ -90,7 +90,7 @@ class ClientFlowSpec  extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
 
   it should "register the default http endpoint resolver for each actor system" in {
     implicit val system = ActorSystem("ClientFlowSecondSpec")
-    ClientFlow[Int]("https://akka.io")
+    ClientFlow[Int]("https://pekko.io")
     Future { ClientFlow.defaultResolverRegistrationRecord.size should be >= 2 }
   }
 

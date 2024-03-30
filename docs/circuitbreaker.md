@@ -2,9 +2,9 @@
 
 ### Overview
 
-Akka Streams and Akka HTTP are great technologies to build highly resilient systems. They provide back-pressure to ensure you do not overload the system and the slowness of one component does not cause its work queue to pile up and end up in memory leaks. But, we need another safeguard to ensure our service stays responsive in the event of external or internal failures, and have alternate paths to satisfying the requests/messages due to such failures. If a downstream service is not responding or slow, we could alternatively try another service or fetch cached results instead of back-pressuring the stream and potentially the whole system.
+Pekko Streams and Pekko HTTP are great technologies to build highly resilient systems. They provide back-pressure to ensure you do not overload the system and the slowness of one component does not cause its work queue to pile up and end up in memory leaks. But, we need another safeguard to ensure our service stays responsive in the event of external or internal failures, and have alternate paths to satisfying the requests/messages due to such failures. If a downstream service is not responding or slow, we could alternatively try another service or fetch cached results instead of back-pressuring the stream and potentially the whole system.
 
-squbs introduces `CircuitBreaker` Akka Streams `GraphStage` to provide circuit breaker functionality for streams.
+squbs introduces `CircuitBreaker` Pekko Streams `GraphStage` to provide circuit breaker functionality for streams.
 
 ### Dependency
 
@@ -121,7 +121,7 @@ CircuitBreakerSettings settings =
 
 #### Failure Decider
 
-By default, any `Failure` from the joined `Flow` is considered a problem and causes the circuit breaker failure count to be incremented.  However, `CircuitBreakerSettings` also accepts an optional `failureDecider` to decide on whether an element passed by the joined `Flow` is actually considered a failure.  For instance, if Circuit Breaker is joined with an Akka HTTP flow, a `Success` Http Response with status code 500 internal server error should be considered a failure.
+By default, any `Failure` from the joined `Flow` is considered a problem and causes the circuit breaker failure count to be incremented.  However, `CircuitBreakerSettings` also accepts an optional `failureDecider` to decide on whether an element passed by the joined `Flow` is actually considered a failure.  For instance, if Circuit Breaker is joined with an Pekko HTTP flow, a `Success` Http Response with status code 500 internal server error should be considered a failure.
 
 ##### Scala
 

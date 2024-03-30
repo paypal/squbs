@@ -55,7 +55,7 @@ object ForkJoinConfiguratorSpec {
       |
       |default-listener.bind-port = 0
       |
-      |akka.actor {
+      |pekko.actor {
       |  default-dispatcher {
       |    default-executor.fallback = org.squbs.dispatcher.ForkJoinConfigurator
       |    fork-join-executor {
@@ -96,7 +96,7 @@ class ForkJoinConfiguratorSpec extends TestKit(ForkJoinConfiguratorSpec.boot.act
       w.await()
     }
 
-    "be able to handle a simple Akka Http request" in {
+    "be able to handle a simple Pekko Http request" in {
       import org.squbs.unicomplex._
       Await.result(entityAsString(s"http://127.0.0.1:$port/dummysvc/msg/hello"), awaitMax) should be("^hello$")
     }
@@ -104,7 +104,7 @@ class ForkJoinConfiguratorSpec extends TestKit(ForkJoinConfiguratorSpec.boot.act
     "expose proper ForkJoinPool MXBean stats" in {
       import org.squbs.unicomplex.JMX._
       val fjName =
-        new ObjectName(jmxPrefix + '.' + forkJoinStatsName + "ForkJoinConfiguratorSpec-akka.actor.default-dispatcher")
+        new ObjectName(jmxPrefix + '.' + forkJoinStatsName + "ForkJoinConfiguratorSpec-pekko.actor.default-dispatcher")
 
       get(fjName, "PoolSize").asInstanceOf[Int] should be > 0
       get(fjName, "ActiveThreadCount").asInstanceOf[Int] should be >= 0

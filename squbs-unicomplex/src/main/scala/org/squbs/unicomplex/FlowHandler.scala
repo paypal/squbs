@@ -55,7 +55,7 @@ class FlowHandler(routes: Seq[(Path, FlowWrapper, PipelineSetting)], localPort: 
 
   import FlowHandler._
 
-  val pipelineLimit: Int = system.settings.config.getInt("akka.http.server.pipelining-limit")
+  val pipelineLimit: Int = system.settings.config.getInt("pekko.http.server.pipelining-limit")
 
   def flow: Flow[HttpRequest, HttpResponse, Any] = dispatchFlow
 

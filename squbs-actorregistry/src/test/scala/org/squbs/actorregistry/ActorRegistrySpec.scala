@@ -254,7 +254,7 @@ object RouterBootstrap extends TestBootstrap(
      |}
      |default-listener.bind-port = 0
      |
-     |akka.actor.deployment {
+     |pekko.actor.deployment {
      |
      |  # Router configuration
      |  /TestCube/TestActor {

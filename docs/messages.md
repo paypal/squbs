@@ -1,7 +1,7 @@
 
 # Message Guidelines
 
-Akka actors communicate via immutable messages. These can be defined anywhere in code. As squbs deals with messages
+Pekko actors communicate via immutable messages. These can be defined anywhere in code. As squbs deals with messages
 communicated across cubes, such messages will have to be defined in a message project (or jar) that is a dependency
 of both the sender and receiver of these messages. These message projects commonly have a single file in a single
 package.

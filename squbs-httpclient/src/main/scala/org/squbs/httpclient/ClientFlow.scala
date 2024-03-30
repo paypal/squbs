@@ -47,7 +47,7 @@ import scala.util.{Failure, Success, Try}
 
 object ClientFlow {
 
-  val AkkaHttpClientCustomContext = "pekko-http-client-custom-context"
+  val PekkoHttpClientCustomContext = "pekko-http-client-custom-context"
   type ClientConnectionFlow[T] = Flow[(HttpRequest, T), (Try[HttpResponse], T), HostConnectionPool]
   private[httpclient] val defaultResolverRegistrationRecord = new ConcurrentHashMap[String, Unit]
 
@@ -250,7 +250,7 @@ object ClientFlow {
               case _ => true
             }))
           .copy(uniqueIdMapper =
-            cbs.uniqueIdMapper.map(f => (rc: RequestContext) => f(rc.attribute[T](AkkaHttpClientCustomContext).get)))
+            cbs.uniqueIdMapper.map(f => (rc: RequestContext) => f(rc.attribute[T](PekkoHttpClientCustomContext).get)))
         .withCleanUp(tryHttpResponse => tryHttpResponse.foreach(cbs.cleanUp))
 
     val circuitBreakerBidiFlow = CircuitBreaker(clientFlowCircuitBreakerSettings)
@@ -267,12 +267,12 @@ object ClientFlow {
     PipelineExtension(system).getFlow(pipelineSetting, Context(name, ClientPipeline)) match {
       case Some(pipeline) =>
         val tupleToRequestContext = Flow[(HttpRequest, T)].map { case (request, t) =>
-          RequestContext(request, 0).withAttribute(AkkaHttpClientCustomContext, t)
+          RequestContext(request, 0).withAttribute(PekkoHttpClientCustomContext, t)
         }
 
         val fromRequestContextToTuple = Flow[RequestContext].map { rc =>
           ( rc.response.getOrElse(Failure(new RuntimeException("Empty HttpResponse in client Pipeline"))),
-            rc.attribute[T](AkkaHttpClientCustomContext).get)
+            rc.attribute[T](PekkoHttpClientCustomContext).get)
           // TODO What to do if `AkkaHttpClientCustomContext` somehow got deleted in the pipeline?
         }
         val clientConnectionFlowWithPipeline = pipeline.joinMat(pipelineAdapter(clientConnectionFlow))(Keep.right)
@@ -290,12 +290,12 @@ object ClientFlow {
         })
       case None =>
         val customContextToRequestContext = Flow[(HttpRequest, T)].map { case (request, t) =>
-          (request, RequestContext(request, 0).withAttribute(AkkaHttpClientCustomContext, t))
+          (request, RequestContext(request, 0).withAttribute(PekkoHttpClientCustomContext, t))
         }
 
         val requestContextToCustomContext =
           Flow[(Try[HttpResponse], RequestContext)].map { case (tryHttpResponse, rc) =>
-            (tryHttpResponse, rc.attribute[T](AkkaHttpClientCustomContext).get)
+            (tryHttpResponse, rc.attribute[T](PekkoHttpClientCustomContext).get)
         }
 
         Flow.fromGraph( GraphDSL.createGraph(clientConnectionFlow) { implicit b => clientConnectionFlow =>

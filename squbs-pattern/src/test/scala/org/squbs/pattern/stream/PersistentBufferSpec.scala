@@ -35,7 +35,7 @@ import scala.reflect._
 object PersistentBufferSpec {
   val testConfig = ConfigFactory.parseString(
     """
-      |akka.actor.default-dispatcher {
+      |pekko.actor.default-dispatcher {
       |  executor = "affinity-pool-executor"
       |  affinity-pool-executor {
       |    parallelism-min = 1

@@ -2,7 +2,7 @@
 
 ### Overview
 
-`Deduplicate` is an Akka Streams `GraphStage` to drop identical (consecutive or non-consecutive) elements  in a stream.
+`Deduplicate` is an Pekko Streams `GraphStage` to drop identical (consecutive or non-consecutive) elements  in a stream.
 
 ### Dependency
 
@@ -14,7 +14,7 @@ Add the following dependency to your `build.sbt` or scala build file:
 
 ### Usage
 
-The usage is very similar to standard Akka Stream stages:
+The usage is very similar to standard Pekko Stream stages:
 
 ```scala
 val result = Source("a" :: "b" :: "b" :: "c" :: "a" :: "a" :: "a" :: "c" :: Nil).

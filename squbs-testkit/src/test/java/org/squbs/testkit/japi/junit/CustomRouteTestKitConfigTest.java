@@ -43,8 +43,8 @@ public class CustomRouteTestKitConfigTest extends JUnitCustomRouteTestKit {
                 .assertStatusCode(200)
                 .entity(Jackson.unmarshaller(RouteResultInfo.class));
         assertEquals("", routeInfo.getWebContext());
-        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with akka://",
-                routeInfo.getActorPath().startsWith("akka://"));
+        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://",
+                routeInfo.getActorPath().startsWith("pekko://"));
         assertEquals(11, routeInfo.getResult());
         assertEquals("baz", system().settings().config().
                 getString("CustomRouteTestKitConfigResourcesTest.foobar"));
@@ -57,8 +57,8 @@ public class CustomRouteTestKitConfigTest extends JUnitCustomRouteTestKit {
                 .assertStatusCode(200)
                 .entity(Jackson.unmarshaller(RouteResultInfo.class));
         assertEquals("my-context", routeInfo.getWebContext());
-        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with akka://",
-                routeInfo.getActorPath().startsWith("akka://"));
+        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://",
+                routeInfo.getActorPath().startsWith("pekko://"));
         assertEquals(21, routeInfo.getResult());
         assertEquals("baz", system().settings().config().
                 getString("CustomRouteTestKitConfigResourcesTest.foobar"));

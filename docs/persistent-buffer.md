@@ -1,6 +1,6 @@
 # Persistent Buffer
 
-`PersistentBuffer` is the first of a series of practical Akka Streams flow components. It works like the Akka Streams buffer with the difference that the content of the buffer is stored in a series of memory-mapped files in the directory given at construction of the `PersistentBuffer`. This allows the buffer size to be virtually limitless, not use the JVM heap for storage, and have extremely good performance in the range of a million messages/second at the same time.
+`PersistentBuffer` is the first of a series of practical Pekko Streams flow components. It works like the Pekko Streams buffer with the difference that the content of the buffer is stored in a series of memory-mapped files in the directory given at construction of the `PersistentBuffer`. This allows the buffer size to be virtually limitless, not use the JVM heap for storage, and have extremely good performance in the range of a million messages/second at the same time.
 
 ## Dependencies
 
@@ -41,7 +41,7 @@ val countFuture = streamGraph.run()
 ```
 
 ## Back-Pressure
-`PersistentBuffer` does not back-pressure upstream. It will take all the stream elements given to it and grow its storage by increasing, or rotating, the number of queue files. It does not have any means to determine a limit on the buffer size or determine the storage capacity. Downstream back-pressure is honored as per Akka Streams and Reactive Streams requirements.
+`PersistentBuffer` does not back-pressure upstream. It will take all the stream elements given to it and grow its storage by increasing, or rotating, the number of queue files. It does not have any means to determine a limit on the buffer size or determine the storage capacity. Downstream back-pressure is honored as per Pekko Streams and Reactive Streams requirements.
 
 If the `PersistentBuffer` stage gets fused with the downstream, `PersistentBuffer` would not buffer and it would actually back-pressure.  To make sure `PersistentBuffer` actually runs in its own pace, add an `async` boundary just after it. 
 
@@ -51,7 +51,7 @@ Due to it's persistent nature, `PersistentBuffer` can recover from abrupt stream
 
 Since the buffer is backed by local storage, spindles or SSD, the performance and durability of this buffer is also dependent on the durability of this storage. A system malfunction or storage corruption may cause total loss of all elements in the buffer. So it is important to understand and assume the durability of this buffer not at the level of databases or other off-host persistent stores, in exchange for much higher performance.
 
-Akka Streams stages batch the requests and buffers the records internally.  `PersistentBuffer` guarantees the recovery and persistence of the records that reached to `onPush`, the records that are in Akka Stream stage's internal buffer that has not reached to `onPush` yet would be lost during a failure.
+Pekko Streams stages batch the requests and buffers the records internally.  `PersistentBuffer` guarantees the recovery and persistence of the records that reached to `onPush`, the records that are in Pekko Stream stage's internal buffer that has not reached to `onPush` yet would be lost during a failure.
 
 ## Commit Guarantee
 

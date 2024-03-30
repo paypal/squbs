@@ -33,7 +33,7 @@ import scala.jdk.OptionConverters.RichOptional
 import scala.util.Try
 
 /**
-  * The JavaConverters are under Akka HTTP package to get access to the non-exposed converters there.
+  * The JavaConverters are under Pekko HTTP package to get access to the non-exposed converters there.
   */
 object JavaConverters {
   def fromJava(connectionContext: Optional[jd.HttpsConnectionContext],

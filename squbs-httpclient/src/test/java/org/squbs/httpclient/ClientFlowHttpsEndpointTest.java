@@ -55,7 +55,7 @@ public class ClientFlowHttpsEndpointTest {
     private static final String cfg =
             "helloHttps {\n" +
             "  type = squbs.httpclient\n" +
-            "  akka.ssl-config.loose.disableHostnameVerification = true\n" +
+            "  pekko.ssl-config.loose.disableHostnameVerification = true\n" +
             "}\n";
 
     private static final ActorSystem system = ActorSystem.create("ClientFlowHttpsEndpointTest",

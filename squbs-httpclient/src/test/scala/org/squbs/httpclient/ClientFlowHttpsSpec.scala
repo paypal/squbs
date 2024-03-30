@@ -38,7 +38,7 @@ object ClientFlowHttpsSpec {
     """
       |helloHttps {
       |  type = squbs.httpclient
-      |  akka.ssl-config.loose.disableHostnameVerification = true
+      |  pekko.ssl-config.loose.disableHostnameVerification = true
       |  ssl-engine-factory = xxx
       |}
     """.stripMargin)

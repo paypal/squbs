@@ -90,7 +90,7 @@ public class ClientFlowCircuitBreakerTest {
     private static final int port = serverBinding.localAddress().getPort();
 
     int defaultMaxFailures = system.settings().config().getInt("squbs.circuit-breaker.max-failures");
-    int defaultMaxConnections = system.settings().config().getInt("akka.http.host-connection-pool.max-connections");
+    int defaultMaxConnections = system.settings().config().getInt("pekko.http.host-connection-pool.max-connections");
     int numOfRequests = (defaultMaxFailures + defaultMaxConnections) * 2; // Some random large number
     int numOfPassThroughBeforeCircuitBreakerIsOpen = defaultMaxConnections + defaultMaxFailures - 1;
     int numOfFailFast = numOfRequests - numOfPassThroughBeforeCircuitBreakerIsOpen;

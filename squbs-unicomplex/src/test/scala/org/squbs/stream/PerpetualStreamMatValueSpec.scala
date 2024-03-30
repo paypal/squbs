@@ -173,7 +173,7 @@ object PerpetualStreamMatValueSpecHelper {
 
   object PerpStreamActors {
     // TODO Can I not put these within the test:(:(
-    // Seems like I can't due to some Akka actor construction rule.
+    // Seems like I can't due to some Pekko actor construction rule.
 
     class SinkMaterializingStream extends PerpStream[Sink[Long, NotUsed]] {
       self ! Active

@@ -15,9 +15,9 @@
  */
 
 object Versions {
-  val pekkoV = "1.0.1"
+  val pekkoV = "1.0.2"
   val pekkoHttpV = "1.0.1"
-  val akkaKryoV = "2.3.0"
+  val akkaKryoV = "1.2.0"
   val scalaCompatV = "2.11.0"
   val scalatestV = "3.2.3"
   val scalatestplusV = "3.2.3.0"

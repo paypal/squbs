@@ -131,7 +131,7 @@ class ClientFlowHttpsProxySpec extends AnyFlatSpec with Matchers with BeforeAndA
       s"""
          |helloHttps {
          |  type = squbs.httpclient
-         |  akka.http.client.proxy {
+         |  pekko.http.client.proxy {
          |    https {
          |      host = localhost
          |      port = ${ClientFlowHttpsProxySpec.proxyPort}
@@ -141,7 +141,7 @@ class ClientFlowHttpsProxySpec extends AnyFlatSpec with Matchers with BeforeAndA
          |
          |// This global entry is just here to make sure when a client-level one is specified,
          |// it is honored instead of the global one.
-         |akka.http.client.proxy {
+         |pekko.http.client.proxy {
          |  https {
          |    host = doesnotexisthost
          |    port = 80
@@ -173,7 +173,7 @@ class ClientFlowHttpsProxySpec extends AnyFlatSpec with Matchers with BeforeAndA
          |  type = squbs.httpclient
          |}
          |
-         |akka.http.client.proxy {
+         |pekko.http.client.proxy {
          |  https {
          |    host = localhost
          |    port = ${ClientFlowHttpsProxySpec.proxyPort}
@@ -203,12 +203,12 @@ class ClientFlowHttpsProxySpec extends AnyFlatSpec with Matchers with BeforeAndA
       s"""
          |helloHttps {
          |  type = squbs.httpclient
-         |  akka.ssl-config.loose.disableHostnameVerification = true
+         |  pekko.ssl-config.loose.disableHostnameVerification = true
          |}
          |
          |// This global entry is just here to make sure when it is programmatically specified,
          |// that is honored instead of the global one.
-         |akka.http.client.proxy {
+         |pekko.http.client.proxy {
          |  https {
          |    host = doesnotexisthost
          |    port = 80

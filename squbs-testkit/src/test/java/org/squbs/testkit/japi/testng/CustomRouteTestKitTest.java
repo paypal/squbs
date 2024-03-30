@@ -38,8 +38,8 @@ public class CustomRouteTestKitTest extends TestNGCustomRouteTestKit {
                 .assertContentType(ContentTypes.APPLICATION_JSON)
                 .entity(Jackson.unmarshaller(RouteResultInfo.class));
         assertEquals(routeInfo.getWebContext(), "");
-        assertTrue(routeInfo.getActorPath().startsWith("akka://"),
-                "ActorPath: " + routeInfo.getActorPath() + " does not start with akka://");
+        assertTrue(routeInfo.getActorPath().startsWith("pekko://"),
+                "ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://");
         assertEquals(routeInfo.getResult(), 11);
     }
 
@@ -52,8 +52,8 @@ public class CustomRouteTestKitTest extends TestNGCustomRouteTestKit {
                 .assertContentType(ContentTypes.APPLICATION_JSON)
                 .entity(Jackson.unmarshaller(RouteResultInfo.class));
         assertEquals(routeInfo.getWebContext(), "my-context");
-        assertTrue(routeInfo.getActorPath().startsWith("akka://"),
-                "ActorPath: " + routeInfo.getActorPath() + " does not start with akka://");
+        assertTrue(routeInfo.getActorPath().startsWith("pekko://"),
+                "ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://");
         assertEquals(routeInfo.getResult(), 21);
     }
 

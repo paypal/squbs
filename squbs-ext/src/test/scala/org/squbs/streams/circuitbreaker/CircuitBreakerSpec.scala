@@ -353,7 +353,7 @@ class CircuitBreakerSpec
 object CircuitBreakerSpec {
   val config = ConfigFactory.parseString(
     """
-      |akka.test.single-expect-default = 30 seconds
+      |pekko.test.single-expect-default = 30 seconds
       |
       |exponential-backoff-circuitbreaker {
       |  type = squbs.circuitbreaker

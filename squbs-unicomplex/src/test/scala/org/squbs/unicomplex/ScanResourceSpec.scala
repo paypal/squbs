@@ -83,8 +83,8 @@ class ScanResourceSpec extends TestKit(ScanResourceSpec.boot.actorSystem) with I
       get(cubesName, "CubeState") should be ("Active")
       val wellKnownActors = get(cubesName, "WellKnownActors").asInstanceOf[String]
       println(wellKnownActors)
-      wellKnownActors should include ("Actor[akka://scanResourceSpec/user/ScanResourceCube/Prepender#")
-      wellKnownActors should include ("Actor[akka://scanResourceSpec/user/ScanResourceCube/Appender#")
+      wellKnownActors should include ("Actor[pekko://scanResourceSpec/user/ScanResourceCube/Prepender#")
+      wellKnownActors should include ("Actor[pekko://scanResourceSpec/user/ScanResourceCube/Appender#")
     }
   }
 

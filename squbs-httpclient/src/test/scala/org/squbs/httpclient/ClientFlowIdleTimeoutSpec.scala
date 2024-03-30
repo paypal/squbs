@@ -33,9 +33,9 @@ object ClientFlowIdleTimeoutSpec {
 
   val config = ConfigFactory.parseString(
     """
-      |akka {
+      |pekko {
       |  loggers = [
-      |    "akka.event.Logging$DefaultLogger"
+      |    "pekko.event.Logging$DefaultLogger"
       |  ]
       |
       |  loglevel = "DEBUG"

@@ -25,7 +25,7 @@ import org.squbs.pattern.orchestration.Orchestrator
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
-@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+@deprecated("The Orchestration module is deprecated. Please use Pekko streams for safer orchestration instead.",
 since = "0.15.0")
 abstract class AbstractOrchestrator extends Actor with Orchestrator {
 

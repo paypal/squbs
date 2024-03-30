@@ -105,7 +105,7 @@ class MultiListenerSpec extends TestKit(MultiListenerSpecActorSystem.boot.actorS
     MultiListenerService.count should be(1)
   }
 
-  it should "register the JMXBean for Akka Http status" in {
+  it should "register the JMXBean for Pekko Http status" in {
     import org.squbs.unicomplex.JMX._
     val statsBase = s"${MetricsExtension(system).Domain}:name=${MetricsExtension(system).Domain}."
     get(statsBase + "default-listener-connections-creation-count", "Count").asInstanceOf[Long] should be >= 0L

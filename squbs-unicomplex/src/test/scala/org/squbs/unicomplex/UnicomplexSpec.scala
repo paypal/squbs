@@ -61,7 +61,7 @@ object UnicomplexSpec {
        |  ${JMX.prefixConfig} = true
        |}
        |default-listener.bind-port = 0
-       |akka.http.server.remote-address-header = on
+       |pekko.http.server.remote-address-header = on
     """.stripMargin
   )
 
@@ -219,8 +219,8 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       cubeState should be ("Active")
 
       val WellKnownActors = mBeanServer.getAttribute(cubesObjName, "WellKnownActors").asInstanceOf[String]
-      WellKnownActors should include ("Actor[akka://UnicomplexSpec/user/DummyCube/Prepender#")
-      WellKnownActors should include ("Actor[akka://UnicomplexSpec/user/DummyCube/Appender#")
+      WellKnownActors should include ("Actor[pekko://UnicomplexSpec/user/DummyCube/Prepender#")
+      WellKnownActors should include ("Actor[pekko://UnicomplexSpec/user/DummyCube/Appender#")
     }
 
     "check listener MXbean" in {

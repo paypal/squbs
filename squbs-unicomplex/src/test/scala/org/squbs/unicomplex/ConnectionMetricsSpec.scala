@@ -78,7 +78,7 @@ object ConnectionMetricsSpec {
        |  pre-flow =  preFlow
        |}
        |
-       |akka.http {
+       |pekko.http {
        |  server {
        |    max-connections = 512
        |  }

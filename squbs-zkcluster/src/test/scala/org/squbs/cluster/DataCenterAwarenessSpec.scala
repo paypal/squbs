@@ -27,15 +27,15 @@ import org.squbs.cluster.rebalance.{CorrelateRoundRobinRoutingLogic, DataCenterA
 class DataCenterAwarenessSpec extends AnyFlatSpec with Matchers with MockitoSugar {
 
 
-  val myAddress = Address("akka.tcp", "pubsub", "10.100.194.253", 8080)
-  val correlates = Seq(Address("akka.tcp", "pubsub", "10.100.65.147", 8080),
-    Address("akka.tcp", "pubsub", "10.100.98.134", 8080))
-  val distances = Seq(Address("akka.tcp", "pubsub", "10.210.45.119", 8080),
-    Address("akka.tcp", "pubsub", "10.210.79.201", 8080))
+  val myAddress = Address("pekko.tcp", "pubsub", "10.100.194.253", 8080)
+  val correlates = Seq(Address("pekko.tcp", "pubsub", "10.100.65.147", 8080),
+    Address("pekko.tcp", "pubsub", "10.100.98.134", 8080))
+  val distances = Seq(Address("pekko.tcp", "pubsub", "10.210.45.119", 8080),
+    Address("pekko.tcp", "pubsub", "10.210.79.201", 8080))
 
   "DefaultCorrelation" should "extract ipv4 subnet domain" in {
 
-    val mockAddress = Address("akka.tcp", "pubsub", "10.100.194.253", 8080)
+    val mockAddress = Address("pekko.tcp", "pubsub", "10.100.194.253", 8080)
 
     DefaultCorrelation().common(mockAddress) should equal("pubsub@10.100")
   }
@@ -52,17 +52,17 @@ class DataCenterAwarenessSpec extends AnyFlatSpec with Matchers with MockitoSuga
     val logic = CorrelateRoundRobinRoutingLogic(myAddress, DefaultCorrelation())
     logic.select("whatever", routees) match {
       case ActorSelectionRoutee(selection) =>
-        selection.pathString should equal("akka.tcp://pubsub@10.100.65.147:8080")
+        selection.pathString should equal("pekko.tcp://pubsub@10.100.65.147:8080")
     }
 
     logic.select("whatever", routees) match {
       case ActorSelectionRoutee(selection) =>
-        selection.pathString should equal("akka.tcp://pubsub@10.100.98.134:8080")
+        selection.pathString should equal("pekko.tcp://pubsub@10.100.98.134:8080")
     }
 
     logic.select("whatever", routees) match {
       case ActorSelectionRoutee(selection) =>
-        selection.pathString should equal("akka.tcp://pubsub@10.100.65.147:8080")
+        selection.pathString should equal("pekko.tcp://pubsub@10.100.65.147:8080")
     }
   }
 

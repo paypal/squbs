@@ -44,7 +44,7 @@ import scala.util.{Failure, Success, Try}
   * The joined [[Flow]] pushes down a [[Try]].  By default, any [[Failure]] is considered a problem and causes the
   * circuit breaker failure count to be incremented.  However, [[CircuitBreakerSettings.failureDecider]] can be used
   * to decide on if an element passed by the joined [[Flow]] is actually considered a failure.  For instance, if
-  * Circuit Breaker is joined with an Akka HTTP flow, a [[Success]] Http Response with status code 500 internal server
+  * Circuit Breaker is joined with an Pekko HTTP flow, a [[Success]] Http Response with status code 500 internal server
   * error should be considered a failure.
   *
   *

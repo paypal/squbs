@@ -137,16 +137,16 @@ object ZkClusterMultiActorSystemTestKit {
     s"""
        |pekko {
        |  actor {
-       |    provider = "akka.remote.RemoteActorRefProvider"
+       |    provider = "org.apache.pekko.remote.RemoteActorRefProvider"
        |    serializers {
-       |      kryo = "io.altoo.akka.serialization.kryo.KryoSerializer"
+       |      kryo = "io.altoo.serialization.kryo.pekko.PekkoKryoSerializer"
        |    }
        |    serialization-bindings {
        |      "org.squbs.cluster.ZkMessages" = kryo
        |    }
        |  }
        |  remote {
-       |    enabled-transports = ["akka.remote.netty.tcp"]
+       |    enabled-transports = ["pekko.remote.netty.tcp"]
        |    artery {
        |      transport = tcp # See Selecting a transport below
        |      canonical.hostname = ${InetAddress.getLocalHost.getHostAddress}

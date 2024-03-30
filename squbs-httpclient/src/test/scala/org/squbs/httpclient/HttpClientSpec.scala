@@ -488,7 +488,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
   }
 
   "ClientFlow with config" should "get the correct behavior" in {
-    val overrides = "akka.http.host-connection-pool.max-retries = 11"
+    val overrides = "pekko.http.host-connection-pool.max-retries = 11"
     val settings = ConnectionPoolSettings(overrides)
     val clientFlow = ClientFlow[Int]("DummyService", settings = Some(settings))
     settings.maxRetries shouldBe 11

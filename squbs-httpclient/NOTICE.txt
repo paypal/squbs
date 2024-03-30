@@ -1,6 +1,6 @@
 Acknowledgment is made of the following third party components used in Squbs HTTPClient
 
-Akka
+Pekko
 Copyright 2009-2014 Typesafe Inc. <http://www.typesafe.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");

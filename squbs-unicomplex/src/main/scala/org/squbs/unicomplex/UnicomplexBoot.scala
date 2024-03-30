@@ -339,7 +339,7 @@ object UnicomplexBoot extends LazyLogging {
       }
     }
 
-    // This same creator class is available in Akka's Props.scala but it is inaccessible to us.
+    // This same creator class is available in Pekko's Props.scala but it is inaccessible to us.
     class TypedCreatorFunctionConsumer(clz: Class[_ <: Actor], creator: () => Actor) extends IndirectActorProducer {
       override def actorClass = clz
 
