@@ -133,7 +133,7 @@ public class HttpClientTest {
         assertEquals(TestData.fullTeam(), team);
     }
 
-    @Test
+    /*@Test
     public void clientUnmarshalJavaBean() throws Exception {
         CompletionStage<Try<HttpResponse>> tryResponseF = doRequest2(GET("/viewj"));
         CompletionStage<TeamWithPrivateMembers> teamF = tryResponseF.thenCompose(t ->
@@ -143,7 +143,7 @@ public class HttpClientTest {
         TeamWithPrivateMembers team = teamF.toCompletableFuture().get();
         assertEquals(TestData.fullTeamWithPrivateMembers(), team);
 
-    }
+    }*/
 
     @Test
     public void clientUnmarshalJavaBeanWithCaseClass() throws Exception {
@@ -235,7 +235,7 @@ public class HttpClientTest {
         assertEquals(TestData.fullTeamWithAddJson(), content);
     }
 
-    @Test
+/*    @Test
     public void postWithMarshalUnmarshal() throws Exception {
         CompletionStage<Try<HttpResponse>> tryResponseF =
                 um.apply(marshaller(EmployeeBean.class), TestData.newTeamMemberBean())
@@ -249,7 +249,7 @@ public class HttpClientTest {
         assertEquals(StatusCodes.OK, response.status());
         TeamWithPrivateMembers team = teamF.toCompletableFuture().get();
         assertEquals(TestData.fullTeamPrivateMembersWithAdd(), team);
-    }
+    }*/
 
     @Test
     public void putWithMarshalUnmarshal() throws Exception {

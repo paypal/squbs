@@ -35,7 +35,7 @@ object ClientFlowIdleTimeoutSpec {
     """
       |pekko {
       |  loggers = [
-      |    "pekko.event.Logging$DefaultLogger"
+      |    "org.apache.pekko.event.Logging$DefaultLogger"
       |  ]
       |
       |  loglevel = "DEBUG"

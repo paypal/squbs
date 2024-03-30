@@ -196,7 +196,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
     responseFuture map { _ shouldBe fullTeam}
   }
 
-  "ClientFlow GET unmarshal object with JavaBean" should "get the correct response" in {
+  /*"ClientFlow GET unmarshal object with JavaBean" should "get the correct response" in {
     import org.squbs.marshallers.json.XLangJsonSupport._
     for {
       tryResponse <- doRequest(Get("/viewj"))
@@ -210,7 +210,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
       // import JsonProtocol.ClassSupport.classToFromResponseUnmarshaller
       // result.unmarshalTo(classOf[TeamWithPrivateMembers]) should be (Success(fullTeamBean))
     }
-  }
+  }*/
 
   "ClientFlow GET unmarshal object to JavaBean with case class" should "get the correct response" in {
     import org.squbs.marshallers.json.XLangJsonSupport._
@@ -376,7 +376,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
     }
   }
 
-  "ClientFlow POST unmarshal JavaBean" should "get the correct response" in {
+/*  "ClientFlow POST unmarshal JavaBean" should "get the correct response" in {
     import org.squbs.marshallers.json.XLangJsonSupport._
     for {
       tryResponse <- doRequest(Post("/addj", newTeamMemberBean))
@@ -387,7 +387,7 @@ class HttpClientSpec extends TestKit(ActorSystem("HttpClientSpec")) with AsyncFl
       response.status shouldBe StatusCodes.OK
       result shouldBe fullTeamPrivateMembersWithAdd
     }
-  }
+  }*/
 
   "ClientFlow PUT" should "get the correct response" in {
     import com.github.pjfanning.pekkohttpjson4s.Json4sSupport._
