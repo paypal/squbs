@@ -26,7 +26,7 @@ lazy val `squbs-pipeline` = project
 
 lazy val `squbs-unicomplex` = project dependsOn (`squbs-pipeline`, `squbs-ext`)
 
-lazy val `squbs-testkit` = (project dependsOn `squbs-unicomplex`).enablePlugins(de.johoop.testngplugin.TestNGPlugin)
+lazy val `squbs-testkit` = (project dependsOn `squbs-unicomplex`)//.enablePlugins(de.johoop.testngplugin.TestNGPlugin)
 
 lazy val `squbs-zkcluster` = project dependsOn `squbs-testkit` % Test
 

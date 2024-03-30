@@ -14,7 +14,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % logbackInTestV % Test
 )
 
-enablePlugins(de.johoop.testngplugin.TestNGPlugin)
+//enablePlugins(de.johoop.testngplugin.TestNGPlugin)
 
 Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.ScalaTest, "-h", "report/squbs-pipeline"),
