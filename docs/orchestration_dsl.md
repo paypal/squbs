@@ -1,7 +1,7 @@
 # The Orchestration DSL
 
 **Important Note:** _The Orchestration DSL is deprecated and will be removed in a future version.
-Orchestration can be better achieved using Akka Streams_
+Orchestration can be better achieved using pekko Streams_
 
 Orchestration is one of the major use cases for services, whether you try to orchestrate multiple service calls with as much concurrency, and therefore as good a response time, as possible, or you try to do multiple business operations, data writes, data reads, service calls, etc. dependent on each others, etc. The ability to concisely describe your business logic is essential to making the service easy to understand and maintain. The orchestration DSL - part of squbs-pattern - will make asynchronous code easy to write, read, and reason about.
 
@@ -159,7 +159,7 @@ Add the following dependency to your build.sbt or scala build file:
 
 ### Orchestrator
 
-`Orchestrator` is a trait extended by actors to support the orchestration functionality. It is technically a child trait of the [Aggregator](http://doc.akka.io/docs/akka/snapshot/contrib/aggregator.html) and provides all its functionality. In addition, it provides functionality and syntax allowing effective orchestration composition - plus utilities often needed in the creation of orchestration functions discussed in detail below. To use the orchestrator, an actor would simply extend the `Orchestrator` trait.
+`Orchestrator` is a trait extended by actors to support the orchestration functionality. It is technically a child trait of the [Aggregator](http://doc.pekko.io/docs/pekko/snapshot/contrib/aggregator.html) and provides all its functionality. In addition, it provides functionality and syntax allowing effective orchestration composition - plus utilities often needed in the creation of orchestration functions discussed in detail below. To use the orchestrator, an actor would simply extend the `Orchestrator` trait.
 
 ```scala
 import org.squbs.pattern.orchestration.Orchestrator
@@ -179,7 +179,7 @@ public class MyOrchestrator extends AbstractOrchestrator {
 }
 ```
 
-Similar to Aggregator, an orchestrator generally does not declare the Akka actor receive block but allows the expect/expectOnce/unexpect blocks to define what responses are expected at any point. These expect blocks are generally used from inside orchestration functions.
+Similar to Aggregator, an orchestrator generally does not declare the pekko actor receive block but allows the expect/expectOnce/unexpect blocks to define what responses are expected at any point. These expect blocks are generally used from inside orchestration functions.
 
 ### Scala: Orchestration Future and Promise
 

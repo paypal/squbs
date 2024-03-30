@@ -44,7 +44,7 @@ object ScanResourceSpec {
        |default-listener.bind-port = 0
     """.stripMargin)
 
-  implicit val akkaTimeout: Timeout =
+  implicit val pekkoTimeout: Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
       org.apache.pekko.util.Timeout(millis, TimeUnit.MILLISECONDS)
     } getOrElse Timeouts.askTimeout

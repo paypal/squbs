@@ -34,7 +34,7 @@ import scala.language.{implicitConversions, postfixOps}
 import scala.util.{Failure, Random, Success, Try}
 
 abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
-  extends TestKit(ActorSystem(systemName, akkaRemoteConfig)) with LazyLogging {
+  extends TestKit(ActorSystem(systemName, pekkoRemoteConfig)) with LazyLogging {
 
   val timeout: FiniteDuration
 
@@ -51,7 +51,7 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
     actorSystems = (0 until clusterSize) map { num =>
         val sysName: String = systemName(num)
         logger.info("Starting actor system {}", sysName)
-        sysName -> ActorSystem(sysName, akkaRemoteConfig withFallback zkConfig)
+        sysName -> ActorSystem(sysName, pekkoRemoteConfig withFallback zkConfig)
     } toMap
 
     // start the lazy actor
@@ -92,7 +92,7 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
   }
 
   def bringUpSystem(sysName: String): Unit = {
-    actorSystems += sysName -> ActorSystem(sysName, akkaRemoteConfig withFallback zkConfig)
+    actorSystems += sysName -> ActorSystem(sysName, pekkoRemoteConfig withFallback zkConfig)
     watch(zkClusterExts(sysName).zkClusterActor)
     logger.info("system {} is up", sysName)
     Thread.sleep(timeout.toMillis / 5)
@@ -133,9 +133,9 @@ object ZkClusterMultiActorSystemTestKit {
     p
   }
 
-  def akkaRemoteConfig: Config = ConfigFactory.parseString(
+  def pekkoRemoteConfig: Config = ConfigFactory.parseString(
     s"""
-       |akka {
+       |pekko {
        |  actor {
        |    provider = "akka.remote.RemoteActorRefProvider"
        |    serializers {

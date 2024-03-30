@@ -79,9 +79,10 @@ object JacksonMapperSupport {
     * @return A Jackson unmarshaller configured for the specific type
     */
   implicit def jacksonUnmarshaller[T](implicit tt: TypeTag[T]): FromEntityUnmarshaller[T] = {
-    //implicit val classTag = toClassTag(tt)
-    //JacksonSupport.unmarshaller[T](tt, mapper[T])
-    ??? // ToDo: Bharadwaj
+    implicit val classTag = toClassTag(tt)
+    implicit val objectMapper = mapper[T]
+    implicit val javaType = objectMapper.constructType(classTag.runtimeClass)
+    JacksonSupport.unmarshaller
   }
 
   /**

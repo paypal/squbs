@@ -16,9 +16,9 @@ libraryDependencies ++= Seq(
   "com.wix" %% "accord-core" % accordV % Test,
   "junit" % "junit" % junitV % Test,
   "com.novocode" % "junit-interface" % junitInterfaceV % Test
-) ++ akka
+) ++ pekkoDependencies
 
-def akka = Seq(
+def pekkoDependencies = Seq(
   "org.apache.pekko" %% "pekko-actor" % pekkoV,
   "org.apache.pekko" %% "pekko-http" % pekkoHttpV,
   "org.apache.pekko" %% "pekko-testkit" % pekkoV % Test,

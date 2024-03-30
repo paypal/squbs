@@ -94,7 +94,7 @@ blocking-dispatcher {
 
 ## Blocking Dispatcher
 
-The squbs `reference.conf` declares a `blocking-dispatcher` used for blocking I/O calls. This is a standard Akka dispatcher configuration. Please see [dispatchers](http://doc.akka.io/docs/akka/2.3.13/scala/dispatchers.html) in the Akka documentation for more detail.
+The squbs `reference.conf` declares a `blocking-dispatcher` used for blocking I/O calls. This is a standard pekko dispatcher configuration. Please see [dispatchers](http://doc.pekko.io/docs/pekko/2.3.13/scala/dispatchers.html) in the pekko documentation for more detail.
 
 ## Listeners
 

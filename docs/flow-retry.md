@@ -2,7 +2,7 @@
 
 ### Overview
 
-Some stream use cases may require retrying of requests after a failure response.  squbs provides a `Retry` Akka Streams
+Some stream use cases may require retrying of requests after a failure response.  squbs provides a `Retry` pekko Streams
 stage to add a retry capability to streams that need to add retries for any failing requests.
 
 ### Dependency
@@ -259,9 +259,9 @@ final BidiFlow<Pair<String, Context>,
 ##### Configuring the threshold for backpressure
 
 If the joined flow keeps returning failures, `Retry` starts back pressuring when the elements waiting to be retried
-reaches to a certain threshold.  By default, the threshold is equal to the internal buffer size of `Retry` Akka Stream
-`GraphStage` (please see [Akka Stream
-Attributes](https://doc.akka.io/docs/akka/current/stream/stream-composition.html#attributes)).  The threshold can be
+reaches to a certain threshold.  By default, the threshold is equal to the internal buffer size of `Retry` pekko Stream
+`GraphStage` (please see [pekko Stream
+Attributes](https://doc.pekko.io/docs/pekko/current/stream/stream-composition.html#attributes)).  The threshold can be
 made independent of internal buffer size by calling `withMaxWaitingRetries`:
 
 

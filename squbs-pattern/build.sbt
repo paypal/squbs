@@ -25,9 +25,9 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonV % Optional,
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonV % Optional,
   "ch.qos.logback" % "logback-classic" % logbackInTestV % Test
-) ++ akkaDependencies
+) ++ pekkoDependencies
 
-def akkaDependencies = Seq(
+def pekkoDependencies = Seq(
   "org.apache.pekko" %% "pekko-actor" % pekkoV,
   "org.apache.pekko" %% "pekko-stream" % pekkoV,
   "org.apache.pekko" %% "pekko-testkit" % pekkoV % Test,

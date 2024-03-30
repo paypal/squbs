@@ -8,10 +8,10 @@ Streaming Reactive Systems & Data Pipes w. Squbs - March 5, 2018
 
 ## Reactive Summit
 
-Back-Pressure in Action: Handling High-Burst Workloads with Akka Streams & Kafka - October 5, 2016
+Back-Pressure in Action: Handling High-Burst Workloads with pekko Streams & Kafka - October 5, 2016
 
 * [Video Recording](https://www.youtube.com/watch?v=dsuvnoEezxs)
-* [Slides](http://www.slideshare.net/AkaraSucharitakul/backpressure-in-action-handling-highburst-workloads-with-akka-streams-kafka)
+* [Slides](http://www.slideshare.net/AkaraSucharitakul/backpressure-in-action-handling-highburst-workloads-with-pekko-streams-kafka)
 
 ## Scala Up North
 
