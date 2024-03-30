@@ -219,7 +219,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
     "4.1) getClassName of TestCube/TestActorWithRoute" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "ClassName")
-      bean should be (Some("pekko.routing.RouterActor"))
+      bean should be (Some("org.apache.pekko.routing.RouterActor"))
     }
 
     "4.2) getRouteConfig of TestCube/TestActorWithRoute" in {
