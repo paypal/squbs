@@ -2,14 +2,14 @@
 
 ### Overview
 
-`MaterializationMetricsCollector` is an Akka Streams `GraphStage` to collect materialization metrics for a stream:
+`MaterializationMetricsCollector` is an Pekko Streams `GraphStage` to collect materialization metrics for a stream:
 
    * active materialization counts
    * new materialization creation rates
    * materialization termination rates (aggregation of successful termination and failures)
 
 
-A prominent use case for the `MaterializationMetricsCollector` is with server-side Akka HTTP, where each new connection results in a stream materialization and therefore each connection termination results in the termination of the associated stream materialization. For this reason, the `MaterializationMetricsCollector` is out-of-the-box integrated with [squbs HTTP(S) service](http-services.md) implementations publishing active connection, connection creation, and connection termination metrics.
+A prominent use case for the `MaterializationMetricsCollector` is with server-side Pekko HTTP, where each new connection results in a stream materialization and therefore each connection termination results in the termination of the associated stream materialization. For this reason, the `MaterializationMetricsCollector` is out-of-the-box integrated with [squbs HTTP(S) service](http-services.md) implementations publishing active connection, connection creation, and connection termination metrics.
 
 ### Dependency
 
@@ -21,7 +21,7 @@ Add the following dependency to your `build.sbt` or scala build file:
 
 ### Usage
 
-The usage is very similar to standard Akka Stream stages.  In below examples, you should see JMX beans with names that contain:
+The usage is very similar to standard Pekko Stream stages.  In below examples, you should see JMX beans with names that contain:
 
    * `my-stream-active-count` with `Count` value 2 at the beginning, but will go down to 0 once the materializations terminate.
    * `my-stream-creation-count` with `Count` value 2.

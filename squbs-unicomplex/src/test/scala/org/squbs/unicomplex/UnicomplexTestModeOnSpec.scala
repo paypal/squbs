@@ -16,8 +16,8 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpecLike
@@ -57,7 +57,7 @@ object UnicomplexTestModeOnSpec {
 class UnicomplexTestModeOnSpec extends TestKit(UnicomplexTestModeOnSpec.boot.actorSystem) with ImplicitSender
   with AnyFlatSpecLike with Matchers with BeforeAndAfterAll  {
 
-  import akka.pattern.ask
+  import org.apache.pekko.pattern.ask
 
   val portBindings = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)
 

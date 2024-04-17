@@ -19,13 +19,13 @@ package org.squbs.unicomplex
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 import javax.management.openmbean.CompositeData
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.HttpEntity.Chunked
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
-import akka.pattern.ask
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Keep, Sink, Source}
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunked
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.stream.ActorMaterializer
+import org.apache.pekko.stream.scaladsl.{Keep, Sink, Source}
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, Inspectors}
 import org.scalatest.concurrent.{Eventually, Waiters}
@@ -61,7 +61,7 @@ object UnicomplexSpec {
        |  ${JMX.prefixConfig} = true
        |}
        |default-listener.bind-port = 0
-       |akka.http.server.remote-address-header = on
+       |pekko.http.server.remote-address-header = on
     """.stripMargin
   )
 
@@ -219,8 +219,8 @@ class UnicomplexSpec extends TestKit(UnicomplexSpec.boot.actorSystem) with Impli
       cubeState should be ("Active")
 
       val WellKnownActors = mBeanServer.getAttribute(cubesObjName, "WellKnownActors").asInstanceOf[String]
-      WellKnownActors should include ("Actor[akka://UnicomplexSpec/user/DummyCube/Prepender#")
-      WellKnownActors should include ("Actor[akka://UnicomplexSpec/user/DummyCube/Appender#")
+      WellKnownActors should include ("Actor[pekko://UnicomplexSpec/user/DummyCube/Prepender#")
+      WellKnownActors should include ("Actor[pekko://UnicomplexSpec/user/DummyCube/Appender#")
     }
 
     "check listener MXbean" in {

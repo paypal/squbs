@@ -19,7 +19,7 @@ package org.squbs.dispatcher
 import java.util.concurrent._
 import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 
-import akka.dispatch._
+import org.apache.pekko.dispatch._
 import com.typesafe.config.Config
 import org.squbs.unicomplex.{ForkJoinPoolMXBean, JMX}
 
@@ -78,7 +78,7 @@ case class AdaptedThreadFactory(delegateFactory: MonitorableThreadFactory)
   import delegateFactory._
 
   def newThread(pool: ForkJoinPool): ForkJoinWorkerThread = {
-    val t = wire(new AdaptedThreadFactory.AkkaForkJoinWorkerThread(pool))
+    val t = wire(new AdaptedThreadFactory.PekkoForkJoinWorkerThread(pool))
     // Name of the threads for the ForkJoinPool are not customizable. Change it here.
     t.setName(name + "-" + counter.incrementAndGet())
     t
@@ -93,7 +93,7 @@ case class AdaptedThreadFactory(delegateFactory: MonitorableThreadFactory)
     t
   }
 
-  // Hijack the counter from the Akka MonitorableThreadFactory passed in.
+  // Hijack the counter from the Pekko MonitorableThreadFactory passed in.
   // This is only done once, so the cost should not be bad.
   protected val counter: AtomicLong = {
     val counterField = classOf[MonitorableThreadFactory].getDeclaredField("counter")
@@ -107,7 +107,7 @@ object AdaptedThreadFactory {
     override def uncaughtException(t: Thread, e: Throwable): Unit = ()
   }
 
-  private[squbs] class AkkaForkJoinWorkerThread(_pool: ForkJoinPool)
+  private[squbs] class PekkoForkJoinWorkerThread(_pool: ForkJoinPool)
     extends ForkJoinWorkerThread(_pool) with BlockContext {
     override def blockOn[T](thunk: => T)(implicit permission: CanAwait): T = {
       val result = new AtomicReference[Option[T]](None)

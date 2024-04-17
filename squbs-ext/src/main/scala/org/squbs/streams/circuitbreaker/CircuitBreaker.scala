@@ -16,12 +16,12 @@
 
 package org.squbs.streams.circuitbreaker
 
-import akka.NotUsed
-import akka.http.org.squbs.util.JavaConverters
-import akka.japi.Pair
-import akka.stream._
-import akka.stream.scaladsl.{BidiFlow, Flow}
-import akka.stream.stage._
+import org.apache.pekko.NotUsed
+import org.apache.pekko.http.org.squbs.util.JavaConverters
+import org.apache.pekko.japi.Pair
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow}
+import org.apache.pekko.stream.stage._
 import org.squbs.streams.{Timeout, TimeoutSettings, UniqueId}
 
 import scala.collection.mutable
@@ -44,7 +44,7 @@ import scala.util.{Failure, Success, Try}
   * The joined [[Flow]] pushes down a [[Try]].  By default, any [[Failure]] is considered a problem and causes the
   * circuit breaker failure count to be incremented.  However, [[CircuitBreakerSettings.failureDecider]] can be used
   * to decide on if an element passed by the joined [[Flow]] is actually considered a failure.  For instance, if
-  * Circuit Breaker is joined with an Akka HTTP flow, a [[Success]] Http Response with status code 500 internal server
+  * Circuit Breaker is joined with an Pekko HTTP flow, a [[Success]] Http Response with status code 500 internal server
   * error should be considered a failure.
   *
   *
@@ -188,7 +188,7 @@ object CircuitBreaker {
     * @see [[CircuitBreakerSettings]] for details about each parameter and type parameter.
     */
   def create[In, Out, Context](circuitBreakerSettings: japi.CircuitBreakerSettings[In, Out, Context]):
-  akka.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] =
+  org.apache.pekko.stream.javadsl.BidiFlow[Pair[In, Context], Pair[In, Context], Pair[Out, Context], Pair[Try[Out], Context], NotUsed] =
     JavaConverters.toJava[In, In, Out, Try[Out], Context](apply[In, Out, Context](circuitBreakerSettings.toScala))
 }
 

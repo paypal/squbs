@@ -16,8 +16,8 @@
 
 package org.squbs.cluster
 
-import akka.actor._
-import akka.remote.QuarantinedEvent
+import org.apache.pekko.actor._
+import org.apache.pekko.remote.QuarantinedEvent
 
 /**
  * Created by zhuwang on 2/8/15.
@@ -28,7 +28,7 @@ import akka.remote.QuarantinedEvent
  * If a QuarantinedEvent arrives, it will close the connection to Zookeeper and exit the JVM using code 99
  * External monitor tool like JSW can be configured to restart the app according to the exist code
  */
-@deprecated("zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+@deprecated("zkcluster is deprecated in lieu of maturity of Pekko cluster and more modern cluster coordinators",
   since = "0.15.0")
 class RemoteGuardian extends Actor with ActorLogging {
 

@@ -15,24 +15,24 @@
  */
 package org.squbs.httpclient;
 
-import akka.actor.ActorSystem;
-import akka.http.javadsl.ConnectHttp;
-import akka.http.javadsl.HostConnectionPool;
-import akka.http.javadsl.Http;
-import akka.http.javadsl.ServerBinding;
-import akka.http.javadsl.model.DateTime;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.HttpResponse;
-import akka.http.javadsl.model.StatusCodes;
-import akka.http.javadsl.model.headers.ProductVersion;
-import akka.http.javadsl.model.headers.Server;
-import akka.http.javadsl.server.AllDirectives;
-import akka.http.javadsl.server.Route;
-import akka.japi.Pair;
-import akka.stream.Materializer;
-import akka.stream.javadsl.Flow;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.http.javadsl.ConnectHttp;
+import org.apache.pekko.http.javadsl.HostConnectionPool;
+import org.apache.pekko.http.javadsl.Http;
+import org.apache.pekko.http.javadsl.ServerBinding;
+import org.apache.pekko.http.javadsl.model.DateTime;
+import org.apache.pekko.http.javadsl.model.HttpRequest;
+import org.apache.pekko.http.javadsl.model.HttpResponse;
+import org.apache.pekko.http.javadsl.model.StatusCodes;
+import org.apache.pekko.http.javadsl.model.headers.ProductVersion;
+import org.apache.pekko.http.javadsl.model.headers.Server;
+import org.apache.pekko.http.javadsl.server.AllDirectives;
+import org.apache.pekko.http.javadsl.server.Route;
+import org.apache.pekko.japi.Pair;
+import org.apache.pekko.stream.Materializer;
+import org.apache.pekko.stream.javadsl.Flow;
+import org.apache.pekko.stream.javadsl.Sink;
+import org.apache.pekko.stream.javadsl.Source;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.junit.AfterClass;
@@ -69,7 +69,7 @@ public class ClientFlowCircuitBreakerTest {
             HttpResponse.create()
                     .withStatus(StatusCodes.INTERNAL_SERVER_ERROR)
                     .addHeader(Server.create(ProductVersion.create("testServer", "1.0")))
-                    .addHeader(akka.http.javadsl.model.headers.Date.create(DateTime.create(2017, 1, 1, 1, 1, 1)));
+                    .addHeader(org.apache.pekko.http.javadsl.model.headers.Date.create(DateTime.create(2017, 1, 1, 1, 1, 1)));
 
     private static final ServerBinding serverBinding;
 
@@ -90,7 +90,7 @@ public class ClientFlowCircuitBreakerTest {
     private static final int port = serverBinding.localAddress().getPort();
 
     int defaultMaxFailures = system.settings().config().getInt("squbs.circuit-breaker.max-failures");
-    int defaultMaxConnections = system.settings().config().getInt("akka.http.host-connection-pool.max-connections");
+    int defaultMaxConnections = system.settings().config().getInt("pekko.http.host-connection-pool.max-connections");
     int numOfRequests = (defaultMaxFailures + defaultMaxConnections) * 2; // Some random large number
     int numOfPassThroughBeforeCircuitBreakerIsOpen = defaultMaxConnections + defaultMaxFailures - 1;
     int numOfFailFast = numOfRequests - numOfPassThroughBeforeCircuitBreakerIsOpen;

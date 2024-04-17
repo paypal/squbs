@@ -33,7 +33,7 @@ val resource: Optional<URI> = ResolverRegistry.get(system).resolve(URI.class, "m
 
 ### The ResolverRegistry
 
-The `ResolverRegistry` is an Akka extension and follows the Akka extension usage patterns in Scala and in Java. It can host resource resolvers of various types and therefore the resource type has to be provided at registration by passing it to the `register` call. Multiple resolvers of same type and multiple types can be registered.
+The `ResolverRegistry` is an Pekko extension and follows the Pekko extension usage patterns in Scala and in Java. It can host resource resolvers of various types and therefore the resource type has to be provided at registration by passing it to the `register` call. Multiple resolvers of same type and multiple types can be registered.
 
 #### Registering Resolvers
 

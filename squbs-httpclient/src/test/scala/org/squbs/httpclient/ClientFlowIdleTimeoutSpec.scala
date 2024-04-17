@@ -15,10 +15,10 @@
  */
 package org.squbs.httpclient
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model._
-import akka.stream.scaladsl.{Sink, Source, TcpIdleTimeoutException}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.stream.scaladsl.{Sink, Source, TcpIdleTimeoutException}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
@@ -33,9 +33,9 @@ object ClientFlowIdleTimeoutSpec {
 
   val config = ConfigFactory.parseString(
     """
-      |akka {
+      |pekko {
       |  loggers = [
-      |    "akka.event.Logging$DefaultLogger"
+      |    "org.apache.pekko.event.Logging$DefaultLogger"
       |  ]
       |
       |  loglevel = "DEBUG"
@@ -60,7 +60,7 @@ object ClientFlowIdleTimeoutSpec {
     case _ => None
   }}
 
-  import akka.http.scaladsl.server.Directives._
+  import org.apache.pekko.http.scaladsl.server.Directives._
 
   val route =
     path("slow") {

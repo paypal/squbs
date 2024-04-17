@@ -16,9 +16,9 @@
 
 package org.squbs.actorregistry
 
-import akka.actor._
-import akka.pattern.AskSupport
-import akka.util.Timeout
+import org.apache.pekko.actor._
+import org.apache.pekko.pattern.AskSupport
+import org.apache.pekko.util.Timeout
 
 import scala.concurrent.{ExecutionContext, Promise, Future}
 import scala.concurrent.duration.FiniteDuration

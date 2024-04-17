@@ -16,8 +16,8 @@
 
 package org.squbs.pattern.validation
 
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{Directive, ValidationRejection}
+import org.apache.pekko.http.scaladsl.server.Directives._
+import org.apache.pekko.http.scaladsl.server.{Directive, ValidationRejection}
 import com.wix.accord.{Descriptions, Validator}
 import scala.language.implicitConversions
 

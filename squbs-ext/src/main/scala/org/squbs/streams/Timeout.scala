@@ -16,12 +16,12 @@
 
 package org.squbs.streams
 
-import akka.NotUsed
-import akka.http.org.squbs.util.JavaConverters._
-import akka.japi.Pair
-import akka.stream._
-import akka.stream.scaladsl.{BidiFlow, Flow}
-import akka.stream.stage.{GraphStage, _}
+import org.apache.pekko.NotUsed
+import org.apache.pekko.http.org.squbs.util.JavaConverters._
+import org.apache.pekko.japi.Pair
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow}
+import org.apache.pekko.stream.stage._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.streams.TimeoutBidi._
 import org.squbs.util.DurationConverters
@@ -360,7 +360,7 @@ object TimeoutOrdered {
     */
   def create[In, Out](timeout: java.time.Duration,
                       cleanUp: Consumer[Out]):
-  akka.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] = {
+  org.apache.pekko.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] = {
     apply(DurationConverters.toScala(timeout), (out: Out) => cleanUp.accept(out)).asJava
   }
 
@@ -372,7 +372,7 @@ object TimeoutOrdered {
     * @return
     */
   def create[In, Out](timeout: java.time.Duration):
-  akka.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] = {
+  org.apache.pekko.stream.javadsl.BidiFlow[In, In, Out, Try[Out], NotUsed] = {
     apply(DurationConverters.toScala(timeout), (_: Out) => ()).asJava
   }
 }

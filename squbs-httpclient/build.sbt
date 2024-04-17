@@ -5,15 +5,15 @@ name := "squbs-httpclient"
 Test / javaOptions += "-Xmx512m"
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka"         %% "akka-actor"                   % akkaV,
-  "com.typesafe.akka"         %% "akka-slf4j"                   % akkaV,
-  "com.typesafe.akka"         %% "akka-stream"                  % akkaV,
-  "com.typesafe.akka"         %% "akka-http-core"               % akkaHttpV ,
+  "org.apache.pekko"         %% "pekko-actor"                   % pekkoV,
+  "org.apache.pekko"         %% "pekko-slf4j"                   % pekkoV,
+  "org.apache.pekko"         %% "pekko-stream"                  % pekkoV,
+  "org.apache.pekko"         %% "pekko-http-core"               % pekkoHttpV ,
   "com.typesafe.scala-logging" %% "scala-logging"               % scalaLoggingV,
   "org.scalatest"             %% "scalatest"                    % scalatestV % Test,
-  "com.typesafe.akka"         %% "akka-testkit"                 % akkaV % Test,
-  "de.heikoseeberger" %% "akka-http-json4s" % heikoseebergerAkkaHttpJsonV % Test,
-  "de.heikoseeberger" %% "akka-http-jackson" % heikoseebergerAkkaHttpJsonV % Test,
+  "org.apache.pekko"         %% "pekko-testkit"                 % pekkoV % Test,
+  "com.github.pjfanning" %% "pekko-http-json4s" % pjfanningAkkaHttpJsonV % Test,
+  "com.github.pjfanning" %% "pekko-http-jackson" % pjfanningAkkaHttpJsonV % Test,
   "org.json4s" %% "json4s-jackson" % json4sV % Test,
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonV % Test,
   "junit" % "junit" % junitV % Test,

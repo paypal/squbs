@@ -15,8 +15,8 @@
  */
 package org.squbs.actorregistry
 
-import akka.actor.{ActorIdentity, ActorRef, ActorSystem, Identify, PoisonPill}
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor.{ActorIdentity, ActorRef, ActorSystem, Identify, PoisonPill}
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
@@ -254,7 +254,7 @@ object RouterBootstrap extends TestBootstrap(
      |}
      |default-listener.bind-port = 0
      |
-     |akka.actor.deployment {
+     |pekko.actor.deployment {
      |
      |  # Router configuration
      |  /TestCube/TestActor {

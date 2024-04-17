@@ -17,15 +17,15 @@ package org.squbs.pattern.orchestration.japi
 
 import java.util.concurrent.CompletableFuture
 
-import akka.actor.{Actor, ActorRef, ActorSelection}
-import akka.pattern.{AskableActorRef, AskableActorSelection}
-import akka.util.Timeout
+import org.apache.pekko.actor.{Actor, ActorRef, ActorSelection}
+import org.apache.pekko.pattern.{AskableActorRef, AskableActorSelection}
+import org.apache.pekko.util.Timeout
 import org.squbs.pattern.orchestration.Orchestrator
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
-@deprecated("The Orchestration module is deprecated. Please use Akka streams for safer orchestration instead.",
+@deprecated("The Orchestration module is deprecated. Please use Pekko streams for safer orchestration instead.",
 since = "0.15.0")
 abstract class AbstractOrchestrator extends Actor with Orchestrator {
 

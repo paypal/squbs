@@ -16,7 +16,7 @@
 
 package org.squbs.httpclient
 
-import akka.http.scaladsl.model.Uri
+import org.apache.pekko.http.scaladsl.model.Uri
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
@@ -30,18 +30,18 @@ class DefaultHttpEndpointResolverSpec extends CustomTestKit with AnyFlatSpecLike
   private def resolve(uri: String) = ResolverRegistry(system).resolve[HttpEndpoint](uri).value
 
   it should "resolve valid http uri string to an HttpEndpoint" in {
-    resolve("http://akka.io:80") shouldBe HttpEndpoint(Uri("http://akka.io:80"))
-    resolve("http://akka.io") shouldBe HttpEndpoint(Uri("http://akka.io"))
+    resolve("http://pekko.io:80") shouldBe HttpEndpoint(Uri("http://pekko.io:80"))
+    resolve("http://pekko.io") shouldBe HttpEndpoint(Uri("http://pekko.io"))
   }
 
   it should "resolve valid https uri string to an HttpEndpoint" in {
-    resolve("https://akka.io:443") shouldBe HttpEndpoint(Uri("https://akka.io:443"))
-    resolve("https://akka.io") shouldBe HttpEndpoint(Uri("https://akka.io"))
+    resolve("https://pekko.io:443") shouldBe HttpEndpoint(Uri("https://pekko.io:443"))
+    resolve("https://pekko.io") shouldBe HttpEndpoint(Uri("https://pekko.io"))
   }
 
   it should "not resolve invalid http uri string to an HttpEndpoint" in {
     ResolverRegistry(system).resolve[HttpEndpoint]("invalidUri:") shouldBe empty
-    ResolverRegistry(system).resolve[HttpEndpoint]("ftp://akka.io") shouldBe empty
+    ResolverRegistry(system).resolve[HttpEndpoint]("ftp://pekko.io") shouldBe empty
   }
 
   it should "set the resolver name to the class name" in {

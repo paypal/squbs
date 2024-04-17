@@ -15,8 +15,8 @@
  */
 package org.squbs.stream
 
-import akka.actor.ActorSystem
-import akka.pattern._
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.pattern._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec

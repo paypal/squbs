@@ -16,7 +16,7 @@
 
 package org.squbs.actormonitor
 
-import akka.actor._
+import org.apache.pekko.actor._
 import org.squbs.actormonitor.ActorMonitorBean._
 import org.squbs.lifecycle.GracefulStopHelper
 import org.squbs.unicomplex.JMX._

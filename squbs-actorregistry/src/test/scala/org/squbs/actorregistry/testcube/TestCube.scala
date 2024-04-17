@@ -15,7 +15,7 @@
  */
 package org.squbs.actorregistry.testcube
 
-import akka.actor.Actor
+import org.apache.pekko.actor.Actor
 
 case class TestRequest(msg: String)
 case class TestRequest1(msg: String)

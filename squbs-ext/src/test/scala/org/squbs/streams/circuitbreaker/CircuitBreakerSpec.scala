@@ -16,12 +16,12 @@
 
 package org.squbs.streams.circuitbreaker
 
-import akka.Done
-import akka.actor.{Actor, ActorSystem, Props}
-import akka.stream.{CompletionStrategy, OverflowStrategy}
-import akka.stream.scaladsl.{BidiFlow, Flow, Keep, Sink, Source}
-import akka.testkit.{ImplicitSender, TestKit}
-import akka.util.Timeout
+import org.apache.pekko.Done
+import org.apache.pekko.actor.{Actor, ActorSystem, Props}
+import org.apache.pekko.stream.{CompletionStrategy, OverflowStrategy}
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow, Keep, Sink, Source}
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpecLike
@@ -55,7 +55,7 @@ class CircuitBreakerSpec
 
   def delayFlow() = {
     val delayActor = system.actorOf(Props[DelayActor]())
-    import akka.pattern.ask
+    import org.apache.pekko.pattern.ask
     Flow[(String, UUID)].mapAsyncUnordered(5) { elem =>
       (delayActor ? elem).mapTo[(String, UUID)]
     }
@@ -201,7 +201,7 @@ class CircuitBreakerSpec
     case class MyContext(s: String, id: Long)
 
     val delayActor = system.actorOf(Props[DelayActor]())
-    import akka.pattern.ask
+    import org.apache.pekko.pattern.ask
     val flow = Flow[(String, MyContext)].mapAsyncUnordered(5) { elem =>
       (delayActor ? elem).mapTo[(String, MyContext)]
     }
@@ -244,7 +244,7 @@ class CircuitBreakerSpec
     val notCleanedUpFunction = (s: String) => promiseMap.get(s).foreach(_.trySuccess(false))
 
     val delayActor = system.actorOf(Props[DelayActor]())
-    import akka.pattern.ask
+    import org.apache.pekko.pattern.ask
     val flow = Flow[(String, MyContext)].mapAsyncUnordered(5) { elem =>
       (delayActor ? elem).mapTo[(String, MyContext)]
     }
@@ -353,7 +353,7 @@ class CircuitBreakerSpec
 object CircuitBreakerSpec {
   val config = ConfigFactory.parseString(
     """
-      |akka.test.single-expect-default = 30 seconds
+      |pekko.test.single-expect-default = 30 seconds
       |
       |exponential-backoff-circuitbreaker {
       |  type = squbs.circuitbreaker

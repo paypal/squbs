@@ -1,8 +1,8 @@
 package org.squbs.stream;
 
-import akka.japi.Pair;
-import akka.stream.*;
-import akka.stream.javadsl.*;
+import org.apache.pekko.japi.Pair;
+import org.apache.pekko.stream.*;
+import org.apache.pekko.stream.javadsl.*;
 import org.squbs.unicomplex.Timeouts;
 import scala.concurrent.duration.FiniteDuration;
 

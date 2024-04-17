@@ -16,19 +16,19 @@
 
 package org.squbs.streams.circuitbreaker;
 
-import akka.NotUsed;
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.Props;
-import akka.japi.Pair;
-import akka.stream.ActorMaterializer;
-import akka.stream.Materializer;
-import akka.stream.OverflowStrategy;
-import akka.stream.javadsl.BidiFlow;
-import akka.stream.javadsl.Flow;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
-import akka.testkit.javadsl.TestKit;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.actor.Props;
+import org.apache.pekko.japi.Pair;
+import org.apache.pekko.stream.ActorMaterializer;
+import org.apache.pekko.stream.Materializer;
+import org.apache.pekko.stream.OverflowStrategy;
+import org.apache.pekko.stream.javadsl.BidiFlow;
+import org.apache.pekko.stream.javadsl.Flow;
+import org.apache.pekko.stream.javadsl.Sink;
+import org.apache.pekko.stream.javadsl.Source;
+import org.apache.pekko.testkit.javadsl.TestKit;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
@@ -50,7 +50,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import static akka.pattern.Patterns.ask;
+import static org.apache.pekko.pattern.Patterns.ask;
 
 public class CircuitBreakerTest {
 

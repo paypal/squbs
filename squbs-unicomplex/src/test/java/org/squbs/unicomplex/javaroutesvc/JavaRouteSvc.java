@@ -16,10 +16,10 @@
 package org.squbs.unicomplex.javaroutesvc;
 
 
-import akka.http.javadsl.server.CustomRejection;
-import akka.http.javadsl.server.ExceptionHandler;
-import akka.http.javadsl.server.RejectionHandler;
-import akka.http.javadsl.server.Route;
+import org.apache.pekko.http.javadsl.server.CustomRejection;
+import org.apache.pekko.http.javadsl.server.ExceptionHandler;
+import org.apache.pekko.http.javadsl.server.RejectionHandler;
+import org.apache.pekko.http.javadsl.server.Route;
 import org.squbs.unicomplex.AbstractRouteDefinition;
 
 import java.util.Optional;

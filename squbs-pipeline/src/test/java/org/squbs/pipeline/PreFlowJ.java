@@ -16,14 +16,14 @@
 
 package org.squbs.pipeline;
 
-import akka.NotUsed;
-import akka.actor.ActorSystem;
-import akka.http.javadsl.model.headers.RawHeader;
-import akka.stream.BidiShape;
-import akka.stream.FlowShape;
-import akka.stream.javadsl.BidiFlow;
-import akka.stream.javadsl.Flow;
-import akka.stream.javadsl.GraphDSL;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.http.javadsl.model.headers.RawHeader;
+import org.apache.pekko.stream.BidiShape;
+import org.apache.pekko.stream.FlowShape;
+import org.apache.pekko.stream.javadsl.BidiFlow;
+import org.apache.pekko.stream.javadsl.Flow;
+import org.apache.pekko.stream.javadsl.GraphDSL;
 import org.squbs.pipeline.japi.PipelineFlowFactory;
 
 public class PreFlowJ extends PipelineFlowFactory {

@@ -15,13 +15,13 @@
  */
 package org.squbs.httpclient
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.HttpEntity.Chunked
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{Date, Server}
-import akka.stream.scaladsl.{Keep, Sink, Source}
-import akka.util.ByteString
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunked
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.http.scaladsl.model.headers.{Date, Server}
+import org.apache.pekko.stream.scaladsl.{Keep, Sink, Source}
+import org.apache.pekko.util.ByteString
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
@@ -82,7 +82,7 @@ object ClientFlowCircuitBreakerSpec {
       |drain {
       |  type = squbs.httpclient
       |
-      |  akka.http.host-connection-pool.max-connections = 10
+      |  pekko.http.host-connection-pool.max-connections = 10
       |  circuit-breaker {
       |    max-failures = 10000
       |    call-timeout = 10 milliseconds
@@ -91,7 +91,7 @@ object ClientFlowCircuitBreakerSpec {
       |
       |do-not-drain {
       |  type = squbs.httpclient
-      |  akka.http {
+      |  pekko.http {
       |    client.idle-timeout = 10 seconds
       |    host-connection-pool {
       |      max-connections = 10
@@ -104,7 +104,7 @@ object ClientFlowCircuitBreakerSpec {
   implicit val system = ActorSystem("ClientFlowCircuitBreakerSpec", config)
 
   val defaultMaxFailures = system.settings.config.getInt("squbs.circuit-breaker.max-failures")
-  val defaultMaxConnections = system.settings.config.getInt("akka.http.host-connection-pool.max-connections")
+  val defaultMaxConnections = system.settings.config.getInt("pekko.http.host-connection-pool.max-connections")
   val numOfRequests = (defaultMaxFailures + defaultMaxConnections) * 2 // Some random large number
   val numOfPassThroughBeforeCircuitBreakerIsOpen = defaultMaxConnections + defaultMaxFailures - 1
   val numOfFailFast = numOfRequests - numOfPassThroughBeforeCircuitBreakerIsOpen
@@ -113,7 +113,7 @@ object ClientFlowCircuitBreakerSpec {
     (_, _) =>Some(HttpEndpoint(s"http://localhost:$port/"))
   }
 
-  import akka.http.scaladsl.server.Directives._
+  import org.apache.pekko.http.scaladsl.server.Directives._
   import system.dispatcher
   implicit val scheduler = system.scheduler
 
@@ -346,7 +346,7 @@ class ClientFlowCircuitBreakerSpec extends AsyncFlatSpec with Matchers with Befo
         .map(_._1)
         .runWith(Sink.seq)
 
-    val idleTimeoutConfig = system.settings.config.getString("do-not-drain.akka.http.client.idle-timeout")
+    val idleTimeoutConfig = system.settings.config.getString("do-not-drain.pekko.http.client.idle-timeout")
     val idleTimeout = Duration(idleTimeoutConfig).asInstanceOf[FiniteDuration]
     val promise = Promise[Seq[Try[HttpResponse]]]()
     import system.dispatcher
@@ -361,7 +361,7 @@ class ClientFlowCircuitBreakerSpec extends AsyncFlatSpec with Matchers with Befo
 
     Future.firstCompletedOf(promise.future :: responseSeqFuture :: Nil) map { seq =>
       val elapsedTime = FiniteDuration(System.nanoTime - start, TimeUnit.NANOSECONDS)
-      val idleTimeout = Duration(system.settings.config.getString("akka.http.client.idle-timeout"))
+      val idleTimeout = Duration(system.settings.config.getString("pekko.http.client.idle-timeout"))
       // With a connection pool of size 10, 100 requests each taking 500 ms should be done in about 5+ seconds
       // If draining was not happening, it would keep each connection busy till idle-timeout.
       elapsedTime should be < idleTimeout
@@ -389,7 +389,7 @@ class ClientFlowCircuitBreakerSpec extends AsyncFlatSpec with Matchers with Befo
         .map(_._1)
         .runWith(Sink.seq)
 
-    val idleTimeoutConfig = system.settings.config.getString("do-not-drain.akka.http.client.idle-timeout")
+    val idleTimeoutConfig = system.settings.config.getString("do-not-drain.pekko.http.client.idle-timeout")
     val idleTimeout = Duration(idleTimeoutConfig).asInstanceOf[FiniteDuration]
 
     val promise = Promise[String]()

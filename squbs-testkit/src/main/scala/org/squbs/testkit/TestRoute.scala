@@ -16,33 +16,33 @@
 
 package org.squbs.testkit
 
-import akka.actor.{Actor, ActorSystem}
-import akka.http.scaladsl.server.directives.PathDirectives._
-import akka.http.scaladsl.server.{ExceptionHandler, RejectionHandler, Route}
-import akka.http.scaladsl.settings.RoutingSettings
-import akka.testkit.TestActorRef
+import org.apache.pekko.actor.{Actor, ActorSystem}
+import org.apache.pekko.http.scaladsl.server.directives.PathDirectives._
+import org.apache.pekko.http.scaladsl.server.{ExceptionHandler, RejectionHandler, Route}
+import org.apache.pekko.http.scaladsl.settings.RoutingSettings
+import org.apache.pekko.testkit.TestActorRef
 import org.squbs.unicomplex.{RouteDefinition, WithActorContext, WithWebContext}
 
 import scala.reflect.ClassTag
 
 /**
- * The TestRoute is used for creating a Route to be used with the Akka Http TestKit, from a RouteDefinition.
+ * The TestRoute is used for creating a Route to be used with the Pekko Http TestKit, from a RouteDefinition.
  * While a RouteDefinition is easy to define, it is actually not easy to instantiate.
  */
 object TestRoute {
 
   /**
-   * Creates the Route to be used in Akka Http TestKit.
-   * @param system The ActorSystem. This will be supplied implicitly if using the ScalaTestRouteTest trait from Akka Http.
+   * Creates the Route to be used in Pekko Http TestKit.
+   * @param system The ActorSystem. This will be supplied implicitly if using the ScalaTestRouteTest trait from Pekko Http.
    * @tparam T The RouteDefinition to be tested
    * @return The Route to be used for testing.
    */
   def apply[T <: RouteDefinition: ClassTag](implicit system: ActorSystem): Route = apply[T]("")
 
   /**
-   * Creates the Route to be used in Akka Http TestKit.
+   * Creates the Route to be used in Pekko Http TestKit.
    * @param webContext The web context to simulate
-   * @param system The ActorSystem. This will be supplied implicitly if using the ScalaTestRouteTest trait from Akka Http.
+   * @param system The ActorSystem. This will be supplied implicitly if using the ScalaTestRouteTest trait from Pekko Http.
    * @tparam T The RouteDefinition to be tested
    * @return The Route to be used for testing.
    */

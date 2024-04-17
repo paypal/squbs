@@ -1,12 +1,12 @@
 # Clustering squbs Services using ZooKeeper
 
-**Important Note:** _The ZooKeeper support in squbs is deprecated. Please use Akka clusters directly or move to more modern
+**Important Note:** _The ZooKeeper support in squbs is deprecated. Please use pekko clusters directly or move to more modern
 cluster coordinators._
 
 ## Overview
 
-squbs achieves clustering of services through the zkcluster module. zkcluster is an [Akka extension](http://doc.akka.io/docs/akka/snapshot/scala/extending-akka.html) which leverages [ZooKeeper](https://zookeeper.apache.org/) to manage akka cluster and partitions.
-It's similar to [Akka Cluster](http://doc.akka.io/docs/akka/snapshot/common/cluster.html) for the functions of leadership and membership management.
+squbs achieves clustering of services through the zkcluster module. zkcluster is an [pekko extension](http://doc.pekko.io/docs/pekko/snapshot/scala/extending-pekko.html) which leverages [ZooKeeper](https://zookeeper.apache.org/) to manage pekko cluster and partitions.
+It's similar to [pekko Cluster](http://doc.pekko.io/docs/pekko/snapshot/common/cluster.html) for the functions of leadership and membership management.
 However, it's richer as it provides partitioning support and eliminates the need of `entry-nodes`.
 
 ## Configuration
@@ -29,7 +29,7 @@ zkCluster {
 
 ## User Guide
 
-Start by simply registering the extension as all normal akka extension. Then you access the `zkClusterActor` and use it as follows:
+Start by simply registering the extension as all normal pekko extension. Then you access the `zkClusterActor` and use it as follows:
 
 ```scala
 val zkClusterActor = ZkCluster(system).zkClusterActor

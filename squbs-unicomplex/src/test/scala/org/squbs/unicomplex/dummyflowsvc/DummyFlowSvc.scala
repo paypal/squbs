@@ -16,10 +16,10 @@
 
 package org.squbs.unicomplex.dummyflowsvc
 
-import akka.http.scaladsl.model.HttpEntity.{ChunkStreamPart, Chunked}
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model._
-import akka.stream.scaladsl.{Flow, Source}
+import org.apache.pekko.http.scaladsl.model.HttpEntity.{ChunkStreamPart, Chunked}
+import org.apache.pekko.http.scaladsl.model.Uri.Path
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.stream.scaladsl.{Flow, Source}
 import org.squbs.unicomplex.{FlowDefinition, WebContext}
 
 class DummyFlowSvc extends FlowDefinition with WebContext {

@@ -14,32 +14,31 @@
  * limitations under the License.
  */
 
-package akka.http.org.squbs.util
+package org.apache.pekko.http.org.squbs.util
 
 import java.util.Optional
+import org.apache.pekko.NotUsed
+import org.apache.pekko.http.impl.util.JavaMapping
+import org.apache.pekko.http.javadsl.{model => jm}
+import org.apache.pekko.http.scaladsl.Http.HostConnectionPool
+import org.apache.pekko.http.scaladsl.HttpsConnectionContext
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse}
+import org.apache.pekko.http.scaladsl.settings.ConnectionPoolSettings
+import org.apache.pekko.http.{javadsl => jd}
+import org.apache.pekko.japi.Pair
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow}
+import org.apache.pekko.stream.{javadsl => js}
 
-import akka.NotUsed
-import akka.http.impl.util.JavaMapping
-import akka.http.javadsl.{model => jm}
-import akka.http.scaladsl.Http.HostConnectionPool
-import akka.http.scaladsl.HttpsConnectionContext
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.http.scaladsl.settings.ConnectionPoolSettings
-import akka.http.{javadsl => jd}
-import akka.japi.Pair
-import akka.stream.scaladsl.{BidiFlow, Flow}
-import akka.stream.{javadsl => js}
-
+import scala.jdk.OptionConverters.RichOptional
 import scala.util.Try
 
 /**
-  * The JavaConverters are under Akka HTTP package to get access to the non-exposed converters there.
+  * The JavaConverters are under Pekko HTTP package to get access to the non-exposed converters there.
   */
 object JavaConverters {
   def fromJava(connectionContext: Optional[jd.HttpsConnectionContext],
                                  settings: Optional[jd.settings.ConnectionPoolSettings]):
   (Option[HttpsConnectionContext], Option[ConnectionPoolSettings]) = {
-    import scala.compat.java8.OptionConverters._
     val cCtx = connectionContext.asScala.asInstanceOf[Option[HttpsConnectionContext]]
     val sSettings = settings.asScala.asInstanceOf[Option[ConnectionPoolSettings]]
     (cCtx, sSettings)
@@ -74,5 +73,6 @@ object JavaConverters {
     adaptTupleFlow[T](flow)
   }
 
-  def toScala(uri: akka.http.javadsl.model.Uri) = JavaMapping.toScala(uri)
+  def toScala(uri: org.apache.pekko.http.javadsl.model.Uri) = JavaMapping.toScala(uri)
+
 }

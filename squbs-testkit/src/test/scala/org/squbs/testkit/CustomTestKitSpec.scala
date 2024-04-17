@@ -16,9 +16,9 @@
 
 package org.squbs.testkit
 
-import akka.actor.{Actor, Props}
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives
+import org.apache.pekko.actor.{Actor, Props}
+import org.apache.pekko.http.scaladsl.model.StatusCodes
+import org.apache.pekko.http.scaladsl.server.Directives
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers

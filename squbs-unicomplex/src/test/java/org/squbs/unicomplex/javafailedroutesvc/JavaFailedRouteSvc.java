@@ -16,7 +16,7 @@
 package org.squbs.unicomplex.javafailedroutesvc;
 
 
-import akka.http.javadsl.server.Route;
+import org.apache.pekko.http.javadsl.server.Route;
 import org.squbs.unicomplex.AbstractRouteDefinition;
 
 public class JavaFailedRouteSvc extends AbstractRouteDefinition {

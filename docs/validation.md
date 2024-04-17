@@ -1,6 +1,6 @@
 # Validation
 
-squbs Validation provides a [Akka HTTP](http://doc.akka.io/) directive for data validation by using [Accord Validation Library](http://wix.github.io/accord/). Currently this is Scala only feature, Java version will be added in future versions of squbs.
+squbs Validation provides a [pekko HTTP](http://doc.pekko.io/) directive for data validation by using [Accord Validation Library](http://wix.github.io/accord/). Currently this is Scala only feature, Java version will be added in future versions of squbs.
   
 ## Dependencies
 
@@ -13,7 +13,7 @@ Add the following dependencies to your build.sbt or scala build file:
   
 ## Usage
   
-Given that an implicit `Person` validator is in the scope, `validate` directive can be used as other [Akka HTTP Directives](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/directives/index.html):
+Given that an implicit `Person` validator is in the scope, `validate` directive can be used as other [pekko HTTP Directives](http://doc.pekko.io/docs/pekko-http/current/scala/http/routing-dsl/directives/index.html):
 
   
 ```scala

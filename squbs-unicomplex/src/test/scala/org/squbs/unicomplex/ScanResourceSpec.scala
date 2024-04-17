@@ -16,9 +16,9 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
-import akka.testkit.{ImplicitSender, TestKit}
-import akka.util.Timeout
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.util.Timeout
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.Waiters
 import org.scalatest.matchers.should.Matchers
@@ -44,9 +44,9 @@ object ScanResourceSpec {
        |default-listener.bind-port = 0
     """.stripMargin)
 
-  implicit val akkaTimeout: Timeout =
+  implicit val pekkoTimeout: Timeout =
     Try(System.getProperty("test.timeout").toLong) map { millis =>
-      akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
+      org.apache.pekko.util.Timeout(millis, TimeUnit.MILLISECONDS)
     } getOrElse Timeouts.askTimeout
 
   val boot = UnicomplexBoot(config)
@@ -83,8 +83,8 @@ class ScanResourceSpec extends TestKit(ScanResourceSpec.boot.actorSystem) with I
       get(cubesName, "CubeState") should be ("Active")
       val wellKnownActors = get(cubesName, "WellKnownActors").asInstanceOf[String]
       println(wellKnownActors)
-      wellKnownActors should include ("Actor[akka://scanResourceSpec/user/ScanResourceCube/Prepender#")
-      wellKnownActors should include ("Actor[akka://scanResourceSpec/user/ScanResourceCube/Appender#")
+      wellKnownActors should include ("Actor[pekko://scanResourceSpec/user/ScanResourceCube/Prepender#")
+      wellKnownActors should include ("Actor[pekko://scanResourceSpec/user/ScanResourceCube/Appender#")
     }
   }
 

@@ -17,19 +17,20 @@ package org.squbs.marshallers
 
 import java.util.concurrent.CompletionStage
 
-import akka.http.javadsl.marshalling.Marshaller
-import akka.http.javadsl.unmarshalling.Unmarshaller
-import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.Materializer
+import org.apache.pekko.http.javadsl.marshalling.Marshaller
+import org.apache.pekko.http.javadsl.unmarshalling.Unmarshaller
+import org.apache.pekko.http.scaladsl.marshalling.Marshal
+import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
+import org.apache.pekko.http.scaladsl.settings
+import org.apache.pekko.stream.Materializer
 
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.ExecutionContext
 
 /**
   * Java API for manual marshalling and unmarshalling.
-  * This API is provided due to the lack of such API in Akka HTTP.
-  * If and when Akka HTTP provides a Java manual marshalling and
+  * This API is provided due to the lack of such API in Pekko HTTP.
+  * If and when Pekko HTTP provides a Java manual marshalling and
   * unmarshalling API, this class may become deprecated.
   *
   * @param ec An execution context

@@ -16,11 +16,11 @@
 
 package org.squbs.httpclient
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model._
-import akka.stream.scaladsl.{Sink, Source}
-import akka.util.ByteString
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.stream.scaladsl.{Sink, Source}
+import org.apache.pekko.util.ByteString
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -41,7 +41,7 @@ object ClientFlowSpec {
     case _ => None
   }}
 
-  import akka.http.scaladsl.server.Directives._
+  import org.apache.pekko.http.scaladsl.server.Directives._
 
   val route =
     path("hello") {
@@ -90,7 +90,7 @@ class ClientFlowSpec  extends AsyncFlatSpec with Matchers with BeforeAndAfterAll
 
   it should "register the default http endpoint resolver for each actor system" in {
     implicit val system = ActorSystem("ClientFlowSecondSpec")
-    ClientFlow[Int]("https://akka.io")
+    ClientFlow[Int]("https://pekko.io")
     Future { ClientFlow.defaultResolverRegistrationRecord.size should be >= 2 }
   }
 

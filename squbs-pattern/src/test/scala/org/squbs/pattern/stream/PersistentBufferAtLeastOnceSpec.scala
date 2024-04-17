@@ -15,11 +15,11 @@
  */
 package org.squbs.pattern.stream
 
-import akka.Done
-import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
-import akka.stream.{AbruptTerminationException, ClosedShape, Materializer}
-import akka.util.ByteString
+import org.apache.pekko.Done
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
+import org.apache.pekko.stream.{AbruptTerminationException, ClosedShape, Materializer}
+import org.apache.pekko.util.ByteString
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatest.flatspec.AnyFlatSpec

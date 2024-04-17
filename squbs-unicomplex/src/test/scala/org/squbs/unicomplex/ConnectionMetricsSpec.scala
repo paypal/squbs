@@ -15,15 +15,15 @@
  */
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model.headers.Connection
-import akka.http.scaladsl.model.ws.PeerClosedConnectionException
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes, Uri}
-import akka.pattern._
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.Uri.Path
+import org.apache.pekko.http.scaladsl.model.headers.Connection
+import org.apache.pekko.http.scaladsl.model.ws.PeerClosedConnectionException
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes, Uri}
+import org.apache.pekko.pattern._
+import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
+import org.apache.pekko.testkit.TestKit
 import com.typesafe.config.ConfigFactory
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AsyncFlatSpecLike
@@ -78,7 +78,7 @@ object ConnectionMetricsSpec {
        |  pre-flow =  preFlow
        |}
        |
-       |akka.http {
+       |pekko.http {
        |  server {
        |    max-connections = 512
        |  }

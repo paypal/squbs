@@ -14,9 +14,9 @@ jobs:
       SCALA_VERSION: ${{ matrix.scala-version }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Setup JDK
-      uses: olafurpg/setup-scala@v10
+      uses: olafurpg/setup-scala@v11
       with:
         java-version: adopt@1.8.0
     - run: sbt ++$SCALA_VERSION clean coverage test

@@ -15,20 +15,20 @@
  */
 package org.squbs.httpclient;
 
-import akka.actor.ActorSystem;
-import akka.http.javadsl.ConnectionContext;
-import akka.http.javadsl.HostConnectionPool;
-import akka.http.javadsl.Http;
-import akka.http.javadsl.ServerBinding;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.HttpResponse;
-import akka.http.javadsl.model.StatusCodes;
-import akka.http.javadsl.server.Route;
-import akka.japi.Pair;
-import akka.stream.Materializer;
-import akka.stream.javadsl.Flow;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.http.javadsl.ConnectionContext;
+import org.apache.pekko.http.javadsl.HostConnectionPool;
+import org.apache.pekko.http.javadsl.Http;
+import org.apache.pekko.http.javadsl.ServerBinding;
+import org.apache.pekko.http.javadsl.model.HttpRequest;
+import org.apache.pekko.http.javadsl.model.HttpResponse;
+import org.apache.pekko.http.javadsl.model.StatusCodes;
+import org.apache.pekko.http.javadsl.server.Route;
+import org.apache.pekko.japi.Pair;
+import org.apache.pekko.stream.Materializer;
+import org.apache.pekko.stream.javadsl.Flow;
+import org.apache.pekko.stream.javadsl.Sink;
+import org.apache.pekko.stream.javadsl.Source;
 import com.typesafe.config.ConfigFactory;
 import org.junit.AfterClass;
 import org.junit.Test;
@@ -55,7 +55,7 @@ public class ClientFlowHttpsEndpointTest {
     private static final String cfg =
             "helloHttps {\n" +
             "  type = squbs.httpclient\n" +
-            "  akka.ssl-config.loose.disableHostnameVerification = true\n" +
+            "  pekko.ssl-config.loose.disableHostnameVerification = true\n" +
             "}\n";
 
     private static final ActorSystem system = ActorSystem.create("ClientFlowHttpsEndpointTest",

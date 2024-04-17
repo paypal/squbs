@@ -2,18 +2,18 @@
 
 ### Overview
 
-Marshalling and unmarshalling is used both on the client and server side. On the server side it is used to map an incoming request to a Scala or Java object and to map a Scala or Java object to an outgoing response. Similarly, on the client side, it is used to marshal an object to an outgoing HTTP request and unmarshal it from an incoming response. There could be a multitude of content formats for marshalling/unmarshalling, common ones are JSON and XML. Please see the following pages for quick examples of JSON marshalling and unmarshalling in Akka HTTP:
+Marshalling and unmarshalling is used both on the client and server side. On the server side it is used to map an incoming request to a Scala or Java object and to map a Scala or Java object to an outgoing response. Similarly, on the client side, it is used to marshal an object to an outgoing HTTP request and unmarshal it from an incoming response. There could be a multitude of content formats for marshalling/unmarshalling, common ones are JSON and XML. Please see the following pages for quick examples of JSON marshalling and unmarshalling in pekko HTTP:
 
-* Scala - [spray-json Support](http://doc.akka.io/docs/akka-http/current/scala/http/common/json-support.html#spray-json-support)
-* Java - [Jackson Support](http://doc.akka.io/docs/akka-http/current/java/http/common/json-support.html#json-support-via-jackson).
+* Scala - [spray-json Support](http://doc.pekko.io/docs/pekko-http/current/scala/http/common/json-support.html#spray-json-support)
+* Java - [Jackson Support](http://doc.pekko.io/docs/pekko-http/current/java/http/common/json-support.html#json-support-via-jackson).
 
-Akka HTTP provides marshalling/unmarshalling facilities explained in [Scala marshalling](http://doc.akka.io/docs/akka-http/current/scala/http/common/marshalling.html)/[unmarshalling](http://doc.akka.io/docs/akka-http/current/scala/http/common/unmarshalling.html) and [Java marshalling](http://doc.akka.io/docs/akka-http/current/java/http/common/marshalling.html)/[unmarshalling](http://doc.akka.io/docs/akka-http/current/java/http/common/unmarshalling.html). Also, there are other open source marshallers and unmarshallers for Akka HTTP available for different formats and using different object marshalling/unmarshalling implementations.
+pekko HTTP provides marshalling/unmarshalling facilities explained in [Scala marshalling](http://doc.pekko.io/docs/pekko-http/current/scala/http/common/marshalling.html)/[unmarshalling](http://doc.pekko.io/docs/pekko-http/current/scala/http/common/unmarshalling.html) and [Java marshalling](http://doc.pekko.io/docs/pekko-http/current/java/http/common/marshalling.html)/[unmarshalling](http://doc.pekko.io/docs/pekko-http/current/java/http/common/unmarshalling.html). Also, there are other open source marshallers and unmarshallers for pekko HTTP available for different formats and using different object marshalling/unmarshalling implementations.
 
 squbs provides marshallers for cross-language environments. For instance, when working with a mixed object hierarchy having both Scala case classes as well as Java beans. For simple, single-language environments, please use the provided marshallers or other open source marshallers directly.
 
 In addition, squbs also adds a Java API for manual marshalling/marshalling. Manual access to marshallers and unmarshallers is useful for stream-based applications where some work may need to be done in a stream stage. It is also useful for testing marshaller configurations to ensure the right format is achieved.
 
-This document discusses the marshallers and unmarshallers provided by squbs, and the facilities you can use to invoke these marshallers and unmarshallers manually. This document **does not** address the use of marshallers and unmarshallers as part of the Akka HTTP Routing DSL. Please see the Akka HTTP Routing DSL [Scala](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/directives/marshalling-directives/index.html#marshallingdirectives) and [Java](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/directives/marshalling-directives/index.html#marshallingdirectives-java) marshalling directives for using marshallers, including ones provided in this document, in the Routing DSL.
+This document discusses the marshallers and unmarshallers provided by squbs, and the facilities you can use to invoke these marshallers and unmarshallers manually. This document **does not** address the use of marshallers and unmarshallers as part of the pekko HTTP Routing DSL. Please see the pekko HTTP Routing DSL [Scala](http://doc.pekko.io/docs/pekko-http/current/scala/http/routing-dsl/directives/marshalling-directives/index.html#marshallingdirectives) and [Java](http://doc.pekko.io/docs/pekko-http/current/java/http/routing-dsl/directives/marshalling-directives/index.html#marshallingdirectives-java) marshalling directives for using marshallers, including ones provided in this document, in the Routing DSL.
 
 ### Dependency
 
@@ -21,8 +21,8 @@ Add the following dependencies to your `build.sbt` or scala build file:
 
 ```scala
 "org.squbs" %% "squbs-ext" % squbsVersion,
-"de.heikoseeberger" %% "akka-http-json4s" % heikoseebergerAkkaHttpJsonVersion,
-"de.heikoseeberger" %% "akka-http-jackson" % heikoseebergerAkkaHttpJsonVersion,
+"de.heikoseeberger" %% "pekko-http-json4s" % pjfanningpekkoHttpJsonV,
+"de.heikoseeberger" %% "pekko-http-jackson" % pjfanningpekkoHttpJsonV,
 "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
 "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
 ```
@@ -87,10 +87,10 @@ JacksonMapperSupport.register[MyScalaClass](
 The marshallers and unmarshallers can be obtained from the `marshaller` and `unmarshaller` methods in `JacksonMapperSupport`, passing the class instance of the type to marshal/unmarshal as follows:
 
 ```java
-import akka.http.javadsl.marshalling.Marshaller;
-import akka.http.javadsl.model.HttpEntity;
-import akka.http.javadsl.model.RequestEntity;
-import akka.http.javadsl.unmarshalling.Unmarshaller;
+import org.apache.pekko.http.javadsl.marshalling.Marshaller;
+import org.apache.pekko.http.javadsl.model.HttpEntity;
+import org.apache.pekko.http.javadsl.model.RequestEntity;
+import org.apache.pekko.http.javadsl.unmarshalling.Unmarshaller;
 
 import static org.squbs.marshallers.json.JacksonMapperSupport.*;
 
@@ -101,7 +101,7 @@ Unmarshaller<HttpEntity, MyClass> myUnmarshaller =
     unmarshaller(MyClass.class);
 ```
 
-These marshallers and unmarshallers can be used as part of the [Akka HTTP Routing DSL](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/overview.html) or as part of [invoking marshalling/unmarshalling](#invoking-marshallingunmarshalling) discussed in this document, below.
+These marshallers and unmarshallers can be used as part of the [pekko HTTP Routing DSL](http://doc.pekko.io/docs/pekko-http/current/java/http/routing-dsl/overview.html) or as part of [invoking marshalling/unmarshalling](#invoking-marshallingunmarshalling) discussed in this document, below.
 
 The following examples configure the `DefaultScalaModule` with the `ObjectMapper`:
 
@@ -194,10 +194,10 @@ XLangJsonSupport.register[MyOtherClass](DefaultFormats + MySerializer)
 The marshallers and unmarshallers can be obtained from the `marshaller` and `unmarshaller` methods in `XLangJsonSupport`, passing the class instance of the type to marshal/unmarshal as follows:
 
 ```java
-import akka.http.javadsl.marshalling.Marshaller;
-import akka.http.javadsl.model.HttpEntity;
-import akka.http.javadsl.model.RequestEntity;
-import akka.http.javadsl.unmarshalling.Unmarshaller;
+import org.apache.pekko.http.javadsl.marshalling.Marshaller;
+import org.apache.pekko.http.javadsl.model.HttpEntity;
+import org.apache.pekko.http.javadsl.model.RequestEntity;
+import org.apache.pekko.http.javadsl.unmarshalling.Unmarshaller;
 
 import static org.squbs.marshallers.json.XLangJsonSupport.*;
 
@@ -208,7 +208,7 @@ Unmarshaller<HttpEntity, MyClass> myUnmarshaller =
     unmarshaller(MyClass.class);
 ```
 
-These marshallers and unmarshallers can be used as part of the [Akka HTTP Routing DSL](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/overview.html) or as part of [invoking marshalling/unmarshalling](#invoking-marshallingunmarshalling) discussed in this document, below.
+These marshallers and unmarshallers can be used as part of the [pekko HTTP Routing DSL](http://doc.pekko.io/docs/pekko-http/current/java/http/routing-dsl/overview.html) or as part of [invoking marshalling/unmarshalling](#invoking-marshallingunmarshalling) discussed in this document, below.
 
 The following provide samples of configuring XLangJsonSupport:
 
@@ -247,17 +247,17 @@ XLangJsonSupport.addSerializers(MyOtherClass.class, new MySerializer(), new MyOt
 
 #### Invoking Marshalling/Unmarshalling
 
-Besides using marshallers and marshallers as part of Akka HTTP Routing DSL, manual invocation of marshalling and unmarshalling is often required for use in both server-side and client-side `Flow`s as well as for testing.
+Besides using marshallers and marshallers as part of pekko HTTP Routing DSL, manual invocation of marshalling and unmarshalling is often required for use in both server-side and client-side `Flow`s as well as for testing.
 
 ##### Scala
 
-Akka provides a great [Scala DSL for marshalling and unmarshalling](http://doc.akka.io/docs/akka-http/current/scala/http/common/marshalling.html#using-marshallers). Its use can be seen in the example below:
+pekko provides a great [Scala DSL for marshalling and unmarshalling](http://doc.pekko.io/docs/pekko-http/current/scala/http/common/marshalling.html#using-marshallers). Its use can be seen in the example below:
 
 ```scala
-import akka.actor.ActorSystem
-import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.model.MessageEntity
-import akka.http.scaladsl.unmarshalling.Unmarshal
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.marshalling.Marshal
+import org.apache.pekko.http.scaladsl.model.MessageEntity
+import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
 
 // We need the ActorSystem and Materializer to marshal/unmarshal
 implicit val system = ActorSystem()
@@ -271,12 +271,12 @@ Unmarshal(entity).to[MyType]
 ```
 
 ##### Java
-The `MarshalUnmarshal` utility class is used for manually marshalling and unmarshalling objects using any `Marshaller` and `Unmarshaller` defined in Akka HTTP's JavaDSL. It's use can be seen in the example below:
+The `MarshalUnmarshal` utility class is used for manually marshalling and unmarshalling objects using any `Marshaller` and `Unmarshaller` defined in pekko HTTP's JavaDSL. It's use can be seen in the example below:
 
 ```java
-import akka.actor.ActorSystem;
-import akka.http.javadsl.model.RequestEntity;
-import akka.stream.Materializer;
+import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.http.javadsl.model.RequestEntity;
+import org.apache.pekko.stream.Materializer;
 
 import org.squbs.marshallers.MarshalUnmarshal;
 

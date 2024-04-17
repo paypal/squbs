@@ -16,9 +16,9 @@
 
 package org.squbs.unicomplex.dummysvc
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import akka.http.scaladsl.server.Route
-import akka.pattern.ask
+import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, Props}
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.pattern.ask
 import org.squbs.unicomplex.Timeouts._
 import org.squbs.unicomplex._
 

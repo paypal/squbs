@@ -14,7 +14,7 @@ pages:
     - 'Unicomplex Actor Hierarchy': 'actor-hierarchy.md'
     - 'Runtime Lifecycle & API': 'lifecycle.md'
     - 'Implementing HTTP(S) Services': 'http-services.md'
-    - 'Akka HTTP Client on Steroids': 'httpclient.md'
+    - 'Pekko HTTP Client on Steroids': 'httpclient.md'
     - 'Request/Response Pipeline': 'pipeline.md'
     - 'Marshalling and Unmarshalling': 'marshalling.md'
     - 'Configuration': 'configuration.md'
@@ -30,7 +30,7 @@ pages:
     - 'Resource Resolution': 'resolver.md'
     - 'Perpetual Stream': 'perpetualstream.md'
     - 'Customizing Stream Control': 'customizing-stream-control.md'
-    - 'Akka Streams GraphStages':
+    - 'Pekko Streams GraphStages':
         - 'Persistent Buffer': 'persistent-buffer.md'
         - 'Circuit Breaker': 'circuitbreaker.md'
         - 'Timeout': 'flow-timeout.md'

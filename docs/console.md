@@ -60,7 +60,7 @@ JSON plugins for your browser would detect and allow easy clicking on the links.
     {
       "fullName" : "org.squbs.admin",
       "name" : "admin",
-      "supervisor" : "Actor[akka://squbs/user/admin#104594558]",
+      "supervisor" : "Actor[pekko://squbs/user/admin#104594558]",
       "version" : "0.7.1"
     }
   ]

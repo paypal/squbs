@@ -1,12 +1,12 @@
-# Akka HTTP Client on Steroids
+# pekko HTTP Client on Steroids
 
 ### Overview
 
-`squbs-httpclient` project adds operationalization aspects to [Akka HTTP Host-Level Client-Side API](http://doc.akka.io/docs/akka-http/current/scala/http/client-side/host-level.html) while keeping the Akka HTTP API.  Here is the list of features it adds:
+`squbs-httpclient` project adds operationalization aspects to [pekko HTTP Host-Level Client-Side API](http://doc.pekko.io/docs/pekko-http/current/scala/http/client-side/host-level.html) while keeping the pekko HTTP API.  Here is the list of features it adds:
 
 * [Service Discovery](#service-discovery-chain): Lets any service discovery mechanism to be plugged in and allows resolving HTTP endpoints by string identifiers, e.g., `paymentserv`.
 * [Per Client configuration](#per-client-configuration): Let's each client to individually override defaults in `application.conf`.
-* [Pipeline](#pipeline): Allows a `Bidi`Akka Streams flow to be registered globally or individually for clients.
+* [Pipeline](#pipeline): Allows a `Bidi`pekko Streams flow to be registered globally or individually for clients.
 * [Metrics](#metrics): Provides [Codahale Metrics](http://metrics.dropwizard.io/3.1.0/getting-started/) out-of-the-box for each client **without** AspectJ.
 * [JMX Beans](#jmx-beans): Exposes the configuration of each client as JMX beans.
 * [Circuit Breaker](#circuit-breaker): Provides resiliency with a stream based circuit breaker.
@@ -21,11 +21,11 @@ Add the following dependency to your `build.sbt` or scala build file:
 
 ### Usage
 
-`squbs-httpclient` project sticks to the Akka HTTP API.  The only exception is during the creation of host connection pool.  Instead of `Http().cachedHostConnectionPool`, it defines `ClientFlow` with the same set of parameters (and few extra optional parameters).
+`squbs-httpclient` project sticks to the pekko HTTP API.  The only exception is during the creation of host connection pool.  Instead of `Http().cachedHostConnectionPool`, it defines `ClientFlow` with the same set of parameters (and few extra optional parameters).
 
 ##### Scala
 
-Similar to the example at [Akka HTTP Host-Level Client-Side API](http://doc.akka.io/docs/akka-http/current/scala/http/client-side/host-level.html#example), the Scala use of `ClientFlow` is as follows:      
+Similar to the example at [pekko HTTP Host-Level Client-Side API](http://doc.pekko.io/docs/pekko-http/current/scala/http/client-side/host-level.html#example), the Scala use of `ClientFlow` is as follows:      
   
 
 ```scala
@@ -46,7 +46,7 @@ val clientFlow = ClientFlow("sample", Some(connectionContext), Some(connectionPo
 
 ##### Java
 
-Also, similar to the example at [Akka HTTP Host-Level Client-Side API](http://doc.akka.io/docs/akka-http/current/java/http/client-side/host-level.html#example), the Java use of `ClientFlow` is as follows:
+Also, similar to the example at [pekko HTTP Host-Level Client-Side API](http://doc.pekko.io/docs/pekko-http/current/java/http/client-side/host-level.html#example), the Java use of `ClientFlow` is as follows:
 
 ```java
 final ActorSystem system = ActorSystem.create();
@@ -75,7 +75,7 @@ final Flow<Pair<HttpRequest, Integer>, Pair<Try<HttpResponse>, Integer>, HostCon
 
 ##### Scala
 
-Below is an `HttpRequest` creation example in Scala.  Please see [HTTP Model Scala documentation](http://doc.akka.io/docs/akka-http/current/scala/http/common/http-model.html) for more details:
+Below is an `HttpRequest` creation example in Scala.  Please see [HTTP Model Scala documentation](http://doc.pekko.io/docs/pekko-http/current/scala/http/common/http-model.html) for more details:
 
 ```scala
 import HttpProtocols._
@@ -94,7 +94,7 @@ HttpRequest(
 ```
 ##### Java
 
-Below is an `HttpRequest` creation example in Java.  Please see [Http Model Java documentation](http://doc.akka.io/docs/akka-http/current/java/http/http-model.html) for more details:
+Below is an `HttpRequest` creation example in Java.  Please see [Http Model Java documentation](http://doc.pekko.io/docs/pekko-http/current/java/http/http-model.html) for more details:
 
 ```java
 import HttpProtocols.*;
@@ -110,12 +110,12 @@ HttpRequest complexRequest =
 
 ### Service Discovery Chain
 
-`squbs-httpclient` does not require a hostname/port combination to be provided during client pool creation.  Instead it allows a service discovery chain to be registered which allows resolving `HttpEndpoint`s by a string identifier by running through the registered service discovery mechanisms.  For instance, in the above example, `"sample"` is the logical name of the service that client wants to connect, the configured service discovery chain will resolve it to an `HttpEndpoint` which includes host and port, e.g., `http://akka.io:80`.
+`squbs-httpclient` does not require a hostname/port combination to be provided during client pool creation.  Instead it allows a service discovery chain to be registered which allows resolving `HttpEndpoint`s by a string identifier by running through the registered service discovery mechanisms.  For instance, in the above example, `"sample"` is the logical name of the service that client wants to connect, the configured service discovery chain will resolve it to an `HttpEndpoint` which includes host and port, e.g., `http://pekko.io:80`.
 
 Please note, you can still pass a valid http URI as a string to `ClientFlow` as a default resolver to resolve valid http URIs is pre-registered in the service discovery chain by default:
 
-   * `ClientFlow[Int]("http://akka.io")` in Scala
-   * `ClientFlow.create("http://akka.io", system, mat)` in Java
+   * `ClientFlow[Int]("http://pekko.io")` in Scala
+   * `ClientFlow.create("http://pekko.io", system, mat)` in Java
 
 There are two variations of registering resolvers as shown below. The closure style allows more compact and readable code. However, the subclass has the power to keep state and make resolution decisions based on such state:
 
@@ -126,7 +126,7 @@ Register function type `(String, Env) => Option[HttpEndpoint]`:
 ```scala
 ResolverRegistry(system).register[HttpEndpoint]("SampleEndpointResolver") { (svcName, env) =>
   svcName match {
-    case "sample" => Some(HttpEndpoint("http://akka.io:80"))
+    case "sample" => Some(HttpEndpoint("http://pekko.io:80"))
     case "google" => Some(HttpEndpoint("http://www.google.com:80"))
     case _ => None
   }
@@ -141,7 +141,7 @@ class SampleEndpointResolver extends Resolver[HttpEndpoint] {
 
   override def resolve(svcName: String, env: Environment): Option[HttpEndpoint] =
     svcName match {
-      case "sample" => Some(Endpoint("http://akka.io:80"))
+      case "sample" => Some(Endpoint("http://pekko.io:80"))
       case "google" => Some(Endpoint("http://www.google.com:80"))
       case _ => None
     }
@@ -158,7 +158,7 @@ Register `BiFunction<String, Environment, Optional<HttpEndpoint>>`:
 ```java
 ResolverRegistry.get(system).register(HttpEndpoint.class, "SampleEndpointResolver", (svcName, env) -> {
     if ("sample".equals(svcName)) {
-        return Optional.of(HttpEndpoint.create("http://akka.io:80"));
+        return Optional.of(HttpEndpoint.create("http://pekko.io:80"));
     } else if ("google".equals(svcName))
         return Optional.of(HttpEndpoint.create("http://www.google.com:80"));
     } else {
@@ -178,7 +178,7 @@ class SampleEndpointResolver extends AbstractResolver<HttpEndpoint> {
 
     Optional<HttpEndpoint> resolve(svcName: String, env: Environment) { 
         if ("sample".equals(svcName)) {
-            return Optional.of(Endpoint.create("http://akka.io:80"));
+            return Optional.of(Endpoint.create("http://pekko.io:80"));
         } else if ("google".equals(svcName))
             return Optional.of(Endpoint.create("http://www.google.com:80"));
         } else {
@@ -201,7 +201,7 @@ Please see [Resource Resolution](resolver.md) for details on resolution in gener
 
 ### Per Client Configuration
 
-[Akka HTTP Configuration](http://doc.akka.io/docs/akka-http/current/scala/http/configuration.html) defines the default values for configuration.  You can override these defaults in `application.conf`; however, that would affect all the clients.  To do a client specific override, Akka HTTP allows passing a `ConnectionPoolSettings` during `HostConnectionPool` flow creation. This is supported by squbs as well.
+[pekko HTTP Configuration](http://doc.pekko.io/docs/pekko-http/current/scala/http/configuration.html) defines the default values for configuration.  You can override these defaults in `application.conf`; however, that would affect all the clients.  To do a client specific override, pekko HTTP allows passing a `ConnectionPoolSettings` during `HostConnectionPool` flow creation. This is supported by squbs as well.
 
 In addition to the above, squbs allows a client specific override in `application.conf`.  You just need to specify a configuration section with the client's name that has `type = squbs.httpclient`.  Then, you can specify any client configuration inside the section.  For instance, if we would like to override the `max-connections` setting only for the above `"sample"` client, but no other client, we can do it as follows: 
 
@@ -209,7 +209,7 @@ In addition to the above, squbs allows a client specific override in `applicatio
 sample {
   type = squbs.httpclient
   
-  akka.http.host-connection-pool {
+  pekko.http.host-connection-pool {
     max-connections = 10
   }
 }
@@ -219,7 +219,7 @@ sample {
 
 We often need to have common infrastructure functionality or organizational standards across different clients.  Such infrastructure includes, but is not limited to, logging, metrics collection, request tracing, authentication/authorization, tracking, cookie management, A/B testing, etc.  As squbs promotes separation of concerns, such logic would belong to infrastructure and not client implementation. The [squbs pipeline](pipeline.md) allows infrastructure to provide components installed into a client without the client owner having to worry about such aspects.  Please see [squbs pipeline](pipeline.md) for more details.
 
-Generally speaking, a pipeline is a Bidi Flow acting as a bridge in between squbs client and the Akka HTTP layer.  `squbs-httpclient` allows registering a Bidi Akka Streams flow globally for all clients (default pipeline) or for individual clients.  To register a client specific pipeline, set the `pipeline` configuration.  You can turn on/off the default pipeline via `defaultPipeline` setting (it is set to `on`, if not specified):   
+Generally speaking, a pipeline is a Bidi Flow acting as a bridge in between squbs client and the pekko HTTP layer.  `squbs-httpclient` allows registering a Bidi pekko Streams flow globally for all clients (default pipeline) or for individual clients.  To register a client specific pipeline, set the `pipeline` configuration.  You can turn on/off the default pipeline via `defaultPipeline` setting (it is set to `on`, if not specified):   
 
 ```
 sample {
@@ -250,7 +250,7 @@ Visibility of the system configuration has utmost importance while trouble shoot
 
 ### Circuit Breaker
 
-squbs provides `CircuitBreakerBidi` Akka Streams `GraphStage` to provide circuit breaker functionality for streams.  It is a generic circuit breaker implementation for streams.  Please see [Circuit Breaker](circuitbreaker.md) documentation for details.
+squbs provides `CircuitBreakerBidi` pekko Streams `GraphStage` to provide circuit breaker functionality for streams.  It is a generic circuit breaker implementation for streams.  Please see [Circuit Breaker](circuitbreaker.md) documentation for details.
 
 Circuit Breaker might potentially change the order of messages, so it requires a `Context` to be carried around, like `ClientFlow`.  But, in addition to that, it needs to be able to uniquely identify each element for its internal mechanics.  Accordingly, the `Context` passed to `ClientFlow` or a mapping from `Context` should be able to uniquely identify each element.  If circuit breaker is enabled, and the `Context` passed to `ClientFlow` does not uniquely identify each element, then you will experience unexpected behavior.  Please see [Context to Unique Id Mapping](circuitbreaker.md#context-to-unique-id-mapping) section of Circuit Breaker documentation for details on providing a unique id.
 

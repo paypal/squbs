@@ -16,10 +16,10 @@
 
 package org.squbs.streams
 
-import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.stream.testkit.scaladsl.TestSink
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
+import org.apache.pekko.stream.testkit.scaladsl.TestSink
+import org.apache.pekko.testkit.TestKit
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers

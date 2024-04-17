@@ -16,9 +16,9 @@
 
 package org.squbs.unicomplex
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.StatusCodes
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.StatusCodes
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Waiters
@@ -46,7 +46,7 @@ object UnicomplexTimeoutSpec {
        |default-listener {
        |  bind-port = 0
        |}
-       |akka.http.server {
+       |pekko.http.server {
        |  request-timeout = 3s
        |}
      """.stripMargin)
@@ -61,7 +61,7 @@ object UnicomplexTimeoutSpec {
 class UnicomplexTimeoutSpec extends TestKit(UnicomplexTimeoutSpec.boot.actorSystem) with ImplicitSender
     with AnyWordSpecLike with Matchers with BeforeAndAfterAll with Waiters {
 
-  import akka.pattern.ask
+  import org.apache.pekko.pattern.ask
   val port = Await.result((Unicomplex(system).uniActor ? PortBindings).mapTo[Map[String, Int]], awaitMax)("default-listener")
 
   override def afterAll(): Unit = {
@@ -71,7 +71,7 @@ class UnicomplexTimeoutSpec extends TestKit(UnicomplexTimeoutSpec.boot.actorSyst
   "Unicomplex" must {
 
     "Cause a timeout event" in {
-      system.settings.config getString "akka.http.server.request-timeout" should be ("3s")
+      system.settings.config getString "pekko.http.server.request-timeout" should be ("3s")
       val response = Await.result(get(s"http://127.0.0.1:$port/dummysvcactor/timeout"), awaitMax)
       // TODO This test is useless to me..  Need to explore how we can intervene with timeouts..  Do we need to ?
       // There may be scenarios, where we may want to do some work when a timeout happens..  So, having a hook

@@ -18,9 +18,9 @@ package org.squbs.actormonitor
 
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
-import akka.actor._
-import akka.pattern.ask
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor._
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.BeforeAndAfterAll
@@ -107,16 +107,16 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     "0.0) Register all necessary base actors and have an up-to-date count" in {
       awaitAssert({
         import ActorMonitorSpec.{getActorMonitorBean, getActorMonitorConfigBean}
-        getActorMonitorBean("system", "Actor") should be (Some("Actor[akka://ActorMonitorSpec/system]"))
-        getActorMonitorBean("user", "Actor") should be (Some("Actor[akka://ActorMonitorSpec/user]"))
+        getActorMonitorBean("system", "Actor") should be (Some("Actor[pekko://ActorMonitorSpec/system]"))
+        getActorMonitorBean("user", "Actor") should be (Some("Actor[pekko://ActorMonitorSpec/user]"))
         getActorMonitorBean("system/deadLetterListener", "Actor")
-          .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/system/deadLetterListener#")
+          .getOrElse("") should startWith ("Actor[pekko://ActorMonitorSpec/system/deadLetterListener#")
         getActorMonitorBean("user/unicomplex", "Actor")
-          .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/user/unicomplex#")
+          .getOrElse("") should startWith ("Actor[pekko://ActorMonitorSpec/user/unicomplex#")
         getActorMonitorBean("user/ActorMonitorCube", "Actor")
-          .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/user/ActorMonitorCube#")
+          .getOrElse("") should startWith ("Actor[pekko://ActorMonitorSpec/user/ActorMonitorCube#")
         getActorMonitorBean("user/squbs-actormonitor", "Actor")
-          .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/user/squbs-actormonitor#")
+          .getOrElse("") should startWith ("Actor[pekko://ActorMonitorSpec/user/squbs-actormonitor#")
         /*
         Note: The following actor beans are just checked in the other tests below, no need to repeat:
         1. user/TestCube
@@ -143,7 +143,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     "1.1) getActor of TestCube/TestActor" in {
       awaitAssert(
         ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Actor")
-          .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#"),
+          .getOrElse("") should startWith ("Actor[pekko://ActorMonitorSpec/user/TestCube/TestActor#"),
       max = awaitMax)
     }
 
@@ -159,7 +159,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     "2.3) getParent of TestCube/TestActor" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Parent")
       bean shouldBe defined
-      bean getOrElse "" should startWith ("Actor[akka://ActorMonitorSpec/user/TestCube#")
+      bean getOrElse "" should startWith ("Actor[pekko://ActorMonitorSpec/user/TestCube#")
     }
 
     "2.4) getChildren of TestCube/TestActor" in {
@@ -168,7 +168,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
     "2.5) getDispatcher of TestCube/TestActor" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Dispatcher")
-      bean should be (Some("akka.actor.default-dispatcher"))
+      bean should be (Some("pekko.actor.default-dispatcher"))
     }
 
     "2.6) getMailBoxSize of TestCube/TestActor" in {
@@ -178,7 +178,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     "3.0) getActor of TestCube" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Actor")
       bean shouldBe defined
-      bean getOrElse "" should startWith ("Actor[akka://ActorMonitorSpec/user/TestCube#")
+      bean getOrElse "" should startWith ("Actor[pekko://ActorMonitorSpec/user/TestCube#")
     }
 
     "3.1) check ActorBean ClassName of TestCube" in {
@@ -192,18 +192,18 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
     "3.3) getParent of TestCube" in {
       ActorMonitorSpec.
-        getActorMonitorBean("user/TestCube", "Parent") should be (Some("Actor[akka://ActorMonitorSpec/user]"))
+        getActorMonitorBean("user/TestCube", "Parent") should be (Some("Actor[pekko://ActorMonitorSpec/user]"))
     }
 
     "3.4) getChildren of TestCube" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube", "Children")
-      bean getOrElse "" should include ("Actor[akka://ActorMonitorSpec/user/TestCube/TestActor#")
-      bean getOrElse "" should include ("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#")
+      bean getOrElse "" should include ("Actor[pekko://ActorMonitorSpec/user/TestCube/TestActor#")
+      bean getOrElse "" should include ("Actor[pekko://ActorMonitorSpec/user/TestCube/TestActorWithRoute#")
     }
 
     "3.5) getDispatcher of TestCube" in {
       ActorMonitorSpec.
-        getActorMonitorBean("user/TestCube", "Dispatcher") should be (Some("akka.actor.default-dispatcher"))
+        getActorMonitorBean("user/TestCube", "Dispatcher") should be (Some("pekko.actor.default-dispatcher"))
     }
 
     "3.6) getMailBoxSize of TestCube" in {
@@ -213,34 +213,34 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     "4.0) getActor of TestCube/TestActorWithRoute" in {
       awaitAssert (
         ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Actor")
-          .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"),
+          .getOrElse("") should startWith ("Actor[pekko://ActorMonitorSpec/user/TestCube/TestActorWithRoute#"),
         max = awaitMax)
     }
 
     "4.1) getClassName of TestCube/TestActorWithRoute" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "ClassName")
-      bean should be (Some("akka.routing.RouterActor"))
+      bean should be (Some("org.apache.pekko.routing.RouterActor"))
     }
 
     "4.2) getRouteConfig of TestCube/TestActorWithRoute" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "RouteConfig")
       bean should be (Option("RoundRobinPool(1,Some(DefaultResizer(1,10,1,0.2,0.3,0.1,10))," +
-        "OneForOneStrategy(-1,Duration.Inf,true),akka.actor.default-dispatcher,false)"))
+        "OneForOneStrategy(-1,Duration.Inf,true),pekko.actor.default-dispatcher,false)"))
     }
 
     "4.3) getParent of TestCube/TestActorWithRoute" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Parent")
-      bean getOrElse "" should startWith ("Actor[akka://ActorMonitorSpec/user/TestCube#")
+      bean getOrElse "" should startWith ("Actor[pekko://ActorMonitorSpec/user/TestCube#")
     }
 
     "4.4) getChildren of TestCube/TestActorWithRoute" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute", "Children")
-      bean getOrElse "" should include ("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#")
+      bean getOrElse "" should include ("Actor[pekko://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#")
     }
 
     "4.5) getDispatcher of TestCube/TestActorWithRoute" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActor", "Dispatcher")
-      bean should be (Some("akka.actor.default-dispatcher"))
+      bean should be (Some("pekko.actor.default-dispatcher"))
     }
 
     "4.6) getMailBoxSize of TestCube/TestActorWithRoute" in {
@@ -250,7 +250,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
     "5.0) getActor of TestCube/TestActorWithRoute/$a" in {
       awaitAssert(
         ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Actor")
-          .getOrElse("") should startWith ("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#"),
+          .getOrElse("") should startWith ("Actor[pekko://ActorMonitorSpec/user/TestCube/TestActorWithRoute/$a#"),
         max = awaitMax)
     }
 
@@ -266,7 +266,7 @@ class ActorMonitorSpec extends TestKit(ActorMonitorSpec.boot.actorSystem) with I
 
     "5.3) getParent of TestCube/TestActorWithRoute/$a" in {
       val bean = ActorMonitorSpec.getActorMonitorBean("user/TestCube/TestActorWithRoute/$a", "Parent") getOrElse ""
-      bean should startWith ("Actor[akka://ActorMonitorSpec/user/TestCube/TestActorWithRoute#")
+      bean should startWith ("Actor[pekko://ActorMonitorSpec/user/TestCube/TestActorWithRoute#")
     }
 
     "5.4) getChildren of TestCube/TestActorWithRoute/$a" in {

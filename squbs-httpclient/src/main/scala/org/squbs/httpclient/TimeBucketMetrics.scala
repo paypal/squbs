@@ -15,7 +15,7 @@
  */
 package org.squbs.httpclient
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

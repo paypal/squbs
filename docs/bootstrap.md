@@ -96,15 +96,15 @@ Providing `application.conf` for a cube may cause issues when multiple cubes try
 
 ## Well Known Actors
 
-Well known actors are just [Akka actors](http://doc.akka.io/docs/akka/2.3.13/scala/actors.html) as defined by the
-[Akka documentation](http://doc.akka.io/docs/akka/2.3.13/scala.html). They are started by a supervisor actor that is created for each cube. The supervisor carries the name of the cube. Therefore any well known actor has a path of
+Well known actors are just [pekko actors](http://doc.pekko.io/docs/pekko/2.3.13/scala/actors.html) as defined by the
+[pekko documentation](http://doc.pekko.io/docs/pekko/2.3.13/scala.html). They are started by a supervisor actor that is created for each cube. The supervisor carries the name of the cube. Therefore any well known actor has a path of
 /&lt;CubeName&gt;/&lt;ActorName&gt; and can be looked up using the ActorSelection call under /user/&lt;CubeName&gt;/&lt;ActorName&gt;.
 
 A well known actor can be started as a singleton actor or with a router. To declare a well known actor as a router,
 add:
     with-router = true
 in the actor declaration. Router, dispatcher, and mailbox configuration for well known actors are done in
-reference.conf or application.conf following the Akka documentation.
+reference.conf or application.conf following the pekko documentation.
 
 Following is a sample cube declaration META-INF/squbs-meta.conf declaring a well known actor:
 
@@ -130,7 +130,7 @@ affect the routee, you need to create a separate configuration for the routees a
 configure the dispatcher in the routee section as the following example.
 
 ```
-akka.actor.deployment {
+pekko.actor.deployment {
 
   # Router configuration
   /bottlecube/lyrics {
@@ -149,7 +149,7 @@ akka.actor.deployment {
 ```
 
 Router concepts, examples, and configuration, are documented in the
-[Akka documentation](http://doc.akka.io/docs/akka/2.3.13/scala/routing.html).
+[pekko documentation](http://doc.pekko.io/docs/pekko/2.3.13/scala/routing.html).
 
 ## Services
 

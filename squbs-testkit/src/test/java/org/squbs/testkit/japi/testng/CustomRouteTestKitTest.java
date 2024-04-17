@@ -15,10 +15,10 @@
  */
 package org.squbs.testkit.japi.testng;
 
-import akka.http.javadsl.marshallers.jackson.Jackson;
-import akka.http.javadsl.model.ContentTypes;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.testkit.TestRoute;
+import org.apache.pekko.http.javadsl.marshallers.jackson.Jackson;
+import org.apache.pekko.http.javadsl.model.ContentTypes;
+import org.apache.pekko.http.javadsl.model.HttpRequest;
+import org.apache.pekko.http.javadsl.testkit.TestRoute;
 import org.squbs.testkit.japi.InfoRouteWithActor;
 import org.squbs.testkit.japi.RouteResultInfo;
 import org.squbs.testkit.japi.TestNGCustomRouteTestKit;
@@ -38,8 +38,8 @@ public class CustomRouteTestKitTest extends TestNGCustomRouteTestKit {
                 .assertContentType(ContentTypes.APPLICATION_JSON)
                 .entity(Jackson.unmarshaller(RouteResultInfo.class));
         assertEquals(routeInfo.getWebContext(), "");
-        assertTrue(routeInfo.getActorPath().startsWith("akka://"),
-                "ActorPath: " + routeInfo.getActorPath() + " does not start with akka://");
+        assertTrue(routeInfo.getActorPath().startsWith("pekko://"),
+                "ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://");
         assertEquals(routeInfo.getResult(), 11);
     }
 
@@ -52,8 +52,8 @@ public class CustomRouteTestKitTest extends TestNGCustomRouteTestKit {
                 .assertContentType(ContentTypes.APPLICATION_JSON)
                 .entity(Jackson.unmarshaller(RouteResultInfo.class));
         assertEquals(routeInfo.getWebContext(), "my-context");
-        assertTrue(routeInfo.getActorPath().startsWith("akka://"),
-                "ActorPath: " + routeInfo.getActorPath() + " does not start with akka://");
+        assertTrue(routeInfo.getActorPath().startsWith("pekko://"),
+                "ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://");
         assertEquals(routeInfo.getResult(), 21);
     }
 

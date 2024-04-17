@@ -16,7 +16,7 @@
 
 package org.squbs.pattern.stream
 
-import akka.actor.{ActorLogging, Actor}
+import org.apache.pekko.actor.{ActorLogging, Actor}
 
 class PersistentQueueCloserActor[T](queue: PersistentQueue[T]) extends Actor with ActorLogging {
 

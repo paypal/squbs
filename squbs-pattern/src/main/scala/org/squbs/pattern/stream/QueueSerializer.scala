@@ -15,7 +15,7 @@
  */
 package org.squbs.pattern.stream
 
-import akka.util.ByteString
+import org.apache.pekko.util.ByteString
 import net.openhft.chronicle.wire.{WireIn, WireOut}
 
 import scala.reflect._

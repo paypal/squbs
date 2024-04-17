@@ -15,12 +15,12 @@
  */
 package org.squbs.testkit.japi
 
-import akka.actor.ActorSystem
-import akka.event.Logging
-import akka.http.javadsl.model.HttpRequest
-import akka.http.javadsl.server.RouteResult
-import akka.http.javadsl.testkit.{RouteTest, TestRouteResult}
-import akka.stream.Materializer
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.event.Logging
+import org.apache.pekko.http.javadsl.model.HttpRequest
+import org.apache.pekko.http.javadsl.server.RouteResult
+import org.apache.pekko.http.javadsl.testkit.{RouteTest, TestRouteResult}
+import org.apache.pekko.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatestplus.testng.TestNGSuiteLike
 import org.testng.Assert

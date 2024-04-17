@@ -15,9 +15,9 @@
  */
 package org.squbs.testkit.japi.junit;
 
-import akka.http.javadsl.marshallers.jackson.Jackson;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.testkit.TestRoute;
+import org.apache.pekko.http.javadsl.marshallers.jackson.Jackson;
+import org.apache.pekko.http.javadsl.model.HttpRequest;
+import org.apache.pekko.http.javadsl.testkit.TestRoute;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.junit.Test;
@@ -48,8 +48,8 @@ public class CustomRouteTestKitConfigResourcesTest extends JUnitCustomRouteTestK
                 .assertStatusCode(200)
                 .entity(Jackson.unmarshaller(RouteResultInfo.class));
         assertEquals("", routeInfo.getWebContext());
-        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with akka://",
-                routeInfo.getActorPath().startsWith("akka://"));
+        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://",
+                routeInfo.getActorPath().startsWith("pekko://"));
         assertEquals(9, routeInfo.getResult());
         assertEquals("baz", system().settings().config().
                 getString("CustomRouteTestKitConfigResourcesTest.foobar"));
@@ -63,8 +63,8 @@ public class CustomRouteTestKitConfigResourcesTest extends JUnitCustomRouteTestK
                 .assertStatusCode(200)
                 .entity(Jackson.unmarshaller(RouteResultInfo.class));
         assertEquals("my-context", routeInfo.getWebContext());
-        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with akka://",
-                routeInfo.getActorPath().startsWith("akka://"));
+        assertTrue("ActorPath: " + routeInfo.getActorPath() + " does not start with pekko://",
+                routeInfo.getActorPath().startsWith("pekko://"));
         assertEquals(19, routeInfo.getResult());
         assertEquals("baz", system().settings().config().
                 getString("CustomRouteTestKitConfigResourcesTest.foobar"));

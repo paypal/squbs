@@ -2,7 +2,7 @@
 
 ### Overview
 
-Some stream use cases may require each message in a flow to be processed within a bounded time or to send a timeout failure message instead.  squbs introduces `Timeout` Akka Streams stage to add timeout functionality to streams.
+Some stream use cases may require each message in a flow to be processed within a bounded time or to send a timeout failure message instead.  squbs introduces `Timeout` pekko Streams stage to add timeout functionality to streams.
 
 ### Dependency
 
@@ -90,7 +90,7 @@ public class Timeout {
 }
 ```
 
-This `BidiFlow` can be joined with any flow that takes in a `akka.japi.Pair<In, Context>` and outputs a `akka.japi.Pair<Out, Context>`.
+This `BidiFlow` can be joined with any flow that takes in a `org.apache.pekko.japi.Pair<In, Context>` and outputs a `org.apache.pekko.japi.Pair<Out, Context>`.
 
 ```java
 final Duration duration = Duration.ofSeconds(1);
@@ -191,11 +191,11 @@ Source.from(Arrays.asList("a", "b", "c"))
 
 The `Timeout` also provides a clean up callback function to be passed in via `TimeoutSettings`. This function will be called for emitted elements that were already considered timed out.
 
-An example use case for this functionality is when `Timeout` is used with Akka Http client. As described in [Implications of the streaming nature of Request/Response Entities](http://doc.akka.io/docs/akka-http/current/scala/http/implications-of-streaming-http-entity.html), all http responses must be consumed or discarded. By passing a clean up callback to discard the timed out requests when they complete we avoid clogging down the stream.
+An example use case for this functionality is when `Timeout` is used with pekko Http client. As described in [Implications of the streaming nature of Request/Response Entities](http://doc.pekko.io/docs/pekko-http/current/scala/http/implications-of-streaming-http-entity.html), all http responses must be consumed or discarded. By passing a clean up callback to discard the timed out requests when they complete we avoid clogging down the stream.
 
 ###### Scala
 ```scala
-val akkaHttpDiscard = (response: HttpResponse) => response.discardEntityBytes()
+val pekkoHttpDiscard = (response: HttpResponse) => response.discardEntityBytes()
 
 val settings =
   TimeoutSettings[HttpRequest, HttpResponse, Context](1.second)

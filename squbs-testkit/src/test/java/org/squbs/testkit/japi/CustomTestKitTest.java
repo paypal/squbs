@@ -16,14 +16,14 @@
 
 package org.squbs.testkit.japi;
 
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.http.javadsl.Http;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.HttpResponse;
-import akka.stream.ActorMaterializer;
-import akka.stream.Materializer;
-import akka.testkit.javadsl.TestKit;
+import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.actor.Props;
+import org.apache.pekko.http.javadsl.Http;
+import org.apache.pekko.http.javadsl.model.HttpRequest;
+import org.apache.pekko.http.javadsl.model.HttpResponse;
+import org.apache.pekko.stream.ActorMaterializer;
+import org.apache.pekko.stream.Materializer;
+import org.apache.pekko.testkit.javadsl.TestKit;
 import com.typesafe.config.ConfigFactory;
 import org.squbs.testkit.TestActorJ;
 import org.squbs.testkit.japi.Timeouts;

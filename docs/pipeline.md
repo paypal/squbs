@@ -8,12 +8,12 @@ As squbs promotes separation of concerns, such logic would belong to infrastruct
 
 Generally speaking, a squbs pipeline is a Bidi Flow acting as a bridge in between: 
 
-  * the Akka HTTP layer and the squbs service:
-    * All request messages sent from Akka Http to squbs service will go thru the pipeline
+  * the Pekko HTTP layer and the squbs service:
+    * All request messages sent from Pekko Http to squbs service will go thru the pipeline
     * Vice versa, all response messages sent from squbs service will go thru the pipeline.
-  * squbs client and Akka HTTP host connection pool flow:
-    * 	All request messages sent from squbs client to Akka HTTP host connection pool will go thru the pipeline
-    * Vice versa, all response messages sent from Akka HTTP host connection pool to squbs client will go thru the pipeline. 
+  * squbs client and Pekko HTTP host connection pool flow:
+    * 	All request messages sent from squbs client to Pekko HTTP host connection pool will go thru the pipeline
+    * Vice versa, all response messages sent from Pekko HTTP host connection pool to squbs client will go thru the pipeline. 
 
 ### Pipeline declaration
 

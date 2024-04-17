@@ -1,6 +1,6 @@
 # Customizing Stream Control
 
-Akka Streams/Reactive stream needs to be integrated with the [Runtime Lifecycle](lifecycle.md) of the server. For this, an automated or semi-automated integration is provided through the [`PerpetualStream`](perpetualstream.md) infrastructure. If you need even more fine-grained control over stream, the following sections explain such facilities.
+Pekko Streams/Reactive stream needs to be integrated with the [Runtime Lifecycle](lifecycle.md) of the server. For this, an automated or semi-automated integration is provided through the [`PerpetualStream`](perpetualstream.md) infrastructure. If you need even more fine-grained control over stream, the following sections explain such facilities.
 
 ### Dependency
 
@@ -31,7 +31,7 @@ final Source aggregatedSource = new LifecycleManaged().source(inSource);
 
 In the Scala API, the resulting source will be an aggregated source materialize to a `(M, () => ActorRef)` where `M` is the materialized type of `inSource` and `() => ActorRef` is the materialized type of the function for accessing the trigger actor which receives events from the Unicomplex, the squbs container.
 
-In the Java API, the resulting source will be an aggregated source materialize to a `akka.japi.Pair<M, Supplier<ActorRef>>` where `M` is the materialized type of `inSource` and `Supplier<ActorRef>` is the materialized type of the function for accessing the trigger actor. Calling the `get()` method on the `Supplier` allows access to the `ActorRef`. This `ActorRef` receives events from the Unicomplex, the squbs container.
+In the Java API, the resulting source will be an aggregated source materialize to a `org.apache.pekko.japi.Pair<M, Supplier<ActorRef>>` where `M` is the materialized type of `inSource` and `Supplier<ActorRef>` is the materialized type of the function for accessing the trigger actor. Calling the `get()` method on the `Supplier` allows access to the `ActorRef`. This `ActorRef` receives events from the Unicomplex, the squbs container.
 
 The aggregated source does not emit from original source until lifecycle becomes `Active`, and stop emitting element and shuts down the stream after lifecycle state becomes `Stopping`.
 

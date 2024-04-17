@@ -18,8 +18,8 @@ package org.squbs.cluster
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import akka.actor._
-import akka.util.ByteString
+import org.apache.pekko.actor._
+import org.apache.pekko.util.ByteString
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.api.CuratorWatcher
@@ -191,7 +191,7 @@ private[cluster] class ZkPartitionsManager extends Actor with Stash with LazyLog
 
 }
 
-@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+@deprecated("The zkcluster is deprecated in lieu of maturity of Pekko cluster and more modern cluster coordinators",
   since = "0.15.0")
 object ZkPartitionsManager {
 

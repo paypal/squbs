@@ -14,14 +14,14 @@ jobs:
       SCALA_VERSION: ${{ matrix.scala-version }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Setup JDK
-      uses: olafurpg/setup-scala@v10
+      uses: olafurpg/setup-scala@v11
       with:
         java-version: adopt@1.8.0
     - name: Import GPG key
       id: import_gpg
-      uses: crazy-max/ghaction-import-gpg@v4
+      uses: crazy-max/ghaction-import-gpg@v6
       with:
         gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
         passphrase: ${{ secrets.PASSPHRASE }}

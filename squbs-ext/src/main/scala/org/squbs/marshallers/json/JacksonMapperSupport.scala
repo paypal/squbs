@@ -15,13 +15,13 @@
  */
 package org.squbs.marshallers.json
 
-import akka.http.javadsl.marshalling.Marshaller
-import akka.http.javadsl.model.{HttpEntity, RequestEntity}
-import akka.http.javadsl.unmarshalling.Unmarshaller
-import akka.http.scaladsl.marshalling.ToEntityMarshaller
-import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
+import org.apache.pekko.http.javadsl.marshalling.Marshaller
+import org.apache.pekko.http.javadsl.model.{HttpEntity, RequestEntity}
+import org.apache.pekko.http.javadsl.unmarshalling.Unmarshaller
+import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
+import org.apache.pekko.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import com.fasterxml.jackson.databind.ObjectMapper
-import de.heikoseeberger.akkahttpjackson.JacksonSupport
+import com.github.pjfanning.pekkohttpjackson.JacksonSupport
 
 import scala.reflect.runtime.universe._
 import scala.reflect.{ClassTag, classTag}
@@ -80,7 +80,9 @@ object JacksonMapperSupport {
     */
   implicit def jacksonUnmarshaller[T](implicit tt: TypeTag[T]): FromEntityUnmarshaller[T] = {
     implicit val classTag = toClassTag(tt)
-    JacksonSupport.unmarshaller[T](tt, mapper[T])
+    implicit val objectMapper = mapper[T]
+    implicit val javaType = objectMapper.constructType(classTag.runtimeClass)
+    JacksonSupport.unmarshaller
   }
 
   /**

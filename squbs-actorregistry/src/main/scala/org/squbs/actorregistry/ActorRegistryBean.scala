@@ -19,7 +19,7 @@ package org.squbs.actorregistry
 import java.lang.management.ManagementFactory
 import javax.management.MXBean
 
-import akka.actor.{ActorContext, ActorRef}
+import org.apache.pekko.actor.{ActorContext, ActorRef}
 import org.squbs.unicomplex.JMX._
 
 

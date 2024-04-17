@@ -22,20 +22,20 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.{Function => JFunction}
 
 import javax.management.{MXBean, ObjectName}
-import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.event.LoggingAdapter
-import akka.http.org.squbs.util.JavaConverters
-import akka.japi.Pair
-import akka.stream.Attributes.InputBuffer
-import akka.stream._
-import akka.stream.scaladsl.{BidiFlow, Flow}
-import akka.stream.stage._
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.event.LoggingAdapter
+import org.apache.pekko.japi.Pair
+import org.apache.pekko.stream.Attributes.InputBuffer
+import org.apache.pekko.stream._
+import org.apache.pekko.stream.scaladsl.{BidiFlow, Flow}
+import org.apache.pekko.stream.stage._
 import com.codahale.metrics.MetricRegistry
+import org.apache.pekko.http.org.squbs.util.JavaConverters
 import org.squbs.metrics.MetricsExtension
 
 import scala.collection.mutable
-import scala.concurrent.duration.{Duration, FiniteDuration, _}
+import scala.concurrent.duration._
 import scala.util.Try
 
 object Retry {

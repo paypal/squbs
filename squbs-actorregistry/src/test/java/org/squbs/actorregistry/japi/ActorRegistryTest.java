@@ -15,10 +15,10 @@
  */
 package org.squbs.actorregistry.japi;
 
-import akka.actor.ActorIdentity;
-import akka.actor.ActorRef;
-import akka.actor.Identify;
-import akka.actor.PoisonPill;
+import org.apache.pekko.actor.ActorIdentity;
+import org.apache.pekko.actor.ActorRef;
+import org.apache.pekko.actor.Identify;
+import org.apache.pekko.actor.PoisonPill;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.junit.AfterClass;

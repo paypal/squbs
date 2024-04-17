@@ -15,11 +15,11 @@
  */
 package org.squbs.pattern.stream
 
-import akka.Done
-import akka.actor.{ActorContext, ActorSystem}
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
-import akka.stream.{AbruptTerminationException, ClosedShape, Materializer}
-import akka.util.ByteString
+import org.apache.pekko.Done
+import org.apache.pekko.actor.{ActorContext, ActorSystem}
+import org.apache.pekko.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
+import org.apache.pekko.stream.{AbruptTerminationException, ClosedShape, Materializer}
+import org.apache.pekko.util.ByteString
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
@@ -35,7 +35,7 @@ import scala.reflect._
 object PersistentBufferSpec {
   val testConfig = ConfigFactory.parseString(
     """
-      |akka.actor.default-dispatcher {
+      |pekko.actor.default-dispatcher {
       |  executor = "affinity-pool-executor"
       |  affinity-pool-executor {
       |    parallelism-min = 1

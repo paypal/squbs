@@ -1,7 +1,7 @@
 
 # The Blocking Dispatcher for Blocking API Calls
 
-This topic is not about dispatchers in general, but about squbs-specific dispatcher configurations. Please check the [Akka documentation](http://doc.akka.io/docs/akka/2.3.13/scala/dispatchers.html) for descriptions and details of dispatchers.
+This topic is not about dispatchers in general, but about squbs-specific dispatcher configurations. Please check the [Pekko documentation](http://doc.pekko.io/docs/pekko/2.3.13/scala/dispatchers.html) for descriptions and details of dispatchers.
 
 squbs adds another pre-configured dispatcher for use in blocking calls. Generally, these are used for synchronous calls to the database. The reference.conf defines the blocking-dispatcher as follows:
 

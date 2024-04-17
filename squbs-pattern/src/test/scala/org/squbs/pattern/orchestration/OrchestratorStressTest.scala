@@ -16,8 +16,8 @@
 
 package org.squbs.pattern.orchestration
 
-import akka.actor._
-import akka.testkit.{ImplicitSender, TestKit}
+import org.apache.pekko.actor._
+import org.apache.pekko.testkit.{ImplicitSender, TestKit}
 import org.scalatest.funspec.AnyFunSpecLike
 import org.scalatest.matchers.should.Matchers
 import org.squbs.testkit.SlowTest

@@ -16,8 +16,8 @@
 package org.squbs.unicomplex.javaroutenohandlersvc;
 
 
-import akka.http.javadsl.server.CustomRejection;
-import akka.http.javadsl.server.Route;
+import org.apache.pekko.http.javadsl.server.CustomRejection;
+import org.apache.pekko.http.javadsl.server.Route;
 import org.squbs.unicomplex.AbstractRouteDefinition;
 
 public class JavaRouteNoHandlerSvc extends AbstractRouteDefinition {

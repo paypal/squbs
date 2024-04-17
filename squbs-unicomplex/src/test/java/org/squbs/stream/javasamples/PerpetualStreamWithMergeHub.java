@@ -1,10 +1,10 @@
 package org.squbs.stream.javasamples;
 
-import akka.NotUsed;
-import akka.stream.ClosedShape;
-import akka.stream.FlowShape;
-import akka.stream.SinkShape;
-import akka.stream.javadsl.*;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.stream.ClosedShape;
+import org.apache.pekko.stream.FlowShape;
+import org.apache.pekko.stream.SinkShape;
+import org.apache.pekko.stream.javadsl.*;
 import org.squbs.stream.AbstractPerpetualStream;
 import org.squbs.unicomplex.Initializing;
 import org.squbs.unicomplex.LifecycleState;

@@ -15,7 +15,7 @@
  */
 package org.squbs.testkit.japi;
 
-import akka.actor.AbstractActor;
+import org.apache.pekko.actor.AbstractActor;
 
 public class DecrementActor extends AbstractActor {
 

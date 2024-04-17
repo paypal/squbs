@@ -15,9 +15,9 @@
  */
 package org.squbs.stream
 
-import akka.actor.ActorSystem
-import akka.stream.testkit.scaladsl.TestSource
-import akka.testkit.TestKit
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.testkit.scaladsl.TestSource
+import org.apache.pekko.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpecLike

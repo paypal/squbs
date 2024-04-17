@@ -16,10 +16,10 @@
 
 package org.squbs
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
-import akka.util.ByteString
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
+import org.apache.pekko.util.ByteString
 
 import scala.concurrent.Future
 

@@ -8,7 +8,7 @@ The design of the squbs platform centers around the following design principles:
 
 2. **Loose Coupling**
 
-   Tangling of large systems comes from tight coupling of the type system. Akka, being a message passing system, can avoid type coupling altogether allowing for modules to live together without any type dependency on each others. However, the common way of starting actors needs actors to have type coupling between each others. For instance, `context.actorOf(Props[MyActorType])` requires the caller to import MyActorType and thus causes a type dependency to `MyActorType`. Such couplings cannot be categorized as loose coupling. squbs allows creation of loosely-coupled components called "cubes" that may only communicate by messages known to both parties. To what degree such cubes should be used depends on the complexity of the service, and whether the functionality provided by a cube is optional or not. A very small "microservice" may be all implemented in one cube. A more complex service that has common modules shared with other services may want to implement that common logic as a separate cube (much more than a separate library as that is usually tightly-coupled). An admin console that may be deployed with all services but rarely communicates with the services directly should definitely be implemented as a separate cube. 
+   Tangling of large systems comes from tight coupling of the type system. Pekko, being a message passing system, can avoid type coupling altogether allowing for modules to live together without any type dependency on each others. However, the common way of starting actors needs actors to have type coupling between each others. For instance, `context.actorOf(Props[MyActorType])` requires the caller to import MyActorType and thus causes a type dependency to `MyActorType`. Such couplings cannot be categorized as loose coupling. squbs allows creation of loosely-coupled components called "cubes" that may only communicate by messages known to both parties. To what degree such cubes should be used depends on the complexity of the service, and whether the functionality provided by a cube is optional or not. A very small "microservice" may be all implemented in one cube. A more complex service that has common modules shared with other services may want to implement that common logic as a separate cube (much more than a separate library as that is usually tightly-coupled). An admin console that may be deployed with all services but rarely communicates with the services directly should definitely be implemented as a separate cube. 
    
 3. **DRY**  
 
@@ -20,10 +20,10 @@ The design of the squbs platform centers around the following design principles:
    
 5. **Thin Platform**
 
-   We realize the emergence of the thin platform and try to keep squbs as lightweight and non-imposing as possible. As a result, we have squbs-unicomplex which is the core container in charge of bootstrapping and managing the state and lifecycle of the runtime. It pulls in virtually no dependency beyond Scala and Akka and does not impose further requirements or frameworks on the developer. Any other framework can be included by the developer as needed.
+   We realize the emergence of the thin platform and try to keep squbs as lightweight and non-imposing as possible. As a result, we have squbs-unicomplex which is the core container in charge of bootstrapping and managing the state and lifecycle of the runtime. It pulls in virtually no dependency beyond Scala and Pekko and does not impose further requirements or frameworks on the developer. Any other framework can be included by the developer as needed.
 
   
-## Common Questions/Concerns from Akka Developers
+## Common Questions/Concerns from Pekko Developers
 
 **Developer:** I want to start from my own main
 

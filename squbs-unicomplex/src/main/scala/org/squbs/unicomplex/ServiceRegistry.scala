@@ -16,22 +16,22 @@
 
 package org.squbs.unicomplex
 
-import akka.NotUsed
-import akka.actor.Actor._
-import akka.actor.Status.{Failure => ActorFailure}
-import akka.actor.SupervisorStrategy.Escalate
-import akka.actor._
-import akka.event.LoggingAdapter
-import akka.http.scaladsl.Http.ServerBinding
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.http.scaladsl.server._
-import akka.http.scaladsl.server.directives.PathDirectives
-import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
-import akka.pattern.pipe
-import akka.stream.TLSClientAuth.{Need, Want, need}
-import akka.stream.scaladsl.{Flow, GraphDSL, UnzipWith, ZipWith}
-import akka.stream.{BindFailedException, FlowShape, Materializer}
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.Actor._
+import org.apache.pekko.actor.Status.{Failure => ActorFailure}
+import org.apache.pekko.actor.SupervisorStrategy.Escalate
+import org.apache.pekko.actor._
+import org.apache.pekko.event.LoggingAdapter
+import org.apache.pekko.http.scaladsl.Http.ServerBinding
+import org.apache.pekko.http.scaladsl.model.Uri.Path
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse}
+import org.apache.pekko.http.scaladsl.server._
+import org.apache.pekko.http.scaladsl.server.directives.PathDirectives
+import org.apache.pekko.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
+import org.apache.pekko.pattern.pipe
+import org.apache.pekko.stream.TLSClientAuth.{Need, Want, need}
+import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, UnzipWith, ZipWith}
+import org.apache.pekko.stream.{BindFailedException, FlowShape, Materializer}
 import com.typesafe.config.Config
 import org.squbs.metrics.MaterializationMetricsCollector
 import org.squbs.pipeline.{Context, PipelineExtension, PipelineSetting, RequestContext, ServerPipeline}
@@ -43,7 +43,7 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
-  * Akka HTTP based [[ServiceRegistryBase]] implementation.
+  * Pekko HTTP based [[ServiceRegistryBase]] implementation.
   */
 class ServiceRegistry(val log: LoggingAdapter) extends ServiceRegistryBase[Path] {
 

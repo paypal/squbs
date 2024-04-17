@@ -15,8 +15,8 @@
  */
 package org.squbs.httpclient
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
@@ -36,7 +36,7 @@ object HttpClientJMXSpec {
     """
       |clientWithParsingOverride {
       |  type = squbs.httpclient
-      |  akka.http.parsing {
+      |  pekko.http.parsing {
       |    max-uri-length             = 1k
       |    max-method-length          = 16
       |    max-response-reason-length = 17
@@ -63,7 +63,7 @@ object HttpClientJMXSpec {
       |    }
       |    tls-session-info-header = on
       |  }
-      |  akka.http.client.parsing { // Needs to override this value at the client level.
+      |  pekko.http.client.parsing { // Needs to override this value at the client level.
       |    max-content-length = 4m
       |  }
       |}
@@ -71,7 +71,7 @@ object HttpClientJMXSpec {
       |clientWithParsingOverride2 {
       |  type = squbs.httpclient
       |
-      |  akka.http.parsing {
+      |  pekko.http.parsing {
       |    error-logging-verbosity = off
       |    illegal-response-header-value-processing-mode = ignore
       |  }
@@ -80,7 +80,7 @@ object HttpClientJMXSpec {
       |clientWithSocketOptionsOverride {
       |  type = squbs.httpclient
       |
-      |  akka.http.client {
+      |  pekko.http.client {
       |    socket-options {
       |      so-receive-buffer-size = 1k
       |      so-send-buffer-size = 2k
@@ -144,70 +144,70 @@ class HttpClientJMXSpec extends AnyFlatSpecLike with Matchers {
     assertJmxValue("sampleClient", "Pipeline", "N/A")
     assertJmxValue("sampleClient", "DefaultPipeline", "on")
     assertJmxValue("sampleClient", "CircuitBreakerStateName", "N/A")
-    assertJmxValue("sampleClient", "MaxConnections", config.getInt("akka.http.host-connection-pool.max-connections"))
-    assertJmxValue("sampleClient", "MinConnections", config.getInt("akka.http.host-connection-pool.min-connections"))
-    assertJmxValue("sampleClient", "MaxRetries", config.getInt("akka.http.host-connection-pool.max-retries"))
-    assertJmxValue("sampleClient", "MaxOpenRequests", config.getInt("akka.http.host-connection-pool.max-open-requests"))
-    assertJmxValue("sampleClient", "PipeliningLimit", config.getInt("akka.http.host-connection-pool.pipelining-limit"))
+    assertJmxValue("sampleClient", "MaxConnections", config.getInt("pekko.http.host-connection-pool.max-connections"))
+    assertJmxValue("sampleClient", "MinConnections", config.getInt("pekko.http.host-connection-pool.min-connections"))
+    assertJmxValue("sampleClient", "MaxRetries", config.getInt("pekko.http.host-connection-pool.max-retries"))
+    assertJmxValue("sampleClient", "MaxOpenRequests", config.getInt("pekko.http.host-connection-pool.max-open-requests"))
+    assertJmxValue("sampleClient", "PipeliningLimit", config.getInt("pekko.http.host-connection-pool.pipelining-limit"))
     assertJmxDuration("sampleClient", "ConnectionPoolIdleTimeout",
-      config.get[Duration]("akka.http.host-connection-pool.idle-timeout"))
+      config.get[Duration]("pekko.http.host-connection-pool.idle-timeout"))
     assertJmxValue("sampleClient", "UserAgentHeader",
-      config.getString("akka.http.client.user-agent-header"))
+      config.getString("pekko.http.client.user-agent-header"))
     assertJmxDuration("sampleClient", "ConnectingTimeout",
-      config.get[Duration]("akka.http.client.connecting-timeout"))
+      config.get[Duration]("pekko.http.client.connecting-timeout"))
     assertJmxDuration("sampleClient", "ConnectionIdleTimeout",
-      config.get[Duration]("akka.http.client.idle-timeout"))
+      config.get[Duration]("pekko.http.client.idle-timeout"))
     assertJmxValue("sampleClient", "RequestHeaderSizeHint",
-      config.getInt("akka.http.client.request-header-size-hint"))
+      config.getInt("pekko.http.client.request-header-size-hint"))
     assertJmxValue("sampleClient", "SoReceiveBufferSize",
-      config.getString("akka.http.client.socket-options.so-receive-buffer-size"))
+      config.getString("pekko.http.client.socket-options.so-receive-buffer-size"))
     assertJmxValue("sampleClient", "SoSendBufferSize",
-      config.getString("akka.http.client.socket-options.so-send-buffer-size"))
+      config.getString("pekko.http.client.socket-options.so-send-buffer-size"))
     assertJmxValue("sampleClient", "SoReuseAddress",
-      config.getString("akka.http.client.socket-options.so-reuse-address"))
+      config.getString("pekko.http.client.socket-options.so-reuse-address"))
     assertJmxValue("sampleClient", "SoTrafficClass",
-      config.getString("akka.http.client.socket-options.so-traffic-class"))
+      config.getString("pekko.http.client.socket-options.so-traffic-class"))
     assertJmxValue("sampleClient", "TcpKeepAlive",
-      config.getString("akka.http.client.socket-options.tcp-keep-alive"))
+      config.getString("pekko.http.client.socket-options.tcp-keep-alive"))
     assertJmxValue("sampleClient", "TcpOobInline",
-      config.getString("akka.http.client.socket-options.tcp-oob-inline"))
+      config.getString("pekko.http.client.socket-options.tcp-oob-inline"))
     assertJmxValue("sampleClient", "TcpNoDelay",
-      config.getString("akka.http.client.socket-options.tcp-no-delay"))
-    assertJmxValue("sampleClient", "MaxUriLength", config.getBytes("akka.http.parsing.max-uri-length"))
-    assertJmxValue("sampleClient", "MaxMethodLength", config.getInt("akka.http.parsing.max-method-length"))
+      config.getString("pekko.http.client.socket-options.tcp-no-delay"))
+    assertJmxValue("sampleClient", "MaxUriLength", config.getBytes("pekko.http.parsing.max-uri-length"))
+    assertJmxValue("sampleClient", "MaxMethodLength", config.getInt("pekko.http.parsing.max-method-length"))
     assertJmxValue("sampleClient", "MaxResponseReasonLength",
-      config.getInt("akka.http.parsing.max-response-reason-length"))
-    assertJmxValue("sampleClient", "MaxHeaderNameLength", config.getInt("akka.http.parsing.max-header-name-length"))
-    assertJmxValue("sampleClient", "MaxHeaderValueLength", config.getBytes("akka.http.parsing.max-header-value-length"))
-    assertJmxValue("sampleClient", "MaxHeaderCount", config.getInt("akka.http.parsing.max-header-count"))
-    assertJmxValue("sampleClient", "MaxChunkExtLength", config.getInt("akka.http.parsing.max-chunk-ext-length"))
-    assertJmxValue("sampleClient", "MaxChunkSize", config.getBytes("akka.http.parsing.max-chunk-size"))
+      config.getInt("pekko.http.parsing.max-response-reason-length"))
+    assertJmxValue("sampleClient", "MaxHeaderNameLength", config.getInt("pekko.http.parsing.max-header-name-length"))
+    assertJmxValue("sampleClient", "MaxHeaderValueLength", config.getBytes("pekko.http.parsing.max-header-value-length"))
+    assertJmxValue("sampleClient", "MaxHeaderCount", config.getInt("pekko.http.parsing.max-header-count"))
+    assertJmxValue("sampleClient", "MaxChunkExtLength", config.getInt("pekko.http.parsing.max-chunk-ext-length"))
+    assertJmxValue("sampleClient", "MaxChunkSize", config.getBytes("pekko.http.parsing.max-chunk-size"))
     val contentLengthValue =
-      if (config.getString("akka.http.client.parsing.max-content-length") == "infinite") Long.MaxValue
-      else config.getBytes("akka.http.client.parsing.max-content-length")
+      if (config.getString("pekko.http.client.parsing.max-content-length") == "infinite") Long.MaxValue
+      else config.getBytes("pekko.http.client.parsing.max-content-length")
       assertJmxValue("sampleClient", "MaxContentLength", contentLengthValue)
-    assertJmxValue("sampleClient", "UriParsingMode", config.getString("akka.http.parsing.uri-parsing-mode"))
-    assertJmxValue("sampleClient", "CookieParsingMode", config.getString("akka.http.parsing.cookie-parsing-mode"))
+    assertJmxValue("sampleClient", "UriParsingMode", config.getString("pekko.http.parsing.uri-parsing-mode"))
+    assertJmxValue("sampleClient", "CookieParsingMode", config.getString("pekko.http.parsing.cookie-parsing-mode"))
     assertJmxValue("sampleClient", "IllegalHeaderWarnings",
-      config.getString("akka.http.parsing.illegal-header-warnings"))
+      config.getString("pekko.http.parsing.illegal-header-warnings"))
     assertJmxValue("sampleClient", "ErrorLoggingVerbosity",
-      config.getString("akka.http.parsing.error-logging-verbosity"))
+      config.getString("pekko.http.parsing.error-logging-verbosity"))
     assertJmxValue("sampleClient", "IllegalResponseHeaderValueProcessingMode",
-      config.getString("akka.http.parsing.illegal-response-header-value-processing-mode"))
-    assertJmxValue("sampleClient", "HeaderCacheDefault", config.getInt("akka.http.parsing.header-cache.default"))
-    assertJmxValue("sampleClient", "HeaderCacheContentMD5", config.getInt("akka.http.parsing.header-cache.Content-MD5"))
-    assertJmxValue("sampleClient", "HeaderCacheDate", config.getInt("akka.http.parsing.header-cache.Date"))
-    assertJmxValue("sampleClient", "HeaderCacheIfMatch", config.getInt("akka.http.parsing.header-cache.If-Match"))
+      config.getString("pekko.http.parsing.illegal-response-header-value-processing-mode"))
+    assertJmxValue("sampleClient", "HeaderCacheDefault", config.getInt("pekko.http.parsing.header-cache.default"))
+    assertJmxValue("sampleClient", "HeaderCacheContentMD5", config.getInt("pekko.http.parsing.header-cache.Content-MD5"))
+    assertJmxValue("sampleClient", "HeaderCacheDate", config.getInt("pekko.http.parsing.header-cache.Date"))
+    assertJmxValue("sampleClient", "HeaderCacheIfMatch", config.getInt("pekko.http.parsing.header-cache.If-Match"))
     assertJmxValue("sampleClient", "HeaderCacheIfModifiedSince",
-      config.getInt("akka.http.parsing.header-cache.If-Modified-Since"))
+      config.getInt("pekko.http.parsing.header-cache.If-Modified-Since"))
     assertJmxValue("sampleClient", "HeaderCacheIfNoneMatch",
-      config.getInt("akka.http.parsing.header-cache.If-None-Match"))
-    assertJmxValue("sampleClient", "HeaderCacheIfRange", config.getInt("akka.http.parsing.header-cache.If-Range"))
+      config.getInt("pekko.http.parsing.header-cache.If-None-Match"))
+    assertJmxValue("sampleClient", "HeaderCacheIfRange", config.getInt("pekko.http.parsing.header-cache.If-Range"))
     assertJmxValue("sampleClient", "HeaderCacheIfUnmodifiedSince",
-      config.getInt("akka.http.parsing.header-cache.If-Unmodified-Since"))
-    assertJmxValue("sampleClient", "HeaderCacheUserAgent", config.getInt("akka.http.parsing.header-cache.User-Agent"))
+      config.getInt("pekko.http.parsing.header-cache.If-Unmodified-Since"))
+    assertJmxValue("sampleClient", "HeaderCacheUserAgent", config.getInt("pekko.http.parsing.header-cache.User-Agent"))
     assertJmxValue("sampleClient", "TlsSessionInfoHeader",
-      config.getString("akka.http.parsing.tls-session-info-header"))
+      config.getString("pekko.http.parsing.tls-session-info-header"))
   }
 
   it should "show non-default parsing settings" in {
@@ -215,66 +215,66 @@ class HttpClientJMXSpec extends AnyFlatSpecLike with Matchers {
 
     assertJmxValue("clientWithParsingOverride", "Name", "clientWithParsingOverride")
     assertJmxValue("clientWithParsingOverride", "MaxUriLength",
-      config.getBytes("clientWithParsingOverride.akka.http.parsing.max-uri-length"))
+      config.getBytes("clientWithParsingOverride.pekko.http.parsing.max-uri-length"))
     assertJmxValue("clientWithParsingOverride", "MaxMethodLength",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.max-method-length"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.max-method-length"))
     assertJmxValue("clientWithParsingOverride", "MaxResponseReasonLength",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.max-response-reason-length"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.max-response-reason-length"))
     assertJmxValue("clientWithParsingOverride", "MaxHeaderNameLength",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.max-header-name-length"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.max-header-name-length"))
     assertJmxValue("clientWithParsingOverride", "MaxHeaderValueLength",
-      config.getBytes("clientWithParsingOverride.akka.http.parsing.max-header-value-length"))
+      config.getBytes("clientWithParsingOverride.pekko.http.parsing.max-header-value-length"))
     assertJmxValue("clientWithParsingOverride", "MaxHeaderCount",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.max-header-count"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.max-header-count"))
     assertJmxValue("clientWithParsingOverride", "MaxChunkExtLength",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.max-chunk-ext-length"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.max-chunk-ext-length"))
     assertJmxValue("clientWithParsingOverride", "MaxChunkSize",
-      config.getBytes("clientWithParsingOverride.akka.http.parsing.max-chunk-size"))
+      config.getBytes("clientWithParsingOverride.pekko.http.parsing.max-chunk-size"))
     val contentLengthValue =
-      if (config.getString("akka.http.client.parsing.max-content-length") == "infinite") Long.MaxValue
-      else config.getBytes("akka.http.client.parsing.max-content-length")
+      if (config.getString("pekko.http.client.parsing.max-content-length") == "infinite") Long.MaxValue
+      else config.getBytes("pekko.http.client.parsing.max-content-length")
     assertJmxValue("sampleClient", "MaxContentLength", contentLengthValue)
     assertJmxValue("clientWithParsingOverride", "UriParsingMode",
-      config.getString("clientWithParsingOverride.akka.http.parsing.uri-parsing-mode"))
+      config.getString("clientWithParsingOverride.pekko.http.parsing.uri-parsing-mode"))
     assertJmxValue("clientWithParsingOverride", "CookieParsingMode",
-      config.getString("clientWithParsingOverride.akka.http.parsing.cookie-parsing-mode"))
+      config.getString("clientWithParsingOverride.pekko.http.parsing.cookie-parsing-mode"))
     assertJmxValue("clientWithParsingOverride", "IllegalHeaderWarnings",
-      config.getString("clientWithParsingOverride.akka.http.parsing.illegal-header-warnings"))
+      config.getString("clientWithParsingOverride.pekko.http.parsing.illegal-header-warnings"))
     assertJmxValue("clientWithParsingOverride", "ErrorLoggingVerbosity",
-      config.getString("clientWithParsingOverride.akka.http.parsing.error-logging-verbosity"))
+      config.getString("clientWithParsingOverride.pekko.http.parsing.error-logging-verbosity"))
     assertJmxValue("clientWithParsingOverride", "IllegalResponseHeaderValueProcessingMode",
-      config.getString("clientWithParsingOverride.akka.http.parsing.illegal-response-header-value-processing-mode"))
+      config.getString("clientWithParsingOverride.pekko.http.parsing.illegal-response-header-value-processing-mode"))
     assertJmxValue("clientWithParsingOverride", "HeaderCacheDefault",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.default"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.header-cache.default"))
     assertJmxValue("clientWithParsingOverride", "HeaderCacheContentMD5",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.Content-MD5"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.header-cache.Content-MD5"))
     assertJmxValue("clientWithParsingOverride", "HeaderCacheDate",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.Date"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.header-cache.Date"))
     assertJmxValue("clientWithParsingOverride", "HeaderCacheIfMatch",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.If-Match"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.header-cache.If-Match"))
     assertJmxValue("clientWithParsingOverride", "HeaderCacheIfModifiedSince",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.If-Modified-Since"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.header-cache.If-Modified-Since"))
     assertJmxValue("clientWithParsingOverride", "HeaderCacheIfNoneMatch",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.If-None-Match"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.header-cache.If-None-Match"))
     assertJmxValue("clientWithParsingOverride", "HeaderCacheIfRange",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.If-Range"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.header-cache.If-Range"))
     assertJmxValue("clientWithParsingOverride", "HeaderCacheIfUnmodifiedSince",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.If-Unmodified-Since"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.header-cache.If-Unmodified-Since"))
     assertJmxValue("clientWithParsingOverride", "HeaderCacheUserAgent",
-      config.getInt("clientWithParsingOverride.akka.http.parsing.header-cache.User-Agent"))
+      config.getInt("clientWithParsingOverride.pekko.http.parsing.header-cache.User-Agent"))
     assertJmxValue("clientWithParsingOverride", "TlsSessionInfoHeader",
-      config.getString("clientWithParsingOverride.akka.http.parsing.tls-session-info-header"))
+      config.getString("clientWithParsingOverride.pekko.http.parsing.tls-session-info-header"))
 
     ClientFlow("clientWithParsingOverride2")
     assertJmxValue("clientWithParsingOverride2", "ErrorLoggingVerbosity",
-      config.getString("clientWithParsingOverride2.akka.http.parsing.error-logging-verbosity"))
+      config.getString("clientWithParsingOverride2.pekko.http.parsing.error-logging-verbosity"))
     assertJmxValue("clientWithParsingOverride2", "IllegalResponseHeaderValueProcessingMode",
-      config.getString("clientWithParsingOverride2.akka.http.parsing.illegal-response-header-value-processing-mode"))
+      config.getString("clientWithParsingOverride2.pekko.http.parsing.illegal-response-header-value-processing-mode"))
   }
 
   it should "show socket options if set" in {
     ClientFlow("clientWithSocketOptionsOverride")
-    val `c.a.h.c.so` = "clientWithSocketOptionsOverride.akka.http.client.socket-options"
+    val `c.a.h.c.so` = "clientWithSocketOptionsOverride.pekko.http.client.socket-options"
     assertJmxValue("clientWithSocketOptionsOverride", "SoReceiveBufferSize",
       config.getBytes(s"${`c.a.h.c.so`}.so-receive-buffer-size").toString)
     assertJmxValue("clientWithSocketOptionsOverride", "SoSendBufferSize",

@@ -22,10 +22,10 @@ import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.jar.JarFile
 import java.util.{Timer, TimerTask}
 
-import akka.actor._
-import akka.pattern.ask
-import akka.routing.FromConfig
-import akka.util.Timeout
+import org.apache.pekko.actor._
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.routing.FromConfig
+import org.apache.pekko.util.Timeout
 import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
 import org.squbs.lifecycle.ExtensionLifecycle
@@ -52,7 +52,7 @@ object UnicomplexBoot extends LazyLogging {
 
   val defaultStartupTimeout: Timeout =
     Try(System.getProperty("startup.timeout").toLong) map { millis =>
-      akka.util.Timeout(millis, TimeUnit.MILLISECONDS)
+      org.apache.pekko.util.Timeout(millis, TimeUnit.MILLISECONDS)
     } getOrElse (1 minute)
 
   object StartupType extends Enumeration {
@@ -339,7 +339,7 @@ object UnicomplexBoot extends LazyLogging {
       }
     }
 
-    // This same creator class is available in Akka's Props.scala but it is inaccessible to us.
+    // This same creator class is available in Pekko's Props.scala but it is inaccessible to us.
     class TypedCreatorFunctionConsumer(clz: Class[_ <: Actor], creator: () => Actor) extends IndirectActorProducer {
       override def actorClass = clz
 

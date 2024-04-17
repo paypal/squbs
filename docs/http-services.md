@@ -4,11 +4,11 @@
 
 ## Overview
 
-HTTP is the most pervasive integration protocol. It is the basis for web services, both client and server side. Akka HTTP provides great server and client side APIs. squbs has the intention to maintain these APIs without change. Instead, squbs provides the infrastructure allowing production-ready use of these APIs by providing standard configuration for HTTP listeners that services can use to accept and handle requests, and pipelines allowing logging, monitoring, authentication/authorization, before the request comes to the application and after the response leaves the application before it goes onto the wire.
+HTTP is the most pervasive integration protocol. It is the basis for web services, both client and server side. pekko HTTP provides great server and client side APIs. squbs has the intention to maintain these APIs without change. Instead, squbs provides the infrastructure allowing production-ready use of these APIs by providing standard configuration for HTTP listeners that services can use to accept and handle requests, and pipelines allowing logging, monitoring, authentication/authorization, before the request comes to the application and after the response leaves the application before it goes onto the wire.
 
-squbs supports Akka HTTP, both the low-level and high-level server-side APIs, for defining services. Both APIs enjoy the full productionalization support such as listeners, pipelines, logging, and monitoring. In addition, squbs supports both Scala and Java flavors of service definitions. These service handlers are declared in classes and registered to squbs in the metadata through the `META-INF/squbs-meta.conf` file through the `squbs-services` entry in this file. Each style of service is registered in the same manner, just by providing the class name and configuration.
+squbs supports pekko HTTP, both the low-level and high-level server-side APIs, for defining services. Both APIs enjoy the full productionalization support such as listeners, pipelines, logging, and monitoring. In addition, squbs supports both Scala and Java flavors of service definitions. These service handlers are declared in classes and registered to squbs in the metadata through the `META-INF/squbs-meta.conf` file through the `squbs-services` entry in this file. Each style of service is registered in the same manner, just by providing the class name and configuration.
 
-All squbs service definitions have access to the field `context` which is an `akka.actor.ActorContext` useful for accessing the actor system, scheduler, and a variety of Akka facilities.
+All squbs service definitions have access to the field `context` which is an `pekko.actor.ActorContext` useful for accessing the actor system, scheduler, and a variety of pekko facilities.
 
 ## Dependencies
 
@@ -25,10 +25,10 @@ Services can be defined in either Scala or Java, using either the high-level or 
 
 ### High-Level Scala API
 
-The high-level server-side API is represented by Akka HTTP's `Route` artifact and its directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` function as follows:
+The high-level server-side API is represented by pekko HTTP's `Route` artifact and its directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` function as follows:
 
 ```scala
-import akka.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.Route
 import org.squbs.unicomplex.RouteDefinition
 
 class PingPongSvc extends RouteDefinition {
@@ -53,18 +53,18 @@ class PingPongSvc extends RouteDefinition {
 }
 ```
 
-In addition to defining the `route`, you can also provide a [`RejectionHandler`](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/rejections.html#the-rejectionhandler) and an [`ExceptionHandler`](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/exception-handling.html#exception-handling) by overriding the `rejectionHandler` and `exceptionHandler` functions accordingly. These can be seen in the example above.
+In addition to defining the `route`, you can also provide a [`RejectionHandler`](http://doc.pekko.io/docs/pekko-http/current/scala/http/routing-dsl/rejections.html#the-rejectionhandler) and an [`ExceptionHandler`](http://doc.pekko.io/docs/pekko-http/current/scala/http/routing-dsl/exception-handling.html#exception-handling) by overriding the `rejectionHandler` and `exceptionHandler` functions accordingly. These can be seen in the example above.
 
-Please refer to the [Akka HTTP high-level API](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/index.html), [Routing DSL](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/overview.html), [Directives](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/directives/index.html), [Rejection](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/rejections.html), and [Exception Handling](http://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/exception-handling.html) documentation to fully utilize these APIs.
+Please refer to the [pekko HTTP high-level API](http://doc.pekko.io/docs/pekko-http/current/scala/http/routing-dsl/index.html), [Routing DSL](http://doc.pekko.io/docs/pekko-http/current/scala/http/routing-dsl/overview.html), [Directives](http://doc.pekko.io/docs/pekko-http/current/scala/http/routing-dsl/directives/index.html), [Rejection](http://doc.pekko.io/docs/pekko-http/current/scala/http/routing-dsl/rejections.html), and [Exception Handling](http://doc.pekko.io/docs/pekko-http/current/scala/http/routing-dsl/exception-handling.html) documentation to fully utilize these APIs.
 
 ### Low-Level Scala API
 
-Using the Scala low-level API, just extend `org.squbs.unicomplex.FlowDefinition` and override the `flow` function. The `flow` needs to be of type `Flow[HttpRequest, HttpResponse, NotUsed]` using the Scala DSL and model provided by Akka HTTP as follows:
+Using the Scala low-level API, just extend `org.squbs.unicomplex.FlowDefinition` and override the `flow` function. The `flow` needs to be of type `Flow[HttpRequest, HttpResponse, NotUsed]` using the Scala DSL and model provided by pekko HTTP as follows:
 
 ```scala
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model._
-import akka.stream.scaladsl.Flow
+import org.apache.pekko.http.scaladsl.model.Uri.Path
+import org.apache.pekko.http.scaladsl.model._
+import org.apache.pekko.stream.scaladsl.Flow
 import org.squbs.unicomplex.FlowDefinition
 
 class SampleFlowSvc extends FlowDefinition {
@@ -77,16 +77,16 @@ class SampleFlowSvc extends FlowDefinition {
 }
 ```
 
-This provides access to the `Flow` representation of the Akka HTTP low-level server-side API. Please refer to the [Akka HTTP low-level API](http://doc.akka.io/docs/akka-http/current/scala/http/low-level-server-side-api.html#streams-and-http), [Akka Streams](http://doc.akka.io/docs/akka/current/scala/stream/stream-quickstart.html), and the [HTTP Model](http://doc.akka.io/docs/akka-http/current/scala/http/common/http-model.html#http-model-scala) documentation for further information on constructing more sophisticated `Flow`s.
+This provides access to the `Flow` representation of the pekko HTTP low-level server-side API. Please refer to the [pekko HTTP low-level API](http://doc.pekko.io/docs/pekko-http/current/scala/http/low-level-server-side-api.html#streams-and-http), [pekko Streams](http://doc.pekko.io/docs/pekko/current/scala/stream/stream-quickstart.html), and the [HTTP Model](http://doc.pekko.io/docs/pekko-http/current/scala/http/common/http-model.html#http-model-scala) documentation for further information on constructing more sophisticated `Flow`s.
 
 ### High-Level Java API
 
-The high-level server-side API is represented by Akka HTTP's `Route` artifact and its directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` method as follows:
+The high-level server-side API is represented by pekko HTTP's `Route` artifact and its directives. To use a `Route` to handle requests, just provide a class extending the `org.squbs.unicomplex.RouteDefinition` trait and provide the `route` method as follows:
 
 ```java
-import akka.http.javadsl.server.ExceptionHandler;
-import akka.http.javadsl.server.RejectionHandler;
-import akka.http.javadsl.server.Route;
+import org.apache.pekko.http.javadsl.server.ExceptionHandler;
+import org.apache.pekko.http.javadsl.server.RejectionHandler;
+import org.apache.pekko.http.javadsl.server.Route;
 import org.squbs.unicomplex.AbstractRouteDefinition;
 
 import java.util.Optional;
@@ -124,18 +124,18 @@ public class JavaRouteSvc extends AbstractRouteDefinition {
 }
 ```
 
-In addition to defining the `route`, you can also provide a [`RejectionHandler`](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/rejections.html#the-rejectionhandler) and an [`ExceptionHandler`](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/exception-handling.html#exception-handling) by overriding the `rejectionHandler` and `exceptionHandler` methods accordingly. These can be seen in the example above.
+In addition to defining the `route`, you can also provide a [`RejectionHandler`](http://doc.pekko.io/docs/pekko-http/current/java/http/routing-dsl/rejections.html#the-rejectionhandler) and an [`ExceptionHandler`](http://doc.pekko.io/docs/pekko-http/current/java/http/routing-dsl/exception-handling.html#exception-handling) by overriding the `rejectionHandler` and `exceptionHandler` methods accordingly. These can be seen in the example above.
 
-Please refer to the [Akka HTTP high-level API](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/index.html), [Routing DSL](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/overview.html), [Directives](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/directives/index.html), [Rejection](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/rejections.html), and [Exception Handling](http://doc.akka.io/docs/akka-http/current/java/http/routing-dsl/exception-handling.html) documentation to fully utilize these APIs.
+Please refer to the [pekko HTTP high-level API](http://doc.pekko.io/docs/pekko-http/current/java/http/routing-dsl/index.html), [Routing DSL](http://doc.pekko.io/docs/pekko-http/current/java/http/routing-dsl/overview.html), [Directives](http://doc.pekko.io/docs/pekko-http/current/java/http/routing-dsl/directives/index.html), [Rejection](http://doc.pekko.io/docs/pekko-http/current/java/http/routing-dsl/rejections.html), and [Exception Handling](http://doc.pekko.io/docs/pekko-http/current/java/http/routing-dsl/exception-handling.html) documentation to fully utilize these APIs.
 
 ### Low-Level Java API
 
-To use the Java low-level API, just extend `org.squbs.unicomplex.AbstractFlowDefinition` and override the `flow` method. The `flow` needs to be of type `Flow[HttpRequest, HttpResponse, NotUsed]` using the Java DSL and model provided by Akka HTTP. Note the imports in the following:
+To use the Java low-level API, just extend `org.squbs.unicomplex.AbstractFlowDefinition` and override the `flow` method. The `flow` needs to be of type `Flow[HttpRequest, HttpResponse, NotUsed]` using the Java DSL and model provided by pekko HTTP. Note the imports in the following:
 
 ```java
-import akka.NotUsed;
-import akka.http.javadsl.model.*;
-import akka.stream.javadsl.Flow;
+import org.apache.pekko.NotUsed;
+import org.apache.pekko.http.javadsl.model.*;
+import org.apache.pekko.stream.javadsl.Flow;
 import org.squbs.unicomplex.AbstractFlowDefinition;
 
 public class JavaFlowSvc extends AbstractFlowDefinition {
@@ -157,7 +157,7 @@ public class JavaFlowSvc extends AbstractFlowDefinition {
 
 **Note:** The `webContext()` method as well as the `context()` method for accessing the actor context are provided by the `AbstractFlowDefinition` class.
 
-This provides access to the `Flow` representation of the Akka HTTP low-level server-side API. Please refer to the [Akka HTTP low-level API](http://doc.akka.io/docs/akka-http/current/java/http/server-side/low-level-server-side-api.html#streams-and-http), [Akka Streams](http://doc.akka.io/docs/akka/current/java/stream/stream-quickstart.html), and the [HTTP model](http://doc.akka.io/docs/akka-http/current/java/http/http-model.html#http-model-java) documentation for further information on constructing more sophisticated `Flow`s.
+This provides access to the `Flow` representation of the pekko HTTP low-level server-side API. Please refer to the [pekko HTTP low-level API](http://doc.pekko.io/docs/pekko-http/current/java/http/server-side/low-level-server-side-api.html#streams-and-http), [pekko Streams](http://doc.pekko.io/docs/pekko/current/java/stream/stream-quickstart.html), and the [HTTP model](http://doc.pekko.io/docs/pekko-http/current/java/http/http-model.html#http-model-java) documentation for further information on constructing more sophisticated `Flow`s.
 
 ## Service Registration
 
@@ -196,7 +196,7 @@ The pipeline is a set of request pre- and post-processors before and after the r
 
 ### Listener Binding
 
-Unlike programming to Akka HTTP directly, squbs provides all socket binding and connection management through its listeners. Just provide the request/response handling through one or more of the APIs discussed above and register those implementations to squbs. This allows standardization of the binding configuration across services and allows uniform configuration management across services.
+Unlike programming to pekko HTTP directly, squbs provides all socket binding and connection management through its listeners. Just provide the request/response handling through one or more of the APIs discussed above and register those implementations to squbs. This allows standardization of the binding configuration across services and allows uniform configuration management across services.
 
 A listener is declared in `application.conf` or `reference.conf`, usually living in the project's `src/main/resources` directory. Listeners declare interfaces, ports, HTTPS security attributes, and name aliases, and are explained in [Configuration](configuration.md#listeners).
 
@@ -239,7 +239,7 @@ class SampleFlowSvc extends FlowDefinition with WebContext {
 
 ## Rules and Behaviors the High-Level Route API
 
-1. **Concurrent state access:** The provided `route` can be used by multiple connections, and therefore threads, concurrently. If the `route` accesses any state in the encapsulating `RouteDefinition` (Scala) or `AbstractRouteDefinition` (Java) class, it is important to note such access can be concurrent, both for reads and writes. It is not safe for such accesses to read or write mutable state inside the encapsulating class. The use of Akka `Actor`s is highly encouraged in such situations.
+1. **Concurrent state access:** The provided `route` can be used by multiple connections, and therefore threads, concurrently. If the `route` accesses any state in the encapsulating `RouteDefinition` (Scala) or `AbstractRouteDefinition` (Java) class, it is important to note such access can be concurrent, both for reads and writes. It is not safe for such accesses to read or write mutable state inside the encapsulating class. The use of pekko `Actor`s is highly encouraged in such situations.
 2. **Access to actor context:** The `RouteDefinition`/`AbstractRouteDefinition` has access to the `ActorContext` with the `context` field (Scala) or `context()` method (Java) by default. This can be used to create new actors or access other actors.
 3. **Access to web context:** For the Scala `RouteDefinition`, if the `WebContext` trait is mixed in, it will have access to the field `webContext`. The Java `AbstractRouteDefinition` provides the `webContext()` method in all cases. This field/method is used to determine the web context or path from the root where this `RouteDefinition`/`AbstractRouteDefinition` is handling requests. 
 
@@ -249,7 +249,7 @@ There are a few rules you have to keep in mind when implementing a `FlowDefiniti
 
 1. **Exactly one response:** It is the responsibility of the application to generate exactly one response for every request.
 2. **Response ordering:** The ordering of responses matches the ordering of the associated requests, which is relevant if HTTP pipelining is enabled where processing of multiple incoming requests may overlap.
-3. **Concurrent state access:** The flow can be materialized multiple times, causing multiple instances of the `Flow` itself. If these instances access any state in the encapsulating `FlowDefinition` or `AbstractFlowDefinition`, it is important to note such access can be concurrent, both for reads and writes. It is not safe for such accesses to read or write mutable state inside the encapsulating class. The use of Akka `Actor`s is highly encouraged in such situations.
+3. **Concurrent state access:** The flow can be materialized multiple times, causing multiple instances of the `Flow` itself. If these instances access any state in the encapsulating `FlowDefinition` or `AbstractFlowDefinition`, it is important to note such access can be concurrent, both for reads and writes. It is not safe for such accesses to read or write mutable state inside the encapsulating class. The use of pekko `Actor`s is highly encouraged in such situations.
 4. **Access to actor context:** The `FlowDefinition`/`AbstractFlowDefinition` has access to the `ActorContext` with the `context` field (Scala) or `context()` method (Java) by default. This can be used to create new actors or access other actors.
 5. **Access to web context:** For the Scala `FlowDefinition`, if the `WebContext` trait is mixed in, it will have access to the field `webContext`. The Java `AbstractFlowDefinition` provides the `webContext()` method in all cases. This field/method is used to determine the web context or path from the root where this `FlowDefinition`/`AbstractFlowDefinition` is handling requests. 
 6. **Request path:** The `HttpRequest` object is handed to this flow unmodified. The `webContext` is in the `Path` of the request. It is the users job (as seen above) to handle the request with the knowledge of the `webContext`. In other words, the low-level API handles the `HttpRequest` directly and needs to manually take the web context into consideration for any path matching.

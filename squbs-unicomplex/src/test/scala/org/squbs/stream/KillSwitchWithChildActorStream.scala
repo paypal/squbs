@@ -16,10 +16,10 @@
 package org.squbs.stream
 import java.util.concurrent.atomic.AtomicLong
 
-import akka.actor.{Actor, Props}
-import akka.stream.ClosedShape
-import akka.stream.ThrottleMode.Shaping
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
+import org.apache.pekko.actor.{Actor, Props}
+import org.apache.pekko.stream.ClosedShape
+import org.apache.pekko.stream.ThrottleMode.Shaping
+import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

@@ -21,11 +21,11 @@ import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 import scala.language.implicitConversions
 
-import akka.actor.ActorContext
+import org.apache.pekko.actor.ActorContext
 
 import scala.beans.BeanProperty
 
-@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+@deprecated("The zkcluster is deprecated in lieu of maturity of Pekko cluster and more modern cluster coordinators",
   since = "0.15.0")
 object JMX {
 
@@ -45,21 +45,21 @@ object JMX {
   def get(objName: ObjectName, attr: String) = ManagementFactory.getPlatformMBeanServer.getAttribute(objName, attr)
 }
 
-@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+@deprecated("The zkcluster is deprecated in lieu of maturity of Pekko cluster and more modern cluster coordinators",
   since = "0.15.0")
 case class PartitionInfo @ConstructorProperties(Array("name", "zkPath", "members"))
 (@BeanProperty name: String,
  @BeanProperty zkPath: String,
  @BeanProperty members: String)
 
-@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+@deprecated("The zkcluster is deprecated in lieu of maturity of Pekko cluster and more modern cluster coordinators",
   since = "0.15.0")
 trait MembersInfoMXBean {
   def getLeader: String
   def getMembers: java.util.List[String]
 }
 
-@deprecated("The zkcluster is deprecated in lieu of maturity of Akka cluster and more modern cluster coordinators",
+@deprecated("The zkcluster is deprecated in lieu of maturity of Pekko cluster and more modern cluster coordinators",
   since = "0.15.0")
 trait PartitionsInfoMXBean {
   def getPartitions: java.util.List[PartitionInfo]

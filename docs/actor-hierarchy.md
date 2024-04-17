@@ -5,7 +5,7 @@
 
 squbs sets up the actor and component hierarchy shown in the above picture to support a modular runtime for actors and services running in a squbs system.
 
-* **ActorSystem** - This is the akka ActorSystem. A squbs system uses one single actor system to support all services and cubes. This will ensure that we have a single control point for dispatchers running in a squbs system. The ActorSystem name is "squbs" by default but can be overridden by overriding the settings in application.conf.
+* **ActorSystem** - This is the pekko ActorSystem. A squbs system uses one single actor system to support all services and cubes. This will ensure that we have a single control point for dispatchers running in a squbs system. The ActorSystem name is "squbs" by default but can be overridden by overriding the settings in application.conf.
 
 * **Unicomplex** - This is the core singleton actor that manages the squbs system. It registers all cubes and communicates with the web-service actor and the cube supervisors for lifecycle management of the system. It is also responsible for starting the web-service and service-registrar actors. Applications or system components can access the `ActorRef` of `Unicomplex` by calling `Unicomplex()`
 

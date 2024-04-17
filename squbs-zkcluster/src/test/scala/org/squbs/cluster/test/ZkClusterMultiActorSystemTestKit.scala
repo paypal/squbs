@@ -16,8 +16,8 @@
 
 package org.squbs.cluster.test
 
-import akka.actor.{ActorSelection, ActorSystem, PoisonPill, Terminated}
-import akka.testkit.TestKit
+import org.apache.pekko.actor.{ActorSelection, ActorSystem, PoisonPill, Terminated}
+import org.apache.pekko.testkit.TestKit
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.commons.io.FileUtils
@@ -34,7 +34,7 @@ import scala.language.{implicitConversions, postfixOps}
 import scala.util.{Failure, Random, Success, Try}
 
 abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
-  extends TestKit(ActorSystem(systemName, akkaRemoteConfig)) with LazyLogging {
+  extends TestKit(ActorSystem(systemName, pekkoRemoteConfig)) with LazyLogging {
 
   val timeout: FiniteDuration
 
@@ -51,7 +51,7 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
     actorSystems = (0 until clusterSize) map { num =>
         val sysName: String = systemName(num)
         logger.info("Starting actor system {}", sysName)
-        sysName -> ActorSystem(sysName, akkaRemoteConfig withFallback zkConfig)
+        sysName -> ActorSystem(sysName, pekkoRemoteConfig withFallback zkConfig)
     } toMap
 
     // start the lazy actor
@@ -92,7 +92,7 @@ abstract class ZkClusterMultiActorSystemTestKit(systemName: String)
   }
 
   def bringUpSystem(sysName: String): Unit = {
-    actorSystems += sysName -> ActorSystem(sysName, akkaRemoteConfig withFallback zkConfig)
+    actorSystems += sysName -> ActorSystem(sysName, pekkoRemoteConfig withFallback zkConfig)
     watch(zkClusterExts(sysName).zkClusterActor)
     logger.info("system {} is up", sysName)
     Thread.sleep(timeout.toMillis / 5)
@@ -133,20 +133,20 @@ object ZkClusterMultiActorSystemTestKit {
     p
   }
 
-  def akkaRemoteConfig: Config = ConfigFactory.parseString(
+  def pekkoRemoteConfig: Config = ConfigFactory.parseString(
     s"""
-       |akka {
+       |pekko {
        |  actor {
-       |    provider = "akka.remote.RemoteActorRefProvider"
+       |    provider = "org.apache.pekko.remote.RemoteActorRefProvider"
        |    serializers {
-       |      kryo = "io.altoo.akka.serialization.kryo.KryoSerializer"
+       |      kryo = "io.altoo.serialization.kryo.pekko.PekkoKryoSerializer"
        |    }
        |    serialization-bindings {
        |      "org.squbs.cluster.ZkMessages" = kryo
        |    }
        |  }
        |  remote {
-       |    enabled-transports = ["akka.remote.netty.tcp"]
+       |    enabled-transports = ["pekko.remote.netty.tcp"]
        |    artery {
        |      transport = tcp # See Selecting a transport below
        |      canonical.hostname = ${InetAddress.getLocalHost.getHostAddress}
